@@ -3,12 +3,14 @@ package responses
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
-	"unicode"
 )
 
+// RequestKindTurn is the x-codex-turn-metadata request_kind of a user step.
+// Compaction (local and remote v2) sends "compaction" (research §9, spike 1c).
+const RequestKindTurn = "turn"
+
 // ParseMeta reads the turn metadata, subagent and window headers. A missing
-// or unparseable turn metadata header leaves the IDs empty.
+// or unparseable turn metadata header leaves the metadata fields empty.
 func ParseMeta(h http.Header) Meta {
 	m := Meta{Subagent: h.Get(HeaderSubagent), WindowID: h.Get(HeaderWindowID)}
 	raw := h.Get(HeaderTurnMetadata)
@@ -16,39 +18,26 @@ func ParseMeta(h http.Header) Meta {
 		return m
 	}
 	var tm struct {
-		SessionID string `json:"session_id"`
-		ThreadID  string `json:"thread_id"`
-		TurnID    string `json:"turn_id"`
-		AgentName string `json:"agent_name"`
+		SessionID   string `json:"session_id"`
+		ThreadID    string `json:"thread_id"`
+		TurnID      string `json:"turn_id"`
+		RequestKind string `json:"request_kind"`
+		AgentName   string `json:"agent_name"`
 	}
 	if json.Unmarshal([]byte(raw), &tm) != nil {
 		return m
 	}
-	m.SessionID, m.ThreadID, m.TurnID, m.AgentName = tm.SessionID, tm.ThreadID, tm.TurnID, tm.AgentName
+	m.SessionID, m.ThreadID, m.TurnID = tm.SessionID, tm.ThreadID, tm.TurnID
+	m.RequestKind, m.AgentName = tm.RequestKind, tm.AgentName
 	return m
 }
 
-// Classify applies plan decision D5: a request is a user step unless it comes
-// from a subagent, has no turn ID, or its last user text starts with one of
-// the passthrough prefixes (compaction and similar internal prompts).
-func Classify(r *Request, m Meta, passthrough []string) Kind {
-	if r == nil || m.Subagent != "" || m.TurnID == "" {
+// Classify applies plan decision D5 as spike 1c settled it: only a main-thread
+// turn request is a user step. Compaction, any other request kind, missing
+// metadata, a missing turn ID and every subagent request pass through.
+func Classify(m Meta) Kind {
+	if m.RequestKind != RequestKindTurn || m.TurnID == "" || m.Subagent != "" {
 		return KindPassthrough
 	}
-	text := strings.TrimLeftFunc(lastUserText(r.Input), unicode.IsSpace)
-	for _, p := range passthrough {
-		if p != "" && strings.HasPrefix(text, p) {
-			return KindPassthrough
-		}
-	}
 	return KindUserStep
-}
-
-func lastUserText(items []Item) string {
-	for i := len(items) - 1; i >= 0; i-- {
-		if items[i].Type == TypeMessage && items[i].Role == "user" {
-			return items[i].Text
-		}
-	}
-	return ""
 }

@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"io"
+	"math"
+	"slices"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -267,7 +269,7 @@ func routeText(r config.Route) string {
 func (c *canvas) now(s route.Snapshot) {
 	c.nextTurn(s)
 	if d := s.Last; d != nil {
-		c.row("Activity", col(colorActivity, string(d.Activity)))
+		c.row("Activity", activitySegs(d, s.Policy.ActivityMass)...)
 		why := d.Why
 		if why == "" {
 			why = string(d.Reason)
@@ -279,6 +281,7 @@ func (c *canvas) now(s route.Snapshot) {
 	}
 	c.pinRow(s)
 	c.session(s)
+	c.worth(s.Worth)
 	c.blank()
 	sync := "synced via thread/settings/update"
 	if !s.FooterSynced {
@@ -313,12 +316,51 @@ func (c *canvas) nextTurn(s route.Snapshot) {
 	}
 }
 
+// activitySegs is the activity row: the classifier's activity answer with its
+// probability and the likeliest alternates, else the decision's activity.
+func activitySegs(d *route.Decision, applyAt float64) []seg {
+	r := d.Reading
+	if r == nil || r.Activity == "" {
+		if d.Activity == "" {
+			return []seg{dim("none")}
+		}
+		return []seg{col(colorActivity, string(d.Activity))}
+	}
+	name := col(colorActivity, string(r.Activity))
+	if !slices.Contains(config.Activities, r.Activity) {
+		name = dim(string(r.Activity)) // "uncertain" is an answer, not an activity
+	}
+	segs := []seg{name, plain(" " + percent(r.ActivityP))}
+	if len(r.Alternates) > 0 {
+		alts := make([]string, len(r.Alternates))
+		for i, a := range r.Alternates {
+			alts[i] = string(a.Activity) + " " + percent(a.P)
+		}
+		segs = append(segs, dim("   "+strings.Join(alts, " · ")))
+	}
+	if applyAt > 0 {
+		segs = append(segs, dim("   applies at "+percent(applyAt)+"+"))
+	}
+	return segs
+}
+
+func percent(p float64) string { return fmt.Sprintf("%d%%", int(math.Round(p*100))) }
+
 func (c *canvas) pinRow(s route.Snapshot) {
 	var segs []seg
+	var support map[config.Tier]float64
+	if s.Last != nil && s.Last.Reading != nil {
+		support = s.Last.Reading.Tiers
+	}
 	for _, t := range tierOrder {
 		label := string(t)
 		if s.Last != nil && s.Last.Tier == t && s.Mode == route.ModeOn && s.Pin == nil {
 			label = "▶ " + label
+		}
+		if p, ok := support[t]; ok {
+			label += " " + percent(p)
+		} else if support != nil {
+			label += " —"
 		}
 		b := button(label, s.Pin != nil && *s.Pin == t)
 		b.color = tierColor[t]
@@ -432,11 +474,40 @@ func (c *canvas) contextRow(s route.Snapshot) {
 }
 
 func (c *canvas) cacheRow(s route.Snapshot) {
-	if s.Stats.Replies == 0 {
+	st := s.Stats
+	if st.Replies == 0 {
 		c.row("Cache", dim("no replies yet"))
 		return
 	}
-	c.row("Cache", plain(fmt.Sprintf("%d%% reused this session", s.Stats.CacheReusePct)), dim(" · $ are list-price estimates"))
+	if st.LastInputTokens <= 0 {
+		c.row("Cache", plain(fmt.Sprintf("%d%% reused this session", st.CacheReusePct)), dim(" · $ are list-price estimates"))
+		return
+	}
+	c.row("Cache", plain(fmt.Sprintf("%d%% reused on the last reply", st.LastCachedTokens*100/st.LastInputTokens)),
+		dim(fmt.Sprintf(" · %d%% this session · $ at list price", st.CacheReusePct)))
+}
+
+// findingHint names where a finding is changed.
+var findingHint = map[route.FindingKind]string{
+	route.FindingClassifier: "Classifier 4",
+	route.FindingManual:     "space resumes",
+	route.FindingContext:    "Routes 2",
+	route.FindingBlocked:    "Routes 2",
+	route.FindingCache:      "Policy 3",
+}
+
+func (c *canvas) worth(findings []route.Finding) {
+	if len(findings) == 0 {
+		return
+	}
+	c.section("WORTH A LOOK", dim(" · this session"))
+	for _, f := range findings {
+		text := f.Text
+		if hint := findingHint[f.Kind]; hint != "" {
+			text += " · " + hint
+		}
+		c.wrapped(indent, text, plain(""))
+	}
 }
 
 func bar(pct int) string {
@@ -527,6 +598,9 @@ func (c *canvas) classifier(s route.Snapshot) {
 	c.add(col(color, mark), plain(" "+classifierName(s)))
 	if h.Latency > 0 {
 		c.add(plain(fmt.Sprintf("last latency %d ms", h.Latency.Milliseconds())))
+	}
+	if s.ClassifierMedian > 0 {
+		c.add(plain(fmt.Sprintf("median %d ms", s.ClassifierMedian.Milliseconds())), dim(" · recent answers"))
 	}
 	c.add(plain(fmt.Sprintf("consecutive failures %d", h.Failures)))
 	if classifierPaused(s) {

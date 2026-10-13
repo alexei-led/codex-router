@@ -21,7 +21,7 @@ const (
 )
 
 // Kind says whether a request is a routable user step or must pass through
-// unchanged (compaction, memory, guardian, subagent, unknown).
+// unchanged (compaction, subagent, any other or unknown request kind).
 type Kind string
 
 const (
@@ -30,14 +30,16 @@ const (
 )
 
 // Meta is the parsed x-codex-turn-metadata header plus the subagent and
-// window headers. Empty TurnID means the request is not a user step.
+// window headers. RequestKind is "turn" for a user step, "compaction" for a
+// compaction request; AgentName is "/root" on the main thread.
 type Meta struct {
-	SessionID string
-	ThreadID  string
-	TurnID    string
-	AgentName string
-	Subagent  string
-	WindowID  string
+	SessionID   string
+	ThreadID    string
+	TurnID      string
+	RequestKind string
+	AgentName   string
+	Subagent    string
+	WindowID    string
 }
 
 // Item is one input item, flattened. Fields not used by a type stay empty;

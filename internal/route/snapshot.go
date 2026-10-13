@@ -1,10 +1,12 @@
 package route
 
 import (
+	"cmp"
 	"maps"
 	"slices"
 	"time"
 
+	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/cost"
 	"github.com/alexei-led/codex-router/internal/responses"
@@ -44,8 +46,10 @@ func (t *tally) reply(d Decision, u responses.Usage, at time.Time, prices map[st
 		t.ByActivity[d.Activity]++
 	}
 	t.push(d.Tier)
-	t.cachedTokens += min(max(0, u.CachedInputTokens), u.InputTokens)
-	t.inputTokens += max(0, u.InputTokens)
+	t.LastInputTokens = max(0, u.InputTokens)
+	t.LastCachedTokens = min(max(0, u.CachedInputTokens), t.LastInputTokens)
+	t.cachedTokens += t.LastCachedTokens
+	t.inputTokens += t.LastInputTokens
 	if t.inputTokens > 0 {
 		t.CacheReusePct = t.cachedTokens * 100 / t.inputTokens
 	}
@@ -83,8 +87,14 @@ func (t *tally) push(tier config.Tier) {
 
 // Snapshot returns the full state for the control socket and the TUI.
 func (e *Engine) Snapshot() Snapshot {
-	s := e.lockedSnapshot()
+	return e.withHealth(e.lockedSnapshot())
+}
+
+// withHealth adds what needs the classifier's health, read outside e.mu:
+// the health itself and the findings worth a look.
+func (e *Engine) withHealth(s Snapshot) Snapshot {
 	s.Classifier = e.health()
+	s.Worth = worth(s)
 	return s
 }
 
@@ -100,16 +110,17 @@ func (e *Engine) lockedSnapshot() Snapshot {
 func (e *Engine) snapshot(now time.Time) Snapshot {
 	cfg := e.cfg
 	s := Snapshot{
-		At:              now,
-		Mode:            ModeOn,
-		Preset:          cfg.Preset,
-		Baseline:        cfg.RouteFor(cfg.Baseline, ""),
-		FooterSynced:    true,
-		Recent:          slices.Clone(e.recent),
-		ClassifierLabel: cfg.Classifiers[cfg.Classifier].Label,
-		Routes:          maps.Clone(cfg.Routes),
-		Policy:          cfg.Effective(),
-		Stats:           e.stats.copy(),
+		At:               now,
+		Mode:             ModeOn,
+		Preset:           cfg.Preset,
+		Baseline:         cfg.RouteFor(cfg.Baseline, ""),
+		FooterSynced:     true,
+		Recent:           slices.Clone(e.recent),
+		ClassifierLabel:  cfg.Classifiers[cfg.Classifier].Label,
+		ClassifierMedian: median(e.latencies),
+		Routes:           maps.Clone(cfg.Routes),
+		Policy:           cfg.Effective(),
+		Stats:            e.stats.copy(),
 	}
 	if e.pin != nil {
 		p := *e.pin
@@ -161,4 +172,53 @@ func (t *tally) copy() Stats {
 		s.LastSwitch = &ls
 	}
 	return s
+}
+
+// median is the middle latency, the mean of the two middle ones for an even
+// count, and zero for none.
+func median(ds []time.Duration) time.Duration {
+	if len(ds) == 0 {
+		return 0
+	}
+	s := slices.Clone(ds)
+	slices.Sort(s)
+	n := len(s)
+	if n%2 == 1 {
+		return s[n/2]
+	}
+	return (s[n/2-1] + s[n/2]) / 2
+}
+
+// alternatesKept is how many activity alternates a Reading lists.
+const alternatesKept = 2
+
+// reading is the display copy of the turn's classifier answer; nil without one.
+func reading(a *classifier.Advice) *Reading {
+	if a == nil {
+		return nil
+	}
+	r := &Reading{Tiers: map[config.Tier]float64{}}
+	for _, t := range config.Tiers {
+		if p, ok := a.Probabilities[classifier.Choice(t)]; ok {
+			r.Tiers[t] = p
+		}
+	}
+	if a.Activity == nil {
+		return r
+	}
+	r.Activity = a.Activity.Choice
+	r.ActivityP = a.Activity.Probabilities[r.Activity]
+	for act, p := range a.Activity.Probabilities {
+		if act != r.Activity && p > 0 {
+			r.Alternates = append(r.Alternates, Share{Activity: act, P: p})
+		}
+	}
+	slices.SortFunc(r.Alternates, func(x, y Share) int {
+		if c := cmp.Compare(y.P, x.P); c != 0 {
+			return c
+		}
+		return cmp.Compare(x.Activity, y.Activity)
+	})
+	r.Alternates = r.Alternates[:min(alternatesKept, len(r.Alternates))]
+	return r
 }

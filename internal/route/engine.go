@@ -35,6 +35,8 @@ const (
 const (
 	retriesKept   = 8
 	pendingWrites = 8
+	// latenciesKept bounds the classifier answers ClassifierMedian spans.
+	latenciesKept = 32
 )
 
 // Classifier deadline: the configured timeout plus the margin the proxy adds
@@ -71,6 +73,8 @@ type Engine struct {
 	last    *Decision
 	recent  []Decision
 	stats   tally
+	// latencies are the recent classifier answers' latencies.
+	latencies []time.Duration
 }
 
 // thread is one Codex thread's routing state. step is held for a whole
@@ -189,7 +193,7 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 		return responses.Rewrite{}, false
 	}
 	key := threadKey(m)
-	if responses.Classify(req, m, e.passthrough()) != responses.KindUserStep || key == "" {
+	if responses.Classify(m) != responses.KindUserStep || key == "" {
 		e.passThrough(key)
 		return responses.Rewrite{}, false
 	}
@@ -338,6 +342,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	th := st.th
+	e.noteLatency(advice)
 	if askErr != nil {
 		if _, fix := e.upward(st); fix {
 			th.reviewedAt = th.requests
@@ -426,6 +431,7 @@ func (e *Engine) startReview(th *thread, job *review, in classifier.Input) {
 		}()
 		e.mu.Lock()
 		defer e.mu.Unlock()
+		e.noteLatency(advice)
 		if th.review != job {
 			return
 		}
@@ -456,6 +462,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	window := e.window(st, routeFor)
 	d := e.base(st)
 	d.Tier, d.Reason, d.Estimate, d.Activity = c.tier, c.reason, c.estimate, label(c.activity, th.advice)
+	d.Reading = reading(th.advice)
 	refused := policy.ReasonFit
 	if !st.cat.Compatible(st.original.Model, routeFor(c.tier).Model) {
 		refused = policy.ReasonOutOfGroup
@@ -471,6 +478,9 @@ func (e *Engine) finish(st *step, c cell) Decision {
 		d.Route, d.Reason, d.Estimate = st.original, refused, nil
 	}
 	d.Rewritten = d.Route != st.original
+	if d.Reason == policy.ReasonFit {
+		e.stats.FitHeld++
+	}
 
 	prevTier, prev := th.tier, st.original
 	if th.hasSent {
@@ -551,6 +561,13 @@ func (e *Engine) upward(st *step) (config.Route, bool) {
 	return r, e.usable(st, r) && fits(r.Model)
 }
 
+// noteLatency keeps a classifier answer's latency for the median.
+func (e *Engine) noteLatency(a *classifier.Advice) {
+	if a != nil && a.Latency > 0 {
+		e.latencies = appendCapped(e.latencies, a.Latency, latenciesKept)
+	}
+}
+
 func (e *Engine) remember(d Decision) {
 	e.last = &d
 	e.recent = appendCapped(e.recent, d, RecentKept)
@@ -594,12 +611,6 @@ func (e *Engine) passThrough(key string) {
 	if th := e.lookup(key); th != nil {
 		th.awaiting = nil
 	}
-}
-
-func (e *Engine) passthrough() []string {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return e.cfg.Passthrough
 }
 
 // Observe records a reply: the cache ledger, the thread's size, and the
@@ -658,8 +669,7 @@ func (e *Engine) publish(d Decision) {
 func (e *Engine) emitSnapshot(s Snapshot) {
 	e.emit(func() {
 		if e.sink != nil {
-			s.Classifier = e.health()
-			e.sink.OnSnapshot(s)
+			e.sink.OnSnapshot(e.withHealth(s))
 		}
 	})
 }
