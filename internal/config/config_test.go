@@ -97,6 +97,55 @@ func TestLoad(t *testing.T) {
 	}
 }
 
+func TestLoadErrorsNameField(t *testing.T) {
+	cases := []struct{ name, body, want string }{
+		{"bad tier", `{"routes":{"huge":{"model":"m"}}}`, "routes.huge"},
+		{"bad effort", `{"routes":{"low":{"model":"m","effort":"max"}}}`, "routes.low.effort"},
+		{"empty model", `{"routes":{"high":{"effort":"high"}}}`, "routes.high.model"},
+		{"bad baseline", `{"baseline":"huge"}`, "baseline"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "config.json")
+			if err := os.WriteFile(p, []byte(tc.body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			_, err := Load(p)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("err = %v, want mention of %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestEffectivePresetValues(t *testing.T) {
+	cases := []struct {
+		preset Preset
+		change func(*Policy)
+	}{
+		{PresetBalanced, func(*Policy) {}},
+		{PresetThrifty, func(p *Policy) {
+			p.UpgradeVotes, p.UpgradeBase, p.JumpConfidence = 3, 0.85, 0.98
+			p.DowngradeVotes, p.DowngradeMass, p.DowngradeHorizonTurns = 1, 0.8, 8
+			p.MinDwellRequests, p.EscalationHoldTurns = 4, 1
+		}},
+		{PresetQuality, func(p *Policy) {
+			p.UpgradeVotes, p.UpgradeBase, p.JumpConfidence = 1, 0.6, 0.9
+			p.DowngradeVotes, p.DowngradeMass, p.DowngradeHorizonTurns = 3, 0.95, 3
+			p.MinDwellRequests, p.EscalationHoldTurns = 16, 4
+		}},
+	}
+	for _, tc := range cases {
+		want := Default().Policy
+		tc.change(&want)
+		c := Default()
+		c.Preset = tc.preset
+		if got := c.Effective(); got != want {
+			t.Errorf("%s: got %+v, want %+v", tc.preset, got, want)
+		}
+	}
+}
+
 func TestValidateRejects(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -106,6 +155,7 @@ func TestValidateRejects(t *testing.T) {
 		{"bad baseline", func(c *Config) { c.Baseline = "huge" }, "baseline"},
 		{"unknown route tier", func(c *Config) { c.Routes["huge"] = Route{Model: "m"} }, "routes.huge"},
 		{"missing route tier", func(c *Config) { delete(c.Routes, TierLow) }, "routes.low"},
+		{"no routes", func(c *Config) { c.Routes = map[Tier]Route{} }, "routes."},
 		{"empty route model", func(c *Config) { c.Routes[TierHigh] = Route{Effort: EffortHigh} }, "routes.high.model"},
 		{"bad route effort", func(c *Config) { c.Routes[TierMicro] = Route{Model: "m", Effort: "max"} }, "routes.micro.effort"},
 		{"unknown activity", func(c *Config) { c.Activities["uncertain"] = nil }, "activities.uncertain"},
