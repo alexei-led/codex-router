@@ -11,9 +11,9 @@ import (
 	"github.com/alexei-led/codex-router/internal/responses"
 )
 
-func readFixture(t testing.TB) []byte {
+func readFixture(t testing.TB, name string) []byte {
 	t.Helper()
-	body, err := os.ReadFile("testdata/request.json")
+	body, err := os.ReadFile("testdata/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func mustParse(t *testing.T, body string) *responses.Request {
 }
 
 func TestParseFixture(t *testing.T) {
-	body := readFixture(t)
+	body := readFixture(t, "request.json")
 	r, err := responses.Parse(body)
 	if err != nil {
 		t.Fatal(err)
@@ -147,7 +147,7 @@ func TestParseRejects(t *testing.T) {
 }
 
 func TestApplyFixtureChangesOnlyModelAndEffort(t *testing.T) {
-	body := readFixture(t)
+	body := readFixture(t, "request.json")
 	oldModel, newModel := []byte(`"model": "gpt-6.1-sol"`), []byte(`"model": "gpt-6-luna"`)
 	oldEffort, newEffort := []byte(`"effort" : "high"`), []byte(`"effort" : "low"`)
 	for _, s := range [][]byte{oldModel, oldEffort} {
@@ -180,6 +180,53 @@ func TestApplyFixtureChangesOnlyModelAndEffort(t *testing.T) {
 	if !bytes.Equal(restored, body) {
 		t.Fatalf("round trip changed the body:\n%s", restored)
 	}
+}
+
+func TestApplyLargeBodyMatchesGolden(t *testing.T) {
+	body := readFixture(t, "request_large.json")
+	golden := readFixture(t, "request_large.golden.json")
+	if len(body) < 95_000 {
+		t.Fatalf("fixture is %d bytes, want the ~99 KB shape of a first Codex request", len(body))
+	}
+
+	r, err := responses.Parse(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Model != "gpt-6.1-sol" || r.Effort != config.EffortHigh || len(r.Input) != 80 {
+		t.Fatalf("got model=%q effort=%q items=%d", r.Model, r.Effort, len(r.Input))
+	}
+	got, err := r.Apply(responses.Rewrite{Model: "gpt-6-luna", Effort: config.EffortLow})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if i := firstDiff(got, golden); i >= 0 {
+		t.Fatalf("rewritten body differs from golden at byte %d of %d (golden %d)", i, len(got), len(golden))
+	}
+
+	back, err := responses.Parse(golden)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := back.Apply(responses.Rewrite{Model: "gpt-6.1-sol", Effort: config.EffortHigh})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if i := firstDiff(restored, body); i >= 0 {
+		t.Fatalf("round trip differs from the original at byte %d", i)
+	}
+}
+
+func firstDiff(a, b []byte) int {
+	for i := range min(len(a), len(b)) {
+		if a[i] != b[i] {
+			return i
+		}
+	}
+	if len(a) != len(b) {
+		return min(len(a), len(b))
+	}
+	return -1
 }
 
 func TestApply(t *testing.T) {
@@ -249,7 +296,8 @@ func TestApply(t *testing.T) {
 }
 
 func FuzzApply(f *testing.F) {
-	f.Add(readFixture(f))
+	f.Add(readFixture(f, "request.json"))
+	f.Add(readFixture(f, "request_large.json"))
 	f.Add([]byte(`{"model":"a"}`))
 	f.Add([]byte(`{"model":"a","reasoning":null}`))
 	f.Add([]byte(`{ "reasoning" : { } , "model" : "a\"b" }`))
