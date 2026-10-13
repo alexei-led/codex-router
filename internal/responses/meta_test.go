@@ -56,7 +56,7 @@ func TestClassify(t *testing.T) {
 		want responses.Kind
 	}{
 		{"user turn", header("x-codex-turn-metadata", turnMetadata("turn", "u1")), responses.KindUserStep},
-		{"compaction, local or remote v2", header("x-codex-turn-metadata", turnMetadata("compaction", "u1")), responses.KindPassthrough},
+		{"compaction kind", header("x-codex-turn-metadata", turnMetadata("compaction", "u1")), responses.KindPassthrough},
 		{"other request kind", header("x-codex-turn-metadata", turnMetadata("memory", "u1")), responses.KindPassthrough},
 		{"subagent header", header("x-codex-turn-metadata", turnMetadata("turn", "u1"), "x-openai-subagent", "worker"), responses.KindPassthrough},
 		{"missing metadata", http.Header{}, responses.KindPassthrough},
@@ -73,17 +73,30 @@ func TestClassify(t *testing.T) {
 	}
 }
 
-func TestCompactionBodiesParse(t *testing.T) {
-	bodies := map[string]string{
-		"local compaction": `{"model":"gpt-6-sol","input":[{"type":"message","role":"user","content":"fix the test"},` +
-			`{"type":"message","role":"user","content":"Summarize the conversation so far"}]}`,
-		"remote v2 compaction":         `{"model":"gpt-6-sol","input":[{"type":"message","role":"user","content":"fix"},{"type":"compaction_trigger"}]}`,
-		"turn after remote compaction": `{"model":"gpt-6-sol","input":[{"type":"compaction","encrypted_content":"e"},{"type":"message","role":"user","content":"go on"}]}`,
+func TestClassifyRecordedRequests(t *testing.T) {
+	tests := []struct {
+		name, kind, body string
+		want             responses.Kind
+	}{
+		{"local compaction", "compaction",
+			`{"model":"gpt-6-sol","input":[{"type":"message","role":"user","content":"fix the test"},` +
+				`{"type":"message","role":"user","content":"Summarize the conversation so far"}]}`,
+			responses.KindPassthrough},
+		{"remote v2 compaction", "compaction",
+			`{"model":"gpt-6-sol","input":[{"type":"message","role":"user","content":"fix"},{"type":"compaction_trigger"}]}`,
+			responses.KindPassthrough},
+		{"turn after remote compaction", "turn",
+			`{"model":"gpt-6-sol","input":[{"type":"compaction","encrypted_content":"e"},{"type":"message","role":"user","content":"go on"}]}`,
+			responses.KindUserStep},
 	}
-	for name, body := range bodies {
-		t.Run(name, func(t *testing.T) {
-			if r := mustParse(t, body); r.Model != "gpt-6-sol" || len(r.Input) != 2 {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := mustParse(t, tt.body)
+			if r.Model != "gpt-6-sol" || len(r.Input) != 2 {
 				t.Fatalf("parsed %+v", r)
+			}
+			if got := responses.Classify(responses.ParseMeta(header("x-codex-turn-metadata", turnMetadata(tt.kind, "u1")))); got != tt.want {
+				t.Fatalf("got %q, want %q", got, tt.want)
 			}
 		})
 	}
