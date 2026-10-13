@@ -58,7 +58,9 @@ func Default() Config {
 
 // Effective returns Policy with the preset applied. Balanced keeps Policy as
 // configured; thrifty makes upgrades harder and downgrades easier; quality
-// does the opposite. Preset fields replace the configured values.
+// does the opposite. Preset fields replace the configured values. The
+// claude-model-router has no named presets, only the policy fields these
+// adjust, so the values are new and chosen for direction, not ported.
 func (c Config) Effective() Policy {
 	p := c.Policy
 	switch c.Preset {
