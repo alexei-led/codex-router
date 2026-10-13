@@ -75,6 +75,26 @@ func TestDecide(t *testing.T) {
 	}{
 		{"no advice keeps the baseline", input(""), []step{{nil, "low", ReasonNoAdvice}}},
 		{"an unknown incumbent falls back to the baseline", input("huge"), []step{{nil, "low", ReasonNoAdvice}}},
+		{
+			"an unknown incumbent and baseline stay put without advice",
+			Input{Policy: testPolicy, Baseline: "huge", Incumbent: "tiny"},
+			[]step{{nil, "huge", ReasonNoAdvice}},
+		},
+		{
+			"an unknown incumbent and baseline do not escalate",
+			Input{Policy: testPolicy, Baseline: "huge", Incumbent: "tiny", FailureSignature: sig},
+			[]step{{nil, "huge", ReasonNoAdvice}},
+		},
+		{
+			"an unknown incumbent and baseline jump to a well-supported choice",
+			Input{Policy: testPolicy, Baseline: "huge", Incumbent: "tiny"},
+			[]step{{medium90, "medium", ReasonJump}},
+		},
+		{
+			"an unknown incumbent and baseline wait on a weakly supported choice",
+			Input{Policy: testPolicy, Baseline: "huge", Incumbent: "tiny"},
+			[]step{{advice("micro", probs{"micro": 0.5, "uncertain": 0.5}), "huge", ReasonUpgradePending}},
+		},
 		{"uncertain keeps the incumbent", input("high"), []step{{advice("uncertain", probs{"uncertain": 1}), "high", ReasonUncertain}}},
 		{"a choice outside the tiers counts as uncertain", input("medium"), []step{{advice("huge", probs{}), "medium", ReasonUncertain}}},
 		{"the incumbent's own tier stays", input("medium"), []step{{advice("medium", probs{"medium": 1}), "medium", ReasonSameTier}}},

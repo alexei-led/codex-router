@@ -21,15 +21,6 @@ type CacheState struct {
 	LastAt       time.Time
 }
 
-// Switch is one priced switch: the tokens the candidate writes cold and the
-// USD estimate when the candidate is priced (else 0).
-type Switch struct {
-	Candidate      string
-	Incumbent      string
-	UncachedTokens int
-	USD            float64
-}
-
 // Ledger remembers, per thread, each model's cached prefix and the model the
 // thread last ran on. Keys ignore effort: Codex's cache is effort-neutral. A
 // detour to another model does not evict the previous model's entry. Safe for
@@ -78,6 +69,10 @@ func (l *Ledger) Warm(thread, model string, now time.Time) bool {
 // all tokens. It is 0 for the current model, for a candidate warm on at least
 // the current model's prefix, and when the current model is cold or unknown,
 // since staying then protects nothing.
+//
+// The tax is relative to staying, not the candidate's absolute uncached
+// tokens: the part both models must write is paid either way and must not
+// raise the switch bar.
 func (l *Ledger) SwitchTax(thread, candidate string, tokens int, now time.Time) int {
 	l.mu.Lock()
 	defer l.mu.Unlock()
