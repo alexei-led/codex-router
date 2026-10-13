@@ -2,6 +2,7 @@ package hook
 
 import (
 	"bytes"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -77,13 +78,30 @@ func serve(t *testing.T, snap route.Snapshot) string {
 	return path
 }
 
-func run(t *testing.T, stdin, socket string) string {
+const budget = Timeout + 50*time.Millisecond
+
+func runReader(t *testing.T, stdin io.Reader, socket string) string {
 	t.Helper()
 	var out bytes.Buffer
-	if err := Run(strings.NewReader(stdin), &out, socket); err != nil {
+	env := func(k string) string {
+		if k == control.EnvSocket {
+			return socket
+		}
+		return ""
+	}
+	start := time.Now()
+	if err := Run(stdin, &out, env); err != nil {
 		t.Fatal(err)
 	}
+	if d := time.Since(start); d > budget {
+		t.Errorf("took %v, want at most %v", d, budget)
+	}
 	return strings.TrimSpace(out.String())
+}
+
+func run(t *testing.T, stdin, socket string) string {
+	t.Helper()
+	return runReader(t, strings.NewReader(stdin), socket)
 }
 
 const stdinT2 = `{"session_id":"th","turn_id":"t2","hook_event_name":"Stop","extra":1}`
@@ -111,12 +129,8 @@ func TestRunFailsOpen(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			start := time.Now()
 			if got := run(t, tt.stdin, tt.socket); got != "{}" {
 				t.Errorf("got %s, want {}", got)
-			}
-			if d := time.Since(start); d > 2*Timeout {
-				t.Errorf("took %v", d)
 			}
 		})
 	}
@@ -135,11 +149,18 @@ func TestRunBoundedWhenServerSilent(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ln.Close() })
 
-	start := time.Now()
 	if got := run(t, stdinT2, path); got != "{}" {
 		t.Errorf("got %s, want {}", got)
 	}
-	if d := time.Since(start); d > 2*Timeout {
-		t.Errorf("took %v, want about %v", d, Timeout)
+}
+
+func TestRunBoundedWhenStdinNeverCloses(t *testing.T) {
+	last := dec("th", "t2", 3, "gpt-5.5", config.EffortHigh)
+	sock := serve(t, route.Snapshot{Recent: []route.Decision{dec("th", "t1", 1, "gpt-5.1", config.EffortLow)}, Last: &last})
+	pr, pw := io.Pipe()
+	t.Cleanup(func() { _ = pw.Close() })
+
+	if got := runReader(t, pr, sock); got != "{}" {
+		t.Errorf("got %s, want {}", got)
 	}
 }
