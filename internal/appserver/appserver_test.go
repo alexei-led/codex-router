@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -165,18 +167,114 @@ func (s *fakeServer) notifySettings(thread, model, effort string) {
 	}})
 }
 
-func connect(t *testing.T, tr transport) (API, *fakeServer) {
+func startDeafServer(t *testing.T, tr transport) string {
 	t.Helper()
-	srv := startServer(t, tr)
+	path := socketPath(t)
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release := make(chan struct{})
+	stop := tr.serve(ln, func(c Conn) {
+		<-release
+		_ = c.Close()
+	})
+	t.Cleanup(func() {
+		close(release)
+		stop()
+	})
+	return path
+}
+
+func dial(t *testing.T, path string, d Dialer) API {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), waitFor)
 	defer cancel()
-	api, err := Dial(ctx, srv.path, tr.dialer)
+	api, err := Dial(ctx, path, d)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
 	t.Cleanup(func() { _ = api.Close() })
+	return api
+}
+
+func connect(t *testing.T, tr transport) (API, *fakeServer) {
+	t.Helper()
+	srv := startServer(t, tr)
+	api := dial(t, srv.path, tr.dialer)
 	srv.accept()
 	return api, srv
+}
+
+// stuckConn is a Conn whose writes never complete; reads come from in.
+type stuckConn struct {
+	in        chan []byte
+	writing   chan struct{}
+	closed    chan struct{}
+	closeOnce sync.Once
+}
+
+func newStuckConn() *stuckConn {
+	return &stuckConn{in: make(chan []byte, 4), writing: make(chan struct{}, 4), closed: make(chan struct{})}
+}
+
+func (c *stuckConn) Read(ctx context.Context) ([]byte, error) {
+	select {
+	case b := <-c.in:
+		return b, nil
+	case <-c.closed:
+		return nil, net.ErrClosed
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (c *stuckConn) Write(ctx context.Context, _ []byte) error {
+	c.writing <- struct{}{}
+	select {
+	case <-c.closed:
+		return net.ErrClosed
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (c *stuckConn) Close() error {
+	c.closeOnce.Do(func() { close(c.closed) })
+	return nil
+}
+
+// signalingConn reports on writing each time a write begins.
+type signalingConn struct {
+	Conn
+	writing chan<- struct{}
+}
+
+func (c signalingConn) Write(ctx context.Context, msg []byte) error {
+	c.writing <- struct{}{}
+	return c.Conn.Write(ctx, msg)
+}
+
+type dialerFunc func(ctx context.Context, socketPath string) (Conn, error)
+
+func (f dialerFunc) Dial(ctx context.Context, socketPath string) (Conn, error) {
+	return f(ctx, socketPath)
+}
+
+func dialStuck(t *testing.T) (API, *stuckConn) {
+	t.Helper()
+	conn := newStuckConn()
+	api := dial(t, "unused", dialerFunc(func(context.Context, string) (Conn, error) { return conn, nil }))
+	return api, conn
+}
+
+func awaitWrite(t *testing.T, writing <-chan struct{}) {
+	t.Helper()
+	select {
+	case <-writing:
+	case <-time.After(waitFor):
+		t.Fatal("no write started")
+	}
 }
 
 func async(f func() error) <-chan error {
@@ -194,6 +292,18 @@ func await(t *testing.T, errc <-chan error) error {
 		t.Fatal("call did not return")
 	}
 	return nil
+}
+
+func expectUpdatesClosed(t *testing.T, api API) {
+	t.Helper()
+	select {
+	case _, ok := <-api.Updates():
+		if ok {
+			t.Error("unexpected update")
+		}
+	case <-time.After(waitFor):
+		t.Error("Updates not closed")
+	}
 }
 
 func nextUpdate(t *testing.T, api API) SettingsUpdated {
@@ -304,7 +414,7 @@ func TestUpdateSettings(t *testing.T) {
 func TestUpdatesYieldsOnlySettingsUpdated(t *testing.T) {
 	each(t, func(t *testing.T, tr transport) {
 		api, srv := connect(t, tr)
-		srv.send(map[string]any{"method": MethodTurnStarted, "params": map[string]any{"threadId": "t1"}})
+		srv.send(map[string]any{"method": "turn/started", "params": map[string]any{"threadId": "t1"}})
 		srv.send(map[string]any{"method": MethodSettingsUpdated, "params": map[string]any{"bogus": true}})
 		srv.notifySettings("t1", "gpt-6-luna", "low")
 		srv.notifySettings("t2", "gpt-6-sol", "high")
@@ -360,7 +470,7 @@ func TestServerRequestIsRejected(t *testing.T) {
 
 		select {
 		case m := <-srv.in:
-			if m.ID == nil || *m.ID != 7 || m.Error == nil || m.Error.Code != codeMethodMissing {
+			if m.ID == nil || *m.ID != 7 || m.Error == nil || m.Error.Code != codeMethodNotFound {
 				t.Fatalf("reply = %+v, want method-not-found for id 7", m)
 			}
 		case <-time.After(waitFor):
@@ -440,15 +550,69 @@ func TestServerDisconnectFailsPendingCalls(t *testing.T) {
 		if err := await(t, errc); !errors.Is(err, ErrClosed) {
 			t.Errorf("pending err = %v, want ErrClosed", err)
 		}
-		select {
-		case _, ok := <-api.Updates():
-			if ok {
-				t.Error("unexpected update")
-			}
-		case <-time.After(waitFor):
-			t.Error("Updates not closed after disconnect")
-		}
+		expectUpdatesClosed(t, api)
 	})
+}
+
+func TestCancelDuringStuckWriteClosesConnection(t *testing.T) {
+	each(t, func(t *testing.T, tr transport) {
+		writing := make(chan struct{}, 1)
+		d := dialerFunc(func(ctx context.Context, path string) (Conn, error) {
+			c, err := tr.dialer.Dial(ctx, path)
+			return signalingConn{Conn: c, writing: writing}, err
+		})
+		api := dial(t, startDeafServer(t, tr), d)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		beyondSocketBuffers := strings.Repeat("x", 4<<20)
+
+		errc := async(func() error { return api.UpdateSettings(ctx, beyondSocketBuffers, Settings{Model: "m"}) })
+		awaitWrite(t, writing)
+		cancel()
+		if err := await(t, errc); !errors.Is(err, context.Canceled) {
+			t.Fatalf("err = %v, want context.Canceled", err)
+		}
+		expectUpdatesClosed(t, api)
+	})
+}
+
+func TestCallWaitingBehindStuckWriteHonoursDeadline(t *testing.T) {
+	api, conn := dialStuck(t)
+	stuck := async(func() error { return api.UpdateSettings(context.Background(), "a", Settings{Model: "m"}) })
+	awaitWrite(t, conn.writing)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if err := api.UpdateSettings(ctx, "b", Settings{Model: "m"}); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("waiting call err = %v, want context.DeadlineExceeded", err)
+	}
+
+	closed := async(api.Close)
+	if err := await(t, stuck); !errors.Is(err, ErrClosed) {
+		t.Errorf("stuck call err = %v, want ErrClosed", err)
+	}
+	if err := await(t, closed); err != nil {
+		t.Errorf("Close: %v", err)
+	}
+}
+
+func TestServerRequestDuringStuckWriteDoesNotBlockUpdates(t *testing.T) {
+	api, conn := dialStuck(t)
+	stuck := async(func() error { return api.UpdateSettings(context.Background(), "a", Settings{Model: "m"}) })
+	awaitWrite(t, conn.writing)
+
+	conn.in <- []byte(`{"id":7,"method":"item/commandExecution/requestApproval","params":{}}`)
+	conn.in <- []byte(`{"method":"thread/settings/updated","params":{"threadId":"t1","threadSettings":{"model":"gpt-6-luna","effort":"low"}}}`)
+	if got := nextUpdate(t, api); got.ThreadID != "t1" {
+		t.Errorf("update thread = %q, want t1", got.ThreadID)
+	}
+
+	if err := await(t, async(api.Close)); err != nil {
+		t.Errorf("Close: %v", err)
+	}
+	if err := await(t, stuck); !errors.Is(err, ErrClosed) {
+		t.Errorf("stuck call err = %v, want ErrClosed", err)
+	}
 }
 
 func TestDialMissingSocketFails(t *testing.T) {
