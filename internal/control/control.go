@@ -2,6 +2,7 @@ package control
 
 import (
 	"os"
+	"time"
 
 	"github.com/alexei-led/codex-router/internal/route"
 )
@@ -23,6 +24,16 @@ const (
 	MessageSnapshot MessageType = "snapshot"
 	MessageAck      MessageType = "ack"
 	MessageError    MessageType = "error"
+)
+
+// PublishInterval is the minimum gap between pushed snapshots per client
+// (20 per second).
+const PublishInterval = 50 * time.Millisecond
+
+const (
+	writeTimeout = 2 * time.Second
+	sendTimeout  = 2 * time.Second
+	maxLine      = 4 << 20
 )
 
 // Message is one server-to-client line.
