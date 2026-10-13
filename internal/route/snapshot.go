@@ -83,11 +83,15 @@ func (t *tally) push(tier config.Tier) {
 
 // Snapshot returns the full state for the control socket and the TUI.
 func (e *Engine) Snapshot() Snapshot {
-	e.mu.Lock()
-	s := e.snapshot(e.now())
-	e.mu.Unlock()
+	s := e.lockedSnapshot()
 	s.Classifier = e.health()
 	return s
+}
+
+func (e *Engine) lockedSnapshot() Snapshot {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.snapshot(e.now())
 }
 
 // snapshot copies the state under e.mu. The focus thread is the one whose

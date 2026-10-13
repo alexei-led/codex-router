@@ -37,6 +37,13 @@ const (
 	pendingWrites = 8
 )
 
+// Classifier deadline: the configured timeout plus the margin the proxy adds
+// to its decision deadline; the fallback is the default classifier's timeout.
+const (
+	askMarginMs   = 200
+	fallbackAskMs = 1500
+)
+
 var (
 	errNoClassifier    = errors.New("no classifier")
 	errClassifierPanic = errors.New("classifier panic")
@@ -236,6 +243,10 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 	}
 	th.model = req.Model
 	e.focus = th
+	if e.paused || th.manual {
+		th.awaiting = nil
+		return nil, nil, nil
+	}
 	fp := req.Fingerprint(m)
 	for _, r := range th.retries {
 		if r.fingerprint == fp {
@@ -244,9 +255,6 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 		}
 	}
 	th.awaiting = nil
-	if e.paused || th.manual {
-		return nil, nil, nil
-	}
 	var old *review
 	first := th.turn != m.TurnID
 	if first {
@@ -302,12 +310,25 @@ func (e *Engine) classify(ctx context.Context, st *step) (advice *classifier.Adv
 			advice, err = nil, errClassifierPanic
 		}
 	}()
+	ctx, cancel := context.WithTimeout(ctx, askTimeout(st.cfg))
+	defer cancel()
 	a, err := e.ask.Ask(ctx, classifierInput(st.facts, st.cfg))
 	if err != nil {
 		e.log.Warn("classifier failed", "thread", st.meta.ThreadID, "turn", st.meta.TurnID, "code", err.Error())
 		return nil, err
 	}
 	return &a, nil
+}
+
+// askTimeout bounds a classifier call on the engine's side as well, so a
+// caller without a deadline cannot hold a step past the classifier's own
+// timeout plus the proxy's margin (plan Data flow step 2).
+func askTimeout(cfg config.Config) time.Duration {
+	ms := cfg.Classifiers[cfg.Classifier].TimeoutMs
+	if ms <= 0 {
+		ms = fallbackAskMs
+	}
+	return time.Duration(ms+askMarginMs) * time.Millisecond
 }
 
 // decideFirst decides a turn's first step. A classifier failure leaves the
@@ -377,7 +398,7 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 	var job *review
 	every := st.policy.ReviewEveryRequests
 	if every > 0 && e.ask != nil && !th.turnPinned && th.review == nil && th.requests-th.reviewedAt >= every {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), askTimeout(st.cfg))
 		job = &review{ctx: ctx, cancel: cancel, done: make(chan struct{}), upTo: st.facts.Items}
 		th.review, th.reviewedAt = job, th.requests
 	}
@@ -432,13 +453,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	th := st.th
 	cfg := st.cfg
 	routeFor := func(t config.Tier) config.Route { return resolve(cfg.RouteFor(t, c.activity), st.sent()) }
-	window := func(t config.Tier) (int, bool) {
-		r := routeFor(t)
-		if !e.usable(st, r) {
-			return 0, false
-		}
-		return st.cat.Window(r.Model)
-	}
+	window := e.window(st, routeFor)
 	d := e.base(st)
 	d.Tier, d.Reason, d.Estimate, d.Activity = c.tier, c.reason, c.estimate, label(c.activity, th.advice)
 	refused := policy.ReasonFit
@@ -489,6 +504,18 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	e.log.Info("route decision", "thread", d.ThreadID, "turn", d.TurnID, "step", d.Step, "tier", d.Tier,
 		"activity", d.Activity, "reason", d.Reason, "model", d.Route.Model, "effort", d.Route.Effort, "rewritten", d.Rewritten)
 	return d
+}
+
+// window is a tier's context window under routeFor; a route the request may
+// not use has none.
+func (e *Engine) window(st *step, routeFor func(config.Tier) config.Route) func(config.Tier) (int, bool) {
+	return func(t config.Tier) (int, bool) {
+		r := routeFor(t)
+		if !e.usable(st, r) {
+			return 0, false
+		}
+		return st.cat.Window(r.Model)
+	}
 }
 
 func (e *Engine) base(st *step) Decision {
@@ -587,7 +614,12 @@ func (e *Engine) Observe(m responses.Meta, served string, u responses.Usage, sta
 	if status < 200 || status > 299 || key == "" {
 		return
 	}
+	e.emitSnapshot(e.observe(key, m, served, u))
+}
+
+func (e *Engine) observe(key string, m responses.Meta, served string, u responses.Usage) Snapshot {
 	e.mu.Lock()
+	defer e.mu.Unlock()
 	now := e.now()
 	th := e.lookup(key)
 	model := served
@@ -611,9 +643,7 @@ func (e *Engine) Observe(m responses.Meta, served string, u responses.Usage, sta
 	if d != nil {
 		e.stats.reply(*d, u, now, e.cfg.Prices, th.native.Model)
 	}
-	s := e.snapshot(now)
-	e.mu.Unlock()
-	e.emitSnapshot(s)
+	return e.snapshot(now)
 }
 
 func (e *Engine) publish(d Decision) {
