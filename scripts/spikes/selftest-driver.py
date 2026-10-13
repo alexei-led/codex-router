@@ -351,52 +351,33 @@ def test_summarize(proxy):
     )
 
 
-def test_appserver_client():
-    sock = os.path.join(rt, "fake-app.sock")
-    log = os.path.join(rt, "client.log")
+def fake_replies(msg):
+    method, req_id = msg.get("method"), msg.get("id")
+    if method == "thread/loaded/list":
+        return [{"id": req_id, "result": {"data": ["thr-1"]}}]
+    if method == "thread/resume":
+        return [
+            {"id": req_id, "result": {}},
+            {"method": "turn/started", "params": {"turnId": "t1"}},
+        ]
+    if method == "thread/settings/update":
+        p = msg["params"]
+        return [
+            {"id": req_id, "result": {}},
+            {
+                "method": "thread/settings/updated",
+                "params": {
+                    "threadId": "thr-1",
+                    "settings": {"model": p["model"], "effort": p["effort"]},
+                },
+            },
+        ]
+    if req_id is not None:
+        return [{"id": req_id, "result": {}}]
+    return []
 
-    async def handle(reader, writer):
-        async def send(obj):
-            writer.write(json.dumps(obj).encode() + b"\n")
-            await writer.drain()
 
-        while line := await reader.readline():
-            try:
-                msg = json.loads(line)
-            except ValueError:
-                continue
-            method, req_id = msg.get("method"), msg.get("id")
-            if method == "thread/loaded/list":
-                await send({"id": req_id, "result": {"data": ["thr-1"]}})
-            elif method == "thread/resume":
-                await send({"id": req_id, "result": {}})
-                await send({"method": "turn/started", "params": {"turnId": "t1"}})
-            elif method == "thread/settings/update":
-                await send({"id": req_id, "result": {}})
-                p = msg["params"]
-                await send(
-                    {
-                        "method": "thread/settings/updated",
-                        "params": {
-                            "threadId": "thr-1",
-                            "settings": {"model": p["model"], "effort": p["effort"]},
-                        },
-                    }
-                )
-            elif req_id is not None:
-                await send({"id": req_id, "result": {}})
-
-    loop = asyncio.new_event_loop()
-    ready = threading.Event()
-
-    def serve():
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(asyncio.start_unix_server(handle, sock))
-        ready.set()
-        loop.run_forever()
-
-    threading.Thread(target=serve, daemon=True).start()
-    ready.wait(5)
+def run_client(sock, log):
     proc = subprocess.run(
         [
             sys.executable,
@@ -418,26 +399,94 @@ def test_appserver_client():
         timeout=40,
         capture_output=True,
     )
-    text = open(log).read()
-    check("appserver-client exits 0", proc.returncode == 0)
+    return proc.returncode, open(log).read()
+
+
+def check_client_run(label, transport, code, text):
+    check(f"appserver-client {label} exits 0", code == 0)
     check(
-        "appserver-client falls back to newline JSON-RPC",
-        "event=transport kind=jsonl" in text,
+        f"appserver-client {label} uses transport {transport}",
+        f"event=transport kind={transport}" in text,
     )
     check(
-        "appserver-client sends settings update after turn/started",
+        f"appserver-client {label} sends settings update after turn/started",
         "event=turn_started_seen" in text
         and "event=update_sent model=gpt-6-luna effort=low" in text,
     )
     check(
-        "appserver-client logs settings/updated values",
+        f"appserver-client {label} logs settings/updated values",
         "method=thread/settings/updated model=gpt-6-luna effort=low" in text,
     )
+
+
+def serve_in_thread(start):
+    loop = asyncio.new_event_loop()
+    ready = threading.Event()
+
+    def serve():
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(start())
+        ready.set()
+        loop.run_forever()
+
+    threading.Thread(target=serve, daemon=True).start()
+    ready.wait(5)
+    return loop
+
+
+def test_appserver_client_lines():
+    sock = os.path.join(rt, "fake-app.sock")
+
+    async def handle(reader, writer):
+        while line := await reader.readline():
+            try:
+                msg = json.loads(line)
+            except ValueError:
+                continue
+            for reply in fake_replies(msg):
+                writer.write(json.dumps(reply).encode() + b"\n")
+                await writer.drain()
+
+    loop = serve_in_thread(lambda: asyncio.start_unix_server(handle, sock))
+    code, text = run_client(sock, os.path.join(rt, "client-lines.log"))
+    check_client_run("newline fallback", "jsonl", code, text)
+    check(
+        "appserver-client records the ws failure before falling back",
+        "event=transport_failed kind=ws" in text,
+    )
+    loop.call_soon_threadsafe(loop.stop)
+
+
+def test_appserver_client_ws():
+    try:
+        from websockets.asyncio.server import unix_serve
+        from websockets.exceptions import ConnectionClosed
+    except ImportError:
+        print("SKIP appserver-client websocket (websockets not installed)")
+        return
+    sock = os.path.join(rt, "fake-ws.sock")
+
+    async def handle(ws):
+        try:
+            async for raw in ws:
+                for reply in fake_replies(json.loads(raw)):
+                    await ws.send(json.dumps(reply))
+        except ConnectionClosed:
+            pass
+
+    async def start():
+        await unix_serve(handle, sock)
+
+    loop = serve_in_thread(start)
+    code, text = run_client(sock, os.path.join(rt, "client-ws.log"))
+    check_client_run("websocket", "ws", code, text)
+    loop.call_soon_threadsafe(loop.stop)
 
 
 proxy_pass = test_passthrough_and_redaction()
 test_rewrite()
 test_faults()
 test_summarize(proxy_pass)
-test_appserver_client()
+test_appserver_client_lines()
+test_appserver_client_ws()
 sys.exit(1 if failures else 0)

@@ -35,6 +35,15 @@ else
 	fail "/bin/bash -n lib.sh"
 fi
 
+for f in "$SPIKE_DIR"/[0-9]*.sh "$SPIKE_DIR"/selftest.sh; do
+	help_out=$(bash "$f" --help 2>&1 || true)
+	if grep -q '^Run order' <<<"$help_out" && grep -q "usage: bash scripts/spikes/$(basename "$f")" <<<"$help_out"; then
+		echo "PASS --help prints usage and run order $(basename "$f")"
+	else
+		fail "--help $(basename "$f")"
+	fi
+done
+
 for f in "$SPIKE_DIR"/*.py; do
 	if python3 -I -c 'import sys; compile(open(sys.argv[1]).read(), sys.argv[1], "exec")' "$f"; then
 		echo "PASS compile $(basename "$f")"
@@ -53,7 +62,13 @@ else
 	echo "SKIP shellcheck (not installed)"
 fi
 
-python3 -I "$SPIKE_DIR/selftest-driver.py" "$RT" "$SHAPE_PROXY" "$APPSERVER_CLIENT" | tee "$RT/driver.out" || failed=1
+if command -v uv >/dev/null 2>&1; then
+	DRIVER_CMD=(uv run --quiet --with websockets python -I)
+else
+	echo "SKIP websocket client test needs uv"
+	DRIVER_CMD=(python3 -I)
+fi
+"${DRIVER_CMD[@]}" "$SPIKE_DIR/selftest-driver.py" "$RT" "$SHAPE_PROXY" "$APPSERVER_CLIENT" | tee "$RT/driver.out" || failed=1
 grep -q '^FAIL' "$RT/driver.out" && failed=1
 
 if grep -rIl -e 'secret-XYZ' -e 'acct-secret-ABC' "$RT" >"$RT/leaks.txt" 2>/dev/null && [ -s "$RT/leaks.txt" ]; then

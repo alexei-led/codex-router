@@ -119,10 +119,7 @@ class Client:
         elapsed = int((time.monotonic() - sent) * 1000)
         if "error" in reply:
             err = reply["error"]
-            log(
-                f"event=response method={method} ms={elapsed} error_code={err.get('code')} "
-                f"error={str(err.get('message'))[:100]!r}"
-            )
+            log(f"event=response method={method} ms={elapsed} error_code={err.get('code')}")
         else:
             log(f"event=response method={method} ms={elapsed} ok=1")
         return reply
@@ -156,7 +153,7 @@ async def wait_method(client, method, timeout):
             return False
         try:
             seen = await asyncio.wait_for(client.events.get(), remaining)
-        except TimeoutError:
+        except asyncio.TimeoutError:
             return False
         if seen == method:
             return True

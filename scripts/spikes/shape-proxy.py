@@ -85,18 +85,6 @@ def last_user_text(items):
     return ""
 
 
-def last_tool_output(items):
-    for item in reversed(items):
-        if isinstance(item, dict) and item.get("type") == "function_call_output":
-            out = item.get("output")
-            return {
-                "keys": sorted(item),
-                "output_type": type(out).__name__,
-                "head": head(out if isinstance(out, str) else json.dumps(out)),
-            }
-    return None
-
-
 def turn_metadata(raw):
     try:
         meta = json.loads(raw)
@@ -145,7 +133,6 @@ def describe_request(handler, raw, body):
         "item_types": labels,
         "compaction_hints": compaction_hints(names, body, labels),
         "last_user_text": last_user_text(items),
-        "last_tool_output": last_tool_output(items),
     }
 
 
