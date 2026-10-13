@@ -1,0 +1,77 @@
+{
+  "baseline": "medium",
+  "routes": {
+    "high": {
+      "model": "gpt-6.1-sol",
+      "effort": "high"
+    },
+    "low": {
+      "model": "gpt-6-luna",
+      "effort": "medium"
+    },
+    "medium": {
+      "model": "gpt-6-sol",
+      "effort": "medium"
+    },
+    "micro": {
+      "model": "gpt-6-luna",
+      "effort": "low"
+    }
+  },
+  "activities": {
+    "debug": {
+      "medium": {
+        "model": "gpt-6-sol",
+        "effort": "high"
+      }
+    }
+  },
+  "policy": {
+    "upgradeVotes": 2,
+    "upgradeBase": 0.75,
+    "upgradeSlope": 0.15,
+    "upgradePivotTokens": 100000,
+    "jumpConfidence": 0.95,
+    "downgradeVotes": 2,
+    "downgradeMass": 0.9,
+    "downgradeSlope": 0.08,
+    "downgradePivotTokens": 100000,
+    "downgradeHorizonTurns": 5,
+    "continuationMass": 0.7,
+    "escalationHoldTurns": 2,
+    "reviewEveryRequests": 4,
+    "minDwellRequests": 8,
+    "activityMass": 0.6,
+    "contextFill": 0.8
+  },
+  "preset": "balanced",
+  "classifier": "jev",
+  "classifiers": {
+    "jev": {
+      "label": "Jev",
+      "api": "system-one",
+      "endpoint": "https://api.typesafe.ai/v1/systemone",
+      "model": "jev-1.13.0",
+      "keyEnv": "TYPESAFE_API_KEY",
+      "timeoutMs": 1500
+    },
+    "ollama": {
+      "label": "Ollama",
+      "api": "ollama",
+      "endpoint": "http://127.0.0.1:11434/api/chat",
+      "model": "qwen3.5:9b",
+      "timeoutMs": 5000
+    }
+  },
+  "context": {
+    "recentTurns": 6,
+    "maxTextChars": 1200
+  },
+  "cache": {
+    "ttlMs": 300000,
+    "warmMarginMs": 30000
+  },
+  "proxy": {
+    "port": 0
+  }
+}
