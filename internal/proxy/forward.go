@@ -154,24 +154,26 @@ func (s *Server) decide(ctx context.Context, req *responses.Request, meta respon
 
 // roundTrip sends one upstream request. On failure it answers the client
 // (502, or nothing if the client is gone) and returns false. The request is
-// never re-sent.
+// never re-sent, not even on a stale keep-alive connection: that case is a
+// 502 too, and Codex retries on its own (research §3.8).
 func (s *Server) roundTrip(w http.ResponseWriter, r *http.Request, suffix string, body []byte, ids []any) (*http.Response, bool) {
 	u := *s.upstream
 	u.Path = strings.TrimSuffix(u.Path, "/") + suffix
 	u.RawPath = ""
 	u.RawQuery = r.URL.RawQuery
-	var rd io.Reader
-	if body != nil {
-		rd = bytes.NewReader(body)
-	}
-	out, err := http.NewRequestWithContext(r.Context(), r.Method, u.String(), rd)
+	out, err := http.NewRequestWithContext(r.Context(), r.Method, u.String(), nil)
 	if err != nil {
 		s.log.Error("upstream-request", append(ids, "err", err)...)
 		http.Error(w, "bad upstream request", http.StatusInternalServerError)
 		return nil, false
 	}
-	// No GetBody: the transport cannot replay a POST that may have reached upstream.
-	out.GetBody = nil
+	// A request with a nil or NoBody body (every GET, an empty POST with an
+	// Idempotency-Key) or with GetBody counts as replayable, and the transport
+	// re-sends it when a reused connection dies after the request was written.
+	// A non-nil Body without GetBody is never replayed. An empty GET body is
+	// still sent as no body at all.
+	out.Body = io.NopCloser(bytes.NewReader(body))
+	out.ContentLength = int64(len(body))
 	out.Header = withoutHop(r.Header)
 	out.Header.Del("Content-Length")
 	// The tee and catalog parse need plain bytes; see upstreamClient.

@@ -64,6 +64,7 @@ type seen struct {
 	method, path, query string
 	header              http.Header
 	body                []byte
+	framing             string
 }
 
 type upstream struct {
@@ -80,7 +81,8 @@ func newUpstream(t *testing.T, h http.HandlerFunc) *upstream {
 		u.hits.Add(1)
 		body, _ := io.ReadAll(r.Body)
 		u.mu.Lock()
-		u.reqs = append(u.reqs, seen{r.Method, r.URL.Path, r.URL.RawQuery, r.Header.Clone(), body})
+		framing := fmt.Sprintf("cl=%d te=%v", r.ContentLength, r.TransferEncoding)
+		u.reqs = append(u.reqs, seen{r.Method, r.URL.Path, r.URL.RawQuery, r.Header.Clone(), body, framing})
 		u.mu.Unlock()
 		h(w, r)
 	}))
@@ -386,7 +388,7 @@ func TestUpstreamFailureBeforeResponseIsNotRetried(t *testing.T) {
 	}{
 		{
 			name:       "listener dead",
-			upstream:   func(*testing.T) (string, func() int32) { return deadURL, func() int32 { return 0 } },
+			upstream:   func(*testing.T) (string, func() int32) { return deadURL, nil },
 			wantStatus: http.StatusBadGateway,
 		},
 		{
@@ -421,8 +423,10 @@ func TestUpstreamFailureBeforeResponseIsNotRetried(t *testing.T) {
 			if resp.StatusCode != tt.wantStatus {
 				t.Errorf("status = %d, want %d", resp.StatusCode, tt.wantStatus)
 			}
-			if got := hits(); got != tt.wantHits {
-				t.Errorf("upstream hits = %d, want %d", got, tt.wantHits)
+			if hits != nil {
+				if got := hits(); got != tt.wantHits {
+					t.Errorf("upstream hits = %d, want %d", got, tt.wantHits)
+				}
 			}
 			wantObs := 0
 			if tt.wantStatus != http.StatusBadGateway {
@@ -432,6 +436,147 @@ func TestUpstreamFailureBeforeResponseIsNotRetried(t *testing.T) {
 				t.Errorf("observations = %+v", got)
 			}
 		})
+	}
+}
+
+// dyingUpstream answers the first request on each connection and closes the
+// connection after reading the second one, so the second request reached
+// upstream but got no response.
+type dyingUpstream struct {
+	ln    net.Listener
+	reqs  atomic.Int32
+	mu    sync.Mutex
+	conns []net.Conn
+}
+
+func newDyingUpstream(t *testing.T) *dyingUpstream {
+	t.Helper()
+	ln, err := net.Listen("tcp", DefaultAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u := &dyingUpstream{ln: ln}
+	t.Cleanup(func() {
+		_ = ln.Close()
+		u.mu.Lock()
+		defer u.mu.Unlock()
+		for _, c := range u.conns {
+			_ = c.Close()
+		}
+	})
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			u.mu.Lock()
+			u.conns = append(u.conns, c)
+			u.mu.Unlock()
+			go u.serve(c)
+		}
+	}()
+	return u
+}
+
+func (u *dyingUpstream) serve(c net.Conn) {
+	defer func() { _ = c.Close() }()
+	br := bufio.NewReader(c)
+	for n := 1; ; n++ {
+		req, err := http.ReadRequest(br)
+		if err != nil {
+			return
+		}
+		_, _ = io.Copy(io.Discard, req.Body)
+		u.reqs.Add(1)
+		if n > 1 {
+			return
+		}
+		_, _ = fmt.Fprintf(c, "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: %d\r\n\r\n%s",
+			len(evCompleted), evCompleted)
+	}
+}
+
+func (u *dyingUpstream) url() string { return "http://" + u.ln.Addr().String() + upstreamDir }
+
+func TestNoResendWhenReusedConnectionDies(t *testing.T) {
+	tests := []struct {
+		name           string
+		method, path   string
+		body           []byte
+		idempotencyKey string
+	}{
+		{name: "models", method: http.MethodGet, path: PathModels + "?client_version=1"},
+		{name: "responses", method: http.MethodPost, path: PathResponses, body: requestBody},
+		{name: "empty responses with idempotency key", method: http.MethodPost, path: PathResponses, body: []byte{}, idempotencyKey: "k-1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			up := newDyingUpstream(t)
+			h := startProxy(t, up.url())
+			send := func() int {
+				req := newRequest(t, t.Context(), tt.method, h.base+tt.path, tt.body)
+				if tt.idempotencyKey != "" {
+					req.Header.Set("Idempotency-Key", tt.idempotencyKey)
+				}
+				resp, err := http.DefaultClient.Do(req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, _ = io.Copy(io.Discard, resp.Body)
+				_ = resp.Body.Close()
+				return resp.StatusCode
+			}
+
+			if got := send(); got != http.StatusOK {
+				t.Fatalf("first request: status = %d, want 200", got)
+			}
+			if got := send(); got != http.StatusBadGateway {
+				t.Errorf("second request: status = %d, want 502", got)
+			}
+			if n := up.reqs.Load(); n != 2 {
+				t.Errorf("upstream read %d requests, want 2 (the second must not be re-sent)", n)
+			}
+		})
+	}
+}
+
+type recordingTransport struct {
+	mu   sync.Mutex
+	urls []string
+}
+
+func (rt *recordingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	rt.mu.Lock()
+	rt.urls = append(rt.urls, r.URL.String())
+	rt.mu.Unlock()
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": {"text/event-stream"}},
+		Body:       io.NopCloser(strings.NewReader(evCompleted)),
+		Request:    r,
+	}, nil
+}
+
+func TestDefaultUpstreamIsChatGPTCodexBackend(t *testing.T) {
+	rt := &recordingTransport{}
+	h := startProxy(t, "", func(o *Options) { o.Client = &http.Client{Transport: rt} })
+
+	postResponses(t, h, requestBody)
+	resp, err := http.DefaultClient.Do(newRequest(t, t.Context(), http.MethodGet, h.base+PathModels+"?client_version=1", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+
+	want := []string{
+		"https://chatgpt.com/backend-api/codex/responses",
+		"https://chatgpt.com/backend-api/codex/models?client_version=1",
+	}
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	if fmt.Sprint(rt.urls) != fmt.Sprint(want) {
+		t.Errorf("upstream URLs = %v, want %v", rt.urls, want)
 	}
 }
 
@@ -616,6 +761,9 @@ func TestModelsPassThroughAndCatalog(t *testing.T) {
 	if in.header.Get("Authorization") != testAuth {
 		t.Error("Authorization not forwarded on /models")
 	}
+	if in.framing != "cl=0 te=[]" || len(in.body) != 0 {
+		t.Errorf("upstream /models carries a body: %s %q", in.framing, in.body)
+	}
 	cur := store.Current()
 	if w, ok := cur.Window("gpt-6-luna"); !ok || w != 258400 || cur.ETag != etag {
 		t.Errorf("catalog = %+v", cur)
@@ -665,28 +813,78 @@ func TestAllowList(t *testing.T) {
 	}
 }
 
+func writeChunked(w io.Writer, n int) {
+	chunk := bytes.Repeat([]byte("a"), 1<<20)
+	for n > 0 {
+		c := chunk[:min(n, len(chunk))]
+		if _, err := fmt.Fprintf(w, "%x\r\n%s\r\n", len(c), c); err != nil {
+			return
+		}
+		n -= len(c)
+	}
+	_, _ = io.WriteString(w, "0\r\n\r\n")
+}
+
 func TestBodyOverCapIs413(t *testing.T) {
+	tests := []struct {
+		name  string
+		frame string
+		body  func(io.Writer)
+	}{
+		{
+			name:  "declared content length",
+			frame: fmt.Sprintf("Content-Length: %d", MaxBodyBytes+1),
+			body:  func(io.Writer) {},
+		},
+		{
+			name:  "chunked without content length",
+			frame: "Transfer-Encoding: chunked",
+			body:  func(w io.Writer) { writeChunked(w, MaxBodyBytes+1) },
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			up := sseUpstream(t, evCompleted)
+			h := startProxy(t, up.url())
+
+			conn, err := net.Dial("tcp", strings.TrimPrefix(h.base, "http://"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = conn.Close() }()
+			go func() {
+				_, _ = fmt.Fprintf(conn, "POST %s HTTP/1.1\r\nHost: x\r\nAuthorization: %s\r\n%s\r\n\r\n",
+					PathResponses, testAuth, tt.frame)
+				tt.body(conn)
+			}()
+			resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = resp.Body.Close()
+
+			if resp.StatusCode != http.StatusRequestEntityTooLarge {
+				t.Errorf("status = %d, want 413", resp.StatusCode)
+			}
+			if n := up.hits.Load(); n != 0 {
+				t.Errorf("upstream hits = %d, want 0", n)
+			}
+		})
+	}
+}
+
+func TestBodyAtCapIsForwarded(t *testing.T) {
 	up := sseUpstream(t, evCompleted)
 	h := startProxy(t, up.url())
+	body := bytes.Repeat([]byte("a"), MaxBodyBytes)
 
-	conn, err := net.Dial("tcp", strings.TrimPrefix(h.base, "http://"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = conn.Close() }()
-	_, _ = fmt.Fprintf(conn, "POST %s HTTP/1.1\r\nHost: x\r\nAuthorization: %s\r\nContent-Length: %d\r\n\r\n",
-		PathResponses, testAuth, MaxBodyBytes+1)
-	resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = resp.Body.Close()
+	resp, _ := postResponses(t, h, body)
 
-	if resp.StatusCode != http.StatusRequestEntityTooLarge {
-		t.Errorf("status = %d, want 413", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200", resp.StatusCode)
 	}
-	if n := up.hits.Load(); n != 0 {
-		t.Errorf("upstream hits = %d, want 0", n)
+	if n := len(up.last(t).body); n != MaxBodyBytes {
+		t.Errorf("upstream got %d bytes, want %d", n, MaxBodyBytes)
 	}
 }
 

@@ -189,7 +189,8 @@ Codex ─GET /v1/models?…─▶ proxy ─▶ upstream verbatim (incl. If-None-
   matrix (reasons × votes × holds × taxes); FitTier; cost warm/tax; classifier adapters (fixture
   bodies from claude-model-router `test/fixtures`, ported); control codec; hook output.
 - Proxy fault tests (in-process, `httptest`): upstream dead → 502 to client, no retry; upstream
-  closes after first item → client sees partial stream + EOF, exactly one upstream POST; client
+  closes after first item → client sees the partial stream, then a broken connection (no clean
+  EOF, per data flow step 4), exactly one upstream POST; client
   disconnect mid-stream → upstream request cancelled; `Openai-Model` stripped; redirect refused;
   path outside allow-list → 404; non-loopback bind refused; Authorization never appears in logs
   (log sink assertion on every test).
