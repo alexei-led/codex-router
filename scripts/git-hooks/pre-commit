@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+	echo "pre-commit: gitleaks is required; install it before committing" >&2
+	exit 1
+fi
+
+gitleaks git --config .gitleaks.toml --pre-commit --staged --redact --no-banner
+
+go_files=()
+while IFS= read -r -d '' path; do
+	go_files+=("$path")
+done < <(git diff --cached --name-only -z --diff-filter=ACMR -- '*.go')
+
+if ((${#go_files[@]} > 0)); then
+	if ! command -v gofmt >/dev/null 2>&1; then
+		echo "pre-commit: gofmt is required for staged Go files" >&2
+		exit 1
+	fi
+	# Check the staged content, not the working tree.
+	unformatted=()
+	for path in "${go_files[@]}"; do
+		if [ -n "$(git show ":$path" | gofmt -l)" ]; then
+			unformatted+=("$path")
+		fi
+	done
+	if ((${#unformatted[@]} > 0)); then
+		echo "pre-commit: format Go files with 'make fmt', then stage them again:" >&2
+		printf '%s\n' "${unformatted[@]}" >&2
+		exit 1
+	fi
+fi

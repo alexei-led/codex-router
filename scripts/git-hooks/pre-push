@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+zero_sha=0000000000000000000000000000000000000000
+has_update=false
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+	if [ "$local_sha" != "$zero_sha" ]; then
+		has_update=true
+	fi
+done
+
+if [ "$has_update" = false ]; then
+	exit 0
+fi
+
+for tool in gitleaks go golangci-lint; do
+	if ! command -v "$tool" >/dev/null 2>&1; then
+		echo "pre-push: $tool is required" >&2
+		exit 1
+	fi
+done
+
+gitleaks git --config .gitleaks.toml --redact --no-banner
+make fmt-check lint test build

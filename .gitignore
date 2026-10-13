@@ -1,0 +1,22 @@
+.bin/
+coverage.out
+dist/
+
+# Local credentials and environment files.
+*.pem
+.env
+.env.*
+!.env.example
+
+# Local agent, editor, and OS state.
+.pi/
+.claude/
+.revmux/tasks/
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+
+# Local logs and temporary files.
+*.log
