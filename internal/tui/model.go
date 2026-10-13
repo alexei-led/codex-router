@@ -33,9 +33,10 @@ type (
 	redialMsg struct{}
 	snapMsg   route.Snapshot
 	closedMsg struct{}
-	beatMsg   struct{}
+	beatMsg   struct{ gen int }
 	sentMsg   struct {
 		err error
+		gen int
 	}
 )
 
@@ -49,6 +50,7 @@ type model struct {
 	width        int
 	notice       string
 	backoff      time.Duration
+	gen          int
 }
 
 func newModel(socket string, dial func(string) (conn, error)) *model {
@@ -74,12 +76,12 @@ func waitCmd(c conn) tea.Cmd {
 	}
 }
 
-func beatCmd() tea.Cmd {
-	return tea.Tick(heartbeat, func(time.Time) tea.Msg { return beatMsg{} })
+func beatCmd(gen int) tea.Cmd {
+	return tea.Tick(heartbeat, func(time.Time) tea.Msg { return beatMsg{gen} })
 }
 
-func sendCmd(c conn, cmd route.Command) tea.Cmd {
-	return func() tea.Msg { return sentMsg{c.Send(cmd)} }
+func sendCmd(c conn, gen int, cmd route.Command) tea.Cmd {
+	return func() tea.Msg { return sentMsg{c.Send(cmd), gen} }
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -96,12 +98,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case closedMsg:
 		return m, m.lost()
 	case beatMsg:
-		if m.c == nil {
+		if m.c == nil || msg.gen != m.gen {
 			return m, nil
 		}
-		return m, tea.Batch(sendCmd(m.c, route.Command{Op: route.OpSnapshot}), beatCmd())
+		return m, tea.Batch(sendCmd(m.c, m.gen, route.Command{Op: route.OpSnapshot}), beatCmd(m.gen))
 	case sentMsg:
-		return m, m.sent(msg.err)
+		return m, m.sent(msg)
 	case tea.KeyMsg:
 		return m, m.key(msg)
 	}
@@ -116,16 +118,22 @@ func (m *model) dialed(msg dialedMsg) tea.Cmd {
 		return tea.Tick(wait, func(time.Time) tea.Msg { return redialMsg{} })
 	}
 	m.c, m.backoff = msg.c, redialMin
-	return tea.Batch(waitCmd(m.c), beatCmd(), sendCmd(m.c, route.Command{Op: route.OpSnapshot}))
+	m.gen++
+	return tea.Batch(waitCmd(m.c), beatCmd(m.gen), sendCmd(m.c, m.gen, route.Command{Op: route.OpSnapshot}))
 }
 
 func (m *model) lost() tea.Cmd {
 	m.disconnected = true
 	m.c = nil
+	m.gen++
 	return tea.Tick(m.backoff, func(time.Time) tea.Msg { return redialMsg{} })
 }
 
-func (m *model) sent(err error) tea.Cmd {
+func (m *model) sent(msg sentMsg) tea.Cmd {
+	err := msg.err
+	if msg.gen != m.gen {
+		return nil
+	}
 	switch {
 	case errors.Is(err, control.ErrDisconnected):
 		m.disconnected = true
@@ -177,7 +185,7 @@ func (m *model) command(cmd route.Command) tea.Cmd {
 		m.notice = "disconnected: command not sent"
 		return nil
 	}
-	return sendCmd(m.c, cmd)
+	return sendCmd(m.c, m.gen, cmd)
 }
 
 // pinCycle walks none, high, medium, low, micro, none.

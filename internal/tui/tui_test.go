@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -303,11 +304,11 @@ func TestDisconnectedHeaderAndRedial(t *testing.T) {
 func TestHeartbeatDetectsLostSocket(t *testing.T) {
 	m, f := connected(t, fixture())
 	f.err = control.ErrDisconnected
-	_, cmd := m.Update(beatMsg{})
+	_, cmd := m.Update(beatMsg{gen: m.gen})
 	if cmd == nil {
 		t.Fatal("no heartbeat command")
 	}
-	m.Update(sentMsg{f.Send(route.Command{Op: route.OpSnapshot})})
+	m.Update(sentMsg{f.Send(route.Command{Op: route.OpSnapshot}), m.gen})
 	if !m.disconnected {
 		t.Error("lost socket not shown")
 	}
@@ -327,5 +328,33 @@ func TestWindowSizeSetsWidth(t *testing.T) {
 	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	if m.width != 120 {
 		t.Errorf("width = %d", m.width)
+	}
+}
+
+func TestStaleHeartbeatAndErrorsAreIgnoredAfterReconnect(t *testing.T) {
+	m, _ := connected(t, fixture())
+	oldGen := m.gen
+	m.Update(closedMsg{})
+	g := newFakeConn()
+	m.Update(dialedMsg{c: g})
+
+	if _, cmd := m.Update(beatMsg{gen: oldGen}); cmd != nil {
+		t.Error("stale heartbeat chain kept running")
+	}
+	m.Update(sentMsg{err: control.ErrDisconnected, gen: oldGen})
+	m.Update(snapMsg(fixture()))
+	if m.disconnected {
+		t.Error("stale error from old connection marked new one disconnected")
+	}
+
+}
+
+func TestAddNeverExceedsWidth(t *testing.T) {
+	for w := 1; w <= 6; w++ {
+		c := &canvas{width: w}
+		c.add(plain("abcdef"[:w]), plain("x"), plain("yz"))
+		if got := utf8.RuneCountInString(c.out[0]); got > w {
+			t.Errorf("width %d: line has %d runes", w, got)
+		}
 	}
 }
