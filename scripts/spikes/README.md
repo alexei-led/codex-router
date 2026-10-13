@@ -22,7 +22,7 @@ mode 0700). Every script accepts `-h`/`--help`.
 - Default model `gpt-6-luna`, effort `low` (override with `SPIKE_MODEL`, `SPIKE_EFFORT`).
 - Every codex run has a wall-clock limit (perl process-group watchdog; macOS has no `timeout`).
 - Header values are never printed or recorded, only names. Request text is cut to the first
-  60 characters of the last user text (and of the last tool output).
+  60 characters of the last user text.
 
 ## Files
 
@@ -38,13 +38,14 @@ mode 0700). Every script accepts `-h`/`--help`.
 
 ## 1a: two clients, footer mid-turn, parity
 
-Starts `codex app-server --listen unix://$RT/app.sock` (default model, no provider override) and
+Starts `codex --no-daemon app-server --listen unix://$RT/app.sock` (default model, no provider
+override; the shared daemon is not used) and
 the second client. With `agtermctl` on PATH and `AGTERM_SESSION_ID` set, it opens a split in your
 session, types `codex --remote unix://$RT/app.sock`, waits for you to answer any trust prompt, then
 types a prompt that runs a ~20 s four-step shell task. The client sends
 `thread/settings/update {model: gpt-6-luna, effort: low}` 3 s after `turn/started`. The script
 saves the split screen before (`1a-before.txt`) and about 3 s after (`1a-after.txt`) the update.
-Without agterm it prints the commands for a second terminal (manual mode).
+App-server and TUI are both wrapped in a 1800 s `alarm`, so neither outlives the spike. Without agterm it prints the commands for a second terminal (manual mode).
 
 Then it asks you to run `/model gpt-6-sol` in the TUI, and asks y/n/s for the parity checklist
 (footer mid-turn, `/model`, `/status`, approvals, shell tool, image paste, Esc interrupt,
@@ -89,6 +90,6 @@ sequence, body keys, compaction hints (header, body key or item type containing 
 
 ## Tooling limits
 
-- The WebSocket path of `appserver-client.py` is not covered by `selftest.sh` (no `websockets`
-  offline); the newline JSON-RPC fallback is.
+- `selftest.sh` covers both client transports: WebSocket (needs `uv`, which fetches `websockets`;
+  skipped otherwise) and the newline JSON-RPC fallback. Against a real codex socket neither is verified.
 - `shape-proxy.py` buffers nothing but SSE blocks (split on a blank line); it assumes `\n\n`.

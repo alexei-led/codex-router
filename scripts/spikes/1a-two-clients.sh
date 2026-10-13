@@ -9,6 +9,8 @@ handle_help 1a-two-clients.sh "Starts a private codex app-server on a unix socke
 'codex --remote', sends thread/settings/update mid-turn from a second client, and
 asks you to confirm feature parity. Interactive: reads answers from /dev/tty." "$@"
 
+SESSION_LIMIT=1800 # wall clock for app-server and TUI; both die by themselves after this
+
 CHECKLIST=(
 	"footer repaints mid-turn (model-with-reasoning and context-window-size)"
 	"/model works"
@@ -69,8 +71,8 @@ ask_yn() {
 }
 
 echo "== 1a: evidence dir $RT"
-echo "starting: codex app-server --listen unix://$SOCK"
-codex app-server --listen "unix://$SOCK" >"$RT/appserver.log" 2>&1 &
+echo "starting: codex --no-daemon app-server --listen unix://$SOCK (killed after ${SESSION_LIMIT}s)"
+perl -e 'alarm shift; exec @ARGV' "$SESSION_LIMIT" codex --no-daemon app-server --listen "unix://$SOCK" >"$RT/appserver.log" 2>&1 &
 track_pid $!
 for _ in $(seq 1 60); do
 	[ -S "$SOCK" ] && break
@@ -79,7 +81,7 @@ done
 [ -S "$SOCK" ] || die "app-server did not create $SOCK; see $RT/appserver.log"
 log_line "app-server up"
 
-REMOTE_CMD="cd '$REPO' && codex --remote unix://$SOCK"
+REMOTE_CMD="cd '$REPO' && perl -e 'alarm shift; exec @ARGV' $SESSION_LIMIT codex --remote unix://$SOCK"
 TASK_PROMPT='Run this shell task as four separate tool calls, one step each, in order: sleep 5 && echo step1; sleep 5 && echo step2; sleep 5 && echo step3; sleep 5 && echo step4. Then reply done.'
 
 if command -v agtermctl >/dev/null 2>&1 && [ -n "${AGTERM_SESSION_ID:-}" ]; then

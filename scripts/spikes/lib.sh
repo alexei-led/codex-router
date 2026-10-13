@@ -9,7 +9,8 @@ SHAPE_PROXY="$SPIKE_DIR/shape-proxy.py"
 APPSERVER_CLIENT="$SPIKE_DIR/appserver-client.py"
 SPIKE_MODEL="${SPIKE_MODEL:-gpt-6-luna}"
 SPIKE_EFFORT="${SPIKE_EFFORT:-low}"
-SOCK_PATH_MAX=90
+# AF_UNIX limit is 103 on macOS; leave room for the socket file name (/fake-app.sock is the longest).
+SOCK_PATH_MAX=85
 
 CHILD_PIDS=()
 
@@ -75,7 +76,7 @@ make_big_files() {
 	local dir=$1 count=$2 kb=$3 i
 	mkdir -p "$dir"
 	for i in $(seq 1 "$count"); do
-		awk -v n="$((kb * 1024 / 64))" -v f="$i" \
+		awk -v n="$((kb * 1024 / 52))" -v f="$i" \
 			'BEGIN { for (k = 1; k <= n; k++) printf "file %d line %05d the quick brown fox jumps over it\n", f, k }' \
 			>"$dir/part$i.txt"
 	done
