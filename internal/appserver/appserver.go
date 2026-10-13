@@ -9,6 +9,7 @@ import (
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/alexei-led/codex-router/internal/config"
 )
@@ -52,8 +53,6 @@ const (
 	MethodInitialized     = "initialized"
 	MethodSettingsUpdate  = "thread/settings/update"
 	MethodSettingsUpdated = "thread/settings/updated"
-	MethodTurnStarted     = "turn/started"
-	MethodTurnCompleted   = "turn/completed"
 )
 
 const (
@@ -63,8 +62,12 @@ const (
 	updatesBuffer = 64
 	// maxMessage bounds one inbound message; app-server item notifications
 	// can carry large tool output.
-	maxMessage        = 64 << 20
-	codeMethodMissing = -32601
+	maxMessage = 64 << 20
+	// rejectTimeout bounds the reply to a server request: a server that reads
+	// nothing for this long is wedged, and the failed write closes the
+	// connection so the launcher sees Updates close.
+	rejectTimeout      = 5 * time.Second
+	codeMethodNotFound = -32601
 )
 
 // ErrClosed is returned by calls made on, or pending at, a closed connection.
@@ -104,24 +107,26 @@ type reply struct {
 	err    error
 }
 
-// Client is a JSON-RPC client over one Conn. Writes and reads use the
-// client's lifetime context, so a caller's cancelled ctx abandons only its
-// own wait and never tears down the shared connection.
+// Client is a JSON-RPC client over one Conn. A caller's ctx that ends while
+// its call waits for the write slot or the reply abandons only that call. One
+// that ends mid-write closes the connection, because a partly written message
+// leaves the stream unusable.
 type Client struct {
-	conn    Conn
-	ctx     context.Context
-	cancel  context.CancelFunc
-	nextID  atomic.Int64
-	writeMu sync.Mutex
+	conn     Conn
+	ctx      context.Context // lifetime: reads and server-request replies
+	cancel   context.CancelFunc
+	nextID   atomic.Int64
+	writeSem chan struct{} // one writer at a time; waiting honours ctx
+	rejects  sync.WaitGroup
 
 	mu      sync.Mutex
 	pending map[int64]chan reply
 
-	updates   chan SettingsUpdated
-	done      chan struct{}
-	closing   atomic.Bool
-	closeOnce sync.Once
-	closeErr  error
+	updates    chan SettingsUpdated
+	done       chan struct{}
+	connOnce   sync.Once
+	connClosed atomic.Bool
+	connErr    error
 }
 
 // Dial connects to the app-server socket through d and starts reading.
@@ -133,12 +138,13 @@ func Dial(ctx context.Context, socketPath string, d Dialer) (API, error) {
 	}
 	lifetime, cancel := context.WithCancel(context.Background())
 	c := &Client{
-		conn:    conn,
-		ctx:     lifetime,
-		cancel:  cancel,
-		pending: make(map[int64]chan reply),
-		updates: make(chan SettingsUpdated, updatesBuffer),
-		done:    make(chan struct{}),
+		conn:     conn,
+		ctx:      lifetime,
+		cancel:   cancel,
+		writeSem: make(chan struct{}, 1),
+		pending:  make(map[int64]chan reply),
+		updates:  make(chan SettingsUpdated, updatesBuffer),
+		done:     make(chan struct{}),
 	}
 	go c.readLoop()
 	return c, nil
@@ -155,7 +161,7 @@ func (c *Client) Initialize(ctx context.Context) error {
 	if err := c.call(ctx, MethodInitialize, params, &result); err != nil {
 		return err
 	}
-	return c.write(message{Method: MethodInitialized})
+	return c.write(ctx, message{Method: MethodInitialized})
 }
 
 // UpdateSettings sets the thread's model and effort for subsequent turns. An
@@ -174,15 +180,23 @@ func (c *Client) UpdateSettings(ctx context.Context, threadID string, s Settings
 func (c *Client) Updates() <-chan SettingsUpdated { return c.updates }
 
 // Close closes the connection, fails pending calls with ErrClosed and waits
-// for the read loop to stop.
+// for the client's goroutines to stop. It returns the first error from
+// closing the connection.
 func (c *Client) Close() error {
-	c.closeOnce.Do(func() {
-		c.closing.Store(true)
-		c.closeErr = c.conn.Close()
-		c.cancel()
-		<-c.done
+	err := c.closeConn()
+	c.cancel()
+	<-c.done
+	c.rejects.Wait()
+	return err
+}
+
+// closeConn closes the connection once, whether from Close or a failed write.
+func (c *Client) closeConn() error {
+	c.connOnce.Do(func() {
+		c.connClosed.Store(true)
+		c.connErr = c.conn.Close()
 	})
-	return c.closeErr
+	return c.connErr
 }
 
 func (c *Client) call(ctx context.Context, method string, params, result any) error {
@@ -199,7 +213,7 @@ func (c *Client) call(ctx context.Context, method string, params, result any) er
 	c.pending[id] = ch
 	c.mu.Unlock()
 
-	if err := c.write(message{ID: &id, Method: method, Params: params}); err != nil {
+	if err := c.write(ctx, message{ID: &id, Method: method, Params: params}); err != nil {
 		c.forget(id)
 		return err
 	}
@@ -227,21 +241,33 @@ func (c *Client) forget(id int64) {
 	c.mu.Unlock()
 }
 
-func (c *Client) write(m message) error {
+func (c *Client) write(ctx context.Context, m message) error {
 	m.JSONRPC = "2.0"
 	b, err := json.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("appserver: encode %s: %w", m.Method, err)
 	}
-	c.writeMu.Lock()
-	defer c.writeMu.Unlock()
-	if err := c.conn.Write(c.ctx, b); err != nil {
-		if c.closing.Load() {
-			return ErrClosed
-		}
+	select {
+	case c.writeSem <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-c.ctx.Done():
+		return ErrClosed
+	}
+	defer func() { <-c.writeSem }()
+	err = c.conn.Write(ctx, b)
+	switch {
+	case err == nil:
+		return nil
+	case c.connClosed.Load():
+		return ErrClosed
+	case ctx.Err() != nil:
+		_ = c.closeConn()
+		return fmt.Errorf("appserver: write: %w", ctx.Err())
+	default:
+		_ = c.closeConn()
 		return fmt.Errorf("appserver: write: %w", err)
 	}
-	return nil
 }
 
 func (c *Client) readLoop() {
@@ -249,7 +275,7 @@ func (c *Client) readLoop() {
 	for {
 		b, err := c.conn.Read(c.ctx)
 		if err != nil {
-			if !c.closing.Load() {
+			if !c.connClosed.Load() {
 				slog.Warn("appserver-read-failed", "err", err)
 			}
 			return
@@ -270,7 +296,7 @@ func (c *Client) dispatch(in inbound) bool {
 	hasID := len(in.ID) > 0 && string(in.ID) != "null"
 	switch {
 	case in.Method != "" && hasID:
-		c.rejectRequest(in)
+		c.rejects.Go(func() { c.rejectRequest(in) })
 	case in.Method == MethodSettingsUpdated:
 		u, ok := parseSettingsUpdated(in.Params)
 		if !ok {
@@ -289,15 +315,18 @@ func (c *Client) dispatch(in inbound) bool {
 }
 
 // rejectRequest answers a server-to-client request so the server never waits
-// on this client; the router serves no client-side methods.
+// on this client; the router serves no client-side methods. It runs off the
+// read loop so a stalled write never stops notifications.
 func (c *Client) rejectRequest(in inbound) {
 	var id int64
 	if err := json.Unmarshal(in.ID, &id); err != nil {
 		slog.Warn("appserver-unanswerable-request", "method", in.Method)
 		return
 	}
-	err := &RPCError{Code: codeMethodMissing, Message: "method not supported by codex-router"}
-	if werr := c.write(message{ID: &id, Error: err}); werr != nil {
+	ctx, cancel := context.WithTimeout(c.ctx, rejectTimeout)
+	defer cancel()
+	err := &RPCError{Code: codeMethodNotFound, Message: "method not supported by codex-router"}
+	if werr := c.write(ctx, message{ID: &id, Error: err}); werr != nil {
 		slog.Warn("appserver-reject-failed", "method", in.Method, "err", werr)
 	}
 }

@@ -58,7 +58,10 @@ func (c wsConn) Write(ctx context.Context, msg []byte) error {
 	return c.ws.Write(ctx, websocket.MessageText, msg)
 }
 
-func (c wsConn) Close() error { return c.ws.Close(websocket.StatusNormalClosure, "") }
+// Close skips the close handshake: the client closes at exit or after a
+// failed write, and the handshake would wait up to 10 s on a server that has
+// stopped reading.
+func (c wsConn) Close() error { return c.ws.CloseNow() }
 
 type linesDialer struct{}
 
