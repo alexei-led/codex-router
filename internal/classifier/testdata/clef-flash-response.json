@@ -1,0 +1,30 @@
+{
+  "result": {
+    "model": "clef-flash",
+    "answers": {
+      "route": {
+        "type": "choice",
+        "choice": "micro",
+        "probabilities": {
+          "micro": 0.5923,
+          "low": 0.2537,
+          "medium": 0.0954,
+          "high": 0.0382,
+          "uncertain": 0.0204
+        },
+        "confidence": 0.2826
+      },
+      "continuation": {
+        "type": "noul",
+        "noul": 0.0164
+      }
+    },
+    "usage": {
+      "input_tokens": 568,
+      "output_tokens": 0
+    }
+  },
+  "success": true,
+  "errors": [],
+  "messages": []
+}

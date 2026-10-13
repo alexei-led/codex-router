@@ -33,8 +33,8 @@ type Advice struct {
 
 // Message is one dialogue entry shown to the classifier.
 type Message struct {
-	Role string
-	Text string
+	Role string `json:"role"`
+	Text string `json:"text"`
 }
 
 // Input is everything a classifier request may contain.
