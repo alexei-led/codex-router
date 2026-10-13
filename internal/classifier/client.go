@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"unicode/utf16"
 
 	"github.com/alexei-led/codex-router/internal/config"
 )
@@ -15,8 +16,9 @@ import (
 // Client asks one classifier endpoint. It allows one request at a time: a
 // call answers ErrBusy while another is in flight, and a request abandoned at
 // the deadline holds the slot until it settles, so a late answer never
-// overlaps the next turn's. Deadlines and waits use the context and timers;
-// now stamps the breaker and the latency.
+// overlaps the next turn's. now measures the budget, the breaker and the
+// latency; the context carries the same timeout as a duration, so an injected
+// clock never makes the request expire early or late.
 type Client struct {
 	cfg     config.Classifier
 	key     string
@@ -68,10 +70,11 @@ func (c *Client) Ask(ctx context.Context, in Input) (Advice, error) {
 	}
 	defer c.release()
 
+	timeout := time.Duration(c.cfg.TimeoutMs) * time.Millisecond
 	start := c.now()
-	deadline, cancel := context.WithDeadline(ctx, start.Add(time.Duration(c.cfg.TimeoutMs)*time.Millisecond))
+	deadline, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	advice, err := c.complete(deadline, ctx, in)
+	advice, err := c.complete(budget{ctx: deadline, outer: ctx, until: start.Add(timeout)}, in)
 	latency := c.now().Sub(start)
 	c.record(err, latency)
 	if err != nil {
@@ -109,30 +112,37 @@ func (c *Client) record(err error, latency time.Duration) {
 	}
 }
 
-// complete runs up to MaxAttempts route requests inside ctx's deadline. outer
-// is the caller's context: its end is a cancellation, the deadline's a timeout.
-func (c *Client) complete(ctx, outer context.Context, in Input) (Advice, error) {
+// budget bounds one Ask. ctx ends at the timeout; outer is the caller's
+// context, whose end is a cancellation rather than a timeout; until is the
+// deadline on the client's clock.
+type budget struct {
+	ctx, outer context.Context
+	until      time.Time
+}
+
+// complete runs up to MaxAttempts route requests inside b.
+func (c *Client) complete(b budget, in Input) (Advice, error) {
 	body, err := c.adapter.Build(c.cfg.Model, in)
 	if err != nil {
 		return Advice{}, ErrMalformed
 	}
 	for attempt := 1; ; attempt++ {
-		r, err := c.send(ctx, body)
+		r, err := c.send(b.ctx, body)
 		if err != nil {
-			return Advice{}, stopped(outer)
+			return Advice{}, stopped(b.outer)
 		}
 		if r.err != nil {
 			if attempt == MaxAttempts {
 				return Advice{}, ErrUnreachable
 			}
-			if err := c.wait(ctx, outer, RetryDelay); err != nil {
+			if err := c.wait(b, RetryDelay); err != nil {
 				return Advice{}, err
 			}
 			continue
 		}
 		switch {
 		case r.ok():
-			return c.answer(ctx, outer, in, r.body)
+			return c.answer(b, in, r.body)
 		case r.status == http.StatusUnauthorized || r.status == http.StatusForbidden:
 			return Advice{}, ErrAuth
 		case !transient(r.status) || attempt == MaxAttempts:
@@ -142,29 +152,29 @@ func (c *Client) complete(ctx, outer context.Context, in Input) (Advice, error) 
 		if !ok {
 			delay = RetryDelay
 		}
-		if err := c.wait(ctx, outer, delay); err != nil {
+		if err := c.wait(b, delay); err != nil {
 			return Advice{}, err
 		}
 	}
 }
 
-func (c *Client) answer(ctx, outer context.Context, in Input, body []byte) (Advice, error) {
-	if len(body) > MaxAnswerBytes {
+func (c *Client) answer(b budget, in Input, body []byte) (Advice, error) {
+	if oversized(body) {
 		return Advice{}, ErrMalformed
 	}
 	advice, err := c.adapter.Parse(body)
 	if err != nil {
 		return Advice{}, ErrMalformed
 	}
-	if ctx.Err() != nil {
-		return Advice{}, stopped(outer)
+	if b.ctx.Err() != nil || c.remaining(b) <= 0 {
+		return Advice{}, stopped(b.outer)
 	}
 	step, ok := c.adapter.(ActivityStep)
-	if !ok || c.remaining(ctx) < ActivityStepMin {
+	if !ok || c.remaining(b) < ActivityStepMin {
 		return advice, nil
 	}
-	advice.Activity = c.activity(ctx, step, in)
-	if outer.Err() != nil {
+	advice.Activity = c.activity(b, step, in)
+	if b.outer.Err() != nil {
 		return Advice{}, ErrCancelled
 	}
 	return advice, nil
@@ -172,30 +182,29 @@ func (c *Client) answer(ctx, outer context.Context, in Input, body []byte) (Advi
 
 // activity sends the optional second request: one attempt, no retry. Any
 // failure reads as no activity and leaves the route advice and health alone.
-func (c *Client) activity(ctx context.Context, step ActivityStep, in Input) *ActivityAdvice {
+func (c *Client) activity(b budget, step ActivityStep, in Input) *ActivityAdvice {
 	body, err := step.BuildActivity(c.cfg.Model, in)
 	if err != nil {
 		return nil
 	}
-	r, err := c.send(ctx, body)
-	if err != nil || r.err != nil || !r.ok() || len(r.body) > MaxAnswerBytes {
+	r, err := c.send(b.ctx, body)
+	if err != nil || r.err != nil || !r.ok() || oversized(r.body) || c.remaining(b) <= 0 {
 		return nil
 	}
 	return step.ParseActivity(r.body)
 }
 
-func (c *Client) remaining(ctx context.Context) time.Duration {
-	deadline, _ := ctx.Deadline()
-	return deadline.Sub(c.now())
+func (c *Client) remaining(b budget) time.Duration {
+	return b.until.Sub(c.now())
 }
 
 // wait sleeps d unless the budget is shorter: a retry that cannot finish in
 // time is not sent.
-func (c *Client) wait(ctx, outer context.Context, d time.Duration) error {
-	if outer.Err() != nil {
+func (c *Client) wait(b budget, d time.Duration) error {
+	if b.outer.Err() != nil {
 		return ErrCancelled
 	}
-	if d >= c.remaining(ctx) {
+	if d >= c.remaining(b) {
 		return ErrTimeout
 	}
 	t := time.NewTimer(d)
@@ -203,9 +212,25 @@ func (c *Client) wait(ctx, outer context.Context, d time.Duration) error {
 	select {
 	case <-t.C:
 		return nil
-	case <-ctx.Done():
-		return stopped(outer)
+	case <-b.ctx.Done():
+		return stopped(b.outer)
 	}
+}
+
+// oversized reports an answer longer than MaxAnswerChars, counted in UTF-16
+// code units as the reference client's string length is. Invalid UTF-8 bytes
+// count one each, as the replacement character they decode to.
+func oversized(body []byte) bool {
+	if len(body) <= MaxAnswerChars {
+		return false
+	}
+	n := 0
+	for _, r := range string(body) {
+		if n += utf16.RuneLen(r); n > MaxAnswerChars {
+			return true
+		}
+	}
+	return false
 }
 
 func stopped(outer context.Context) error {
@@ -252,6 +277,6 @@ func (c *Client) post(ctx context.Context, body []byte) reply {
 		return reply{err: err}
 	}
 	defer func() { _ = resp.Body.Close() }()
-	data, err := io.ReadAll(io.LimitReader(resp.Body, MaxAnswerBytes+1))
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxAnswerBytes+1))
 	return reply{status: resp.StatusCode, header: resp.Header, body: data, err: err}
 }

@@ -92,6 +92,10 @@ const (
 	ActivityStepMin = 300 * time.Millisecond
 	FailuresToPause = 3
 	PauseDuration   = 60 * time.Second
-	MaxAnswerBytes  = 16 * 1024
+	MaxAnswerChars  = 16 * 1024
 	MaxAttempts     = 2
 )
+
+// maxAnswerBytes is the most UTF-8 an answer of MaxAnswerChars UTF-16 code
+// units can take: three bytes per unit. A longer body is oversized unread.
+const maxAnswerBytes = 3 * MaxAnswerChars
