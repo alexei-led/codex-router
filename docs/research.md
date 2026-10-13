@@ -406,10 +406,8 @@ What the spikes prove and do not prove:
 
 ## 7. Unverified
 
-- Behaviour after auto-compaction followed by a switch. Local compaction was the default in
-  the spikes, because a custom provider has remote compaction off.
-- Proxy fault behaviour: no fault-injection runs yet.
-- Whether the backend ever returns `openai-model`; it did not in 5 spikes.
+- Whether the backend ever returns `openai-model`; it did not in 5 spikes plus the phase 2
+  spikes. The proxy strips it unconditionally.
 - Whether `tui.terminal_title = []` fully disables Codex title writes.
 - Daemon config hot-reload of a new `model_providers` entry. Matters only if the provider goes
   into `config.toml` for all clients.
@@ -422,5 +420,87 @@ What the spikes prove and do not prove:
 - The Codex peer (agterm right split) acted as adversarial co-designer and answered five
   questions: transport and auth, mid-thread rewrite risks, sidecar controller viability, UI
   surfaces, and an attack on the recommended architecture. It stayed read-only.
-- Sandbox: `codex exec` needs write access to `~/.codex` (in-process app-server state), so it
-  cannot run inside this agent's sandbox. The user ran the spike scripts.
+- Phase 1: `codex exec` needs write access to `~/.codex` (in-process app-server state); the
+  user ran the phase 1 spike scripts. Phase 2 spikes ran directly from the agent session.
+
+## 9. Phase 2 spikes (2026-10-13)
+
+Scripts: `scripts/spikes/` (1a, 1b, 1c) plus a focused compaction recorder. Codex 0.162.1,
+`-c` overrides only, throwaway repos, header names only. All **[spike]**.
+
+### 1a: two clients on one private app-server, TUI via `--remote`
+
+- `codex --no-daemon app-server --listen unix://$RT/app.sock` works. Codex replaces the socket
+  path with a symlink to `/private/tmp/codex-daemon-<uid>/<hash>`, so long runtime paths are
+  fine.
+- `codex --remote unix://…` attaches a normal TUI. `/status`, `/model`, shell tools and the
+  footer work. `/status` shows `Server: unix://…`.
+- The remote TUI's thread uses the **app-server's** working directory, not the TUI's. The
+  launcher must start the app-server in the user's cwd.
+- Transport: WebSocket over the unix socket (`ws://localhost/`). JSON-RPC without a
+  `jsonrpc` field. `initialize {clientInfo, capabilities.experimentalApi: true}` then the
+  `initialized` notification. Confirms the §3.6 [peer] item.
+- A second client only gets turn and settings notifications for a thread after
+  `thread/resume {threadId, excludeTurns: true}` (it then also gets `thread/goal/cleared`).
+  `thread/started` is broadcast. `thread/loaded/list` returned the main thread plus an
+  ephemeral auxiliary thread (`gpt-5.6-luna`, no rollout; `thread/resume` on it fails with
+  -32600 "no rollout found").
+- `thread/settings/update {threadId, model, effort}` from the second client returns `{}`,
+  emits `thread/settings/updated` (params `{threadId, threadSettings: {model, effort, …}}`)
+  and the TUI footer repaints: idle (`GPT-6.1-Sol high` → `GPT-6-Luna low`) **and during a
+  running turn** (`GPT-6-Luna low` → `GPT-6-Sol medium` at 8 s of a 28 s turn). No owner check.
+- A manual `/model` pick in the TUI (gpt-6-luna, high) emits `thread/settings/updated` to the
+  subscribed second client. That is the manual-pin signal.
+- Not tested: image paste, approvals, Esc, `/compact` under `--remote`.
+- The exact protocol is available offline: `codex app-server generate-json-schema --experimental
+--out DIR` (`ThreadResumeParams`, `ThreadSettingsUpdateParams`, `ThreadSettings`).
+
+### 1b: proxy faults (`codex exec`, port 47911)
+
+| Case                                    | Result                                                                                                                                                                                       |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Listener never bound                 | `codex exec` hung until the 90 s watchdog. No request reached anything. Confirms §3.8: a dead listener blocks.                                                                               |
+| 2. 502 before upstream, restart at 10 s | Codex retried fast (17 POSTs in 10 s, about 5 per body; the body hash changed once between retry rounds) and kept going. After the proxy came back in pass-through mode, the turn completed. |
+| 3. Close after the first output item    | No re-send of the cut request. Codex used the partial output (a tool call), ran it, and the turn completed.                                                                                  |
+| 4. `kill -9` the proxy, restart at 5 s  | Codex reconnected to the same port and completed the turn.                                                                                                                                   |
+
+Design consequence: keep the port stable for the session and keep the listener alive; a
+restarted listener on the same port recovers a running turn. Never re-send after output.
+
+### 1c: request shapes and compaction
+
+- Every main-thread request carries `x-codex-turn-metadata` with `request_kind`,
+  `turn_trigger`, `thread_source`, `agent_name` (`/root`), `root_turn_id`, `turn_id`,
+  `thread_id`, `model`, `reasoning_effort` and more. User steps have `request_kind = "turn"`.
+- **Compaction is `request_kind = "compaction"`**, same path `/v1/responses`, for both local
+  and remote v2 compaction. Local: the last input item is a `message/user` summarization prompt;
+  the next request starts from about 8 items. Remote v2
+  (`-c 'model_providers.router.capabilities.remote_compaction="v2"'`): the last input item is
+  `compaction_trigger`, and later requests carry a `compaction` item.
+- **Post-compaction switch works** inside the group: after compaction, requests rewritten
+  from gpt-6-luna/low to gpt-6-sol/medium returned 200 and the turn completed, for local and
+  remote v2. Closes the §5/§7 open item.
+- Remote v2 kept the prompt cache warm across compaction (13,696 cached on the first
+  post-compaction request); local compaction started cold (0).
+- Subagents: requests carry the `x-openai-subagent` header and `turn_id`; their first input
+  is an `<environment_context>` user message.
+- Tool calls in this account's Responses Lite mode are `custom_tool_call` /
+  `custom_tool_call_output`; `spawn_agent` is a `function_call`.
+- Usage arrives in `response.completed` (`usage.input_tokens`,
+  `usage.input_tokens_details.cached_tokens`, `output_tokens`); responses were not
+  content-encoded. Body bytes / 4 overestimates input tokens by about 25 % (67 KB → 13.6k).
+- Codex truncates tool output, so tool results grow the context slowly (about 1k tokens per
+  400-line `cat`).
+
+### Plan deltas
+
+1. Pass-through rule (D5): route only when `request_kind == "turn"` and there is no
+   `x-openai-subagent` header. Everything else (compaction, missing metadata, other kinds)
+   forwards unchanged. The prompt-prefix rule is dropped.
+2. App-server client: `thread/resume {threadId, excludeTurns: true}` once per thread (thread id
+   from the turn metadata) before `thread/settings/update`; ignore -32600 for threads without
+   a rollout.
+3. Launcher: start the app-server in the user's cwd; keep the proxy listener in-process on a
+   stable port.
+4. Compaction mode stays local (D4) for now. Remote v2 is a measured cache win; upgrade
+   trigger: a user asks, or long threads show cold-cache cost after compaction.

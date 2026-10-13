@@ -270,6 +270,14 @@ for a thread for the rest of the session after any item-count drop (`compacted` 
 next turn; subagent header absent → subagent requests look like user steps and route normally
 (acceptable: same group).
 
+## Stage 1 outcome (2026-10-13)
+
+All three spikes ran; results in `docs/research.md` §9. Deltas applied to the plan:
+D5 becomes "route only `request_kind == "turn"` without `x-openai-subagent`"; the app-server
+client subscribes with `thread/resume {threadId, excludeTurns: true}` before settings writes;
+the launcher starts the app-server in the user's cwd; local compaction stays (D4). Task T3b
+(responses classification) and the `Resume` addition to `appserver` run in wave 3 with T13.
+
 ## Stage 2: implementation waves
 
 Rules: one task = one owner per listed path; no two tasks in one wave touch the same file;
