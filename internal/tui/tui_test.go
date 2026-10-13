@@ -35,29 +35,40 @@ func fixture() route.Snapshot {
 		Reason: policy.ReasonEscalation, MidTurn: true, At: at(18, 41),
 		Why:     "escalate: same test failure twice, edit in between",
 		Support: "no classifier needed · switch ≈ 41k uncached tokens · hold 2 turns",
+		Reading: &route.Reading{
+			Tiers:    map[config.Tier]float64{config.TierHigh: 0.18, config.TierMedium: 0.71, config.TierLow: 0.09, config.TierMicro: 0.02},
+			Activity: config.ActivityDebug, ActivityP: 0.72,
+			Alternates: []route.Share{{Activity: config.ActivityCode, P: 0.15}, {Activity: config.ActivityExplore, P: 0.06}},
+		},
 	}
 	earlier := route.Decision{Tier: config.TierMedium, Activity: config.ActivityDebug, Route: sol, Reason: policy.ReasonUpgrade, At: at(18, 38)}
 	return route.Snapshot{
 		At: at(18, 42), Mode: route.ModeOn, Preset: config.PresetBalanced,
 		Baseline: sol61, Footer: sol61, FooterSynced: true,
 		Last: &last, Recent: []route.Decision{earlier, last},
-		Classifier: classifier.Health{Latency: 412 * time.Millisecond}, ClassifierLabel: "Jev",
+		Classifier: classifier.Health{Latency: 412 * time.Millisecond}, ClassifierLabel: "Jev", ClassifierMedian: 388 * time.Millisecond,
 		Routes:  map[config.Tier]config.Route{config.TierHigh: sol61, config.TierMedium: sol, config.TierLow: luna, config.TierMicro: micro},
 		Group:   catalog.Group{CompHash: "3000"},
 		Blocked: []string{"gpt-5.5: comp_hash 2911, no Lite"},
 		Policy: config.Policy{UpgradeVotes: 2, DowngradeVotes: 2, EscalationHoldTurns: 2, MinDwellRequests: 8, ReviewEveryRequests: 6,
-			UpgradeBase: 0.65, JumpConfidence: 0.85, DowngradeMass: 0.7},
+			UpgradeBase: 0.65, JumpConfidence: 0.85, DowngradeMass: 0.7, ActivityMass: 0.6},
 		Stats: route.Stats{
 			Since: at(18, 12), Replies: 48, Switches: 9, RepliesPerCell: 1,
-			ByTier:               map[config.Tier]int{config.TierLow: 20, config.TierMedium: 22, config.TierHigh: 6},
-			ByActivity:           map[config.Activity]int{config.ActivityCode: 16, config.ActivityExplore: 12, config.ActivityDebug: 9, config.ActivityOps: 6},
-			Strip:                strip("lllllmmmmmlllmmmmmmmmhhhhmmmlllllmmmmmmlllhhhh"),
-			LastSwitch:           &route.Switch{At: at(18, 41), From: config.TierMedium, To: config.TierHigh, Activity: config.ActivityDebug, MidTurn: true},
-			CacheReusePct:        97,
+			ByTier:          map[config.Tier]int{config.TierLow: 20, config.TierMedium: 22, config.TierHigh: 6},
+			ByActivity:      map[config.Activity]int{config.ActivityCode: 16, config.ActivityExplore: 12, config.ActivityDebug: 9, config.ActivityOps: 6},
+			Strip:           strip("lllllmmmmmlllmmmmmmmmhhhhmmmlllllmmmmmmlllhhhh"),
+			LastSwitch:      &route.Switch{At: at(18, 41), From: config.TierMedium, To: config.TierHigh, Activity: config.ActivityDebug, MidTurn: true},
+			CacheReusePct:   97,
+			LastInputTokens: 44_000, LastCachedTokens: 43_120,
 			UncachedSwitchTokens: 212_000,
+			FitHeld:              2,
 			RoutedUSD:            1.87, BaselineUSD: 2.71,
 		},
 		ApproxTokens: 44_600, Window: 272_000,
+		Worth: []route.Finding{
+			{Kind: route.FindingContext, Text: "context guard kept 2 steps on a larger window than the policy chose"},
+			{Kind: route.FindingBlocked, Text: "routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group"},
+		},
 	}
 }
 
@@ -107,6 +118,12 @@ func TestRenderProperties(t *testing.T) {
 		{"footer not synced", func(s *route.Snapshot) { s.FooterSynced = false }, TabNow, []string{"footer not synced"}},
 		{"empty session", func(s *route.Snapshot) { s.Stats = route.Stats{}; s.Last = nil }, TabNow, []string{"no routed replies yet", "no routed request yet"}},
 		{"routing costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabUsage, []string{"Routing cost"}},
+		{"tier the answer left out", func(s *route.Snapshot) { delete(s.Last.Reading.Tiers, config.TierMicro) }, TabNow, []string{"low 9%", "micro —"}},
+		{"uncertain activity answer", func(s *route.Snapshot) { s.Last.Reading.Activity, s.Last.Reading.ActivityP = "uncertain", 0.5 }, TabNow, []string{"uncertain 50%"}},
+		{"manual finding", func(s *route.Snapshot) {
+			s.Worth = []route.Finding{{Kind: route.FindingManual, Text: "footer picked with /model"}}
+		}, TabNow, []string{"WORTH A LOOK", "footer picked with /model · space resumes"}},
+		{"no last reply reading", func(s *route.Snapshot) { s.Stats.LastInputTokens = 0 }, TabNow, []string{"97% reused this session"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -116,6 +133,31 @@ func TestRenderProperties(t *testing.T) {
 			for _, w := range tt.want {
 				if !strings.Contains(got, w) {
 					t.Errorf("missing %q in\n%s", w, got)
+				}
+			}
+		})
+	}
+}
+
+func TestRenderLeavesOutWhatTheSnapshotLacks(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*route.Snapshot)
+		tab    Tab
+		absent []string
+	}{
+		{"no classifier answer", func(s *route.Snapshot) { s.Last.Reading = nil }, TabNow, []string{"high 18%", "applies at", "code 15%"}},
+		{"nothing worth a look", func(s *route.Snapshot) { s.Worth = nil }, TabNow, []string{"WORTH A LOOK"}},
+		{"no timed answers", func(s *route.Snapshot) { s.ClassifierMedian = 0 }, TabClassifier, []string{"median"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := fixture()
+			tt.mutate(&s)
+			got := RenderPlain(s, tt.tab, 100)
+			for _, a := range tt.absent {
+				if strings.Contains(got, a) {
+					t.Errorf("unexpected %q in\n%s", a, got)
 				}
 			}
 		})

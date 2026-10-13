@@ -54,8 +54,25 @@ type Decision struct {
 	Why       string
 	Support   string
 	Estimate  *policy.Estimate
+	Reading   *Reading
 	MidTurn   bool
 	At        time.Time
+}
+
+// Reading is the classifier answer the decision's turn runs on, for display:
+// the probability per tier, and the activity answer with its probability and
+// the two likeliest alternates. Tiers holds only the tiers the answer scored.
+type Reading struct {
+	Tiers      map[config.Tier]float64
+	Activity   config.Activity
+	ActivityP  float64
+	Alternates []Share
+}
+
+// Share is one activity's probability in an answer.
+type Share struct {
+	Activity config.Activity
+	P        float64
 }
 
 // Switch is the last route change.
@@ -69,7 +86,9 @@ type Switch struct {
 	MidTurn   bool
 }
 
-// Stats sums the session since its first routed reply.
+// Stats sums the session since its first routed reply. LastInputTokens and
+// LastCachedTokens are the last routed reply's; FitHeld counts the steps the
+// context guard moved off the policy's tier.
 type Stats struct {
 	Since                time.Time
 	Replies              int
@@ -80,31 +99,54 @@ type Stats struct {
 	RepliesPerCell       int
 	LastSwitch           *Switch
 	CacheReusePct        int
+	LastInputTokens      int
+	LastCachedTokens     int
 	UncachedSwitchTokens int
+	FitHeld              int
 	RoutedUSD            float64
 	BaselineUSD          float64
 }
 
+// FindingKind names what a WORTH A LOOK finding is about, and so where the
+// user changes it.
+type FindingKind string
+
+const (
+	FindingClassifier FindingKind = "classifier" // paused or failing
+	FindingManual     FindingKind = "manual"     // the footer model was picked with /model
+	FindingContext    FindingKind = "context"    // the context guard kept larger windows
+	FindingBlocked    FindingKind = "blocked"    // configured routes outside the group
+	FindingCache      FindingKind = "cache"      // low cache reuse after switches
+)
+
+// Finding is one WORTH A LOOK line derived from the session's facts.
+type Finding struct {
+	Kind FindingKind
+	Text string
+}
+
 // Snapshot is the full state the control socket publishes and the TUI renders.
 type Snapshot struct {
-	At              time.Time
-	Mode            Mode
-	Preset          config.Preset
-	Pin             *config.Tier
-	Baseline        config.Route
-	Footer          config.Route
-	FooterSynced    bool
-	Last            *Decision
-	Recent          []Decision
-	Classifier      classifier.Health
-	ClassifierLabel string
-	Routes          map[config.Tier]config.Route
-	Group           catalog.Group
-	Blocked         []string
-	Policy          config.Policy
-	Stats           Stats
-	ApproxTokens    int
-	Window          int
+	At               time.Time
+	Mode             Mode
+	Preset           config.Preset
+	Pin              *config.Tier
+	Baseline         config.Route
+	Footer           config.Route
+	FooterSynced     bool
+	Last             *Decision
+	Recent           []Decision
+	Classifier       classifier.Health
+	ClassifierLabel  string
+	ClassifierMedian time.Duration
+	Routes           map[config.Tier]config.Route
+	Group            catalog.Group
+	Blocked          []string
+	Policy           config.Policy
+	Stats            Stats
+	ApproxTokens     int
+	Window           int
+	Worth            []Finding
 }
 
 // Sink receives decisions and snapshots; the launcher fans them out to the

@@ -22,9 +22,9 @@ func TestParseMeta(t *testing.T) {
 		want responses.Meta
 	}{
 		{"full metadata",
-			header("x-codex-turn-metadata", `{"session_id":"s1","thread_id":"t1","turn_id":"u1","agent_name":"main","extra":{"k":1}}`,
+			header("x-codex-turn-metadata", `{"session_id":"s1","thread_id":"t1","turn_id":"u1","request_kind":"turn","agent_name":"/root","extra":{"k":1}}`,
 				"x-openai-subagent", "review", "x-codex-window-id", "w1"),
-			responses.Meta{SessionID: "s1", ThreadID: "t1", TurnID: "u1", AgentName: "main", Subagent: "review", WindowID: "w1"}},
+			responses.Meta{SessionID: "s1", ThreadID: "t1", TurnID: "u1", RequestKind: "turn", AgentName: "/root", Subagent: "review", WindowID: "w1"}},
 		{"no headers", http.Header{}, responses.Meta{}},
 		{"unparseable metadata keeps other headers",
 			header("x-codex-turn-metadata", `{"turn_id":`, "x-codex-window-id", "w1"),
@@ -42,34 +42,50 @@ func TestParseMeta(t *testing.T) {
 	}
 }
 
-func TestClassify(t *testing.T) {
-	const summarize = "You have exceeded the maximum number of tokens"
-	userStep := `{"model":"m","input":[{"type":"message","role":"user","content":"fix the test"},{"type":"function_call_output","call_id":"c","output":"ok"}]}`
-	compaction := `{"model":"m","input":[{"type":"message","role":"user","content":"fix the test"},{"type":"message","role":"user","content":"\n ` + summarize + `, summarize"}]}`
-	turn := responses.Meta{ThreadID: "t1", TurnID: "u1"}
-	prefixes := []string{"", summarize}
+// turnMetadata is an x-codex-turn-metadata value with the keys spike 1c
+// recorded (research §9); kind and turn vary per case.
+func turnMetadata(kind, turn string) string {
+	return `{"request_kind":"` + kind + `","turn_trigger":"user","thread_source":"cli","agent_name":"/root",` +
+		`"root_turn_id":"` + turn + `","turn_id":"` + turn + `","thread_id":"th1","model":"gpt-6-sol","reasoning_effort":"medium"}`
+}
 
+func TestClassify(t *testing.T) {
 	tests := []struct {
 		name string
-		body string
-		meta responses.Meta
+		h    http.Header
 		want responses.Kind
 	}{
-		{"user step", userStep, turn, responses.KindUserStep},
-		{"subagent header", userStep, responses.Meta{ThreadID: "t1", TurnID: "u1", Subagent: "review"}, responses.KindPassthrough},
-		{"missing turn id", userStep, responses.Meta{ThreadID: "t1"}, responses.KindPassthrough},
-		{"last user text matches a prefix", compaction, turn, responses.KindPassthrough},
-		{"no user message", `{"model":"m","input":[]}`, turn, responses.KindUserStep},
+		{"user turn", header("x-codex-turn-metadata", turnMetadata("turn", "u1")), responses.KindUserStep},
+		{"compaction, local or remote v2", header("x-codex-turn-metadata", turnMetadata("compaction", "u1")), responses.KindPassthrough},
+		{"other request kind", header("x-codex-turn-metadata", turnMetadata("memory", "u1")), responses.KindPassthrough},
+		{"subagent header", header("x-codex-turn-metadata", turnMetadata("turn", "u1"), "x-openai-subagent", "worker"), responses.KindPassthrough},
+		{"missing metadata", http.Header{}, responses.KindPassthrough},
+		{"unparseable metadata", header("x-codex-turn-metadata", `{"request_kind":"turn",`), responses.KindPassthrough},
+		{"missing request kind", header("x-codex-turn-metadata", `{"thread_id":"th1","turn_id":"u1"}`), responses.KindPassthrough},
+		{"missing turn id", header("x-codex-turn-metadata", turnMetadata("turn", "")), responses.KindPassthrough},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := responses.Classify(mustParse(t, tt.body), tt.meta, prefixes); got != tt.want {
+			if got := responses.Classify(responses.ParseMeta(tt.h)); got != tt.want {
 				t.Fatalf("got %q, want %q", got, tt.want)
 			}
 		})
 	}
-	if got := responses.Classify(nil, turn, nil); got != responses.KindPassthrough {
-		t.Fatalf("nil request: got %q", got)
+}
+
+func TestCompactionBodiesParse(t *testing.T) {
+	bodies := map[string]string{
+		"local compaction": `{"model":"gpt-6-sol","input":[{"type":"message","role":"user","content":"fix the test"},` +
+			`{"type":"message","role":"user","content":"Summarize the conversation so far"}]}`,
+		"remote v2 compaction":         `{"model":"gpt-6-sol","input":[{"type":"message","role":"user","content":"fix"},{"type":"compaction_trigger"}]}`,
+		"turn after remote compaction": `{"model":"gpt-6-sol","input":[{"type":"compaction","encrypted_content":"e"},{"type":"message","role":"user","content":"go on"}]}`,
+	}
+	for name, body := range bodies {
+		t.Run(name, func(t *testing.T) {
+			if r := mustParse(t, body); r.Model != "gpt-6-sol" || len(r.Input) != 2 {
+				t.Fatalf("parsed %+v", r)
+			}
+		})
 	}
 }
 

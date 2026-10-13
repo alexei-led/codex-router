@@ -133,7 +133,6 @@ type Config struct {
 	Context     Context                     `json:"context"`
 	Cache       Cache                       `json:"cache"`
 	Proxy       Proxy                       `json:"proxy"`
-	Passthrough []string                    `json:"passthrough,omitempty"`
 	CodexBin    string                      `json:"codexBin,omitempty"`
 }
 

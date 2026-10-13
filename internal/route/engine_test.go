@@ -158,11 +158,7 @@ type harness struct {
 	cat    *catalog.Store
 }
 
-func testConfig() config.Config {
-	cfg := config.Default()
-	cfg.Passthrough = []string{"You are performing a CONTEXT CHECKPOINT"}
-	return cfg
-}
+func testConfig() config.Config { return config.Default() }
 
 func newHarness(t *testing.T, cfg config.Config) *harness {
 	t.Helper()
@@ -220,7 +216,13 @@ func req(r config.Route, items ...responses.Item) *responses.Request {
 }
 
 func meta(thread, turn string) responses.Meta {
-	return responses.Meta{SessionID: "s", ThreadID: thread, TurnID: turn}
+	return responses.Meta{SessionID: "s", ThreadID: thread, TurnID: turn, RequestKind: responses.RequestKindTurn}
+}
+
+func compaction(thread, turn string) responses.Meta {
+	m := meta(thread, turn)
+	m.RequestKind = "compaction"
+	return m
 }
 
 func (h *harness) decide(r *responses.Request, m responses.Meta) (responses.Rewrite, bool) {
@@ -303,21 +305,23 @@ func TestLaterStepsKeepTheTurnRouteWithoutAsking(t *testing.T) {
 }
 
 func TestPassthroughKindsAreUntouched(t *testing.T) {
+	subagent := meta("th", "t1")
+	subagent.Subagent = "review"
 	tests := []struct {
 		name string
 		meta responses.Meta
-		text string
 	}{
-		{"subagent", responses.Meta{ThreadID: "th", TurnID: "t1", Subagent: "review"}, secretPrompt},
-		{"no turn id", responses.Meta{ThreadID: "th"}, secretPrompt},
-		{"compaction prompt", meta("th", "t1"), "You are performing a CONTEXT CHECKPOINT now"},
+		{"subagent", subagent},
+		{"no turn id", meta("th", "")},
+		{"no turn metadata", responses.Meta{}},
+		{"compaction", compaction("th", "t1")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := newHarness(t, testConfig())
 			h.asker.script(answer(tier("low", 0.97)))
 
-			rw, ok := h.decide(req(medium, userMsg(tt.text)), tt.meta)
+			rw, ok := h.decide(req(medium, userMsg(secretPrompt)), tt.meta)
 
 			wantUnchanged(t, rw, ok)
 			if h.asker.Calls() != 0 || len(h.sink.Decisions()) != 0 {
@@ -827,8 +831,8 @@ func TestPassthroughRepliesAreNotCounted(t *testing.T) {
 	h.decide(req(medium, userMsg(secretPrompt)), m)
 	h.reply(m, "gpt-6-luna", 1000, 0)
 
-	h.decide(req(medium, userMsg("You are performing a CONTEXT CHECKPOINT")), m)
-	h.reply(m, "gpt-6-sol", 1000, 0)
+	h.decide(req(medium, userMsg(secretPrompt), userMsg("summarize")), compaction("th", "t1"))
+	h.reply(compaction("th", "t1"), "gpt-6-sol", 1000, 0)
 
 	if got := h.engine.Snapshot().Stats.Replies; got != 1 {
 		t.Fatalf("replies = %d, want 1", got)
