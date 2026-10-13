@@ -122,14 +122,24 @@ func (s *recordingSink) Decisions() []Decision {
 }
 
 type clock struct {
-	mu sync.Mutex
-	t  time.Time
+	mu     sync.Mutex
+	t      time.Time
+	broken bool
 }
 
 func (c *clock) Now() time.Time {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.broken {
+		panic("clock")
+	}
 	return c.t
+}
+
+func (c *clock) Break(broken bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.broken = broken
 }
 
 func (c *clock) Advance(d time.Duration) {
@@ -624,11 +634,17 @@ func TestActivityOverrideRoutesInsideTheTier(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(withActivity(tier("medium", 0.99), config.ActivityDebug, 0.8)))
 
-	rw, ok := h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+	m := meta("th", "t1")
+
+	rw, ok := h.decide(req(medium, userMsg(secretPrompt)), m)
+	h.reply(m, debug.Model, 1000, 0)
 
 	wantRoute(t, rw, ok, debug)
 	if d := h.last(); d.Activity != config.ActivityDebug || d.Reason != ReasonActivityUp {
 		t.Fatalf("decision = %+v", d)
+	}
+	if by := h.engine.Snapshot().Stats.ByActivity; by[config.ActivityDebug] != 1 || len(by) != 1 {
+		t.Fatalf("by activity = %v", by)
 	}
 }
 
@@ -897,5 +913,194 @@ func TestConcurrentThreads(t *testing.T) {
 	wg.Wait()
 	if got := h.engine.Snapshot().Stats.Replies; got != 16 {
 		t.Fatalf("replies = %d, want 16", got)
+	}
+}
+
+func TestRetriesAfterPauseOrManualAreUnchanged(t *testing.T) {
+	tests := []struct {
+		name string
+		stop func(h *harness)
+	}{
+		{"pause", func(h *harness) {
+			if err := h.engine.Apply(Command{Op: OpPause}); err != nil {
+				h.t.Fatal(err)
+			}
+		}},
+		{"manual", func(h *harness) {
+			h.engine.SettingsUpdated("th", config.Route{Model: "gpt-6-sol", Effort: config.EffortLow})
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, testConfig())
+			h.asker.script(answer(tier("low", 0.97)))
+			r, m := req(medium, userMsg(secretPrompt)), meta("th", "t1")
+			rw, ok := h.decide(r, m)
+			wantRoute(t, rw, ok, low)
+
+			tt.stop(h)
+			rw, ok = h.decide(r, m)
+
+			wantUnchanged(t, rw, ok)
+		})
+	}
+}
+
+type blockingAsker struct{}
+
+func (blockingAsker) Ask(ctx context.Context, _ classifier.Input) (classifier.Advice, error) {
+	<-ctx.Done()
+	return classifier.Advice{}, classifier.ErrTimeout
+}
+
+func (blockingAsker) Health() classifier.Health { return classifier.Health{} }
+
+func TestClassifierCallIsBoundedWithoutACallerDeadline(t *testing.T) {
+	cfg := testConfig()
+	jev := cfg.Classifiers[cfg.Classifier]
+	jev.TimeoutMs = 10
+	cfg.Classifiers[cfg.Classifier] = jev
+	cat, _ := catalog.Parse([]byte(testCatalog))
+	store := &catalog.Store{}
+	store.Set(cat)
+	e := New(Deps{Config: cfg, Catalog: store, Classifier: blockingAsker{}})
+
+	type outcome struct {
+		rw responses.Rewrite
+		ok bool
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		rw, ok := e.Decide(context.Background(), req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+		done <- outcome{rw, ok}
+	}()
+
+	select {
+	case o := <-done:
+		wantUnchanged(t, o.rw, o.ok)
+		if d := e.Snapshot().Last; d == nil || d.Reason != policy.ReasonError {
+			t.Fatalf("decision = %+v", d)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Decide blocked past the classifier deadline")
+	}
+}
+
+func TestControlPathPanicsFailOpen(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("low", 0.97)))
+	m := meta("th", "t1")
+	h.decide(req(medium, userMsg(secretPrompt)), m)
+
+	h.clock.Break(true)
+	if err := h.engine.Apply(Command{Op: OpUnpin}); err == nil {
+		t.Fatal("Apply hid a panic")
+	}
+	h.engine.SettingsUpdated("th", config.Route{Model: "gpt-6-sol", Effort: config.EffortLow})
+	h.reply(m, low.Model, 1000, 0)
+	h.clock.Break(false)
+
+	if err := h.engine.Apply(Command{Op: OpPause}); err != nil {
+		t.Fatal(err)
+	}
+	if s := h.engine.Snapshot(); s.Mode != ModePaused {
+		t.Fatalf("mode = %s, want paused", s.Mode)
+	}
+}
+
+func TestSwitchTaxCountsUncachedTokens(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("medium", 0.99)), answer(tier("high", 0.99)), answer(tier("high", 0.99)))
+	m := meta("th", "t1")
+	h.decide(req(medium, userMsg(secretPrompt)), m)
+	h.reply(m, medium.Model, 50_000, 0)
+	rw, ok := h.decide(req(medium, userMsg(secretPrompt), userMsg("big refactor")), meta("th", "t2"))
+	wantUnchanged(t, rw, ok)
+
+	rw, ok = h.decide(req(medium, userMsg(secretPrompt), userMsg("big refactor"), userMsg("go on")), meta("th", "t3"))
+
+	wantRoute(t, rw, ok, high)
+	d := h.last()
+	if d.Estimate == nil || d.Estimate.TaxTokens != 50_000 || !strings.Contains(d.Support, "switch ≈ 50k uncached tokens") {
+		t.Fatalf("decision = %+v, estimate %+v", d, d.Estimate)
+	}
+	if got := h.engine.Snapshot().Stats.UncachedSwitchTokens; got != 50_000 {
+		t.Fatalf("uncached switch tokens = %d, want 50000", got)
+	}
+}
+
+func TestFailedReviewKeepsTheRoute(t *testing.T) {
+	tests := []struct {
+		name   string
+		review func() (classifier.Advice, error)
+	}{
+		{"error", fail(classifier.ErrUnreachable)},
+		{"panic", func() (classifier.Advice, error) { panic("boom") }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, testConfig())
+			h.asker.script(answer(tier("low", 0.97)), tt.review)
+			m := meta("th", "t1")
+			items := []responses.Item{userMsg(secretPrompt)}
+			h.decide(req(medium, items...), m)
+			for i := 1; i <= 4; i++ {
+				items = append(items, call(fmt.Sprint("c", i), "ls"), result(fmt.Sprint("c", i), 0, ""))
+				h.decide(req(medium, items...), m)
+			}
+			h.engine.reviews.Wait()
+
+			items = append(items, call("c5", "ls"), result("c5", 0, ""))
+			rw, ok := h.decide(req(medium, items...), m)
+
+			wantRoute(t, rw, ok, low)
+			if d := h.last(); d.Reason != ReasonContinue || h.asker.Calls() != 2 {
+				t.Fatalf("decision = %+v, calls %d", d, h.asker.Calls())
+			}
+		})
+	}
+}
+
+func TestObservedMoveGuards(t *testing.T) {
+	code := config.Route{Model: "gpt-6-sol", Effort: config.EffortXHigh}
+	tests := []struct {
+		name   string
+		reply  int
+		want   config.Route
+		reason policy.Reason
+	}{
+		{"unmeasured thread keeps the larger window", 0, high, ReasonContinue},
+		{"measured thread moves", 1000, code, ReasonObserved},
+		{"a route the context does not fit is not taken", 300_000, high, ReasonContinue},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := testConfig()
+			cfg.Activities[config.ActivityCode] = map[config.Tier]config.Route{config.TierHigh: code}
+			cfg.Prices = map[string]config.Price{
+				"gpt-6.1-sol": {Input: 1, Output: 10},
+				"gpt-6-sol":   {Input: 2, Output: 20},
+			}
+			h := newHarness(t, cfg)
+			h.asker.script(answer(tier("high", 0.99)))
+			m := meta("th", "t1")
+			items := []responses.Item{userMsg(secretPrompt)}
+			h.decide(req(high, items...), m)
+			if tt.reply > 0 {
+				h.reply(m, high.Model, tt.reply, 0)
+			}
+
+			items = append(items, editGo("c1"), edited("c1"))
+			rw, ok := h.decide(req(high, items...), m)
+
+			if tt.want == high {
+				wantUnchanged(t, rw, ok)
+			} else {
+				wantRoute(t, rw, ok, tt.want)
+			}
+			if d := h.last(); d.Reason != tt.reason || d.Tier != config.TierHigh {
+				t.Fatalf("decision = %+v", d)
+			}
+		})
 	}
 }

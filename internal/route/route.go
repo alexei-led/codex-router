@@ -109,6 +109,9 @@ type Snapshot struct {
 
 // Sink receives decisions and snapshots; the launcher fans them out to the
 // app-server client and the control socket. Called outside engine locks.
+// OnDecision runs inside Decide, before the request goes upstream, and holds
+// that thread's next step so its settings writes keep their order; an
+// implementation must not block on I/O (queue it instead).
 type Sink interface {
 	OnDecision(d Decision)
 	OnSnapshot(s Snapshot)

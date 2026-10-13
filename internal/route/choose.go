@@ -79,7 +79,10 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	}
 	mass := 1.0 // returning to the base route needs no evidence
 	if act != "" {
-		mass = advice.Activity.Probabilities[act]
+		mass = 0
+		if advice != nil && advice.Activity != nil {
+			mass = advice.Activity.Probabilities[act]
+		}
 	}
 	move, reason, est := e.lateral(st, inc.route, to, mass, r.Reason == policy.ReasonHold)
 	if !move {
@@ -90,24 +93,41 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 }
 
 // observedMove moves a turn up once its tool calls show an activity whose
-// route at the tier is stronger than the running one. The tools are the
-// evidence, so the move needs no classifier probability. Only up.
+// route, at the tier the context fits, is stronger than the running one. The
+// tools are the evidence, so the move needs no classifier probability. Only
+// up. Ported from lib/route.mjs observedMove.
 func (e *Engine) observedMove(st *step, cur cell) cell {
 	act := observedActivity(st.facts.Observed)
 	if act == "" || act == cur.activity {
 		return cur
 	}
 	from := resolve(st.cfg.RouteFor(cur.tier, cur.activity), st.sent())
-	to := resolve(st.cfg.RouteFor(cur.tier, act), st.sent())
+	routeFor := func(t config.Tier) config.Route { return resolve(st.cfg.RouteFor(t, act), st.sent()) }
+	tier, fits := policy.FitTier(cur.tier, st.tokens, e.window(st, routeFor), st.policy.ContextFill)
+	if !fits {
+		return cur
+	}
+	to := routeFor(tier)
 	if o, ok := compareRoutes(st.cfg, to, from); !ok || o <= 0 {
+		return cur
+	}
+	// Before a measured reply the size is an estimate: a smaller window
+	// might overflow.
+	if !st.th.measured && smallerWindow(st, to, from) {
 		return cur
 	}
 	move, _, est := e.lateral(st, from, to, 1, false)
 	if !move {
 		return cur
 	}
-	cur.activity, cur.reason, cur.estimate = act, ReasonObserved, est
+	cur.tier, cur.activity, cur.reason, cur.estimate = tier, act, ReasonObserved, est
 	return cur
+}
+
+func smallerWindow(st *step, a, b config.Route) bool {
+	wa, okA := st.cat.Window(a.Model)
+	wb, okB := st.cat.Window(b.Model)
+	return okA && okB && wa < wb
 }
 
 // lateral decides a route change inside one tier. Up (or unordered) on
