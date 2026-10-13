@@ -15,8 +15,6 @@ import (
 type Input struct {
 	SessionID string `json:"session_id"`
 	TurnID    string `json:"turn_id"`
-	Model     string `json:"model"`
-	Event     string `json:"hook_event_name"`
 }
 
 // Output is the hook's stdout. Only systemMessage is ever set.
@@ -30,50 +28,50 @@ const MessagePrefix = "router: "
 // Timeout bounds the whole hook run, socket included.
 const Timeout = 200 * time.Millisecond
 
-// Run reads one hook input from stdin, asks the control socket for a snapshot
-// and writes {"systemMessage": ...} when the turn's route differs from the
-// previous turn's, else {}. A missing or unreachable socket, unreadable input
-// or a slow router all print {} and return nil: a hook must never block Codex.
-func Run(stdin io.Reader, stdout io.Writer, socket string) error {
-	var in Input
-	_ = json.NewDecoder(stdin).Decode(&in)
+// Run reads one hook input from stdin, asks the control socket named by
+// control.EnvSocket (read through getenv) for a snapshot and writes
+// {"systemMessage": ...} when the turn's route differs from the previous
+// turn's, else {}. A missing or unreachable socket, unreadable input or a slow
+// stdin or router all print {} within Timeout and return nil: a hook must
+// never block Codex.
+func Run(stdin io.Reader, stdout io.Writer, getenv func(string) string) error {
+	deadline := time.After(Timeout)
+	inCh := make(chan Input, 1)
+	go func() {
+		var in Input
+		if json.NewDecoder(stdin).Decode(&in) != nil {
+			in = Input{}
+		}
+		inCh <- in
+	}()
+	snapCh := make(chan route.Snapshot, 1)
+	go func() { snapCh <- fetch(getenv(control.EnvSocket)) }()
+
 	var out Output
-	if snap, ok := fetch(socket); ok {
-		out.SystemMessage = Message(snap, in)
+	select {
+	case in := <-inCh:
+		select {
+		case snap := <-snapCh:
+			out.SystemMessage = Message(snap, in)
+		case <-deadline:
+		}
+	case <-deadline:
 	}
 	return json.NewEncoder(stdout).Encode(out)
 }
 
-func fetch(socket string) (route.Snapshot, bool) {
+// fetch returns the zero Snapshot when the socket is unset or unreachable.
+// The caller abandons it at the deadline; the process exits right after.
+func fetch(socket string) route.Snapshot {
 	if socket == "" {
-		return route.Snapshot{}, false
+		return route.Snapshot{}
 	}
-	type result struct {
-		snap route.Snapshot
-		ok   bool
+	c, err := control.Dial(socket)
+	if err != nil {
+		return route.Snapshot{}
 	}
-	ch := make(chan result, 1)
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		c, err := control.Dial(socket)
-		if err != nil {
-			ch <- result{}
-			return
-		}
-		defer func() { _ = c.Close() }()
-		select {
-		case s, ok := <-c.Updates():
-			ch <- result{s, ok}
-		case <-done:
-		}
-	}()
-	select {
-	case r := <-ch:
-		return r.snap, r.ok
-	case <-time.After(Timeout):
-		return route.Snapshot{}, false
-	}
+	defer func() { _ = c.Close() }()
+	return <-c.Updates()
 }
 
 // Message returns the switch line for the hook's turn, or "" when there is
