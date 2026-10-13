@@ -141,6 +141,9 @@ func (c *canvas) add(segs ...seg) {
 	for _, s := range segs {
 		n := utf8.RuneCountInString(s.text)
 		if n > room {
+			if room == 0 {
+				break
+			}
 			s.text = string([]rune(s.text)[:max(room-1, 0)]) + "…"
 			b.WriteString(c.paint(s))
 			break
@@ -433,7 +436,7 @@ func (c *canvas) cacheRow(s route.Snapshot) {
 		c.row("Cache", dim("no replies yet"))
 		return
 	}
-	c.row("Cache", plain(fmt.Sprintf("%d%% reused on the last request", s.Stats.CacheReusePct)), dim(" · $ are list-price estimates"))
+	c.row("Cache", plain(fmt.Sprintf("%d%% reused this session", s.Stats.CacheReusePct)), dim(" · $ are list-price estimates"))
 }
 
 func bar(pct int) string {
