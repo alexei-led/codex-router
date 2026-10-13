@@ -191,22 +191,13 @@ func TestExtractObserved(t *testing.T) {
 		{"no calls", nil, facts.ObservedTalk},
 		{"plan update", []responses.Item{tool("c1", "update_plan")}, facts.ObservedRead},
 		{"image view", []responses.Item{tool("c1", "view_image")}, facts.ObservedRead},
-		{"search pipeline", []responses.Item{exec("c1", "rg -n foo internal | head -20")}, facts.ObservedRead},
-		{"sed print", []responses.Item{exec("c1", "sed -n '1,120p' internal/facts/facts.go")}, facts.ObservedRead},
-		{"nl and wc", []responses.Item{exec("c1", "nl -ba x.go && wc -l x.go")}, facts.ObservedRead},
+		{"exec_command read", []responses.Item{exec("c1", "rg -n foo internal | head -20")}, facts.ObservedRead},
 		{"git reads via bash -lc", []responses.Item{shell("c1", "bash", "-lc", "git status && git diff")}, facts.ObservedRead},
 		{"local shell ls", []responses.Item{localShell("c1", "ls", "-la")}, facts.ObservedRead},
-		{"quoted separators", []responses.Item{exec("c1", `grep -n 'a;b>c' x.go 2>/dev/null`)}, facts.ObservedRead},
 		{"argv with pattern", []responses.Item{shell("c1", "rg", "-n", "a|b > c", "internal")}, facts.ObservedRead},
-		{"test run", []responses.Item{exec("c1", "go test ./...")}, facts.ObservedOps},
+		{"exec_command run", []responses.Item{exec("c1", "go test ./...")}, facts.ObservedOps},
 		{"shell_command build", []responses.Item{shellCommand("c1", "make build")}, facts.ObservedOps},
-		{"sed in place", []responses.Item{exec("c1", "sed -i 's/a/b/' x.go")}, facts.ObservedOps},
-		{"sed -ni", []responses.Item{exec("c1", "sed -ni 's/a/b/p' x.go")}, facts.ObservedOps},
-		{"redirect", []responses.Item{exec("c1", "cat a > b")}, facts.ObservedOps},
-		{"command substitution", []responses.Item{exec("c1", `echo "$(rm -rf x)"`)}, facts.ObservedOps},
-		{"find delete", []responses.Item{exec("c1", "find . -name '*.tmp' -delete")}, facts.ObservedOps},
-		{"git commit", []responses.Item{exec("c1", "git commit -m 'x'")}, facts.ObservedOps},
-		{"bare git", []responses.Item{exec("c1", "git")}, facts.ObservedOps},
+		{"local shell write", []responses.Item{localShell("c1", "touch", "x")}, facts.ObservedOps},
 		{"unreadable args", []responses.Item{{Type: "function_call", Name: "exec_command", CallID: "c1", Arguments: "not json"}}, facts.ObservedOps},
 		{"patch code", []responses.Item{patch("c1", "internal/x.go")}, facts.ObservedCode},
 		{"patch docs", []responses.Item{patch("c1", "README.md", "docs/guide.html")}, facts.ObservedDocs},
@@ -223,6 +214,54 @@ func TestExtractObserved(t *testing.T) {
 			items := append([]responses.Item{user("go")}, tt.calls...)
 			if got := facts.Extract(request(items...), opts).Observed; got != tt.want {
 				t.Errorf("Observed = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExtractObservedReadOnlyCommand(t *testing.T) {
+	tests := []struct {
+		cmd      string
+		readOnly bool
+	}{
+		{"ls", true},
+		{"cat x.go", true},
+		{"rg -n foo internal | head -20", true},
+		{"sed -n '1,120p' internal/facts/facts.go", true},
+		{"nl -ba x.go && wc -l x.go", true},
+		{"cd internal && ls", true},
+		{"git log --oneline -5; git show HEAD", true},
+		{"find . -name '*.go'", true},
+		{`grep -n 'a;b>c' x.go 2>/dev/null`, true},
+		{"cat x.go 2>&1 | tail -5", true},
+		{"pwd", true},
+		{"sed -i 's/a/b/' x.go", false},
+		{"sed -ni 's/a/b/p' x.go", false},
+		{"sed 's/a/b/' x.go", false},
+		{"cat a > b", false},
+		{"cat a >> b", false},
+		{"cat < a", false},
+		{`echo "$(rm -rf x)"`, false},
+		{"ls `rm x`", false},
+		{"find . -name '*.tmp' -delete", false},
+		{"find . -exec rm {} ;", false},
+		{"git commit -m 'x'", false},
+		{"git -C dir status", false},
+		{"git", false},
+		{"ls && rm x", false},
+		{"ls; touch y", false},
+		{"cat x | sh", false},
+		{"echo hi", false},
+		{"go test ./...", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.cmd, func(t *testing.T) {
+			want := facts.ObservedOps
+			if tt.readOnly {
+				want = facts.ObservedRead
+			}
+			if got := facts.Extract(request(user("go"), exec("c1", tt.cmd)), opts).Observed; got != want {
+				t.Errorf("Observed = %q, want %q", got, want)
 			}
 		})
 	}
@@ -275,6 +314,10 @@ func TestExtractVerifiedByCommand(t *testing.T) {
 		{"FOO=1 pytest", true},
 		{"./node_modules/.bin/vitest run", true},
 		{"golangci-lint run ./...", true},
+		{"go build ./...", true},
+		{"make build", true},
+		{"cargo check", true},
+		{"npm run validate", true},
 		{"go test ./... | tail -5", false},
 		{"go test ./...; echo done", false},
 		{"go test ./... || true", false},
@@ -315,6 +358,7 @@ func TestExtractVerifiedByResult(t *testing.T) {
 		{"exit code header", []responses.Item{shellCommand("c1", check), output("c1", "Exit code: 0\nWall time: 3.1 seconds\nOutput:\nok")}, 0, true},
 		{"empty output section", []responses.Item{shellCommand("c1", check), output("c1", "Exit code: 0\nWall time: 3.1 seconds\nOutput:")}, 0, true},
 		{"no exit status", []responses.Item{exec("c1", check), output("c1", "ok")}, 0, false},
+		{"exit line without header", []responses.Item{exec("c1", check), output("c1", "ok\nExit code: 0")}, 0, false},
 		{"no output yet", []responses.Item{exec("c1", check)}, 0, false},
 		{"last check failed", []responses.Item{exec("c1", check), done("c1", 0, ""), exec("c2", check), done("c2", 1, "")}, 0, false},
 		{"failed then passed", []responses.Item{exec("c1", check), done("c1", 1, ""), patch("c2", "x.go"), exec("c3", check), done("c3", 0, "")}, 0, true},
@@ -392,6 +436,11 @@ func TestExtractFailure(t *testing.T) {
 		{"same failure without an edit", []responses.Item{
 			user("go"), exec("c1", "go test ./..."), fail("c1", "FAIL"), exec("c2", "go test ./..."), fail("c2", "FAIL"),
 		}, -1},
+		{"exit lines without header", []responses.Item{
+			user("go"), exec("c1", "go test ./..."), output("c1", "ok\nExit code: 1"),
+			patch("c2", "x.go"),
+			exec("c3", "go test ./..."), output("c3", "ok\nExit code: 1"),
+		}, -1},
 		{"failing reruns are not edits", []responses.Item{
 			user("go"), exec("c1", "go run ."), fail("c1", "boom"), exec("c2", "go run ."), fail("c2", "boom"),
 		}, -1},
@@ -455,6 +504,7 @@ func TestExtractSize(t *testing.T) {
 		wantItems  int
 	}{
 		{"body bytes", &responses.Request{Bytes: 4000, Input: []responses.Item{user("hi")}}, 1000, 1},
+		{"rounds down", &responses.Request{Bytes: 4003, Input: []responses.Item{user("hi")}}, 1000, 1},
 		{"item text when bytes unknown", &responses.Request{Input: []responses.Item{user("0123456789"), output("c1", "ab")}}, 3, 2},
 		{"empty", &responses.Request{}, 0, 0},
 	}

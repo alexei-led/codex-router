@@ -39,13 +39,13 @@ func parseResult(out string) result {
 			return result{exit: *j.Metadata.ExitCode, known: true, body: j.Output}
 		}
 	}
+	// Without the header the text is all command output: an "Exit code:"
+	// line in it says nothing about this call.
 	header, body, found := strings.Cut(out, "\nOutput:")
-	if found {
-		body = strings.TrimPrefix(body, "\n")
-	} else {
-		body = out
+	if !found {
+		return result{body: out}
 	}
-	r := result{body: body}
+	r := result{body: strings.TrimPrefix(body, "\n")}
 	for line := range strings.Lines(header) {
 		line = strings.TrimSpace(line)
 		if m := exitLine.FindStringSubmatch(line); m != nil {

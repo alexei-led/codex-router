@@ -189,5 +189,5 @@ func approxTokens(req *responses.Request) int {
 	for _, it := range req.Input {
 		n += len(it.Text) + len(it.Output) + len(it.Arguments)
 	}
-	return (max(req.Bytes, n) + 3) / 4
+	return max(req.Bytes, n) / 4
 }
