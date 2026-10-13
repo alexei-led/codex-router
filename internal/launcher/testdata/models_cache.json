@@ -1,0 +1,39 @@
+{
+  "fetched_at": "2026-10-13T18:38:11Z",
+  "etag": "W/\"launcher-fixture\"",
+  "models": [
+    {
+      "slug": "gpt-6.1-sol",
+      "visibility": "list",
+      "context_window": 500000,
+      "max_context_window": 872000,
+      "effective_context_window_percent": 95,
+      "comp_hash": "3000",
+      "use_responses_lite": true,
+      "tool_mode": "code_mode_only",
+      "supported_reasoning_levels": [{ "effort": "low" }, { "effort": "medium" }, { "effort": "high" }, { "effort": "xhigh" }]
+    },
+    {
+      "slug": "gpt-6-sol",
+      "visibility": "list",
+      "context_window": 500000,
+      "max_context_window": 872000,
+      "effective_context_window_percent": 95,
+      "comp_hash": "3000",
+      "use_responses_lite": true,
+      "tool_mode": "code_mode_only",
+      "supported_reasoning_levels": [{ "effort": "low" }, { "effort": "medium" }, { "effort": "high" }, { "effort": "xhigh" }]
+    },
+    {
+      "slug": "gpt-6-luna",
+      "visibility": "list",
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "effective_context_window_percent": 95,
+      "comp_hash": "3000",
+      "use_responses_lite": true,
+      "tool_mode": "code_mode_only",
+      "supported_reasoning_levels": [{ "effort": "low" }, { "effort": "medium" }, { "effort": "high" }, { "effort": "xhigh" }]
+    }
+  ]
+}

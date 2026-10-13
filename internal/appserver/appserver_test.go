@@ -411,6 +411,57 @@ func TestUpdateSettings(t *testing.T) {
 	})
 }
 
+func TestResume(t *testing.T) {
+	cases := []struct {
+		name string
+		code int
+	}{
+		{"resumed", 0},
+		{"no rollout", -32600},
+	}
+	each(t, func(t *testing.T, tr transport) {
+		api, srv := connect(t, tr)
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				errc := async(func() error { return api.Resume(context.Background(), "t1") })
+				req := srv.expect(MethodResume)
+				if want := `{"threadId":"t1","excludeTurns":true}`; string(req.Params) != want {
+					t.Errorf("params = %s, want %s", req.Params, want)
+				}
+				if tc.code != 0 {
+					srv.fail(req.ID, tc.code, "no rollout found")
+				} else {
+					srv.reply(req.ID, map[string]any{"thread": map[string]any{"id": "t1"}, "model": "gpt-6-sol"})
+				}
+
+				err := await(t, errc)
+				var rpcErr *RPCError
+				switch {
+				case tc.code == 0 && err != nil:
+					t.Fatalf("Resume: %v", err)
+				case tc.code != 0 && (!errors.As(err, &rpcErr) || rpcErr.Code != tc.code):
+					t.Fatalf("err = %v, want RPCError %d", err, tc.code)
+				}
+			})
+		}
+	})
+}
+
+func TestSettingsUpdatedWithNullEffort(t *testing.T) {
+	each(t, func(t *testing.T, tr transport) {
+		api, srv := connect(t, tr)
+		srv.send(map[string]any{"method": MethodSettingsUpdated, "params": map[string]any{
+			"threadId":       "t1",
+			"threadSettings": map[string]any{"model": "gpt-6-sol", "effort": nil, "cwd": "/w", "modelProvider": "router"},
+		}})
+
+		want := SettingsUpdated{ThreadID: "t1", Settings: Settings{Model: "gpt-6-sol"}}
+		if got := nextUpdate(t, api); got != want {
+			t.Errorf("update = %+v, want %+v", got, want)
+		}
+	})
+}
+
 func TestUpdatesYieldsOnlySettingsUpdated(t *testing.T) {
 	each(t, func(t *testing.T, tr transport) {
 		api, srv := connect(t, tr)

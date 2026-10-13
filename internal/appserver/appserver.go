@@ -42,6 +42,7 @@ type Dialer interface {
 // API is what the launcher uses; Client implements it.
 type API interface {
 	Initialize(ctx context.Context) error
+	Resume(ctx context.Context, threadID string) error
 	UpdateSettings(ctx context.Context, threadID string, s Settings) error
 	Updates() <-chan SettingsUpdated
 	Close() error
@@ -51,6 +52,7 @@ type API interface {
 const (
 	MethodInitialize      = "initialize"
 	MethodInitialized     = "initialized"
+	MethodResume          = "thread/resume"
 	MethodSettingsUpdate  = "thread/settings/update"
 	MethodSettingsUpdated = "thread/settings/updated"
 )
@@ -162,6 +164,20 @@ func (c *Client) Initialize(ctx context.Context) error {
 		return err
 	}
 	return c.write(ctx, message{Method: MethodInitialized})
+}
+
+// Resume subscribes this client to a thread's turn and settings
+// notifications with thread/resume {threadId, excludeTurns: true}; the
+// app-server sends them only to clients that resumed the thread. A thread
+// that cannot be resumed, such as one without a rollout (-32600 "no rollout
+// found"), comes back as an *RPCError the caller may ignore: settings writes
+// to it still work.
+func (c *Client) Resume(ctx context.Context, threadID string) error {
+	params := struct {
+		ThreadID     string `json:"threadId"`
+		ExcludeTurns bool   `json:"excludeTurns"`
+	}{threadID, true}
+	return c.call(ctx, MethodResume, params, nil)
 }
 
 // UpdateSettings sets the thread's model and effort for subsequent turns. An
