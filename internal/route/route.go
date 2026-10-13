@@ -1,0 +1,132 @@
+package route
+
+import (
+	"log/slog"
+	"time"
+
+	"github.com/alexei-led/codex-router/internal/catalog"
+	"github.com/alexei-led/codex-router/internal/classifier"
+	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/policy"
+	"github.com/alexei-led/codex-router/internal/responses"
+)
+
+// Mode is the routing mode of a thread.
+type Mode string
+
+const (
+	ModeOn     Mode = "on"
+	ModePaused Mode = "paused"
+	ModeManual Mode = "manual"
+)
+
+// Op is a control command.
+type Op string
+
+const (
+	OpPin      Op = "pin"
+	OpUnpin    Op = "unpin"
+	OpPause    Op = "pause"
+	OpResume   Op = "resume"
+	OpPreset   Op = "preset"
+	OpSnapshot Op = "snapshot"
+)
+
+// Command is what the TUI or hook asks the engine to do.
+type Command struct {
+	Op     Op            `json:"op"`
+	Tier   config.Tier   `json:"tier,omitempty"`
+	Preset config.Preset `json:"preset,omitempty"`
+}
+
+// Decision is one per-request outcome.
+type Decision struct {
+	ThreadID  string
+	TurnID    string
+	Step      int
+	Kind      responses.Kind
+	Tier      config.Tier
+	Activity  config.Activity
+	Route     config.Route
+	Original  config.Route
+	Rewritten bool
+	Reason    policy.Reason
+	Why       string
+	Support   string
+	Estimate  *policy.Estimate
+	MidTurn   bool
+	At        time.Time
+}
+
+// Switch is the last route change.
+type Switch struct {
+	At        time.Time
+	From      config.Tier
+	To        config.Tier
+	FromRoute config.Route
+	ToRoute   config.Route
+	Activity  config.Activity
+	MidTurn   bool
+}
+
+// Stats sums the session since its first routed reply.
+type Stats struct {
+	Since                time.Time
+	Replies              int
+	Switches             int
+	ByTier               map[config.Tier]int
+	ByActivity           map[config.Activity]int
+	Strip                []config.Tier
+	RepliesPerCell       int
+	LastSwitch           *Switch
+	CacheReusePct        int
+	UncachedSwitchTokens int
+	RoutedUSD            float64
+	BaselineUSD          float64
+}
+
+// Snapshot is the full state the control socket publishes and the TUI renders.
+type Snapshot struct {
+	At              time.Time
+	Mode            Mode
+	Preset          config.Preset
+	Pin             *config.Tier
+	Baseline        config.Route
+	Footer          config.Route
+	FooterSynced    bool
+	Last            *Decision
+	Recent          []Decision
+	Classifier      classifier.Health
+	ClassifierLabel string
+	Routes          map[config.Tier]config.Route
+	Group           catalog.Group
+	Blocked         []string
+	Policy          config.Policy
+	Stats           Stats
+	ApproxTokens    int
+	Window          int
+}
+
+// Sink receives decisions and snapshots; the launcher fans them out to the
+// app-server client and the control socket. Called outside engine locks.
+type Sink interface {
+	OnDecision(d Decision)
+	OnSnapshot(s Snapshot)
+}
+
+// Deps are the engine's boundaries.
+type Deps struct {
+	Config     config.Config
+	Catalog    catalog.Source
+	Classifier classifier.Asker
+	Now        func() time.Time
+	Sink       Sink
+	Logger     *slog.Logger
+}
+
+// Bounds on remembered state.
+const (
+	MaxThreads = 256
+	RecentKept = 64
+	StripCells = 48
+)
