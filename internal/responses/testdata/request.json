@@ -1,0 +1,35 @@
+{
+  "model": "gpt-6.1-sol",
+  "instructions": "",
+  "input": [
+    {"type":"message","role":"developer","content":[{"type":"input_text","text":"You are Codex, a coding agent.\nQuote: \"be precise\" — café <tags> & {braces} [brackets]\\path"}]},
+    {"type":"message","role":"developer","content":[{"type":"input_text","text":"<additional_tools>[{\"name\":\"exec_command\",\"model\":\"not-this-one\"}]</additional_tools>"}]},
+    {"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>\n  <cwd>/work/repo</cwd>\n</environment_context>"}]},
+    {"type":"message","role":"user","content":[{"type":"input_text","text":"Fix the flaky retry test."},{"type":"input_image","image_url":"data:image/png;base64,AAAA"}]},
+    {"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"Looking at the test."}],"encrypted_content":"gAAAAB-opaque=="},
+    {"type":"function_call","id":"fc_1","name":"exec_command","call_id":"call_1","arguments":"{\"cmd\":\"go test ./...\",\"model\":\"x\"}"},
+    {"type":"function_call_output","call_id":"call_1","output":"--- FAIL: TestRetry (0.01s)\nexit status 1"},
+    {"type":"custom_tool_call","id":"ctc_1","name":"apply_patch","call_id":"call_2","input":"*** Begin Patch\n*** Update File: retry.go\n*** End Patch"},
+    {"type":"custom_tool_call_output","call_id":"call_2","output":[{"type":"input_text","text":"Success."}]},
+    {"type":"local_shell_call","id":"lsc_1","call_id":"call_3","status":"completed","action":{"type":"exec","command":["go","test","./..."]}},
+    {"type":"web_search_call","id":"ws_1","status":"completed","action":{"type":"search","query":"model"}},
+    {"type":"compaction_summary","model":"gpt-5.5","reasoning":{"effort":"xhigh"}},
+    {"type":"message","role":"assistant","id":"msg_1","content":[{"type":"output_text","text":"Fixed."}]}
+  ],
+  "tools": [],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true,
+  "reasoning": {
+    "effort" : "high",
+    "summary": "concise",
+    "context": "all_turns"
+  },
+  "store": false,
+  "stream": true,
+  "include": ["reasoning.encrypted_content"],
+  "prompt_cache_key": "019a-thread",
+  "max_output_tokens": 32000,
+  "temperature": 1.0e0,
+  "service_tier": null,
+  "text": {"verbosity": "low"}
+}

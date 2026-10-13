@@ -60,6 +60,8 @@ type Request struct {
 	Effort config.Effort
 	Input  []Item
 	Bytes  int
+
+	raw []byte
 }
 
 // Rewrite is what the router changes: model and reasoning.effort. An empty
