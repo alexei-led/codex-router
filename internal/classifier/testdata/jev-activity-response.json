@@ -1,0 +1,26 @@
+{
+  "answers": {
+    "route": {
+      "type": "choice",
+      "choice": "low",
+      "probabilities": { "micro": 0.08, "low": 0.71, "medium": 0.17, "high": 0.03, "uncertain": 0.01 },
+      "confidence": 0.64
+    },
+    "continuation": { "type": "noul", "noul": 0.12 },
+    "activity": {
+      "type": "choice",
+      "choice": "ops",
+      "probabilities": {
+        "code": 0.09,
+        "debug": 0.03,
+        "explore": 0.02,
+        "plan": 0.01,
+        "review": 0.01,
+        "ops": 0.81,
+        "docs": 0.02,
+        "uncertain": 0.01
+      },
+      "confidence": 0.78
+    }
+  }
+}
