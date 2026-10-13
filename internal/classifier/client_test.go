@@ -10,6 +10,7 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+	"unicode/utf16"
 
 	"github.com/alexei-led/codex-router/internal/config"
 )
@@ -88,14 +89,56 @@ const jevAnswer = `{"answers":{"route":{"type":"choice","choice":"medium","confi
 	`"probabilities":{"micro":0,"low":0,"medium":0.9,"high":0.1,"uncertain":0}},` +
 	`"continuation":{"type":"noul","noul":0}}}`
 
-func jevClient(doer Doer) *Client {
+func jevClient(doer Doer) *Client { return jevClientAt(doer, time.Now) }
+
+func jevClientAt(doer Doer, now func() time.Time) *Client {
 	cfg := config.Classifier{API: config.APISystemOne, Endpoint: testEndpoint, Model: "jev-1.13.0", KeyEnv: "TYPESAFE_API_KEY", TimeoutMs: int(testTimeout / time.Millisecond)}
-	return New(cfg, testKey, SystemOne(), doer, time.Now)
+	return New(cfg, testKey, SystemOne(), doer, now)
 }
 
-func ollamaClient(doer Doer) *Client {
+func ollamaClient(doer Doer) *Client { return ollamaClientAt(doer, time.Now) }
+
+func ollamaClientAt(doer Doer, now func() time.Time) *Client {
 	cfg := config.Classifier{API: config.APIOllama, Endpoint: testEndpoint, Model: "qwen3.5:9b", TimeoutMs: int(testTimeout / time.Millisecond)}
-	return New(cfg, "", Ollama(), doer, time.Now)
+	return New(cfg, "", Ollama(), doer, now)
+}
+
+type fakeClock struct {
+	mu sync.Mutex
+	t  time.Time
+}
+
+func clockAt(year int) *fakeClock {
+	return &fakeClock{t: time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)}
+}
+
+func (f *fakeClock) now() time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.t
+}
+
+func (f *fakeClock) advance(d time.Duration) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.t = f.t.Add(d)
+}
+
+func advancing(clk *fakeClock, d time.Duration, body string) func(*http.Request) (*http.Response, error) {
+	return func(*http.Request) (*http.Response, error) {
+		clk.advance(d)
+		return respond(http.StatusOK, body), nil
+	}
+}
+
+func assertNoForeignCredential(t *testing.T, body string) {
+	t.Helper()
+	lower := strings.ToLower(body)
+	for _, forbidden := range []string{"authorization", "chatgpt", "bearer", strings.ToLower(testKey)} {
+		if strings.Contains(lower, forbidden) {
+			t.Errorf("body contains %q", forbidden)
+		}
+	}
 }
 
 var smallInput = Input{
@@ -123,12 +166,7 @@ func TestSystemOneSendsOnlyItsBearerAndTheInputFields(t *testing.T) {
 				t.Errorf("unexpected header %s", name)
 			}
 		}
-		body := strings.ToLower(rec.bodies[0])
-		for _, forbidden := range []string{"authorization", "chatgpt", "bearer", strings.ToLower(testKey)} {
-			if strings.Contains(body, forbidden) {
-				t.Errorf("body contains %q", forbidden)
-			}
-		}
+		assertNoForeignCredential(t, rec.bodies[0])
 		if !strings.Contains(rec.bodies[0], `"text":"One small edit."`) {
 			t.Errorf("body lacks the prompt: %s", rec.bodies[0])
 		}
@@ -151,10 +189,11 @@ func TestOllamaSendsNoCredentialAndAsksTheActivitySecond(t *testing.T) {
 		if rec.count() != 2 {
 			t.Fatalf("requests = %d, want 2", rec.count())
 		}
-		for _, req := range rec.requests {
+		for i, req := range rec.requests {
 			if _, ok := req.Header["Authorization"]; ok {
 				t.Error("keyless classifier sent an Authorization header")
 			}
+			assertNoForeignCredential(t, rec.bodies[i])
 		}
 		if !strings.Contains(rec.bodies[1], "Which activity") {
 			t.Errorf("second request is not the activity question")
@@ -296,7 +335,7 @@ func TestStatusCodes(t *testing.T) {
 		{"refused then ok", steps(refused, reply200(jevAnswer)), nil, 2},
 		{"not json", steps(reply200("PRIVATE_PROMPT")), ErrMalformed, 1},
 		{"unknown choice", steps(reply200(`{"answers":{"route":{"type":"choice","choice":"PRIVATE","probabilities":{}}}}`)), ErrMalformed, 1},
-		{"oversized answer", steps(reply200(jevAnswer + strings.Repeat(" ", MaxAnswerBytes))), ErrMalformed, 1},
+		{"oversized answer", steps(reply200(jevAnswer + strings.Repeat(" ", MaxAnswerChars))), ErrMalformed, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
@@ -411,32 +450,102 @@ func TestAFailedOllamaActivityStepKeepsTheRouteAdvice(t *testing.T) {
 	}
 }
 
-func TestOllamaActivityStepNeedsItsMinimumTimeLeft(t *testing.T) {
+func TestTheBudgetRunsOnTheInjectedClock(t *testing.T) {
 	for _, tc := range []struct {
-		left time.Duration
-		sent bool
+		left     time.Duration
+		err      error
+		requests int
 	}{
-		{ActivityStepMin - time.Millisecond, false},
-		{ActivityStepMin, true},
+		{0, ErrTimeout, 1},
+		{ActivityStepMin - time.Millisecond, nil, 1},
+		{ActivityStepMin, nil, 2},
 	} {
 		t.Run(tc.left.String(), func(t *testing.T) {
-			synctest.Test(t, func(t *testing.T) {
-				rec := script(
-					after(testTimeout-tc.left, string(fixture(t, "ollama-route-response.json"))),
-					reply200(string(fixture(t, "ollama-activity-response.json"))),
-				)
-				advice, err := ollamaClient(rec).Ask(t.Context(), smallInput)
-				if err != nil {
-					t.Fatal(err)
-				}
-				wantRequests := 1
-				if tc.sent {
-					wantRequests = 2
-				}
-				if rec.count() != wantRequests || (advice.Activity != nil) != tc.sent {
-					t.Errorf("requests = %d, activity = %+v", rec.count(), advice.Activity)
-				}
-			})
+			clk := clockAt(2001)
+			rec := script(
+				advancing(clk, testTimeout-tc.left, string(fixture(t, "ollama-route-response.json"))),
+				reply200(string(fixture(t, "ollama-activity-response.json"))),
+			)
+			advice, err := ollamaClientAt(rec, clk.now).Ask(t.Context(), smallInput)
+			if !errors.Is(err, tc.err) {
+				t.Fatalf("err = %v, want %v", err, tc.err)
+			}
+			if rec.count() != tc.requests {
+				t.Errorf("requests = %d, want %d", rec.count(), tc.requests)
+			}
+			if tc.err == nil && (advice.Activity != nil) != (tc.requests == 2) {
+				t.Errorf("activity = %+v", advice.Activity)
+			}
+		})
+	}
+}
+
+func TestThePauseRunsOnTheInjectedClock(t *testing.T) {
+	clk := clockAt(2001)
+	denied := status(http.StatusUnauthorized)
+	rec := script(denied, denied, denied, reply200(jevAnswer))
+	c := jevClientAt(rec, clk.now)
+	for range FailuresToPause {
+		if _, err := c.Ask(t.Context(), smallInput); !errors.Is(err, ErrAuth) {
+			t.Fatalf("err = %v, want %v", err, ErrAuth)
+		}
+	}
+	if h := c.Health(); !h.PausedUntil.Equal(clk.now().Add(PauseDuration)) {
+		t.Errorf("paused until %v, want %v", h.PausedUntil, clk.now().Add(PauseDuration))
+	}
+	clk.advance(PauseDuration - time.Nanosecond)
+	if _, err := c.Ask(t.Context(), smallInput); !errors.Is(err, ErrPaused) {
+		t.Errorf("err = %v, want %v", err, ErrPaused)
+	}
+	clk.advance(time.Nanosecond)
+	if _, err := c.Ask(t.Context(), smallInput); err != nil {
+		t.Fatalf("after the pause err = %v", err)
+	}
+	if h := c.Health(); h.Failures != 0 || !h.PausedUntil.IsZero() {
+		t.Errorf("health = %+v, want reset", h)
+	}
+	if rec.count() != FailuresToPause+1 {
+		t.Errorf("requests = %d, want %d", rec.count(), FailuresToPause+1)
+	}
+}
+
+func TestAFrozenFutureClockStillTimesOut(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := jevClientAt(script(untilCancelled), clockAt(2100).now)
+		start := time.Now()
+		if _, err := c.Ask(t.Context(), smallInput); !errors.Is(err, ErrTimeout) {
+			t.Errorf("err = %v, want %v", err, ErrTimeout)
+		}
+		if elapsed := time.Since(start); elapsed != testTimeout {
+			t.Errorf("returned after %v, want %v", elapsed, testTimeout)
+		}
+	})
+}
+
+func paddedAnswer(r rune, units int) string {
+	prefix, suffix := `{"note":"`, `",`+jevAnswer[1:]
+	free := units - len(prefix) - len(suffix)
+	n := utf16.RuneLen(r)
+	return prefix + strings.Repeat(string(r), free/n) + strings.Repeat("a", free%n) + suffix
+}
+
+func TestAnswerLengthCountsUTF16Units(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		answer string
+		err    error
+	}{
+		{"two-byte runes at the limit", paddedAnswer('é', MaxAnswerChars), nil},
+		{"two-byte runes over the limit", paddedAnswer('é', MaxAnswerChars+1), ErrMalformed},
+		{"three-byte runes at the limit", paddedAnswer('€', MaxAnswerChars), nil},
+		{"astral runes at the limit", paddedAnswer('😀', MaxAnswerChars), nil},
+		{"astral runes over the limit", paddedAnswer('😀', MaxAnswerChars+1), ErrMalformed},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := jevClient(script(reply200(tc.answer))).Ask(t.Context(), smallInput)
+			if !errors.Is(err, tc.err) {
+				t.Errorf("err = %v, want %v", err, tc.err)
+			}
 		})
 	}
 }
