@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -41,15 +42,19 @@ type serverConn struct {
 }
 
 // Listen binds the socket at path with mode 0600, removing a stale socket
-// file and refusing a live one. The parent dir should be 0700: the mode is
-// set right after bind, not at bind.
+// file and refusing a live one or a non-socket file. The parent dir must not
+// be accessible to group or others: the mode is set right after bind, not at
+// bind, so the dir closes that window.
 func Listen(path string, h Handler) (*Server, error) {
 	if c, err := net.DialTimeout("unix", path, time.Second); err == nil {
 		_ = c.Close()
 		return nil, fmt.Errorf("control socket %s is already in use", path)
 	}
-	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("remove stale control socket: %w", err)
+	if err := checkParent(path); err != nil {
+		return nil, err
+	}
+	if err := removeStale(path); err != nil {
+		return nil, err
 	}
 	ln, err := net.Listen("unix", path)
 	if err != nil {
@@ -63,6 +68,35 @@ func Listen(path string, h Handler) (*Server, error) {
 	s.wg.Add(1)
 	go s.accept()
 	return s, nil
+}
+
+func checkParent(path string) error {
+	dir := filepath.Dir(path)
+	fi, err := os.Stat(dir)
+	if err != nil {
+		return fmt.Errorf("control socket dir: %w", err)
+	}
+	if fi.Mode().Perm()&0o077 != 0 {
+		return fmt.Errorf("control socket dir %s must not be accessible to group or others", dir)
+	}
+	return nil
+}
+
+func removeStale(path string) error {
+	fi, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("stat control socket: %w", err)
+	}
+	if fi.Mode().Type() != os.ModeSocket {
+		return fmt.Errorf("%s exists and is not a socket", path)
+	}
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("remove stale control socket: %w", err)
+	}
+	return nil
 }
 
 // Publish records the latest snapshot and wakes every client. Bursts

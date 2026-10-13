@@ -31,6 +31,7 @@ type Client struct {
 
 	mu   sync.Mutex
 	conn net.Conn
+	lost chan struct{}
 	send sync.Mutex
 }
 
@@ -46,6 +47,7 @@ func Dial(path string) (*Client, error) {
 		replies: make(chan Message, 1),
 		done:    make(chan struct{}),
 		conn:    conn,
+		lost:    make(chan struct{}),
 	}
 	go c.run(conn)
 	return c, nil
@@ -61,7 +63,7 @@ func (c *Client) Send(cmd route.Command) error {
 	c.send.Lock()
 	defer c.send.Unlock()
 	c.mu.Lock()
-	conn := c.conn
+	conn, lost := c.conn, c.lost
 	c.mu.Unlock()
 	if conn == nil {
 		return ErrDisconnected
@@ -84,7 +86,11 @@ func (c *Client) Send(cmd route.Command) error {
 			return errors.New(m.Error)
 		}
 		return nil
+	case <-lost:
+		return ErrDisconnected
 	case <-time.After(sendTimeout):
+		// A late reply must not answer the next Send; drop the connection.
+		_ = conn.Close()
 		return errors.New("control reply timeout")
 	case <-c.done:
 		return ErrDisconnected
@@ -111,6 +117,7 @@ func (c *Client) run(conn net.Conn) {
 		c.read(conn)
 		c.mu.Lock()
 		c.conn = nil
+		close(c.lost)
 		c.mu.Unlock()
 		conn = c.redial(&backoff)
 		if conn == nil {
@@ -140,6 +147,7 @@ func (c *Client) redial(backoff *time.Duration) net.Conn {
 		default:
 		}
 		c.conn = next
+		c.lost = make(chan struct{})
 		*backoff = reconnectMin
 		return next
 	}
