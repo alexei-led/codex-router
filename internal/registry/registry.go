@@ -52,15 +52,10 @@ type Skipped struct {
 // private to this user: whoever can write there can point clients at their
 // own socket.
 func Root(getenv func(string) string) (string, error) {
-	state := getenv("XDG_STATE_HOME")
-	if !filepath.IsAbs(state) {
-		h := getenv("HOME")
-		if !filepath.IsAbs(h) {
-			return "", errors.New("registry: no XDG_STATE_HOME or HOME")
-		}
-		state = filepath.Join(h, ".local", "state")
+	app, err := StateDir(getenv)
+	if err != nil {
+		return "", err
 	}
-	app := filepath.Join(state, appDirName)
 	root := filepath.Join(app, dirName)
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return "", fmt.Errorf("registry: %w", err)
@@ -71,6 +66,21 @@ func Root(getenv func(string) string) (string, error) {
 		}
 	}
 	return root, nil
+}
+
+// StateDir returns codex-router's state dir, $XDG_STATE_HOME/codex-router,
+// else ~/.local/state/codex-router. Relative values are ignored. It creates
+// nothing.
+func StateDir(getenv func(string) string) (string, error) {
+	state := getenv("XDG_STATE_HOME")
+	if !filepath.IsAbs(state) {
+		h := getenv("HOME")
+		if !filepath.IsAbs(h) {
+			return "", errors.New("registry: no XDG_STATE_HOME or HOME")
+		}
+		state = filepath.Join(h, ".local", "state")
+	}
+	return filepath.Join(state, appDirName), nil
 }
 
 // CheckPrivate accepts a real directory (not a symlink) owned by this user

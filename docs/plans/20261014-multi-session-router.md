@@ -539,10 +539,13 @@ Depends on: Task 15
 - Modify: `cmd/codex-router/main.go`, `cmd/codex-router/main_test.go`, `internal/proxy/proxy.go` and its tests (accept an external listener), `internal/launcher/router.go` (shared proxy wiring if reused)
 - Modify: `go.mod`, `go.sum` (`github.com/ebitengine/purego`, unless the gate switched to cgo)
 
-- [ ] `listen.Activated(name)`: systemd `LISTEN_PID`/`LISTEN_FDS`/`LISTEN_FDNAMES` (pure Go, clears the env after use); launchd via `launch_activate_socket`; neither → `ErrNotActivated`
-- [ ] `codex-router edge --home PATH --state-dir DIR`: listener from activation, else self-bind on the stored port with a warning; token from state; proxy with the link client; `/healthz` reports `brain: up|down`
-- [ ] tests: systemd path in a child process with fd 3 and `LISTEN_FDS=1` (runs on Linux and macOS); wrong `LISTEN_PID` ignored; edge with brain down forwards unchanged (fake upstream); token required
-- [ ] run `make fmt lint test build`
+- [x] `listen.Activated(name)`: systemd `LISTEN_PID`/`LISTEN_FDS`/`LISTEN_FDNAMES` (pure Go, clears the env after use); launchd via `launch_activate_socket`; neither → `ErrNotActivated`
+- [x] `codex-router edge --home PATH --state-dir DIR`: listener from activation, else self-bind on the stored port with a warning; token from state; proxy with the link client; `/healthz` reports `brain: up|down`
+- [x] tests: systemd path in a child process with fd 3 and `LISTEN_FDS=1` (runs on Linux and macOS); wrong `LISTEN_PID` ignored; edge with brain down forwards unchanged (fake upstream); token required
+- [x] run `make fmt lint test build`
+- [x] ➕ layout and names the edge reads (setup in Task 20 must write the same): `--state-dir` is the base the units pass, as `$XDG_STATE_HOME`; home state `<state-dir>/codex-router/homes/<home_id>/` with `port` and `token` (plain text, trailing newline ok). `codex-router/`, `homes/` and the home dir must be 0700 and owned by the user, else the edge refuses to start. Socket name `edge` for both the launchd `Sockets` key and the systemd `FileDescriptorName` (systemd always sets `LISTEN_FDNAMES`). Constants live in `cmd/codex-router/main.go` until setup needs them
+- [x] ➕ `internal/listen/doc.go` (package doc, as in every package); `registry.StateDir` (the `codex-router` state dir, split out of `registry.Root`); `proxy.Options.Listener` (must be TCP on 127.0.0.1) and `proxy.Options.Health` (extra `/healthz` line); `link.Client.Up` (live connection or a dial now, under the backoff)
+- [x] ➕ launchd outside a launchd job returns ESRCH (checked on macOS with cgo and `CGO_ENABLED=0`); ESRCH and ENOENT map to `ErrNotActivated`. A config that does not load makes the edge warn and use defaults: the edge must not leave the port dead
 
 ### Task 17: Brain: daemon client and thread tracking
 
@@ -559,6 +562,7 @@ Depends on: Task 16
 - [ ] reuse the settings writer for footer sync; `thread/unsubscribe` when a thread's TUI is gone (no turn and no settings event for 10 min, or the thread reports closed)
 - [ ] daemon restart: reconnect with backoff, resubscribe, resync footers
 - [ ] serve the link socket and control v2 (kind `brain`), register `endpoint.json`
+- [ ] ➕ (from Task 16) the edge dials `<home dir>/brain.sock`; with the long-path fallback (`$TMPDIR/codex-router-<uid>/<home_id>.sock`) the brain records the path and the edge (`cmd/codex-router/main.go`) reads it
 - [ ] tests with a fake daemon: two threads resumed, new thread picked up, unsubscribe after idle, daemon restart resync, ephemeral thread skipped
 - [ ] run `make fmt lint test build`
 

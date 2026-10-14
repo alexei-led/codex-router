@@ -138,6 +138,12 @@ func (c *Client) Observe(meta responses.Meta, served string, usage responses.Usa
 	}
 }
 
+// Up reports whether the brain is reachable: a live connection, or a dial
+// now. While a failed dial's backoff runs it is false without a dial.
+func (c *Client) Up(ctx context.Context) bool {
+	return c.connect(ctx) != nil
+}
+
 // Close drops the connection and stops the observe writer. Queued
 // observations are lost.
 func (c *Client) Close() error {
