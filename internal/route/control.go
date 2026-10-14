@@ -11,10 +11,11 @@ import (
 
 var errCommandPanic = errors.New("command failed")
 
-// Apply runs a control command: pin or unpin the next turn's tier, pause or
-// resume routing, or pick a policy preset. Pause writes each routed thread's
-// own route back to its settings; resume also ends manual mode. A panic is
-// logged and returned as an error.
+// Apply runs a control command: pin or unpin a session's next turn, pause
+// or resume a session or the whole home, or pick the home's policy preset.
+// Pause writes each affected routed thread's own route back to its settings;
+// resume also ends manual mode. A home resume keeps session pauses. A panic
+// is logged and returned as an error.
 func (e *Engine) Apply(c Command) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -26,7 +27,7 @@ func (e *Engine) Apply(c Command) (err error) {
 	if err != nil {
 		return err
 	}
-	e.log.Info("route command", "op", c.Op, "tier", c.Tier, "preset", c.Preset)
+	e.log.Info("route command", "op", c.Op, "scope", scopeOf(c), "thread", c.Session, "tier", c.Tier, "preset", c.Preset)
 	for _, d := range writes {
 		e.emit(func() {
 			if e.sink != nil {
@@ -41,27 +42,60 @@ func (e *Engine) Apply(c Command) (err error) {
 func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if c.Scope != "" && c.Scope != ScopeSession && c.Scope != ScopeHome {
+		return nil, Snapshot{}, fmt.Errorf("%s: unknown scope %q", c.Op, c.Scope)
+	}
 	var writes []Decision
 	switch c.Op {
 	case OpPin:
 		if _, ok := e.cfg.Routes[c.Tier]; !ok || !slices.Contains(config.Tiers, c.Tier) {
 			return nil, Snapshot{}, fmt.Errorf("pin: unknown tier %q", c.Tier)
 		}
+		th, err := e.session(c)
+		if err != nil {
+			return nil, Snapshot{}, err
+		}
 		t := c.Tier
-		e.pin = &t
+		th.pin = &t
 	case OpUnpin:
-		e.pin = nil
+		th, err := e.session(c)
+		if err != nil {
+			return nil, Snapshot{}, err
+		}
+		th.pin = nil
 	case OpPause:
-		if !e.paused {
-			e.paused = true
-			writes = e.restoreNative()
+		if c.home() {
+			if !e.paused {
+				e.paused = true
+				writes = e.restoreNative(e.all()...)
+			}
+			break
+		}
+		th, err := e.session(c)
+		if err != nil {
+			return nil, Snapshot{}, err
+		}
+		if !th.paused {
+			th.paused = true
+			writes = e.restoreNative(th)
 		}
 	case OpResume:
-		e.paused = false
-		for el := e.lru.Front(); el != nil; el = el.Next() {
-			el.Value.(*thread).manual = false
+		if c.home() {
+			e.paused = false
+			for _, th := range e.all() {
+				th.manual = false
+			}
+			break
 		}
+		th, err := e.session(c)
+		if err != nil {
+			return nil, Snapshot{}, err
+		}
+		th.paused, th.manual = false, false
 	case OpPreset:
+		if !c.home() {
+			return nil, Snapshot{}, errors.New("preset: home scope only")
+		}
 		if !slices.Contains([]config.Preset{config.PresetThrifty, config.PresetBalanced, config.PresetQuality}, c.Preset) {
 			return nil, Snapshot{}, fmt.Errorf("preset: unknown preset %q", c.Preset)
 		}
@@ -70,16 +104,47 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 	default:
 		return nil, Snapshot{}, fmt.Errorf("unknown op %q", c.Op)
 	}
-	return writes, e.snapshot(e.now()), nil
+	th := e.latest()
+	if c.Session != "" {
+		th = e.lookup(c.Session)
+	}
+	return writes, e.snapshot(th, e.now()), nil
+}
+
+// session returns the thread a session command targets, creating it so a
+// pin or pause set before the thread's first step holds for it.
+func (e *Engine) session(c Command) (*thread, error) {
+	if c.Scope == ScopeHome || c.Session == "" {
+		return nil, fmt.Errorf("%s: needs a session", c.Op)
+	}
+	if th := e.lookup(c.Session); th != nil {
+		return th, nil
+	}
+	return e.add(c.Session), nil
+}
+
+func scopeOf(c Command) Scope {
+	if c.home() {
+		return ScopeHome
+	}
+	return ScopeSession
+}
+
+// all returns every thread, most recently used first.
+func (e *Engine) all() []*thread {
+	out := make([]*thread, 0, e.lru.Len())
+	for el := e.lru.Front(); el != nil; el = el.Next() {
+		out = append(out, el.Value.(*thread))
+	}
+	return out
 }
 
 // restoreNative returns a settings write per thread whose footer shows a
 // route the router chose, back to the route Codex itself sent.
-func (e *Engine) restoreNative() []Decision {
+func (e *Engine) restoreNative(ths ...*thread) []Decision {
 	var out []Decision
 	now := e.now()
-	for el := e.lru.Front(); el != nil; el = el.Next() {
-		th := el.Value.(*thread)
+	for _, th := range ths {
 		if th.manual || !th.wrote || th.lastWritten == th.native {
 			continue
 		}
@@ -129,5 +194,5 @@ func (e *Engine) settingsUpdated(threadID string, r config.Route) (Snapshot, boo
 		th.manual, th.pending, th.lastWritten, th.native = true, nil, r, r
 		e.log.Info("route manual", "thread", th.id, "model", r.Model, "effort", r.Effort)
 	}
-	return e.snapshot(e.now()), true
+	return e.snapshot(th, e.now()), true
 }

@@ -44,7 +44,7 @@ func fixture() route.Snapshot {
 	}
 	earlier := route.Decision{Tier: config.TierMedium, Activity: config.ActivityDebug, Route: sol, Reason: policy.ReasonUpgrade, At: at(18, 38)}
 	return route.Snapshot{
-		At: at(18, 42), Mode: route.ModeOn, Preset: config.PresetBalanced,
+		ThreadID: "th", At: at(18, 42), Mode: route.ModeOn, Preset: config.PresetBalanced,
 		Baseline: sol61, Footer: sol61, FooterSynced: true,
 		Last: &last, Recent: []route.Decision{earlier, last},
 		Classifier: classifier.Health{Latency: 412 * time.Millisecond}, ClassifierLabel: "Jev", ClassifierMedian: 388 * time.Millisecond,
@@ -248,9 +248,9 @@ func TestKeysSendCommands(t *testing.T) {
 		key   string
 		want  route.Command
 	}{
-		{"pin from none", func(*route.Snapshot) {}, TabNow, "p", route.Command{Op: route.OpPin, Tier: config.TierHigh}},
-		{"pin advances", func(s *route.Snapshot) { s.Pin = &low }, TabNow, "p", route.Command{Op: route.OpPin, Tier: config.TierMicro}},
-		{"pin wraps to unpin", func(s *route.Snapshot) { s.Pin = &micro }, TabNow, "p", route.Command{Op: route.OpUnpin}},
+		{"pin from none", func(*route.Snapshot) {}, TabNow, "p", route.Command{Op: route.OpPin, Session: "th", Tier: config.TierHigh}},
+		{"pin advances", func(s *route.Snapshot) { s.Pin = &low }, TabNow, "p", route.Command{Op: route.OpPin, Session: "th", Tier: config.TierMicro}},
+		{"pin wraps to unpin", func(s *route.Snapshot) { s.Pin = &micro }, TabNow, "p", route.Command{Op: route.OpUnpin, Session: "th"}},
 		{"space pauses", func(*route.Snapshot) {}, TabNow, " ", route.Command{Op: route.OpPause}},
 		{"space resumes paused", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabNow, " ", route.Command{Op: route.OpResume}},
 		{"space resumes manual", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabNow, " ", route.Command{Op: route.OpResume}},

@@ -13,12 +13,14 @@ import (
 )
 
 // tally accumulates Stats; lastCell counts the replies in the strip's last
-// cell, and the token sums give the cache reuse.
+// cell, the token sums give the cache reuse, and tail holds the last
+// SessionStrip replies' tiers, unmerged.
 type tally struct {
 	Stats
 	lastCell     int
 	cachedTokens int
 	inputTokens  int
+	tail         []config.Tier
 }
 
 func newTally() tally {
@@ -46,6 +48,7 @@ func (t *tally) reply(d Decision, u responses.Usage, at time.Time, prices map[st
 		t.ByActivity[d.Activity]++
 	}
 	t.push(d.Tier)
+	t.tail = appendCapped(t.tail, d.Tier, SessionStrip)
 	t.LastInputTokens = max(0, u.InputTokens)
 	t.LastCachedTokens = min(max(0, u.CachedInputTokens), t.LastInputTokens)
 	t.cachedTokens += t.LastCachedTokens
@@ -85,9 +88,21 @@ func (t *tally) push(tier config.Tier) {
 	t.RepliesPerCell *= 2
 }
 
-// Snapshot returns the full state for the control socket and the TUI.
+// Snapshot returns the most recently active thread's snapshot: control v1
+// shows one session at a time.
 func (e *Engine) Snapshot() Snapshot {
-	return e.withHealth(e.lockedSnapshot())
+	s := func() Snapshot {
+		e.mu.Lock()
+		defer e.mu.Unlock()
+		return e.snapshot(e.latest(), e.now())
+	}()
+	return e.withHealth(s)
+}
+
+// SnapshotFor returns one thread's snapshot; an unknown thread gets the
+// home's state with no thread data.
+func (e *Engine) SnapshotFor(threadID string) Snapshot {
+	return e.withHealth(e.lockedSnapshot(threadID))
 }
 
 // withHealth adds what needs the classifier's health, read outside e.mu:
@@ -98,16 +113,40 @@ func (e *Engine) withHealth(s Snapshot) Snapshot {
 	return s
 }
 
-func (e *Engine) lockedSnapshot() Snapshot {
+func (e *Engine) lockedSnapshot(threadID string) Snapshot {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	return e.snapshot(e.now())
+	return e.snapshot(e.lookup(threadID), e.now())
 }
 
-// snapshot copies the state under e.mu. The focus thread is the one whose
-// user step came last. Baseline is the route Codex sends without the router:
-// the focus thread's first request, else the baseline tier's route.
-func (e *Engine) snapshot(now time.Time) Snapshot {
+// latest is the thread with the newest activity, the most recently used on
+// a tie; nil before any thread's first step.
+func (e *Engine) latest() *thread {
+	var best *thread
+	for el := e.lru.Front(); el != nil; el = el.Next() {
+		th := el.Value.(*thread)
+		if !th.lastActive.IsZero() && (best == nil || th.lastActive.After(best.lastActive)) {
+			best = th
+		}
+	}
+	return best
+}
+
+// mode is th's routing mode; a home pause covers every thread.
+func (e *Engine) mode(th *thread) Mode {
+	switch {
+	case e.paused || th.paused:
+		return ModePaused
+	case th.manual:
+		return ModeManual
+	}
+	return ModeOn
+}
+
+// snapshot copies th's state under e.mu; a nil th gives the home's state
+// alone. Baseline is the route Codex sends without the router: the thread's
+// first request, else the baseline tier's route.
+func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 	cfg := e.cfg
 	e.seq++
 	s := Snapshot{
@@ -117,36 +156,36 @@ func (e *Engine) snapshot(now time.Time) Snapshot {
 		Preset:           cfg.Preset,
 		Baseline:         cfg.RouteFor(cfg.Baseline, ""),
 		FooterSynced:     true,
-		Recent:           slices.Clone(e.recent),
 		ClassifierLabel:  cfg.Classifiers[cfg.Classifier].Label,
 		ClassifierMedian: median(e.latencies),
 		Routes:           maps.Clone(cfg.Routes),
 		Policy:           cfg.Effective(),
-		Stats:            e.stats.copy(),
-	}
-	if e.pin != nil {
-		p := *e.pin
-		s.Pin = &p
-	}
-	if e.last != nil {
-		d := *e.last
-		s.Last = &d
-	}
-	cat := e.cat.Current()
-	model := s.Baseline.Model
-	if th := e.focus; th != nil {
-		s.Baseline, s.Footer, s.FooterSynced = th.native, th.footer, len(th.pending) == 0
-		s.ApproxTokens = th.approx
-		model = th.model
-		if th.hasSent {
-			model = th.sent.Model
-		}
-		if th.manual {
-			s.Mode = ModeManual
-		}
+		Stats:            newTally().Stats,
 	}
 	if e.paused {
 		s.Mode = ModePaused
+	}
+	cat := e.cat.Current()
+	model := s.Baseline.Model
+	if th != nil {
+		s.ThreadID, s.Mode = th.id, e.mode(th)
+		s.Recent, s.Stats = slices.Clone(th.recent), th.stats.copy()
+		if th.pin != nil {
+			p := *th.pin
+			s.Pin = &p
+		}
+		if th.last != nil {
+			d := *th.last
+			s.Last = &d
+		}
+		if th.native.Model != "" {
+			s.Baseline, s.Footer, s.FooterSynced = th.native, th.footer, len(th.pending) == 0
+			s.ApproxTokens = th.approx
+			model = th.model
+			if th.hasSent {
+				model = th.sent.Model
+			}
+		}
 	}
 	s.Window, _ = cat.Window(model)
 	s.Group, _ = cat.GroupOf(model)
