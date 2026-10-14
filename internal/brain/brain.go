@@ -62,8 +62,9 @@ func EndpointID(homeID string) string { return "brain-" + homeID }
 // Options configure a Brain.
 type Options struct {
 	Home home.Home
-	// Deps carry the engine's config, catalog, classifier, logger and clock;
-	// the brain sets Home, Sink and Cwd.
+	// Deps carry the engine's config, catalog, classifier, logger and clock.
+	// The brain overwrites Home, Sink, Cwd, HoldUnseeded and the intent
+	// fields (Intent, IntentLost, SaveIntent).
 	Deps route.Deps
 	// Getenv reads XDG_STATE_HOME and HOME (state dir and registry) and
 	// TMPDIR (short socket paths).
