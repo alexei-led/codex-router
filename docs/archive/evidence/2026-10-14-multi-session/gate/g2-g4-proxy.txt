@@ -1,0 +1,29 @@
+{"time":"2026-10-14T16:39:11.881045+03:00","level":"INFO","msg":"catalog-seeded","models":10}
+{"time":"2026-10-14T16:39:11.88115+03:00","level":"WARN","msg":"classifier-disabled","reason":"TYPESAFE_API_KEY is not set"}
+{"time":"2026-10-14T16:39:11.882133+03:00","level":"INFO","msg":"proxy-ready","port":53561}
+proxy listening on 127.0.0.1:53561; point codex at it with:
+  -c 'model_provider=router'
+  -c 'model_providers.router={name="router", base_url="http://127.0.0.1:53561/v1", wire_api="responses", requires_openai_auth=true, env_http_headers={"X-Codex-Router-Token"="CODEX_ROUTER_TOKEN"}}'
+this proxy checks no token: any local user can reach it; use it for debugging only
+{"time":"2026-10-14T16:39:31.871509+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13aa3-9d1c-73a1-a55c-5c872a712d2f","turn":"01a13aa3-ad27-75d2-9387-9dcc99038202","path":"/v1/responses"}
+{"time":"2026-10-14T16:39:31.871552+03:00","level":"DEBUG","msg":"responses","thread":"01a13aa3-9d1c-73a1-a55c-5c872a712d2f","turn":"01a13aa3-ad27-75d2-9387-9dcc99038202","status":200,"bytes":75103,"ms":3774}
+{"time":"2026-10-14T16:39:33.104555+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13aa3-aee1-7a31-bcbf-15b17715f48c","turn":"01a13aa3-afd1-7f01-84a8-b800d19b8e1e","path":"/v1/responses"}
+{"time":"2026-10-14T16:39:33.104606+03:00","level":"DEBUG","msg":"responses","thread":"01a13aa3-aee1-7a31-bcbf-15b17715f48c","turn":"01a13aa3-afd1-7f01-84a8-b800d19b8e1e","status":200,"bytes":49283,"ms":4087}
+{"time":"2026-10-14T16:40:33.236204+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13aa4-8114-7193-80dd-b9e8520deae4","turn":"01a13aa4-9130-77a1-bf69-ff7130b25061","path":"/v1/responses"}
+{"time":"2026-10-14T16:40:33.236275+03:00","level":"DEBUG","msg":"responses","thread":"01a13aa4-8114-7193-80dd-b9e8520deae4","turn":"01a13aa4-9130-77a1-bf69-ff7130b25061","status":200,"bytes":75102,"ms":6736}
+{"time":"2026-10-14T16:40:33.259799+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13aa4-9301-7933-98f8-38ad916e5bea","turn":"01a13aa4-93ea-7d61-8b97-7e08ae652bb8","path":"/v1/responses"}
+{"time":"2026-10-14T16:40:33.259825+03:00","level":"DEBUG","msg":"responses","thread":"01a13aa4-9301-7933-98f8-38ad916e5bea","turn":"01a13aa4-93ea-7d61-8b97-7e08ae652bb8","status":200,"bytes":49282,"ms":6177}
+{"time":"2026-10-14T16:41:27.770223+03:00","level":"WARN","msg":"stream-aborted","thread":"01a13aa4-8114-7193-80dd-b9e8520deae4","turn":"01a13aa5-62a5-7042-beba-b55619e6ca6b","path":"/v1/responses","stage":"client"}
+{"time":"2026-10-14T16:41:27.770313+03:00","level":"DEBUG","msg":"responses","thread":"01a13aa4-8114-7193-80dd-b9e8520deae4","turn":"01a13aa5-62a5-7042-beba-b55619e6ca6b","status":200,"bytes":75470,"ms":8094}
+{"time":"2026-10-14T16:42:00.644871+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13aa4-8114-7193-80dd-b9e8520deae4","turn":"01a13aa5-62a5-7042-beba-b55619e6ca6b","path":"/v1/responses"}
+{"time":"2026-10-14T16:42:00.644986+03:00","level":"DEBUG","msg":"responses","thread":"01a13aa4-8114-7193-80dd-b9e8520deae4","turn":"01a13aa5-62a5-7042-beba-b55619e6ca6b","status":200,"bytes":75470,"ms":32620}
+{"time":"2026-10-14T16:44:14.310585+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13aa7-e7fd-77e1-9b95-378fd2541956","turn":"01a13aa7-fc2c-7a80-bf64-c232abd983e1","path":"/v1/responses"}
+{"time":"2026-10-14T16:44:14.310676+03:00","level":"DEBUG","msg":"responses","thread":"01a13aa7-e7fd-77e1-9b95-378fd2541956","turn":"01a13aa7-fc2c-7a80-bf64-c232abd983e1","status":200,"bytes":75101,"ms":3578}
+{"time":"2026-10-14T16:44:18.251901+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13aa7-feef-71e2-b9ca-3dc087b0b299","turn":"01a13aa7-ff0b-78c0-a40f-3a647ae686b0","path":"/v1/responses"}
+{"time":"2026-10-14T16:44:18.251951+03:00","level":"DEBUG","msg":"responses","thread":"01a13aa7-feef-71e2-b9ca-3dc087b0b299","turn":"01a13aa7-ff0b-78c0-a40f-3a647ae686b0","status":200,"bytes":49281,"ms":7152}
+{"time":"2026-10-14T16:45:48.510454+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:45:48.510744+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:46:12.682025+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13aa9-7d13-7023-8f7b-099659e54515","turn":"01a13aa9-bec2-7f42-8217-4d140b7b32b0","path":"/v1/responses"}
+{"time":"2026-10-14T16:46:12.682057+03:00","level":"DEBUG","msg":"responses","thread":"01a13aa9-7d13-7023-8f7b-099659e54515","turn":"01a13aa9-bec2-7f42-8217-4d140b7b32b0","status":200,"bytes":75102,"ms":6675}
+{"time":"2026-10-14T16:46:13.538549+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13aa9-c1d5-78a3-91b1-1d5d2afc6b03","turn":"01a13aa9-c1f0-7063-964f-ec3e99840332","path":"/v1/responses"}
+{"time":"2026-10-14T16:46:13.538587+03:00","level":"DEBUG","msg":"responses","thread":"01a13aa9-c1d5-78a3-91b1-1d5d2afc6b03","turn":"01a13aa9-c1f0-7063-964f-ec3e99840332","status":200,"bytes":49282,"ms":7016}

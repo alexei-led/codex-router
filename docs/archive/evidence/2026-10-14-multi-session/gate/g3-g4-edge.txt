@@ -1,0 +1,12 @@
+2026/10/14 16:40:13 INFO edge-start pid=54239 addr=127.0.0.1:53611 upstream=http://127.0.0.1:53561 token=true
+2026/10/14 16:40:20 INFO edge-request path=/v1/models token=missing
+2026/10/14 16:40:20 INFO edge-request path=/v1/models token=wrong
+2026/10/14 16:40:26 INFO edge-request path=/v1/responses token=ok
+2026/10/14 16:40:27 INFO edge-request path=/v1/responses token=ok
+2026/10/14 16:40:57 INFO edge-start pid=55701 addr=127.0.0.1:53611 upstream=http://127.0.0.1:53561 token=true
+2026/10/14 16:41:01 INFO edge-start pid=55771 addr=127.0.0.1:53611 upstream=http://127.0.0.1:53561 token=true
+2026/10/14 16:41:05 INFO edge-start pid=55897 addr=127.0.0.1:53611 upstream=http://127.0.0.1:53561 token=true
+--- real turn kill 16:41:18
+2026/10/14 16:41:19 INFO edge-request path=/v1/responses token=ok
+2026/10/14 16:41:28 INFO edge-start pid=56536 addr=127.0.0.1:53611 upstream=http://127.0.0.1:53561 token=true
+2026/10/14 16:41:28 INFO edge-request path=/v1/responses token=ok

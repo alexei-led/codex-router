@@ -1,0 +1,18 @@
+pid=63979 pgid=63979
+CODEX_HOME=~/.cache/codex-router-live/home-a
+PLUGIN_ROOT=~/.cache/codex-router-live/home-a/plugins/cache/router-gate/router-gate/0.0.1
+PLUGIN_DATA=~/.cache/codex-router-live/home-a/plugins/data/router-gate-router-gate
+XDG_STATE_HOME=$RUN/state
+CODEX_ROUTER_CONTROL=$RUN/rt/codex-router/f04e0270/control.sock
+SHELL=/opt/homebrew/bin/fish
+derived_home=~/.cache/codex-router-live/home-a
+input_keys=["cwd","hook_event_name","model","permission_mode","session_id","source","transcript_path"]
+input={"hook_event_name":"SessionStart","source":"startup","cwd":"$RUN/w3","session_id":"01a13aa8-c0e1-7392-8ac6-9cc7e1ce91d3","model":"gpt-6.1-sol"}
+router=~/Workspace/codex-router/.bin/codex-router
+child_pid=63998
+sessions_exit=0
+hook_exit=0 hook_s=0
+# sessions --json:
+[]
+# codex-router hook stdout:
+{}

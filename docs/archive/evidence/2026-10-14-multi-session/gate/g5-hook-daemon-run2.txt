@@ -1,0 +1,38 @@
+pid=65698 pgid=65698
+CODEX_HOME=~/.cache/codex-router-live/home-a
+PLUGIN_ROOT=~/.cache/codex-router-live/home-a/plugins/cache/router-gate/router-gate/0.0.1
+PLUGIN_DATA=~/.cache/codex-router-live/home-a/plugins/data/router-gate-router-gate
+XDG_STATE_HOME=$RUN/state
+CODEX_ROUTER_CONTROL=<unset>
+SHELL=/opt/homebrew/bin/fish
+derived_home=~/.cache/codex-router-live/home-a
+input_keys=["cwd","hook_event_name","model","permission_mode","session_id","source","transcript_path"]
+input={"hook_event_name":"SessionStart","source":"startup","cwd":"$RUN/w2","session_id":"01a13aa9-7d13-7023-8f7b-099659e54515","model":"gpt-6.1-sol"}
+router=~/Workspace/codex-router/.bin/codex-router
+child_pid=65711
+sessions_exit=0
+hook_exit=0 hook_s=0
+# sessions --json:
+[
+  {
+    "id": "6b17dcbc00aa/01a13aa8-c0e1-7392-8ac6-9cc7e1ce91d3",
+    "home": "6b17dcbc00aa",
+    "thread_id": "01a13aa8-c0e1-7392-8ac6-9cc7e1ce91d3",
+    "label": "home-a · w3",
+    "cwd": "$RUN/w3",
+    "mode": "on",
+    "tier": "high",
+    "route": {
+      "model": "gpt-6.1-sol",
+      "effort": "low"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:45:22.451328+03:00",
+    "footer_synced": true,
+    "endpoint_id": "f04e0270"
+  }
+]
+# codex-router hook stdout:
+{}

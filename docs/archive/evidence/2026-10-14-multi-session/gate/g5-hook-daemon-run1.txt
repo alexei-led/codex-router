@@ -1,0 +1,15 @@
+pid=62684 pgid=62684
+CODEX_HOME=~/.cache/codex-router-live/home-a
+PLUGIN_ROOT=~/.cache/codex-router-live/home-a/plugins/cache/router-gate/router-gate/0.0.1
+PLUGIN_DATA=~/.cache/codex-router-live/home-a/plugins/data/router-gate-router-gate
+XDG_STATE_HOME=$RUN/state
+CODEX_ROUTER_CONTROL=<unset>
+SHELL=/opt/homebrew/bin/fish
+derived_home=~/.cache/codex-router-live/home-a
+input_keys=["cwd","hook_event_name","model","permission_mode","session_id","source","transcript_path"]
+input={"hook_event_name":"SessionStart","source":"startup","cwd":"$RUN/w1","session_id":"01a13aa7-e7fd-77e1-9b95-378fd2541956","model":"gpt-6.1-sol"}
+router=<not found>
+child_pid=62699
+# ps of child_pid 23 s after the hook returned:
+  PID  PPID  PGID ELAPSED COMMAND
+62699     1 62684   00:36 sleep 600

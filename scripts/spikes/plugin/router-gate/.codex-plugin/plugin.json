@@ -1,0 +1,6 @@
+{
+  "name": "router-gate",
+  "version": "0.0.1",
+  "description": "codex-router gate spike G5: a SessionStart hook that records its env, starts a detached child and reads the session registry. Test homes only.",
+  "hooks": "./hooks/hooks.json"
+}
