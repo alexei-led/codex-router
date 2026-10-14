@@ -475,16 +475,23 @@ func TestEchoesOfQueuedWritesAreNotManual(t *testing.T) {
 	}
 }
 
-func TestSettingsUpdateBeforeAnyWriteIsNotManual(t *testing.T) {
+func TestPickBeforeTheRouterChangesTheRouteIsManual(t *testing.T) {
 	h := newHarness(t, testConfig())
-	h.asker.script(answer(tier("medium", 0.97)))
+	h.asker.script(answer(tier("medium", 0.97)), answer(tier("medium", 0.97)))
 	h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
 
-	h.engine.SettingsUpdated("th", low)
-
-	if s := h.engine.Snapshot(); s.Mode != ModeOn {
-		t.Fatalf("mode = %s, want on", s.Mode)
+	h.engine.SettingsUpdated("th", medium)
+	if s := h.engine.Snapshot(); s.Mode != ModeOn || !s.FooterSynced {
+		t.Fatalf("after the native echo: mode %s synced %v", s.Mode, s.FooterSynced)
 	}
+
+	picked := config.Route{Model: "gpt-6-luna", Effort: config.EffortHigh}
+	h.engine.SettingsUpdated("th", picked)
+	if s := h.engine.Snapshot(); s.Mode != ModeManual {
+		t.Fatalf("mode = %s, want manual", s.Mode)
+	}
+	rw, ok := h.decide(req(picked, userMsg(secretPrompt), userMsg("next")), meta("th", "t2"))
+	wantUnchanged(t, rw, ok)
 }
 
 func TestPauseForwardsUnchangedAndRestoresTheFooter(t *testing.T) {

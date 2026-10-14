@@ -94,9 +94,8 @@ func (e *Engine) restoreNative() []Decision {
 }
 
 // SettingsUpdated takes a thread/settings/updated notification. A value the
-// router wrote is its echo; any other value after the router's first write
-// is the user's own pick (plan D12): the thread goes manual until resume. A
-// panic is logged and dropped.
+// router wrote is its echo; any other value is the user's own pick (plan
+// D12): the thread goes manual until resume. A panic is logged and dropped.
 func (e *Engine) SettingsUpdated(threadID string, r config.Route) {
 	defer func() {
 		if p := recover(); p != nil {
@@ -121,7 +120,9 @@ func (e *Engine) settingsUpdated(threadID string, r config.Route) (Snapshot, boo
 		th.pending = slices.Clone(th.pending[i+1:])
 	case th.manual:
 		th.lastWritten, th.native = r, r
-	case !th.wrote || r == th.lastWritten:
+	case r == th.lastWritten:
+		// lastWritten starts as the native route, which the launcher writes
+		// first to subscribe, so that write's echo lands here too.
 	default:
 		// The pick is now what Codex would use without the router, so pause
 		// restores it rather than the route the session started on.
