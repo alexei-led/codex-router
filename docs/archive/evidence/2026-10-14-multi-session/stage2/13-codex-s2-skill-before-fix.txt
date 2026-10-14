@@ -1,0 +1,48 @@
+› In one sentence: what does git worktree do?
+ 
+ 
+• git worktree lets you check out multiple branches of the same repository in separate directories at the same time.
+ 
+  Worked for 5s • 20:39                                                                                                                               
+ 
+ 
+› Reply with the single word: paused
+ 
+ 
+• paused
+ 
+  Worked for 10s • 20:49                                                                                                                              
+ 
+ 
+› Reply with the single word: ok
+ 
+ 
+• ok
+ 
+  Worked for 13s • 21:01                                                                                                                              
+ 
+ 
+› Use the codex-router router skill to show this session's routing status. Run only what the skill says.
+ 
+ 
+• I’m using the codex-router router skill to check this session’s routing status.
+ 
+• Explored
+  └ Read SKILL.md (codex-router:router skill)
+    + Show details                                                                                                                                    
+ 
+• Failed (exit 1) sh ~/.cache/codex-router-live/home-a/plugins/cache/codex-router/codex-router/0.1.0/scripts/codex-router.sh ctl status
+  └ codex-router: ctl: no running session of Codex home home-a works in $RUN/alpha-feat-b; see codex-router sessions
+ 
+• Routing status unavailable:
+ 
+  codex-router: ctl: no running session of Codex home home-a works in $RUN/alpha-feat-b; see codex-router sessions
+  └ Tip: Use /hooks to view and manage lifecycle hooks.
+ 
+  Worked for 29s • 21:54                                                                                                                              
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol high · $RUN/alpha-feat-b · Reply with ok
+  ← for agents · ? for shortcuts

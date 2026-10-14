@@ -1,0 +1,14 @@
+{"time":"2026-10-14T20:31:54.316828+03:00","level":"INFO","msg":"catalog-seeded","models":9}
+{"time":"2026-10-14T20:31:54.319505+03:00","level":"INFO","msg":"brain-ready","home":"a03bfa5ea206","link":"$RUN/state/codex-router/homes/a03bfa5ea206/brain.sock","control":"$RUN/state/codex-router/homes/a03bfa5ea206/control.sock"}
+{"time":"2026-10-14T20:31:54.319697+03:00","level":"WARN","msg":"daemon-unreachable","socket":"~/.cache/codex-router-live/home-b/app-server-control/app-server-control.sock","err":"appserver: dial: failed to WebSocket dial: failed to send handshake request: Get \"http://localhost/\": dial unix ~/.cache/codex-router-live/home-b/app-server-control/app-server-control.sock: connect: no such file or directory"}
+{"time":"2026-10-14T20:31:58.079355+03:00","level":"INFO","msg":"daemon-connected"}
+{"time":"2026-10-14T20:31:58.087125+03:00","level":"INFO","msg":"thread-started","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}
+{"time":"2026-10-14T20:31:58.115269+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","code":-32600}
+{"time":"2026-10-14T20:31:58.353496+03:00","level":"INFO","msg":"thread-started","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}
+{"time":"2026-10-14T20:31:58.378594+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","code":-32600}
+{"time":"2026-10-14T20:32:00.999069+03:00","level":"INFO","msg":"route held unseeded","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","tier":"high","model":"gpt-6.1-sol","effort":"low"}
+{"time":"2026-10-14T20:32:01.005398+03:00","level":"INFO","msg":"route manual","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","model":"gpt-6.1-sol","effort":""}
+{"time":"2026-10-14T20:32:01.006351+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}
+{"time":"2026-10-14T20:32:01.559311+03:00","level":"INFO","msg":"route held unseeded","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","tier":"high","model":"gpt-6.1-sol","effort":"low"}
+{"time":"2026-10-14T20:32:01.56494+03:00","level":"INFO","msg":"route manual","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","model":"gpt-6.1-sol","effort":""}
+{"time":"2026-10-14T20:32:01.565922+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}

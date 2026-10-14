@@ -1,0 +1,7 @@
+threads started in this run (rollouts): home-a 3, home-b 3 (home-b includes one codex exec thread run outside the router)
+home-b threads in home-a logs: 0
+home-a threads in home-b logs: 0
+home-a threads in home-a logs: 3
+home-b threads in home-b logs: 2
+home-a: raw ChatGPT account id found in 0 of 12 codex-router state/log files; its hash appears 0 times
+home-b: raw ChatGPT account id found in 0 of 12 codex-router state/log files; its hash appears 0 times

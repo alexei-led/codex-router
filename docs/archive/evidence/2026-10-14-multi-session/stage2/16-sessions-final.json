@@ -1,0 +1,41 @@
+[
+  {
+    "id": "6b17dcbc00aa/01a13b78-8bc4-71e3-b702-bb7c5f42dc6f",
+    "home": "6b17dcbc00aa",
+    "thread_id": "01a13b78-8bc4-71e3-b702-bb7c5f42dc6f",
+    "label": "home-a · alpha · feat-b",
+    "cwd": "$RUN/alpha-feat-b",
+    "mode": "paused",
+    "tier": "high",
+    "route": {
+      "model": "gpt-6.1-sol",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T22:06:38.250539+03:00",
+    "attention": "paused",
+    "footer_synced": true,
+    "endpoint_id": "brain-6b17dcbc00aa"
+  },
+  {
+    "id": "a03bfa5ea206/01a13b78-8aed-7b21-9a11-a26240e01f81",
+    "home": "a03bfa5ea206",
+    "thread_id": "01a13b78-8aed-7b21-9a11-a26240e01f81",
+    "label": "home-b",
+    "cwd": "",
+    "mode": "on",
+    "tier": "low",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "medium"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T20:55:41.70464+03:00",
+    "footer_synced": true,
+    "endpoint_id": "brain-a03bfa5ea206"
+  }
+]

@@ -1,0 +1,16 @@
+◂ ● home-b · beta · feat-c  ● home-a · alpha · feat-b ‖  ● home-a · alpha · feat-a  ● home-b · beta · feat-d                                     ▸ 4/4
+ROUTING ◉ on · Jev ready · 249 ms · footer synced
+
+[Sessions 0] Now 1  Routes 2  Policy 3  Classifier 4  Usage 5 
+
+SESSIONS · 4 sessions in 2 homes
+  SESSION                                   STATE           ROUTE                 REPLIES                       LAST SWITCH
+● home-a · 1 endpoint · brain up 1m · 1 reply · 0 switches
+  alpha · feat-b                            ‖ paused        gpt-6.1-sol · high                               0  -
+  alpha · feat-a                            ◉ on            gpt-6-sol · medium    █                          1  -
+
+● home-b · 1 endpoint · brain up 10m · 14 replies · 4 switches
+  beta · feat-d                             ◉ on            gpt-6-luna · medium   ██████                     6  20:47 high→low
+▸ beta · feat-c                             ◉ on            gpt-6-luna · medium   ████████                   8  20:43 high→low
+
+↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause · P pause home · q quit

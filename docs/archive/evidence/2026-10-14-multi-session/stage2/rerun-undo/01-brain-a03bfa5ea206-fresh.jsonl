@@ -1,0 +1,14 @@
+{"time":"2026-10-14T22:08:47.162897+03:00","level":"INFO","msg":"catalog-seeded","models":9}
+{"time":"2026-10-14T22:08:47.164565+03:00","level":"INFO","msg":"brain-ready","home":"a03bfa5ea206","link":"$RUN/state/codex-router/homes/a03bfa5ea206/brain.sock","control":"$RUN/state/codex-router/homes/a03bfa5ea206/control.sock"}
+{"time":"2026-10-14T22:08:47.164937+03:00","level":"WARN","msg":"daemon-unreachable","socket":"/Users/alexei/.cache/codex-router-live/home-b/app-server-control/app-server-control.sock","err":"appserver: dial: failed to WebSocket dial: failed to send handshake request: Get \"http://localhost/\": dial unix /Users/alexei/.cache/codex-router-live/home-b/app-server-control/app-server-control.sock: connect: no such file or directory"}
+{"time":"2026-10-14T22:08:50.921477+03:00","level":"INFO","msg":"daemon-connected"}
+{"time":"2026-10-14T22:08:51.118933+03:00","level":"INFO","msg":"thread-started","thread":"01a13bd1-3cb6-7ad3-861c-c0a7e9e6efb5"}
+{"time":"2026-10-14T22:08:51.150818+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13bd1-3cb6-7ad3-861c-c0a7e9e6efb5","code":-32600}
+{"time":"2026-10-14T22:08:51.908156+03:00","level":"INFO","msg":"thread-started","thread":"01a13bd1-3d8b-7172-b7f8-b83b5888787e"}
+{"time":"2026-10-14T22:08:51.935484+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13bd1-3d8b-7172-b7f8-b83b5888787e","code":-32600}
+{"time":"2026-10-14T22:08:58.744889+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13bd1-3cb6-7ad3-861c-c0a7e9e6efb5"}
+{"time":"2026-10-14T22:08:59.073976+03:00","level":"INFO","msg":"route decision","thread":"01a13bd1-3cb6-7ad3-861c-c0a7e9e6efb5","turn":"01a13bd1-4116-7551-8dca-a9d847200a43","step":0,"tier":"micro","activity":"","reason":"downgrade","model":"gpt-6-luna","effort":"low","rewritten":true}
+{"time":"2026-10-14T22:08:59.074478+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13bd1-3cb6-7ad3-861c-c0a7e9e6efb5","model":"gpt-6-luna","effort":"low"}
+{"time":"2026-10-14T22:08:59.356281+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13bd1-3d8b-7172-b7f8-b83b5888787e"}
+{"time":"2026-10-14T22:08:59.623745+03:00","level":"INFO","msg":"route decision","thread":"01a13bd1-3d8b-7172-b7f8-b83b5888787e","turn":"01a13bd1-44c3-7502-9997-38570b2bd5c8","step":0,"tier":"micro","activity":"","reason":"downgrade","model":"gpt-6-luna","effort":"low","rewritten":true}
+{"time":"2026-10-14T22:08:59.624197+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13bd1-3d8b-7172-b7f8-b83b5888787e","model":"gpt-6-luna","effort":"low"}

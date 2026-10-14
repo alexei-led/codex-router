@@ -1,0 +1,23 @@
+Codex home home-b: ~/.cache/codex-router-live/home-b (id a03bfa5ea206)
+~/.cache/codex-router-live/home-b/config.toml:
+@@ -3 +3 @@
++ # >>> codex-router >>>
++ model_provider = "router"
++ # <<< codex-router <<<
+@@ -44 +47 @@
++ # >>> codex-router >>>
++ [model_providers.router]
++ name = "router"
++ base_url = "http://127.0.0.1:65107/v1"
++ wire_api = "responses"
++ requires_openai_auth = true
++ http_headers = { "X-Codex-Router-Token" = "<redacted>" }
++ # <<< codex-router <<<
+stored port 65107 and the token in $RUN/state/codex-router/homes/a03bfa5ea206
+installed ~/Library/LaunchAgents/com.github.alexei-led.codex-router.a03bfa5ea206.edge.plist
+installed ~/Library/LaunchAgents/com.github.alexei-led.codex-router.a03bfa5ea206.brain.plist
+wrote ~/.cache/codex-router-live/home-b/codex-router.env
+backup: ~/.cache/codex-router-live/home-b/config.toml.codex-router-20261014T173154Z.bak
+wrote ~/.cache/codex-router-live/home-b/config.toml
+Codex home home-b now uses the router at 127.0.0.1:65107. Threads already running keep their
+provider until /new or a Codex restart; new threads use the router.

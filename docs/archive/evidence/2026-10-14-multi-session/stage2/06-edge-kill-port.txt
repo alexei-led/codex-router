@@ -1,0 +1,11 @@
+# kill -9 edge A (launchd job com.github.alexei-led.codex-router.6b17dcbc00aa.edge) during a streaming reply in session a3
+# before (first try, 20:49:55): pid 39439 held the socket
+codex-rou 39439 alexei    4u  IPv4 0xbab607251604dafd      0t0  TCP 127.0.0.1:65106 (LISTEN)
+# after that kill: launchd started pid 80210 on the same kernel socket (same DEVICE)
+codex-rou 80210 alexei    4u  IPv4 0xbab607251604dafd      0t0  TCP 127.0.0.1:65106 (LISTEN)
+# second try, kill -9 80210 at 20:50:54 mid-stream; curl /healthz sent right after the kill:
+healthz after kill: 200 in 0.107908s
+# the new edge (pid 87258) again holds the same socket
+codex-rou 87258 alexei    4u  IPv4 0xbab607251604dafd      0t0  TCP 127.0.0.1:65106 (LISTEN)
+# Codex retried the aborted stream at once: the retried /v1/responses started ~20:50:55.03 (ms=14217, done 20:51:09.246)
+# stall: kill 20:50:54.9 -> edge-ready 20:50:54.990 -> retry served; about 0.1 s

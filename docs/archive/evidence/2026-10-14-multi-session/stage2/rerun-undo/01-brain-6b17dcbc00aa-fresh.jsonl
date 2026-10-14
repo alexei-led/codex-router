@@ -1,0 +1,19 @@
+{"time":"2026-10-14T22:08:46.733065+03:00","level":"INFO","msg":"catalog-seeded","models":9}
+{"time":"2026-10-14T22:08:46.735569+03:00","level":"INFO","msg":"brain-ready","home":"6b17dcbc00aa","link":"$RUN/state/codex-router/homes/6b17dcbc00aa/brain.sock","control":"$RUN/state/codex-router/homes/6b17dcbc00aa/control.sock"}
+{"time":"2026-10-14T22:08:46.736322+03:00","level":"WARN","msg":"daemon-unreachable","socket":"/Users/alexei/.cache/codex-router-live/home-a/app-server-control/app-server-control.sock","err":"appserver: dial: failed to WebSocket dial: failed to send handshake request: Get \"http://localhost/\": dial unix /Users/alexei/.cache/codex-router-live/home-a/app-server-control/app-server-control.sock: connect: no such file or directory"}
+{"time":"2026-10-14T22:08:50.493769+03:00","level":"INFO","msg":"daemon-connected"}
+{"time":"2026-10-14T22:08:50.549962+03:00","level":"INFO","msg":"thread-found","thread":"01a13bd1-39e2-7b43-b177-6911fcf2e23b"}
+{"time":"2026-10-14T22:08:50.550587+03:00","level":"WARN","msg":"thread-read-failed","thread":"01a13bd1-39e4-79f3-92c5-cfe99dbd72ec","err":"appserver: rpc error -32603: failed to read thread: thread-store internal error: failed to read session metadata /Users/alexei/.cache/codex-router-live/home-a/sessions/2026/10/14/rollout-2026-10-14T22-08-50-01a13bd1-39e4-79f3-92c5-cfe99dbd72ec.jsonl: rollout at /Users/alexei/.cache/codex-router-live/home-a/sessions/2026/10/14/rollout-2026-10-14T22-08-50-01a13bd1-39e4-79f3-92c5-cfe99dbd72ec.jsonl is empty"}
+{"time":"2026-10-14T22:08:50.580039+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13bd1-39e2-7b43-b177-6911fcf2e23b","code":-32600}
+{"time":"2026-10-14T22:08:50.986131+03:00","level":"INFO","msg":"thread-started","thread":"01a13bd1-3a1d-7160-a21b-5b241cca8eae"}
+{"time":"2026-10-14T22:08:51.013353+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13bd1-3a1d-7160-a21b-5b241cca8eae","code":-32600}
+{"time":"2026-10-14T22:08:54.808061+03:00","level":"INFO","msg":"thread-found","thread":"01a13bd1-39e4-79f3-92c5-cfe99dbd72ec"}
+{"time":"2026-10-14T22:08:54.821112+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13bd1-39e4-79f3-92c5-cfe99dbd72ec"}
+{"time":"2026-10-14T22:08:55.099906+03:00","level":"INFO","msg":"route decision","thread":"01a13bd1-39e4-79f3-92c5-cfe99dbd72ec","turn":"01a13bd1-3b58-78e1-b921-8ecd2a1c4f9d","step":0,"tier":"micro","activity":"","reason":"downgrade","model":"gpt-6-luna","effort":"low","rewritten":true}
+{"time":"2026-10-14T22:08:55.102332+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13bd1-39e4-79f3-92c5-cfe99dbd72ec","model":"gpt-6-luna","effort":"low"}
+{"time":"2026-10-14T22:08:57.716067+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13bd1-3a1d-7160-a21b-5b241cca8eae"}
+{"time":"2026-10-14T22:08:57.94714+03:00","level":"INFO","msg":"route decision","thread":"01a13bd1-3a1d-7160-a21b-5b241cca8eae","turn":"01a13bd1-3fda-7bd0-917e-39fa97ef9faa","step":0,"tier":"micro","activity":"","reason":"downgrade","model":"gpt-6-luna","effort":"low","rewritten":true}
+{"time":"2026-10-14T22:08:57.948565+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13bd1-3a1d-7160-a21b-5b241cca8eae","model":"gpt-6-luna","effort":"low"}
+{"time":"2026-10-14T22:08:58.430974+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13bd1-39e2-7b43-b177-6911fcf2e23b"}
+{"time":"2026-10-14T22:08:58.663807+03:00","level":"INFO","msg":"route decision","thread":"01a13bd1-39e2-7b43-b177-6911fcf2e23b","turn":"01a13bd1-3d1a-77f3-abc6-8046c44913f1","step":0,"tier":"micro","activity":"","reason":"downgrade","model":"gpt-6-luna","effort":"low","rewritten":true}
+{"time":"2026-10-14T22:08:58.664244+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13bd1-39e2-7b43-b177-6911fcf2e23b","model":"gpt-6-luna","effort":"low"}
