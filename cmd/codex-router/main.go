@@ -318,6 +318,7 @@ type listedSession struct {
 	route.SessionInfo
 	Endpoint string `json:"endpoint_id"`
 	homeName string
+	base     string // the label before Disambiguate, shared by colliding sessions
 }
 
 // findSessions lists the sessions of the endpoint at socket, or, when socket
@@ -375,7 +376,7 @@ func collectSessions(eps []registry.Endpoint, prune func(registry.Endpoint)) []l
 		labels[i], ids[i] = s.Label, s.ID
 	}
 	for i, l := range home.Disambiguate(labels, ids) {
-		out[i].Label = l
+		out[i].base, out[i].Label = out[i].Label, l
 	}
 	return out
 }
@@ -406,16 +407,20 @@ func endpointSessions(ep registry.Endpoint) (control.Hello, []route.SessionInfo,
 
 // resolveSession returns the sessions query names under the first rule that
 // matches any: an exact session or thread id; a session or thread id
-// prefix; an exact label; a label suffix starting at a separator. One match
-// resolves; several are ambiguous.
+// prefix; an exact label; a label suffix starting at a separator. Label
+// rules try the shown label and the one before disambiguation, so a label
+// that several sessions share names all of them. One match resolves;
+// several are ambiguous.
 func resolveSession(sessions []listedSession, query string) []listedSession {
 	rules := []func(listedSession) bool{
 		func(s listedSession) bool { return s.ID == query || s.ThreadID == query },
 		func(s listedSession) bool {
 			return strings.HasPrefix(s.ID, query) || strings.HasPrefix(s.ThreadID, query)
 		},
-		func(s listedSession) bool { return s.Label == query },
-		func(s listedSession) bool { return strings.HasSuffix(s.Label, labelSep+query) },
+		func(s listedSession) bool { return s.Label == query || s.base == query },
+		func(s listedSession) bool {
+			return strings.HasSuffix(s.Label, labelSep+query) || strings.HasSuffix(s.base, labelSep+query)
+		},
 	}
 	for _, match := range rules {
 		var got []listedSession

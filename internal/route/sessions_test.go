@@ -277,6 +277,40 @@ func TestSessionsOrderAndAttention(t *testing.T) {
 	}
 }
 
+func TestSessionsHideIdleThreads(t *testing.T) {
+	ids := func(ss []SessionInfo) []string {
+		var out []string
+		for _, s := range ss {
+			out = append(out, s.ThreadID)
+		}
+		return out
+	}
+	tests := []struct {
+		name    string
+		oldIdle time.Duration
+		want    []string
+	}{
+		{"just under the threshold", sessionIdle - time.Second, []string{"new", "old"}},
+		{"at the threshold", sessionIdle, []string{"new"}},
+		{"long idle keeps the latest", 2 * time.Hour, []string{"new"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, testConfig())
+			h.asker.script(answer(tier("low", 0.97)), answer(tier("low", 0.97)))
+			h.firstStep("old", "o1")
+			h.clock.Advance(time.Second)
+			h.firstStep("new", "n1")
+
+			h.clock.Advance(tt.oldIdle - time.Second)
+
+			if got := ids(h.engine.Sessions()); !slices.Equal(got, tt.want) {
+				t.Fatalf("sessions = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSessionsCarryUSDOnlyWhenPriced(t *testing.T) {
 	priced := testConfig()
 	priced.Prices = map[string]config.Price{

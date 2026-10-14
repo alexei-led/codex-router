@@ -181,9 +181,12 @@ tiers), last_switch, last_active, attention (manual|paused|escalation|unknown|st
 footer_synced, saved_usd, spent_usd` (USD fields only when `prices` is configured). Every
   number in `SessionInfo` and `SnapshotFor` comes from that thread's own tallies; home totals in
   the TUI are sums over the home's sessions.
+  The list hides a thread idle for 10 min (no user step or reply) unless it is the engine's most
+  recently active thread; it leaves at the engine's next push.
 
 **TUI focus rules**: `--session` resolves once (exact id, unique id prefix, unique label or label
-suffix). Ambiguous → exit 2 listing candidates; none → exit 1. Locked mode: no top bar, no
+suffix; labels match before and after the ` · <4-hex>` disambiguation suffix, so a shared label
+names every session that has it). Ambiguous → exit 2 listing candidates; none → exit 1. Locked mode: no top bar, no
 Sessions tab; on session end shows `ended` and exits after 3 s. All mode: initial focus = session
 whose cwd equals or contains the panel's cwd (deepest match), else the most recently active.
 
