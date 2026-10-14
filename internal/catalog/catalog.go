@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/alexei-led/codex-router/internal/config"
 )
@@ -94,6 +95,9 @@ func Parse(body []byte) (Catalog, error) {
 	return newCatalog(b.Models), nil
 }
 
+// CacheFile is Codex's models cache in a Codex home.
+const CacheFile = "models_cache.json"
+
 // LoadCache reads a models_cache.json. A missing file yields an empty
 // catalog, not an error. The file is never written.
 func LoadCache(path string) (Catalog, error) {
@@ -155,4 +159,54 @@ func (s *Store) Set(c Catalog) {
 	s.mu.Lock()
 	s.c = c
 	s.mu.Unlock()
+}
+
+// CacheCheckEvery is how often a CacheWatch looks at its file at most.
+const CacheCheckEvery = 5 * time.Second
+
+// CacheWatch reloads a models_cache.json into a Store when Codex rewrites
+// it, for a router that sees no /models replies and outlives Codex's model
+// refreshes (the brain).
+type CacheWatch struct {
+	path  string
+	store *Store
+	now   func() time.Time
+
+	mu   sync.Mutex
+	next time.Time // no look before this
+	mod  time.Time // the file as last looked at
+	size int64
+}
+
+// NewCacheWatch watches the cache at path for store; a nil now is time.Now.
+func NewCacheWatch(path string, store *Store, now func() time.Time) *CacheWatch {
+	if now == nil {
+		now = time.Now
+	}
+	return &CacheWatch{path: path, store: store, now: now}
+}
+
+// Check looks at the file, at most once per CacheCheckEvery, and when its
+// modification time or size changed loads it into the store. A missing file
+// changes nothing. A file that does not read or parse keeps the last catalog
+// and is tried again once it changes. reloaded reports a new catalog.
+func (w *CacheWatch) Check() (reloaded bool, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	now := w.now()
+	if now.Before(w.next) {
+		return false, nil
+	}
+	w.next = now.Add(CacheCheckEvery)
+	fi, err := os.Stat(w.path)
+	if err != nil || fi.ModTime().Equal(w.mod) && fi.Size() == w.size {
+		return false, nil
+	}
+	w.mod, w.size = fi.ModTime(), fi.Size()
+	c, err := LoadCache(w.path)
+	if err != nil {
+		return false, err
+	}
+	w.store.Set(c)
+	return true, nil
 }

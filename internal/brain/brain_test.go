@@ -318,6 +318,8 @@ type rig struct {
 	home  home.Home
 	env   map[string]string
 	deps  route.Deps
+	// models, when set, reloads the catalog from the home's models cache.
+	models *catalog.CacheWatch
 }
 
 func (r *rig) getenv(k string) string { return r.env[k] }
@@ -412,6 +414,7 @@ func (r *rig) start(t *testing.T) {
 		Daemon: r.d.path,
 		Idle:   IdleAfter,
 		Sweep:  5 * time.Millisecond,
+		Models: r.models,
 	})
 	if err != nil {
 		t.Fatalf("Start: %v", err)
@@ -692,6 +695,34 @@ func TestBrainHoldsAThreadSeenBeforeItsResume(t *testing.T) {
 	})
 	if s := r.session(t, "t1"); s.Attention != route.AttentionUnknown {
 		t.Fatalf("after the resume: session = %+v, want still held", s)
+	}
+}
+
+func TestBrainReloadsTheModelsCacheCodexRewrites(t *testing.T) {
+	r := newRig(t, "")
+	store := &catalog.Store{}
+	r.deps.Catalog, r.deps.Classifier = store, lowAsker{}
+	if err := os.MkdirAll(r.home.Path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	cache := filepath.Join(r.home.Path, catalog.CacheFile)
+	r.models = catalog.NewCacheWatch(cache, store, r.clock.Now)
+	r.start(t)
+	h := linkHandler{r.b}
+	sent := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+
+	if rw, ok := h.Decide(t.Context(), step(sent), turn("t1", "tu-1")); ok {
+		t.Fatalf("rewrite %+v without a catalog", rw)
+	}
+	if err := os.WriteFile(cache, []byte(testCatalog), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if rw, ok := h.Decide(t.Context(), step(sent), turn("t1", "tu-2")); ok {
+		t.Fatalf("rewrite %+v: the cache was read again within %v", rw, catalog.CacheCheckEvery)
+	}
+	r.clock.advance(catalog.CacheCheckEvery)
+	if rw, ok := h.Decide(t.Context(), step(sent), turn("t1", "tu-3")); !ok || rw.Model != "gpt-6-luna" {
+		t.Fatalf("Decide = %+v, %v; want gpt-6-luna from the rewritten cache", rw, ok)
 	}
 }
 

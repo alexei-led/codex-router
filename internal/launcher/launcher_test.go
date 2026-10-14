@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/appserver"
+	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/registry"
@@ -54,7 +55,7 @@ type upstream struct {
 
 func newUpstream(t *testing.T) *upstream {
 	t.Helper()
-	catalog, err := os.ReadFile(filepath.Join("testdata", modelsCache))
+	models, err := os.ReadFile(filepath.Join("testdata", catalog.CacheFile))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +63,7 @@ func newUpstream(t *testing.T) *upstream {
 	u.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/models"):
-			_, _ = w.Write(catalog)
+			_, _ = w.Write(models)
 		case strings.HasSuffix(r.URL.Path, "/responses"):
 			var body struct {
 				Model string `json:"model"`
@@ -116,11 +117,11 @@ func newHarness(t *testing.T, extraEnv ...string) *harness {
 		t.Fatal(err)
 	}
 	codexHome := t.TempDir()
-	cache, err := os.ReadFile(filepath.Join("testdata", modelsCache))
+	cache, err := os.ReadFile(filepath.Join("testdata", catalog.CacheFile))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(codexHome, modelsCache), cache, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(codexHome, catalog.CacheFile), cache, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	cfg := config.Default()

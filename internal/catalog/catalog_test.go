@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/config"
@@ -183,4 +184,51 @@ func TestStoreConcurrent(t *testing.T) {
 	if !s.Current().Compatible("gpt-6.1-sol", "gpt-6-luna") {
 		t.Error("catalog lost after concurrent Set")
 	}
+}
+
+func TestCacheWatchReloadsAChangedCacheAtMostEveryCheckPeriod(t *testing.T) {
+	path := filepath.Join(t.TempDir(), catalog.CacheFile)
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	store := &catalog.Store{}
+	w := catalog.NewCacheWatch(path, store, func() time.Time { return now })
+	write := func(slug string, mod time.Time) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(`{"models":[{"slug":"`+slug+`"}]}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(path, mod, mod); err != nil {
+			t.Fatal(err)
+		}
+	}
+	check := func(wantReloaded bool, wantErr bool, wantSlug string) {
+		t.Helper()
+		reloaded, err := w.Check()
+		if reloaded != wantReloaded || (err != nil) != wantErr {
+			t.Fatalf("Check = %v, %v; want reloaded %v, error %v", reloaded, err, wantReloaded, wantErr)
+		}
+		if _, ok := store.Current().Models[wantSlug]; wantSlug != "" && !ok {
+			t.Fatalf("catalog = %v, want %s", store.Current().Models, wantSlug)
+		}
+	}
+
+	check(false, false, "") // no file yet
+	write("gpt-a", now)
+	check(false, false, "") // looked a moment ago
+	now = now.Add(catalog.CacheCheckEvery)
+	check(true, false, "gpt-a")
+
+	now = now.Add(catalog.CacheCheckEvery)
+	check(false, false, "gpt-a") // unchanged
+
+	write("gpt-b", now) // same size, newer mtime
+	now = now.Add(catalog.CacheCheckEvery)
+	check(true, false, "gpt-b")
+
+	if err := os.WriteFile(path, []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(catalog.CacheCheckEvery)
+	check(false, true, "gpt-b") // a broken file keeps the last catalog
+	now = now.Add(catalog.CacheCheckEvery)
+	check(false, false, "gpt-b") // and is not read again until it changes
 }
