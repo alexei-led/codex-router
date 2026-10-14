@@ -143,6 +143,7 @@ func TestExtractVerifiedCodeMode(t *testing.T) {
 		{"still running", []responses.Item{cell("c1", goTestCell), cellOut("c1", "Script running with cell ID 3\nWall time 10.0 seconds\nOutput:\n")}, 0, false},
 		{"script failed", []responses.Item{cell("c1", goTestCell), cellOut("c1", "Script failed\nWall time 0.2 seconds\nOutput:\n", "boom")}, 0, false},
 		{"printed exit code with spaces", []responses.Item{cell("c1", goTestCell), cellOut("c1", scriptCompleted("1", "Exit_Code: 0")...)}, 0, true},
+		{"printed exit code in words", []responses.Item{cell("c1", goTestCell), cellOut("c1", scriptCompleted("1", "exit code: 0")...)}, 0, true},
 		{"single-quoted command", []responses.Item{cell("c1", "await tools.exec_command({cmd: 'make lint'})"), passed("c1")}, 0, true},
 		{"template command", []responses.Item{cell("c1", "await tools.exec_command({cmd: `go vet ./...`})"), passed("c1")}, 0, true},
 		{"shell_command", []responses.Item{cell("c1", `await tools.shell_command({command: "npm test"})`), passed("c1")}, 0, true},

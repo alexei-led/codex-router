@@ -27,7 +27,7 @@ var (
 	exitLine    = regexp.MustCompile(`^(?:Exit code:|Process exited with code) (-?\d+)$`)
 	runningLine = regexp.MustCompile(`^Process running with session ID \d+`)
 	cellHeader  = regexp.MustCompile(`^Script (?:completed|failed|terminated|error:|running with cell ID)`)
-	printedExit = regexp.MustCompile(`(?i)^exit_code\s*[=:]\s*(-?\d+)$`)
+	printedExit = regexp.MustCompile(`(?i)^exit[ _-]?code\s*[=:]\s*(-?\d+)$`)
 )
 
 func parseResult(out string) result {
@@ -65,10 +65,10 @@ func parseResult(out string) result {
 
 // parseCell reads a code-mode cell result. Codex reports how the script
 // ended, not what its commands returned, so a command's exit status is known
-// only when the script printed it: the last `exit_code=N` line, or a nested
-// tool's exit line, in the body. Unlike plain output, a cell body is what the
-// script chose to print, and models print the status after the output. A
-// script that threw before printing one failed.
+// only when the script printed it: the last `exit_code=N` or `exit code: N`
+// line, or a nested tool's exit line, in the body. Unlike plain output, a
+// cell body is what the script chose to print, and models print the status
+// after the output. A script that threw before printing one failed.
 func parseCell(out, status string) result {
 	_, body, found := strings.Cut(out, "\nOutput:")
 	if !found {
