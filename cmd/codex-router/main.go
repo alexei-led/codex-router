@@ -804,7 +804,7 @@ func (c cli) edge(ctx context.Context, configPath string, args []string) int {
 		return c.fail(err)
 	}
 	lc := link.NewClient(link.ClientOptions{
-		Path: brain.LinkPath(dir), HomeID: h.ID, Timeout: cfg.DecideTimeout(), Logger: log,
+		Path: func() string { return brain.LinkPath(dir) }, HomeID: h.ID, Timeout: cfg.DecideTimeout(), Logger: log,
 	})
 	defer func() { _ = lc.Close() }()
 	srv := proxy.New(proxy.Options{

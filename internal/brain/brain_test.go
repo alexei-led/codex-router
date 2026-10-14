@@ -475,7 +475,7 @@ func TestBrainServesControlLinkAndRegistry(t *testing.T) {
 		t.Errorf("hello = %+v", h)
 	}
 
-	lc := link.NewClient(link.ClientOptions{Path: LinkPath(r.homeDir()), HomeID: r.home.ID})
+	lc := link.NewClient(link.ClientOptions{Path: func() string { return LinkPath(r.homeDir()) }, HomeID: r.home.ID})
 	defer func() { _ = lc.Close() }()
 	if !lc.Up(t.Context()) {
 		t.Fatal("the edge cannot reach the brain over the link socket")
@@ -700,7 +700,7 @@ func TestBrainWaitsForTheDaemon(t *testing.T) {
 	r.d.stop()
 	r.d.load("t1", &fakeThread{cwd: "/w1", source: "user", route: native})
 	r.start(t)
-	lc := link.NewClient(link.ClientOptions{Path: LinkPath(r.homeDir()), HomeID: r.home.ID})
+	lc := link.NewClient(link.ClientOptions{Path: func() string { return LinkPath(r.homeDir()) }, HomeID: r.home.ID})
 	defer func() { _ = lc.Close() }()
 	if !lc.Up(t.Context()) {
 		t.Fatal("the link is down while the daemon is")
@@ -726,7 +726,7 @@ func TestBrainMovesLongSocketPathsToTmp(t *testing.T) {
 	if got := LinkPath(dir); got != want {
 		t.Errorf("LinkPath = %q, want %q", got, want)
 	}
-	lc := link.NewClient(link.ClientOptions{Path: LinkPath(dir), HomeID: r.home.ID})
+	lc := link.NewClient(link.ClientOptions{Path: func() string { return LinkPath(dir) }, HomeID: r.home.ID})
 	defer func() { _ = lc.Close() }()
 	if !lc.Up(t.Context()) {
 		t.Error("the edge cannot reach the brain at the recorded path")

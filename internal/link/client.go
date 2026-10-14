@@ -31,7 +31,9 @@ var errClosed = errors.New("link: connection closed")
 // ClientOptions configure a Client. Timeout bounds each Decide on top of the
 // caller's context; zero means proxy.DefaultDecideTimeout.
 type ClientOptions struct {
-	Path    string
+	// Path returns the brain's socket path; each dial calls it, so an edge
+	// follows a brain that restarts on another path.
+	Path    func() string
 	HomeID  string
 	Timeout time.Duration
 	Logger  *slog.Logger
@@ -43,7 +45,7 @@ type ClientOptions struct {
 // timeouts in a row) or gone mid-call. Observe never blocks: it queues and
 // drops when ObserveQueue is full.
 type Client struct {
-	path    string
+	path    func() string
 	homeID  string
 	timeout time.Duration
 	log     *slog.Logger
@@ -252,7 +254,7 @@ func (c *Client) dial(ctx context.Context) (*clientConn, error) {
 	ctx, cancel := context.WithTimeout(ctx, DialTimeout)
 	defer cancel()
 	var d net.Dialer
-	conn, err := d.DialContext(ctx, "unix", c.path)
+	conn, err := d.DialContext(ctx, "unix", c.path())
 	if err != nil {
 		return nil, err
 	}

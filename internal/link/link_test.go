@@ -139,7 +139,7 @@ func startBrain(t *testing.T, path, home string, h Handler) *Server {
 
 func newClient(t *testing.T, path, home string, timeout time.Duration) *Client {
 	t.Helper()
-	c := NewClient(ClientOptions{Path: path, HomeID: home, Timeout: timeout})
+	c := NewClient(ClientOptions{Path: func() string { return path }, HomeID: home, Timeout: timeout})
 	t.Cleanup(func() { _ = c.Close() })
 	return c
 }

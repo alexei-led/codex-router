@@ -50,7 +50,7 @@ func HomeDir(state, homeID string) string {
 
 // LinkPath is the link socket of the brain whose home state dir is dir:
 // brain.sock in dir, or the path the brain recorded there because that one
-// was too long for a unix socket. The edge reads it once at start.
+// was too long for a unix socket. The edge reads it before each dial.
 func LinkPath(dir string) string {
 	if b, err := os.ReadFile(filepath.Join(dir, pathFile)); err == nil {
 		if p := strings.TrimSpace(string(b)); filepath.IsAbs(p) {
