@@ -148,7 +148,7 @@ func Decide(in Input) Result {
 		tax := taxOf(in.TaxTokens, choice)
 		est := &Estimate{
 			TaxTokens: tax,
-			Threshold: p.UpgradeBase + p.UpgradeSlope*share(tax, p.UpgradePivotTokens),
+			Threshold: UpgradeBar(p, tax),
 			Mass:      massAbove(probs, incumbent),
 			Streak:    trailing(next.Votes, func(v Vote) bool { return rank(v.Tier) > rank(incumbent) }),
 		}
@@ -179,7 +179,7 @@ func Decide(in Input) Result {
 		if est.Mass < est.Threshold || est.Streak < downgradeVotes {
 			continue
 		}
-		if sameTask(p, in.Advice, in.MidTurn) && !in.DownAllowed {
+		if SameTask(p, in.Advice, in.MidTurn) && !in.DownAllowed {
 			return stay(ReasonDowngradeHeld, est)
 		}
 		return Result{Tier: target, Reason: ReasonDowngrade, State: next, Estimate: est}
@@ -222,9 +222,9 @@ func FitTier(tier config.Tier, tokens int, window func(config.Tier) (int, bool),
 	return best, false
 }
 
-// sameTask reports whether the answer is about the task already running: a
+// SameTask reports whether the answer is about the task already running: a
 // review inside a turn, or a new prompt scored as a continuation.
-func sameTask(p config.Policy, a *classifier.Advice, midTurn bool) bool {
+func SameTask(p config.Policy, a *classifier.Advice, midTurn bool) bool {
 	return midTurn || (a.Continuation != nil && *a.Continuation >= p.ContinuationMass)
 }
 
@@ -241,6 +241,12 @@ func taxOf(f func(config.Tier) int, t config.Tier) int {
 		return 0
 	}
 	return max(0, f(t))
+}
+
+// UpgradeBar is the probability mass an upgrade needs when it costs tax
+// tokens of cache: the base, plus the slope scaled by the tax share.
+func UpgradeBar(p config.Policy, tax int) float64 {
+	return p.UpgradeBase + p.UpgradeSlope*share(tax, p.UpgradePivotTokens)
 }
 
 // share is tax/(tax+pivot): 0 for no tax, half the slope at the pivot.
