@@ -21,31 +21,34 @@ func input(tokens int) responses.Usage {
 	return responses.Usage{InputTokens: tokens, TotalTokens: tokens}
 }
 
-func TestWarm(t *testing.T) {
-	l := NewLedger(fiveMin)
-	l.Observe("th", sol, input(20_000), t0)
-	l.Observe("th", "empty", input(0), t0)
-
+func TestSwitchTaxByCandidateWarmth(t *testing.T) {
 	cases := []struct {
-		name   string
-		thread string
-		model  string
-		at     time.Time
-		want   bool
+		name string
+		age  time.Duration
+		ran  bool
+		toks int
+		want int
 	}{
-		{"right after the response", "th", sol, t0, true},
-		{"just inside TTL minus margin", "th", sol, t0.Add(4*time.Minute + 29*time.Second), true},
-		{"at TTL minus margin", "th", sol, t0.Add(4*time.Minute + 30*time.Second), false},
-		{"after TTL", "th", sol, t0.Add(6 * time.Minute), false},
-		{"before the response", "th", sol, t0.Add(-time.Second), false},
-		{"a model the thread never ran", "th", luna, t0, false},
-		{"another thread", "other", sol, t0, false},
-		{"a response with no input tokens", "th", "empty", t0, false},
+		{"right after the response", 0, true, 20_000, 0},
+		{"just inside TTL minus margin", 4*time.Minute + 29*time.Second, true, 20_000, 0},
+		{"at TTL minus margin", 4*time.Minute + 30*time.Second, true, 20_000, 20_000},
+		{"after TTL", 6 * time.Minute, true, 20_000, 20_000},
+		{"before the response", -time.Second, true, 20_000, 20_000},
+		{"a model the thread never ran", 0, false, 0, 20_000},
+		{"a response with no input tokens", 0, true, 0, 20_000},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := l.Warm(tc.thread, tc.model, tc.at); got != tc.want {
-				t.Fatalf("Warm = %v, want %v", got, tc.want)
+			l := NewLedger(fiveMin)
+			if tc.ran {
+				l.Observe("th", luna, input(tc.toks), t0.Add(-tc.age))
+			}
+			l.Observe("th", sol, input(20_000), t0)
+			if got := l.SwitchTax("th", luna, 20_000, t0); got != tc.want {
+				t.Fatalf("SwitchTax = %d, want %d", got, tc.want)
+			}
+			if got := l.SwitchTax("other", luna, 20_000, t0); got != 0 {
+				t.Fatalf("SwitchTax on another thread = %d, want 0", got)
 			}
 		})
 	}
@@ -101,12 +104,13 @@ func TestSwitchTax(t *testing.T) {
 
 func TestForget(t *testing.T) {
 	l := NewLedger(fiveMin)
+	l.Observe("th", luna, input(12_000), t0.Add(-time.Minute))
 	l.Observe("th", sol, input(20_000), t0)
+	if got := l.SwitchTax("th", luna, 30_000, t0); got != 8_000 {
+		t.Fatalf("SwitchTax before Forget = %d, want 8000", got)
+	}
 	l.Forget("th")
 
-	if l.Warm("th", sol, t0) {
-		t.Fatal("forgotten thread is still warm")
-	}
 	if got := l.SwitchTax("th", luna, 30_000, t0); got != 0 {
 		t.Fatalf("SwitchTax after Forget = %d, want 0", got)
 	}
@@ -121,13 +125,14 @@ func TestLedgerConcurrentUse(t *testing.T) {
 			for j := range 100 {
 				l.Observe(thread, sol, input(j+1), t0)
 				l.SwitchTax(thread, luna, j, t0)
-				l.Warm(thread, sol, t0)
 			}
 		})
 	}
 	wg.Wait()
-	if !l.Warm("th0", sol, t0) || !l.Warm("th1", sol, t0) {
-		t.Fatal("threads not warm after concurrent observes")
+	for _, thread := range []string{"th0", "th1"} {
+		if got := l.SwitchTax(thread, luna, 1000, t0); got != 100 {
+			t.Fatalf("SwitchTax(%s) = %d, want 100", thread, got)
+		}
 	}
 }
 

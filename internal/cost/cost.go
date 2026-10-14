@@ -55,14 +55,6 @@ func (l *Ledger) Observe(thread, model string, u responses.Usage, at time.Time) 
 	t.models[model] = CacheState{PrefixTokens: u.InputTokens, LastAt: at}
 }
 
-// Warm reports whether model holds a cached prefix for thread at now.
-func (l *Ledger) Warm(thread, model string, now time.Time) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	_, warm := l.warmPrefix(thread, model, now)
-	return warm
-}
-
 // SwitchTax is how many more uncached input tokens the thread's next request,
 // of tokens context tokens, writes on candidate than on the thread's current
 // model. A warm model pays only what its cached prefix lacks; a cold one pays
