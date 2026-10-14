@@ -268,7 +268,9 @@ type step struct {
 func (s *step) sent() config.Effort { return s.req.Effort }
 
 // Decide returns the rewrite for one request, or false to forward it
-// unchanged. Any panic or error forwards unchanged.
+// unchanged. Any panic or error forwards unchanged. Once ctx is done the
+// caller forwards the request unchanged, so a step whose ctx ends before it
+// commits records nothing: no decision, no footer write, no pin spent.
 func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses.Meta) (rw responses.Rewrite, ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -287,6 +289,9 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 	th := e.thread(key)
 	th.step.Lock()
 	defer th.step.Unlock()
+	if ctx.Err() != nil {
+		return responses.Rewrite{}, false
+	}
 
 	st, retried, old, picked := e.begin(th, req, m)
 	if picked {
@@ -302,20 +307,24 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 	if st == nil {
 		return responses.Rewrite{}, false
 	}
+	st.facts = facts.Extract(req, st.opts)
+	st.tokens = max(st.tokens, st.facts.ApproxTokens)
+	var advice *classifier.Advice
+	var askErr error
+	if st.first && st.pin == nil {
+		advice, askErr = e.classify(ctx, st)
+	}
+	if ctx.Err() != nil {
+		e.abandon(st)
+		return responses.Rewrite{}, false
+	}
 	if st.pin != nil {
 		e.persist() // the pin is spent; a restart must not run it again
 	}
-	st.facts = facts.Extract(req, st.opts)
-	st.tokens = max(st.tokens, st.facts.ApproxTokens)
 
 	var d Decision
 	if st.first {
-		var advice *classifier.Advice
-		var err error
-		if st.pin == nil {
-			advice, err = e.classify(ctx, st)
-		}
-		d = e.decideFirst(st, advice, err)
+		d = e.decideFirst(st, advice, askErr)
 	} else {
 		var job *review
 		d, job = e.decideLater(st)
@@ -422,6 +431,21 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 		st.pin, th.pin = th.pin, nil
 	}
 	return st, nil, old, false
+}
+
+// abandon drops a step whose ctx ended before it committed: the caller
+// forwards the request unchanged. A first step leaves its turn unrouted, as
+// a classifier failure does, and gives back the pin it took.
+func (e *Engine) abandon(st *step) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if !st.first {
+		return
+	}
+	st.th.turnOff = true
+	if st.pin != nil && st.th.pin == nil {
+		st.th.pin = st.pin
+	}
 }
 
 // bind binds th to its first account (plan M12). Another account resets

@@ -1337,3 +1337,66 @@ func TestObservedMoveGuards(t *testing.T) {
 		})
 	}
 }
+
+func TestDecideLockWaitPastTheDeadlineCommitsNothing(t *testing.T) {
+	saved := &savedIntents{}
+	h := newHarness(t, testConfig(), func(d *Deps) { d.SaveIntent = saved.save })
+	release := make(chan struct{})
+	h.asker.script(func() (classifier.Advice, error) {
+		<-release
+		return tier("low", 0.97), nil
+	})
+	first := make(chan struct{})
+	go func() {
+		defer close(first)
+		h.firstStep("th", "t1")
+	}()
+	for h.asker.Calls() == 0 {
+		time.Sleep(time.Millisecond)
+	}
+	h.apply(Command{Op: OpPin, Session: "th", Tier: config.TierHigh})
+
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	late := make(chan bool)
+	go func() {
+		_, ok := h.engine.Decide(expired, req(medium, userMsg(secretPrompt), userMsg("t2")), meta("th", "t2"))
+		late <- ok
+	}()
+	close(release)
+	<-first
+
+	if <-late {
+		t.Fatal("a decide past its deadline rewrote the request")
+	}
+	if ds := h.sink.Decisions(); len(ds) != 1 || ds[0].TurnID != "t1" {
+		t.Fatalf("decisions = %+v, want only turn t1's", ds)
+	}
+	if p := saved.last(t).Threads["th"].Pin; p == nil || *p != config.TierHigh {
+		t.Fatalf("saved intent %+v, want the pin unspent", saved.last(t))
+	}
+	rw, ok := h.firstStep("th", "t3")
+	wantRoute(t, rw, ok, high)
+}
+
+func TestDecideWhoseClassifierAnswersAtTheDeadlineCommitsNothing(t *testing.T) {
+	h := newHarness(t, testConfig())
+	ctx, cancel := context.WithCancel(context.Background())
+	h.asker.script(func() (classifier.Advice, error) {
+		cancel()
+		return tier("low", 0.97), nil
+	})
+	items := []responses.Item{userMsg(secretPrompt)}
+
+	rw, ok := h.engine.Decide(ctx, req(medium, items...), meta("th", "t1"))
+
+	wantUnchanged(t, rw, ok)
+	if ds := h.sink.Decisions(); len(ds) != 0 {
+		t.Fatalf("decisions = %+v, want none: the edge forwarded the request unchanged", ds)
+	}
+	rw, ok = h.decide(req(medium, append(items, call("c1", "ls"), result("c1", 0, "a.go"))...), meta("th", "t1"))
+	wantUnchanged(t, rw, ok)
+	if h.asker.Calls() != 1 || len(h.sink.Decisions()) != 0 {
+		t.Fatalf("classifier calls %d, decisions %d; want the rest of the turn unrouted", h.asker.Calls(), len(h.sink.Decisions()))
+	}
+}

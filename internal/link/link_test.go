@@ -22,7 +22,6 @@ import (
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
-	"github.com/alexei-led/codex-router/internal/policy"
 	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
@@ -342,7 +341,7 @@ func TestLateDecideIsNotAnswered(t *testing.T) {
 	startBrain(t, path, homeA, brain)
 	conn := rawEdge(t, path)
 
-	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(20 * time.Millisecond)}, smallBody); err != nil {
+	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(replyMargin + 50*time.Millisecond)}, smallBody); err != nil {
 		t.Fatal(err)
 	}
 	eventually(t, "late decide", func() bool { return len(brain.calls()) == 1 })
@@ -387,9 +386,13 @@ const engineCatalog = `{"models":[
 ]}`
 
 // slowAsker advises the low tier after delay, unless its context ends first.
-type slowAsker struct{ delay time.Duration }
+type slowAsker struct {
+	delay time.Duration
+	calls atomic.Int32
+}
 
-func (a slowAsker) Ask(ctx context.Context, _ classifier.Input) (classifier.Advice, error) {
+func (a *slowAsker) Ask(ctx context.Context, _ classifier.Input) (classifier.Advice, error) {
+	a.calls.Add(1)
 	select {
 	case <-ctx.Done():
 		return classifier.Advice{}, ctx.Err()
@@ -398,7 +401,7 @@ func (a slowAsker) Ask(ctx context.Context, _ classifier.Input) (classifier.Advi
 	}
 }
 
-func (slowAsker) Health() classifier.Health { return classifier.Health{} }
+func (*slowAsker) Health() classifier.Health { return classifier.Health{} }
 
 type decisionSink struct {
 	mu sync.Mutex
@@ -439,7 +442,8 @@ func TestDecideDeadlineCoversTransitAndParse(t *testing.T) {
 			store := &catalog.Store{}
 			store.Set(cat)
 			sink := &decisionSink{}
-			eng := route.New(route.Deps{Config: config.Default(), Catalog: store, Classifier: slowAsker{classify}, Sink: sink})
+			asker := &slowAsker{delay: classify}
+			eng := route.New(route.Deps{Config: config.Default(), Catalog: store, Classifier: asker, Sink: sink})
 			path := sockPath(t)
 			startBrain(t, path, homeA, eng)
 			conn := rawEdge(t, path)
@@ -449,19 +453,52 @@ func TestDecideDeadlineCoversTransitAndParse(t *testing.T) {
 			if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadline}, body); err != nil {
 				t.Fatal(err)
 			}
-			eventually(t, "decision", func() bool { return len(sink.decisions()) == 1 })
+			// Once the classifier runs, the thread's next turn waits for this
+			// decide to end.
+			eventually(t, "the classifier call", func() bool { return asker.calls.Load() == 1 })
+			next := stepMeta
+			next.TurnID = "tu-2"
+			if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 2, Meta: &next, DeadlineUnixMs: deadlineIn(wait)}, body); err != nil {
+				t.Fatal(err)
+			}
+			eventually(t, "the next turn's decision", func() bool {
+				ds := sink.decisions()
+				return len(ds) > 0 && ds[len(ds)-1].TurnID == next.TurnID
+			})
 
-			d := sink.decisions()[0]
-			if tc.routed {
-				if !d.Rewritten || d.Route.Model != "gpt-6-luna" {
-					t.Fatalf("decision = %+v, want a switch to gpt-6-luna", d)
+			ds := sink.decisions()
+			if !tc.routed {
+				if len(ds) != 1 {
+					t.Fatalf("decisions = %+v, want none for the late decide: the edge forwarded the original", ds)
 				}
 				return
 			}
-			if d.Reason != policy.ReasonError || d.Rewritten {
-				t.Fatalf("decision = %+v, want an unrouted turn: the edge forwarded the original", d)
+			if len(ds) != 2 || !ds[0].Rewritten || ds[0].Route.Model != "gpt-6-luna" {
+				t.Fatalf("decisions = %+v, want a switch to gpt-6-luna first", ds)
 			}
 		})
+	}
+}
+
+func TestExpiredDecideNeverReachesTheHandler(t *testing.T) {
+	path := sockPath(t)
+	brain := &fakeBrain{rw: toLow, ok: true}
+	srv := startBrain(t, path, homeA, brain)
+	conn := rawEdge(t, path)
+
+	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(-time.Second)}, smallBody); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 2, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(time.Second)}, smallBody); err != nil {
+		t.Fatal(err)
+	}
+	if h, _, err := ReadFrame(conn); err != nil || h.ID != 2 {
+		t.Fatalf("first reply = %+v, %v; want only the answer to decide 2", h, err)
+	}
+	_ = srv.Close()
+
+	if n := len(brain.calls()); n != 1 {
+		t.Fatalf("handler saw %d decides, want only the one in time", n)
 	}
 }
 
