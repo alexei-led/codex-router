@@ -53,3 +53,4 @@ Files prefixed `01`–`10` predate some of the fixes; the check table says which
 - Codex refuses `-s`/`-a` with `resume` under `--remote` ("Permission overrides are not
   supported when resuming a remote task").
 - SIGKILL of the launcher orphans the Codex TUI and the app-server (see Kill launcher).
+- The orphaned app-server keeps sending the ChatGPT bearer token to the dead proxy port, and whoever binds that port next receives it (the recovery above shows such a listener gets the turn). No launcher-side fix exists on macOS; the docs tell the user to kill the orphan promptly.

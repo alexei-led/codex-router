@@ -140,6 +140,8 @@ Every error path ends in "forward the original request".
 
 The one case where the router cannot fail open is the launcher process dying: the proxy is in that process, and Codex's provider points at it ([research §9](research.md#9-phase-2-spikes-2026-10-13), spike 1b).
 
+A hard kill (`kill -9`, OOM) also leaves the private `codex app-server` running, and it keeps retrying `http://127.0.0.1:<port>` with the user's ChatGPT `Authorization` bearer token and `ChatGPT-Account-ID`. The port is free by then, so any local user who binds it gets those credentials. The session token does not help, because Codex sends its auth whatever the listener answers. On macOS the launcher cannot tie the app-server's life to its own. After a hard kill, quit Codex and kill the orphaned `codex app-server` promptly.
+
 ## Further reading
 
 - [research.md](research.md): extension points, spikes, risk register, what is unverified
