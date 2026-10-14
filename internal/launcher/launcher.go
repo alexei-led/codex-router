@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/alexei-led/codex-router/internal/appserver"
 	"github.com/alexei-led/codex-router/internal/config"
@@ -210,6 +211,8 @@ type session struct {
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
 	ctl     *control.Server
+	reg     string // registry root once the entry is written
+	id      string // runtime id: the endpoint id
 	app     *appServer
 	api     appserver.API
 	codex   *exec.Cmd
@@ -220,7 +223,7 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 	if err != nil {
 		return nil, err
 	}
-	s = &session{o: o, dir: dir}
+	s = &session{o: o, dir: dir, id: id}
 	defer func() {
 		if err != nil {
 			s.close()
@@ -242,6 +245,10 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 		return s, err
 	}
 	snk.ctl.Store(s.ctl)
+	s.register(registry.Endpoint{
+		ID: id, Kind: registry.KindSession, Protocol: control.Protocol,
+		PID: os.Getpid(), Started: time.Now(), Home: h, Socket: ctlPath,
+	})
 	s.env = append(slices.Clone(o.Env), control.EnvSocket+"="+ctlPath)
 
 	token := newToken()
@@ -275,6 +282,22 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 		s.log.Info("appserver-updates-closed")
 	})
 	return s, nil
+}
+
+// register lists the session in the shared registry, where panels in any
+// shell find it. A session that cannot register still routes, so a failure
+// only warns: the panel will not list it.
+func (s *session) register(ep registry.Endpoint) {
+	root, err := registry.Root(s.o.getenv)
+	if err == nil {
+		err = registry.Write(root, ep)
+	}
+	if err != nil {
+		s.log.Warn("registry-write-failed", "err", err)
+		_, _ = fmt.Fprintf(s.o.Stderr, "codex-router: the panel will not list this session: %v\n", err)
+		return
+	}
+	s.reg = root
 }
 
 // startCodex runs `codex --remote` as a child on the terminal: the proxy
@@ -330,8 +353,14 @@ func exitCode(ps *os.ProcessState) int {
 }
 
 // close stops everything start began, in reverse, and removes the runtime
-// dir. It is safe on a partly started session.
+// dir. It is safe on a partly started session. The registry entry goes
+// first, so panels stop listing the session before its socket closes.
 func (s *session) close() {
+	if s.reg != "" {
+		if err := registry.Remove(s.reg, s.id); err != nil {
+			s.log.Warn("registry-remove-failed", "err", err)
+		}
+	}
 	if s.api != nil {
 		_ = s.api.Close()
 	}

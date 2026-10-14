@@ -7,19 +7,15 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
-	"syscall"
-	"time"
 
-	"github.com/alexei-led/codex-router/internal/control"
+	"github.com/alexei-led/codex-router/internal/registry"
 )
 
 const (
 	logDirName     = "logs"
-	liveDialWait   = 200 * time.Millisecond
 	runtimeIDBytes = 4
 )
 
@@ -45,7 +41,7 @@ func makeRuntimeDir(base string, getenv func(string) string) (dir, id string, er
 	if err := os.MkdirAll(base, 0o700); err != nil {
 		return "", "", fmt.Errorf("runtime dir: %w", err)
 	}
-	if err := checkPrivate(base); err != nil {
+	if err := registry.CheckPrivate(base); err != nil {
 		return "", "", fmt.Errorf("runtime dir: %w", err)
 	}
 	for range 8 {
@@ -55,7 +51,7 @@ func makeRuntimeDir(base string, getenv func(string) string) (dir, id string, er
 		dir = filepath.Join(base, id)
 		err = os.Mkdir(dir, 0o700)
 		if err == nil {
-			return dir, id, checkPrivate(dir)
+			return dir, id, registry.CheckPrivate(dir)
 		}
 		if !errors.Is(err, fs.ErrExist) {
 			break
@@ -64,69 +60,11 @@ func makeRuntimeDir(base string, getenv func(string) string) (dir, id string, er
 	return "", "", fmt.Errorf("runtime dir: %w", err)
 }
 
-// checkPrivate accepts a real directory owned by this user with no group or
-// other access.
-func checkPrivate(dir string) error {
-	fi, err := os.Lstat(dir)
-	if err != nil {
-		return err
-	}
-	if !fi.IsDir() {
-		return fmt.Errorf("%s is not a directory", dir)
-	}
-	if fi.Mode().Perm()&0o077 != 0 {
-		return fmt.Errorf("%s must not be accessible to group or others", dir)
-	}
-	if st, ok := fi.Sys().(*syscall.Stat_t); ok && int(st.Uid) != os.Getuid() {
-		return fmt.Errorf("%s is not owned by the current user", dir)
-	}
-	return nil
-}
-
 func writePort(dir string, port int) error {
 	if err := os.WriteFile(filepath.Join(dir, PortFileName), []byte(strconv.Itoa(port)+"\n"), 0o600); err != nil {
 		return fmt.Errorf("write proxy port: %w", err)
 	}
 	return nil
-}
-
-// NewestControlSocket returns the control socket of the most recently
-// started live session under base. Session dirs that are not private to
-// this user are skipped.
-func NewestControlSocket(base string) (string, error) {
-	entries, err := os.ReadDir(base)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return "", err
-	}
-	var best string
-	var bestAt time.Time
-	for _, e := range entries {
-		dir := filepath.Join(base, e.Name())
-		if checkPrivate(dir) != nil {
-			continue
-		}
-		sock := filepath.Join(dir, control.SocketName)
-		fi, err := os.Lstat(sock)
-		if err != nil || fi.Mode().Type() != fs.ModeSocket || !live(sock) {
-			continue
-		}
-		if best == "" || fi.ModTime().After(bestAt) {
-			best, bestAt = sock, fi.ModTime()
-		}
-	}
-	if best == "" {
-		return "", fmt.Errorf("no running codex-router session under %s", base)
-	}
-	return best, nil
-}
-
-func live(sock string) bool {
-	c, err := net.DialTimeout("unix", sock, liveDialWait)
-	if err != nil {
-		return false
-	}
-	_ = c.Close()
-	return true
 }
 
 // logDir is $XDG_STATE_HOME/codex-router/logs, else

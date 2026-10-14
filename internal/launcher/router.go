@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -43,8 +44,18 @@ func newRouter(o Options, log *slog.Logger, sink route.Sink) (*route.Engine, *ca
 	if asker == nil {
 		log.Warn("classifier-disabled", "reason", why)
 	}
-	eng := route.New(route.Deps{Config: o.Config, Catalog: store, Classifier: asker, Sink: sink, Logger: log, Home: h})
+	eng := route.New(route.Deps{Config: o.Config, Catalog: store, Classifier: asker, Sink: sink, Logger: log, Home: h, Cwd: launcherCwd()})
 	return eng, store, h
+}
+
+// launcherCwd gives every thread the launcher's cwd: the app-server and
+// codex inherit it, and one launcher serves one Codex. Nil when unknown.
+func launcherCwd() func(string) string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil
+	}
+	return func(string) string { return wd }
 }
 
 // newClassifier returns the configured classifier, or nil and the reason it
