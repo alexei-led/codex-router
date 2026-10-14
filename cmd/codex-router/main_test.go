@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -1132,6 +1133,47 @@ func TestCtlResolvesTheShellSession(t *testing.T) {
 				if !strings.Contains(stderr.String(), w) {
 					t.Errorf("stderr %q, want it to contain %q", stderr.String(), w)
 				}
+			}
+		})
+	}
+}
+
+func TestCtlNamesASandboxBlockedSocket(t *testing.T) {
+	cases := []struct {
+		name     string
+		dialErr  error
+		wantText string
+	}{
+		{"sandbox refuses the socket", &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.EPERM)},
+			"cannot reach the router of Codex home"},
+		{"router gone", &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.ENOENT)},
+			"no running session of Codex home"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env, root, sockDir := testRegistry(t)
+			codexHome := t.TempDir()
+			h, err := home.Resolve(func(k string) string { return map[string]string{"CODEX_HOME": codexHome}[k] })
+			if err != nil {
+				t.Fatal(err)
+			}
+			// The brain runs (its pid is alive) but this process cannot dial it.
+			ep := registry.Endpoint{ID: "brain-x", Kind: registry.KindBrain, PID: os.Getpid(), Home: h, Socket: filepath.Join(sockDir, "c.sock")}
+			if err := registry.Write(root, ep); err != nil {
+				t.Fatal(err)
+			}
+			orig := dialSocket
+			dialSocket = func(string) error { return tc.dialErr }
+			t.Cleanup(func() { dialSocket = orig })
+
+			var stdout, stderr bytes.Buffer
+			code := run(context.Background(), []string{"ctl", "status", "--home", codexHome, "--cwd", codexHome}, env, nil, &stdout, &stderr)
+
+			if code != exitError || !strings.Contains(stderr.String(), tc.wantText) {
+				t.Fatalf("exit %d, stderr %q; want exit 1 with %q", code, stderr.String(), tc.wantText)
+			}
+			if eps, _, _ := registry.List(root); len(eps) != 1 {
+				t.Errorf("registry has %d entries, want the live brain kept", len(eps))
 			}
 		})
 	}

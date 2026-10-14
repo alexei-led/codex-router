@@ -573,6 +573,9 @@ func (c cli) ctl(args []string) int {
 	matches := shellSessions(all, c.getenv(envThread), dir)
 	switch len(matches) {
 	case 0:
+		if err := blockedEndpoint(root, h.ID); err != nil {
+			return c.fail(fmt.Errorf("ctl: cannot reach the router of Codex home %s: %w; a sandbox (such as Codex's) blocks local sockets, so run this command outside it", h.Name, err))
+		}
 		return c.fail(fmt.Errorf("ctl: no running session of Codex home %s works in %s; see codex-router sessions", h.Name, dir))
 	case 1:
 	default:
@@ -599,6 +602,34 @@ func (c cli) ctl(args []string) int {
 		_, _ = fmt.Fprintf(c.stdout, "pinned the next turn of %s to %s\n", s.Label, *tier)
 	}
 	return exitOK
+}
+
+// dialSocket connects to a control socket and hangs up; tests replace it.
+var dialSocket = func(path string) error {
+	c, err := net.DialTimeout("unix", path, time.Second)
+	if err == nil {
+		_ = c.Close()
+	}
+	return err
+}
+
+// blockedEndpoint returns the dial error of the first registry endpoint of
+// the home whose socket refuses this process (EPERM or EACCES): Codex's
+// sandbox does that to shell commands, and the router behind it is not dead.
+func blockedEndpoint(root, homeID string) error {
+	eps, _, err := registry.List(root)
+	if err != nil {
+		return nil
+	}
+	for _, ep := range eps {
+		if ep.Home.ID != homeID {
+			continue
+		}
+		if err := dialSocket(ep.Socket); errors.Is(err, syscall.EPERM) || errors.Is(err, syscall.EACCES) {
+			return err
+		}
+	}
+	return nil
 }
 
 // shellSessions returns the session of thread when one is listed, else the
