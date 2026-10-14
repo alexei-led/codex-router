@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 601 294" width="601" height="294" role="img" aria-labelledby="title desc">
+  <title id="title">codex-router panel, policy tab</title>
+  <desc id="desc">Policy tab: the preset buttons and the switching thresholds in effect.</desc>
+  <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
+  <rect width="601" height="294" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="600" height="293" rx="8" fill="none" stroke="#2e3340"/>
+  <text x="16.0" y="28.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
+  <text x="78.4" y="28.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
+  <text x="109.6" y="28.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
+  <text x="273.4" y="28.0" fill="#878787" xml:space="preserve"> · footer synced</text>
+  <text x="16.0" y="66.0" fill="#878787" xml:space="preserve"> Now 1 </text>
+  <text x="70.6" y="66.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
+  <rect x="148.6" y="52.0" width="78.0" height="19" fill="#87afff"/>
+  <text x="148.6" y="66.0" fill="#14171f" xml:space="preserve">[Policy 3]</text>
+  <text x="226.6" y="66.0" fill="#878787" xml:space="preserve"> Classifier 4 </text>
+  <text x="335.8" y="66.0" fill="#878787" xml:space="preserve"> Usage 5 </text>
+  <text x="16.0" y="104.0" fill="#878787" xml:space="preserve">PRESET</text>
+  <text x="16.0" y="123.0" fill="#87afff" xml:space="preserve"> thrifty </text>
+  <rect x="86.2" y="109.0" width="78.0" height="19" fill="#87afff"/>
+  <text x="86.2" y="123.0" fill="#14171f" xml:space="preserve">[balanced]</text>
+  <text x="164.2" y="123.0" fill="#87afff" xml:space="preserve"> quality </text>
+  <text x="16.0" y="161.0" fill="#878787" xml:space="preserve">THRESHOLDS</text>
+  <text x="16.0" y="180.0" fill="#d0d0d0" xml:space="preserve">votes to move up 2 · down 2 · escalation hold 2 turns</text>
+  <text x="16.0" y="199.0" fill="#d0d0d0" xml:space="preserve">min dwell 8 requests · review every 4 requests</text>
+  <text x="16.0" y="218.0" fill="#d0d0d0" xml:space="preserve">upgrade bar 0.75 · jump confidence 0.95 · downgrade mass 0.90</text>
+  <text x="16.0" y="237.0" fill="#878787" xml:space="preserve">on router error: forward the original request</text>
+  <text x="16.0" y="275.0" fill="#878787" xml:space="preserve">1-5 tabs · tab next · p pin next · space pause/resume · q quit · c preset</text>
+</svg>
