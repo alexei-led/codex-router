@@ -86,7 +86,7 @@ Counts are integers, masses and fills are in (0, 1], slopes are not negative.
 | `downgradeMass`         | 0.9     | Mass at or below the target tier needed to move down, before the cost term. Also the bar for a cheaper activity route on the same task.                       |
 | `downgradeSlope`        | 0.08    | Cost term slope for moving down.                                                                                                                              |
 | `downgradePivotTokens`  | 100000  | Pivot for moving down (min 1).                                                                                                                                |
-| `downgradeHorizonTurns` | 5       | Validated (min 1) but not read by the engine yet; preset values have no effect.                                                                                                             |
+| `downgradeHorizonTurns` | 5       | Validated (min 1) but not read by the engine yet; preset values have no effect.                                                                               |
 | `continuationMass`      | 0.7     | When the classifier scores a new prompt this likely to continue the running task, it counts as the same task.                                                 |
 | `escalationHoldTurns`   | 2       | After a repeated-tool-failure escalation, turns the tier is held (min 0).                                                                                     |
 | `reviewEveryRequests`   | 4       | Background classifier review every N requests of a thread. 0 turns reviews off.                                                                               |
@@ -95,6 +95,8 @@ Counts are integers, masses and fills are in (0, 1], slopes are not negative.
 | `contextFill`           | 0.8     | A route is used only if the thread's estimated size is at most this fraction of its window.                                                                   |
 
 Escalation: the same tool failure twice with an edit in between moves up one tier without asking the classifier.
+
+Code mode (`tool_mode: code_mode_only` models) runs commands inside JavaScript cells, and Codex reports only how the script ended. The router reads a command's exit status from the cell output only when the script printed it (`exit_code=1`, as models usually do) or the script failed. A completed cell that prints no status counts toward neither escalation nor the passed check that `minDwellRequests` needs.
 
 ### presets
 

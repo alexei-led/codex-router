@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/alexei-led/codex-router/internal/responses"
@@ -11,11 +12,13 @@ import (
 
 const (
 	toolApplyPatch = "apply_patch"
+	toolCodeMode   = "exec"
+	typeCustomTool = "custom_tool_call"
 	typeLocalShell = "local_shell_call"
 )
 
 var (
-	callTypes   = map[string]bool{"function_call": true, "custom_tool_call": true, typeLocalShell: true}
+	callTypes   = map[string]bool{"function_call": true, typeCustomTool: true, typeLocalShell: true}
 	outputTypes = map[string]bool{"function_call_output": true, "custom_tool_call_output": true}
 	// Function tools whose arguments carry a command: `shell` (argv),
 	// `shell_command` (string), `exec_command` (unified exec, `cmd`).
@@ -56,8 +59,109 @@ func callOf(index int, it responses.Item) (call, bool) {
 		}
 	case it.Name == toolApplyPatch:
 		c.edit, c.paths = true, patchPaths(patchText(it))
+	case it.Name == toolCodeMode && it.Type == typeCustomTool:
+		c = cellCall(c, it.Arguments)
 	}
 	return c, true
+}
+
+var (
+	nestedCall = regexp.MustCompile(`\btools\.(exec_command|shell_command|shell|apply_patch)\s*\(`)
+	commandKey = regexp.MustCompile(`\b(?:cmd|command)\s*:\s*`)
+)
+
+// cellCall reads the nested tool calls of a code-mode `exec` cell, a
+// JavaScript program, as one call: an edit if any nested call edits, with its
+// commands joined by newlines. So the cell reads only if every command reads,
+// and it is a check only with a single check command, as its printed exit
+// status may belong to any of them. Only `tools.NAME(` calls are seen, not
+// `tools["NAME"]` or aliases; a command that is not a string literal (a
+// variable, an interpolation, a `shell` argv) makes the cell unreadable.
+func cellCall(c call, js string) call {
+	locs := nestedCall.FindAllStringSubmatchIndex(js, -1)
+	var commands []string
+	c.ok = true
+	for i, loc := range locs {
+		end := len(js)
+		if i+1 < len(locs) {
+			end = locs[i+1][0]
+		}
+		args := js[loc[1]:end]
+		if js[loc[2]:loc[3]] == toolApplyPatch {
+			c.edit = true
+			if q := strings.IndexAny(args, "\"'`"); q >= 0 {
+				p, _ := jsString(args[q:])
+				c.paths = append(c.paths, patchPaths(p)...)
+			}
+			continue
+		}
+		command, ok := "", false
+		if k := commandKey.FindStringIndex(args); k != nil {
+			command, ok = jsString(args[k[1]:])
+		}
+		switch {
+		case !ok:
+			c.shell, c.ok = true, false
+		case applyPatchCommand.MatchString(command):
+			c.edit, c.paths = true, append(c.paths, patchPaths(command)...)
+		default:
+			c.shell = true
+			commands = append(commands, command)
+		}
+	}
+	c.command = strings.Join(commands, "\n")
+	return c
+}
+
+var jsEscapes = map[byte]string{'n': "\n", 't': "\t", 'r': "\r", 'b': "\b", 'f': "\f", 'v': "\v", '0': "\x00", '\n': ""}
+
+// jsString decodes the JavaScript string literal s starts with: "double",
+// 'single', or a `template` without substitutions.
+func jsString(s string) (string, bool) {
+	if s == "" || !strings.ContainsRune("\"'`", rune(s[0])) {
+		return "", false
+	}
+	quote := s[0]
+	var b strings.Builder
+	for i := 1; i < len(s); i++ {
+		switch {
+		case s[i] == quote:
+			return b.String(), true
+		case quote == '`' && strings.HasPrefix(s[i:], "${"):
+			return "", false
+		case s[i] != '\\':
+			b.WriteByte(s[i])
+			continue
+		}
+		if i++; i == len(s) {
+			return "", false
+		}
+		if e, ok := jsEscapes[s[i]]; ok {
+			b.WriteString(e)
+			continue
+		}
+		hex := ""
+		switch s[i] {
+		case 'x':
+			hex = s[i+1 : min(i+3, len(s))]
+		case 'u':
+			hex = s[i+1 : min(i+5, len(s))]
+			if strings.HasPrefix(hex, "{") {
+				hex, _, _ = strings.Cut(s[i+2:], "}")
+				i += 2 // the braces
+			}
+		default:
+			b.WriteByte(s[i])
+			continue
+		}
+		r, err := strconv.ParseUint(hex, 16, 32)
+		if err != nil {
+			return "", false
+		}
+		b.WriteRune(rune(r))
+		i += len(hex)
+	}
+	return "", false
 }
 
 func calls(items []responses.Item, from int) []call {

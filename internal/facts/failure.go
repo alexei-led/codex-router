@@ -14,7 +14,8 @@ import (
 // Codex header. Codex formats it three ways: JSON `{"output", "metadata":
 // {"exit_code"}}` (shell), "Exit code: N" (shell_command, apply_patch), and
 // "Process exited with code N" or "Process running with session ID N"
-// (exec_command), each header ending at an "Output:" line.
+// (exec_command), each header ending at an "Output:" line. Code mode adds a
+// fourth: a "Script ..." header for a JavaScript cell (see parseCell).
 type result struct {
 	exit    int
 	known   bool
@@ -25,6 +26,8 @@ type result struct {
 var (
 	exitLine    = regexp.MustCompile(`^(?:Exit code:|Process exited with code) (-?\d+)$`)
 	runningLine = regexp.MustCompile(`^Process running with session ID \d+`)
+	cellHeader  = regexp.MustCompile(`^Script (?:completed|failed|terminated|error:|running with cell ID)`)
+	printedExit = regexp.MustCompile(`(?i)^exit_code\s*[=:]\s*(-?\d+)$`)
 )
 
 func parseResult(out string) result {
@@ -38,6 +41,9 @@ func parseResult(out string) result {
 		if json.Unmarshal([]byte(out), &j) == nil && j.Metadata.ExitCode != nil {
 			return result{exit: *j.Metadata.ExitCode, known: true, body: j.Output}
 		}
+	}
+	if status, _, _ := strings.Cut(out, "\n"); cellHeader.MatchString(status) {
+		return parseCell(out, status)
 	}
 	// Without the header the text is all command output: an "Exit code:"
 	// line in it says nothing about this call.
@@ -53,6 +59,35 @@ func parseResult(out string) result {
 			r.known = true
 		}
 		r.running = r.running || runningLine.MatchString(line)
+	}
+	return r
+}
+
+// parseCell reads a code-mode cell result. Codex reports how the script
+// ended, not what its commands returned, so a command's exit status is known
+// only when the script printed it: the last `exit_code=N` line, or a nested
+// tool's exit line, in the body. Unlike plain output, a cell body is what the
+// script chose to print, and models print the status after the output. A
+// script that threw before printing one failed.
+func parseCell(out, status string) result {
+	_, body, found := strings.Cut(out, "\nOutput:")
+	if !found {
+		_, body, _ = strings.Cut(out, "\n")
+	}
+	r := result{body: strings.TrimPrefix(body, "\n"), running: strings.HasPrefix(status, "Script running")}
+	for line := range strings.Lines(r.body) {
+		line = strings.TrimSpace(line)
+		m := printedExit.FindStringSubmatch(line)
+		if m == nil {
+			m = exitLine.FindStringSubmatch(line)
+		}
+		if m != nil {
+			r.exit, _ = strconv.Atoi(m[1])
+			r.known = true
+		}
+	}
+	if !r.known && (strings.HasPrefix(status, "Script failed") || strings.HasPrefix(status, "Script error:")) {
+		r.exit, r.known = 1, true
 	}
 	return r
 }
