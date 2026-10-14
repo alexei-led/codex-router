@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template for spike.sh up: @NAME@ placeholders are replaced there.
+     launchd binds the port and starts the edge on the first connection;
+     after a kill -9 the next connection waits in the backlog until the
+     edge is started again. ThrottleInterval 1 shortens launchd's respawn
+     delay (default 10 s); the gate measures what is left. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>@LABEL@</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>@BIN@</string>
+		<string>-upstream=@UPSTREAM@</string>
+		<string>-token-file=@TOKEN_FILE@</string>
+	</array>
+	<key>Sockets</key>
+	<dict>
+		<key>Listeners</key>
+		<dict>
+			<key>SockNodeName</key>
+			<string>127.0.0.1</string>
+			<key>SockServiceName</key>
+			<string>@PORT@</string>
+			<key>SockType</key>
+			<string>stream</string>
+			<key>SockFamily</key>
+			<string>IPv4</string>
+		</dict>
+	</dict>
+	<key>ThrottleInterval</key>
+	<integer>1</integer>
+	<key>StandardOutPath</key>
+	<string>@LOG@</string>
+	<key>StandardErrorPath</key>
+	<string>@LOG@</string>
+</dict>
+</plist>

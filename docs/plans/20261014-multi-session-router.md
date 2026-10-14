@@ -431,12 +431,15 @@ Depends on: Task 12
 
 - Create: `scripts/spikes/stage2-homes.sh` (test homes check/reset), `scripts/spikes/stage2/daemon_test.go` (build tag `live`), `scripts/spikes/activation/` (its own `go.mod`, so purego stays out of the main module until Task 16; minimal edge, plist, units)
 
-- [ ] test homes `~/.cache/codex-router-live/home-a` and `home-b` (0700). The script checks each has a valid login (`CODEX_HOME=<home> codex login status`). **If not logged in: stop the workflow and ask the user to run `! CODEX_HOME=~/.cache/codex-router-live/home-a codex login` (and `home-b`, ideally with the work account) once.** Never copy `auth.json`
-- [ ] `reset`: rewrite only `config.toml` in a test home (minimal, router provider pointing at a spike proxy `codex-router proxy`); trap cleanup stops the test home's daemon (`CODEX_HOME=<home> codex app-server daemon stop`) after the path guard from the safety rules
-- [ ] daemon client spike (Go, tag `live`) using `internal/appserver` against `<home>/app-server-control/app-server-control.sock`
-- [ ] activation spike: launchd plist with `Sockets`, a tiny Go binary that gets the fd through purego `launch_activate_socket`
-- [ ] no access to real homes beyond the sha256 checks
-- [ ] run `make fmt lint test build` (the `live` tag and the separate module keep the spikes out of normal lint and test)
+- [x] test homes `~/.cache/codex-router-live/home-a` and `home-b` (0700). The script checks each has a valid login (`CODEX_HOME=<home> codex login status`). **If not logged in: stop the workflow and ask the user to run `! CODEX_HOME=~/.cache/codex-router-live/home-a codex login` (and `home-b`, ideally with the work account) once.** Never copy `auth.json`
+- [x] `reset`: rewrite only `config.toml` in a test home (minimal, router provider pointing at a spike proxy `codex-router proxy`); trap cleanup stops the test home's daemon (`CODEX_HOME=<home> codex app-server daemon stop`) after the path guard from the safety rules
+- [x] daemon client spike (Go, tag `live`) using `internal/appserver` against `<home>/app-server-control/app-server-control.sock`
+- [x] activation spike: launchd plist with `Sockets`, a tiny Go binary that gets the fd through purego `launch_activate_socket`
+- [x] no access to real homes beyond the sha256 checks
+- [x] run `make fmt lint test build` (the `live` tag and the separate module keep the spikes out of normal lint and test)
+- [x] ➕ `stage2-homes.sh` commands: `check` (exit 3 with the login commands when a home is not logged in), `reset a|b [PORT [TOKEN_FILE]]` (empty config, or the router provider, with the `http_headers` token for G3), `serve a|b [PORT]` (`codex-router proxy` with the test home as `CODEX_HOME`, config pointed at it; the EXIT trap stops the proxy and the home's daemon and compares the real `config.toml` sha256s), `stop a|b`. `stop` also ends the managed daemon's `pid-update-loop`, which outlives `daemon stop`
+- [x] ➕ the activation spike edge (`scripts/spikes/activation/`, module with purego v0.11.1) relays to an upstream `codex-router proxy` and requires the token (logs `token=ok|missing|wrong`, never the value), so G3 and G4 can run real Codex turns through it; `/spike?delay=MS` answers with its pid. `spike.sh up|probe|stall|kill|down` loads the agent from `~/.cache/codex-router-live/activation` with `launchctl bootstrap` (nothing installed in `~/Library/LaunchAgents`). systemd `.socket`/`.service` files are templates for Task 16, not run
+- [x] ➕ smoke runs (test home A only; real `config.toml` sha256s unchanged): activation works with `CGO_ENABLED=0`; `spike.sh stall` served the next request 32 ms after a `kill -9`. Daemon spike over the real daemon socket: WebSocket transport and `initialize` work; `thread/started` reaches other clients; `thread/loaded/list` + `thread/read` give cwd. Findings for Tasks 14 and 17: the socket path is a symlink into `/private/tmp/codex-daemon-<uid>/`; `thread/resume` fails with -32600 (no rollout) until a thread's first turn; `thread/settings/update` on an unresumed thread applies but `thread/settings/updated` reaches only subscribers. G1 must prompt each TUI before resuming
 
 ### Task 14: [live] Gate run and decision
 

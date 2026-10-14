@@ -1,0 +1,8 @@
+# Started by codex-router-spike-edge.socket on the first connection; after a
+# crash the socket unit keeps the port and starts it again on the next one.
+[Unit]
+Description=codex-router spike edge
+Requires=codex-router-spike-edge.socket
+
+[Service]
+ExecStart=@BIN@ -upstream=@UPSTREAM@ -token-file=@TOKEN_FILE@

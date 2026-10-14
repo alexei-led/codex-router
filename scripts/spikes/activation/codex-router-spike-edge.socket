@@ -1,0 +1,11 @@
+# Linux counterpart of edge.plist (reference for plan Task 16; not run live
+# in this plan). Replace @PORT@, then load as a systemd user unit.
+[Unit]
+Description=codex-router spike edge socket
+
+[Socket]
+ListenStream=127.0.0.1:@PORT@
+FileDescriptorName=Listeners
+
+[Install]
+WantedBy=sockets.target
