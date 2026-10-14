@@ -143,30 +143,16 @@ func readEntry(p string, typ os.FileMode) (Endpoint, error) {
 	return ep, err
 }
 
-// Prune removes the entries isLive rejects and returns them. Skipped files
-// stay: a file that does not parse is not proof its endpoint is gone. An
-// entry rewritten since List (a restart reusing the id) stays: Prune re-reads
-// it and removes it only if its pid and start time are unchanged. A write
-// between that read and the remove can still lose; the entry then comes back
-// with the endpoint's next registration.
-func Prune(root string, isLive func(Endpoint) bool) ([]Endpoint, error) {
-	eps, _, err := List(root)
-	if err != nil {
-		return nil, err
+// Prune removes ep's entry, read earlier by List, when its endpoint is dead
+// (Alive). An entry rewritten since (a restart reusing the id) stays: Prune
+// re-reads it and removes it only if its pid and start time are unchanged. A
+// write between that read and the remove can still lose; the entry then
+// comes back with the endpoint's next registration.
+func Prune(root string, ep Endpoint) error {
+	if Alive(ep) || !unchanged(root, ep) {
+		return nil
 	}
-	var removed []Endpoint
-	var errs []error
-	for _, ep := range eps {
-		if isLive(ep) || !unchanged(root, ep) {
-			continue
-		}
-		if err := Remove(root, ep.ID); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		removed = append(removed, ep)
-	}
-	return removed, errors.Join(errs...)
+	return Remove(root, ep.ID)
 }
 
 // unchanged reports whether the entry for ep.ID still has ep's pid and start.

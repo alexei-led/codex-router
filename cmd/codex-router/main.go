@@ -403,11 +403,7 @@ func findSessions(socket, root string) ([]listedSession, error) {
 	if err != nil {
 		return nil, err
 	}
-	return collectSessions(eps, func(ep registry.Endpoint) {
-		if !registry.Alive(ep) {
-			_ = registry.Remove(root, ep.ID)
-		}
-	}), nil
+	return collectSessions(eps, func(ep registry.Endpoint) { _ = registry.Prune(root, ep) }), nil
 }
 
 // collectSessions asks every endpoint for its sessions, in parallel, and

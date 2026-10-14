@@ -152,13 +152,10 @@ func socketSource(path string) func() ([]registry.Endpoint, error) {
 	}
 }
 
-// registryPrune removes the entry at root when its endpoint is dead.
+// registryPrune removes the entry at root when its endpoint is dead
+// (registry.Prune).
 func registryPrune(root string) func(registry.Endpoint) {
-	return func(ep registry.Endpoint) {
-		if !registry.Alive(ep) {
-			_ = registry.Remove(root, ep.ID)
-		}
-	}
+	return func(ep registry.Endpoint) { _ = registry.Prune(root, ep) }
 }
 
 // run polls until ctx ends, then closes every connection.
