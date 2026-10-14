@@ -1,0 +1,19 @@
+{"time":"2026-10-14T20:55:13.099317+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","from":"gpt-6-sol","model":"gpt-6-luna","effort":"medium"}
+{"time":"2026-10-14T20:55:14.656186+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","path":"/v1/responses"}
+{"time":"2026-10-14T20:55:14.656234+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","status":200,"bytes":115507,"ms":1848}
+{"time":"2026-10-14T20:55:19.060263+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","from":"gpt-6-sol","model":"gpt-6-luna","effort":"medium"}
+{"time":"2026-10-14T20:55:21.040349+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","path":"/v1/responses"}
+{"time":"2026-10-14T20:55:21.040389+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","status":200,"bytes":116386,"ms":1988}
+{"time":"2026-10-14T20:55:22.37524+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","from":"gpt-6-sol","model":"gpt-6-luna","effort":"medium"}
+{"time":"2026-10-14T20:55:23.960624+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","path":"/v1/responses"}
+{"time":"2026-10-14T20:55:23.960669+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","status":200,"bytes":117028,"ms":1592}
+{"time":"2026-10-14T20:55:24.858305+03:00","level":"WARN","msg":"link-down","err":"link: connection closed"}
+{"time":"2026-10-14T20:55:28.776864+03:00","level":"INFO","msg":"link-up"}
+{"time":"2026-10-14T20:55:30.837342+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","path":"/v1/responses"}
+{"time":"2026-10-14T20:55:30.837392+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","status":200,"bytes":117656,"ms":2061}
+{"time":"2026-10-14T20:55:33.094845+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","path":"/v1/responses"}
+{"time":"2026-10-14T20:55:33.094937+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","status":200,"bytes":118335,"ms":1738}
+{"time":"2026-10-14T20:55:39.258126+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","path":"/v1/responses"}
+{"time":"2026-10-14T20:55:39.258195+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","status":200,"bytes":118963,"ms":1967}
+{"time":"2026-10-14T20:55:41.979606+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","path":"/v1/responses"}
+{"time":"2026-10-14T20:55:41.979737+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b8d-cf79-73e1-b7f8-443546aa0d06","status":200,"bytes":119619,"ms":2267}

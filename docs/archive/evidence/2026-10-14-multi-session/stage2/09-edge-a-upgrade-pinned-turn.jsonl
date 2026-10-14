@@ -1,0 +1,22 @@
+{"time":"2026-10-14T20:59:02.635533+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T20:59:43.316616+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","from":"gpt-6-luna","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T20:59:47.52433+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","status":200,"bytes":139889,"ms":4216}
+{"time":"2026-10-14T20:59:51.984233+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","from":"gpt-6-luna","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T20:59:52.208807+03:00","level":"WARN","msg":"link-down","err":"link: connection closed"}
+{"time":"2026-10-14T20:59:54.894805+03:00","level":"INFO","msg":"link-up"}
+{"time":"2026-10-14T20:59:54.895786+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","path":"/v1/responses"}
+{"time":"2026-10-14T20:59:54.895827+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","status":200,"bytes":140757,"ms":2918}
+{"time":"2026-10-14T20:59:55.198185+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","from":"gpt-6-luna","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T20:59:59.66469+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","path":"/v1/responses"}
+{"time":"2026-10-14T20:59:59.664989+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","status":200,"bytes":141399,"ms":4479}
+{"time":"2026-10-14T21:00:04.071585+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","from":"gpt-6-luna","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T21:00:11.227509+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","status":200,"bytes":142027,"ms":7162}
+{"time":"2026-10-14T21:00:11.838627+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","from":"gpt-6-luna","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T21:00:22.005948+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","path":"/v1/responses"}
+{"time":"2026-10-14T21:00:22.006002+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","status":200,"bytes":142706,"ms":10184}
+{"time":"2026-10-14T21:00:26.794404+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","from":"gpt-6-luna","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T21:00:37.926108+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","path":"/v1/responses"}
+{"time":"2026-10-14T21:00:37.92621+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","status":200,"bytes":143334,"ms":11140}
+{"time":"2026-10-14T21:00:38.273579+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","from":"gpt-6-luna","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T21:00:43.386628+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","path":"/v1/responses"}
+{"time":"2026-10-14T21:00:43.386698+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","status":200,"bytes":143990,"ms":5127}

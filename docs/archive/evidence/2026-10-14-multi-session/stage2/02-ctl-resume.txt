@@ -1,0 +1,16 @@
+$ codex-router ctl resume --home $HOME_A --cwd $RUN/alpha-feat-a
+resumed routing of home-a · alpha · feat-a
+$ codex-router ctl resume --home $HOME_A --cwd $RUN/alpha-feat-b
+resumed routing of home-a · alpha · feat-b
+$ codex-router ctl resume --home $HOME_A --cwd $RUN/alpha
+resumed routing of home-a · alpha · main
+$ codex-router ctl resume --home $HOME_B --cwd $RUN/beta-feat-c
+resumed routing of home-b · beta · feat-c
+$ codex-router ctl resume --home $HOME_B --cwd $RUN/beta-feat-d
+resumed routing of home-b · beta · feat-d
+$ codex-router sessions
+6b17dcbc00aa/01a13b78-8bc4-71e3-b702-bb7c5f42dc6f  home-a  home-a · alpha · feat-b  on  gpt-6.1-sol
+6b17dcbc00aa/01a13b78-8bc1-7292-be17-001bb6f605eb  home-a  home-a · alpha · main    on  gpt-6.1-sol
+6b17dcbc00aa/01a13b78-8bad-7db2-90a0-9410d195018c  home-a  home-a · alpha · feat-a  on  gpt-6.1-sol
+a03bfa5ea206/01a13b78-8aed-7b21-9a11-a26240e01f81  home-b  home-b · beta · feat-c   on  gpt-6.1-sol
+a03bfa5ea206/01a13b78-8a0c-7681-ae9f-bb41bc62522b  home-b  home-b · beta · feat-d   on  gpt-6.1-sol

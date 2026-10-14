@@ -1,0 +1,48 @@
+› Run exactly this shell command, with escalated sandbox permissions because it writes outside the workspace: touch ~/.cache/codex-
+  router-live/approval-probe-2
+ 
+ 
+• I’ll run the exact command with escalated sandbox permissions.
+ 
+✔ You approved codex to run touch ~/.cache/codex-router-live/approval-probe-2 this time
+ 
+• Ran touch ~/.cache/codex-router-live/approval-probe-2
+  └ (no output)
+ 
+• Command completed successfully.
+ 
+  Worked for 31s • 22:00                                                                                                                              
+ 
+ 
+› Use the codex-router router skill to show this session's routing status. Follow the skill's instructions exactly.
+ 
+ 
+• I’m using the codex-router router skill to check this session’s routing status.
+ 
+• Failed (exit 1) sh ~/.cache/codex-router-live/home-a/plugins/cache/codex-router/codex-router/0.1.0/scripts/codex-router.sh ctl status
+  └ codex-router: ctl: cannot reach the router of Codex home home-a: dial unix $RUN/state/codex-router/homes/6b17dc…
+    + 1 line (⌃t to expand)                                                                                                                           
+ 
+✔ You approved codex to run sh ~/.cache/codex-router-live/home-a/plugins/cache/codex-router/c... this time
+ 
+• Ran sh ~/.cache/codex-router-live/home-a/plugins/cache/codex-router/codex-router/0.1.0/scripts/codex-router.sh ctl status
+  └ route      gpt-6.1-sol · high
+    replies    0
+    attention  paused
+    + 4 lines (⌃t to expand)                                                                                                                          
+ 
+• session    6b17dcbc00aa/01a13b78-8bc4-71e3-b702-bb7c5f42dc6f
+  label      home-a · alpha · feat-b
+  mode       paused
+  tier       high
+  route      gpt-6.1-sol · high
+  replies    0
+  attention  paused
+ 
+  Worked for 2m 3s • 22:06                                                                                                                            
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol high · $RUN/alpha-feat-b · Reply with ok
+  ← for agents · ? for shortcuts

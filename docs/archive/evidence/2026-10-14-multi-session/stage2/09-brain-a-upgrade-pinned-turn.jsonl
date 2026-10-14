@@ -1,0 +1,21 @@
+{"time":"2026-10-14T20:59:28.521973+03:00","level":"INFO","msg":"route command","op":"pin","scope":"session","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","tier":"high","preset":""}
+{"time":"2026-10-14T20:59:43.315802+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","step":0,"tier":"high","activity":"","reason":"pinned","model":"gpt-6.1-sol","effort":"high","rewritten":true}
+{"time":"2026-10-14T20:59:43.316546+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T20:59:51.983446+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b91-eec1-7ef3-b24c-ab496c729b76","step":1,"tier":"high","activity":"","reason":"continue","model":"gpt-6.1-sol","effort":"high","rewritten":true}
+{"time":"2026-10-14T20:59:52.314143+03:00","level":"INFO","msg":"catalog-seeded","models":9}
+{"time":"2026-10-14T20:59:52.322254+03:00","level":"INFO","msg":"brain-ready","home":"6b17dcbc00aa","link":"$RUN/state/codex-router/homes/6b17dcbc00aa/brain.sock","control":"$RUN/state/codex-router/homes/6b17dcbc00aa/control.sock"}
+{"time":"2026-10-14T20:59:52.324147+03:00","level":"INFO","msg":"daemon-connected"}
+{"time":"2026-10-14T20:59:52.326443+03:00","level":"INFO","msg":"thread-found","thread":"01a13b78-8bad-7db2-90a0-9410d195018c"}
+{"time":"2026-10-14T20:59:52.328587+03:00","level":"INFO","msg":"thread-found","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb"}
+{"time":"2026-10-14T20:59:52.332157+03:00","level":"INFO","msg":"thread-found","thread":"01a13b78-8bc4-71e3-b702-bb7c5f42dc6f"}
+{"time":"2026-10-14T20:59:52.342346+03:00","level":"INFO","msg":"route seeded","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","tier":"high","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T20:59:52.342422+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c"}
+{"time":"2026-10-14T20:59:52.353393+03:00","level":"INFO","msg":"route seeded","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb","tier":"micro","model":"gpt-6-luna","effort":"low"}
+{"time":"2026-10-14T20:59:52.35344+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb"}
+{"time":"2026-10-14T20:59:52.362395+03:00","level":"INFO","msg":"route seeded","thread":"01a13b78-8bc4-71e3-b702-bb7c5f42dc6f","tier":"high","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T20:59:52.362437+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8bc4-71e3-b702-bb7c5f42dc6f"}
+{"time":"2026-10-14T20:59:55.197556+03:00","level":"DEBUG","msg":"route hold step","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T21:00:04.070963+03:00","level":"DEBUG","msg":"route hold step","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T21:00:11.837949+03:00","level":"DEBUG","msg":"route hold step","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T21:00:26.794034+03:00","level":"DEBUG","msg":"route hold step","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T21:00:38.272825+03:00","level":"DEBUG","msg":"route hold step","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","model":"gpt-6.1-sol","effort":"high"}

@@ -1,0 +1,19 @@
+{"time":"2026-10-14T20:31:53.512531+03:00","level":"INFO","msg":"catalog-seeded","models":9}
+{"time":"2026-10-14T20:31:53.518765+03:00","level":"INFO","msg":"brain-ready","home":"6b17dcbc00aa","link":"$RUN/state/codex-router/homes/6b17dcbc00aa/brain.sock","control":"$RUN/state/codex-router/homes/6b17dcbc00aa/control.sock"}
+{"time":"2026-10-14T20:31:53.519531+03:00","level":"WARN","msg":"daemon-unreachable","socket":"~/.cache/codex-router-live/home-a/app-server-control/app-server-control.sock","err":"appserver: dial: failed to WebSocket dial: failed to send handshake request: Get \"http://localhost/\": dial unix ~/.cache/codex-router-live/home-a/app-server-control/app-server-control.sock: connect: no such file or directory"}
+{"time":"2026-10-14T20:31:57.279168+03:00","level":"INFO","msg":"daemon-connected"}
+{"time":"2026-10-14T20:31:58.809174+03:00","level":"INFO","msg":"thread-started","thread":"01a13b78-8bad-7db2-90a0-9410d195018c"}
+{"time":"2026-10-14T20:31:58.83641+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","code":-32600}
+{"time":"2026-10-14T20:31:58.844276+03:00","level":"INFO","msg":"thread-started","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb"}
+{"time":"2026-10-14T20:31:58.873283+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb","code":-32600}
+{"time":"2026-10-14T20:31:58.909111+03:00","level":"INFO","msg":"thread-started","thread":"01a13b78-8bc4-71e3-b702-bb7c5f42dc6f"}
+{"time":"2026-10-14T20:31:58.939824+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13b78-8bc4-71e3-b702-bb7c5f42dc6f","code":-32600}
+{"time":"2026-10-14T20:32:03.468624+03:00","level":"INFO","msg":"route held unseeded","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb","tier":"high","model":"gpt-6.1-sol","effort":"low"}
+{"time":"2026-10-14T20:32:03.496794+03:00","level":"INFO","msg":"route manual","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb","model":"gpt-6.1-sol","effort":""}
+{"time":"2026-10-14T20:32:03.497516+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb"}
+{"time":"2026-10-14T20:32:04.137916+03:00","level":"INFO","msg":"route held unseeded","thread":"01a13b78-8bc4-71e3-b702-bb7c5f42dc6f","tier":"high","model":"gpt-6.1-sol","effort":"low"}
+{"time":"2026-10-14T20:32:04.143899+03:00","level":"INFO","msg":"route manual","thread":"01a13b78-8bc4-71e3-b702-bb7c5f42dc6f","model":"gpt-6.1-sol","effort":""}
+{"time":"2026-10-14T20:32:04.145148+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8bc4-71e3-b702-bb7c5f42dc6f"}
+{"time":"2026-10-14T20:32:04.804425+03:00","level":"INFO","msg":"route held unseeded","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","tier":"high","model":"gpt-6.1-sol","effort":"low"}
+{"time":"2026-10-14T20:32:04.827402+03:00","level":"INFO","msg":"route manual","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","model":"gpt-6.1-sol","effort":""}
+{"time":"2026-10-14T20:32:04.828489+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c"}

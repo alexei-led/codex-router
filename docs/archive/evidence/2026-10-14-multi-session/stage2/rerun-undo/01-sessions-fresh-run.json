@@ -1,0 +1,142 @@
+[
+  {
+    "id": "6b17dcbc00aa/01a13bd1-39e2-7b43-b177-6911fcf2e23b",
+    "home": "6b17dcbc00aa",
+    "thread_id": "01a13bd1-39e2-7b43-b177-6911fcf2e23b",
+    "label": "home-a · alpha · main",
+    "cwd": "$RUN/alpha",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "low"
+    },
+    "replies": 1,
+    "switches": 1,
+    "strip": [
+      "micro"
+    ],
+    "last_switch": {
+      "At": "2026-10-14T22:08:58.418929+03:00",
+      "From": "high",
+      "To": "micro",
+      "Activity": "",
+      "MidTurn": false
+    },
+    "last_active": "2026-10-14T22:09:00.19267+03:00",
+    "footer_synced": true,
+    "endpoint_id": "brain-6b17dcbc00aa"
+  },
+  {
+    "id": "6b17dcbc00aa/01a13bd1-3a1d-7160-a21b-5b241cca8eae",
+    "home": "6b17dcbc00aa",
+    "thread_id": "01a13bd1-3a1d-7160-a21b-5b241cca8eae",
+    "label": "home-a · alpha · feat-b",
+    "cwd": "$RUN/alpha-feat-b",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "low"
+    },
+    "replies": 1,
+    "switches": 1,
+    "strip": [
+      "micro"
+    ],
+    "last_switch": {
+      "At": "2026-10-14T22:08:57.707143+03:00",
+      "From": "high",
+      "To": "micro",
+      "Activity": "",
+      "MidTurn": false
+    },
+    "last_active": "2026-10-14T22:09:00.04124+03:00",
+    "footer_synced": true,
+    "endpoint_id": "brain-6b17dcbc00aa"
+  },
+  {
+    "id": "6b17dcbc00aa/01a13bd1-39e4-79f3-92c5-cfe99dbd72ec",
+    "home": "6b17dcbc00aa",
+    "thread_id": "01a13bd1-39e4-79f3-92c5-cfe99dbd72ec",
+    "label": "home-a · alpha · feat-a",
+    "cwd": "$RUN/alpha-feat-a",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "low"
+    },
+    "replies": 1,
+    "switches": 1,
+    "strip": [
+      "micro"
+    ],
+    "last_switch": {
+      "At": "2026-10-14T22:08:54.806151+03:00",
+      "From": "high",
+      "To": "micro",
+      "Activity": "",
+      "MidTurn": false
+    },
+    "last_active": "2026-10-14T22:08:56.449838+03:00",
+    "footer_synced": true,
+    "endpoint_id": "brain-6b17dcbc00aa"
+  },
+  {
+    "id": "a03bfa5ea206/01a13bd1-3d8b-7172-b7f8-b83b5888787e",
+    "home": "a03bfa5ea206",
+    "thread_id": "01a13bd1-3d8b-7172-b7f8-b83b5888787e",
+    "label": "home-b · beta · feat-c",
+    "cwd": "$RUN/beta-feat-c",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "low"
+    },
+    "replies": 1,
+    "switches": 1,
+    "strip": [
+      "micro"
+    ],
+    "last_switch": {
+      "At": "2026-10-14T22:08:59.350643+03:00",
+      "From": "high",
+      "To": "micro",
+      "Activity": "",
+      "MidTurn": false
+    },
+    "last_active": "2026-10-14T22:09:01.014786+03:00",
+    "footer_synced": true,
+    "endpoint_id": "brain-a03bfa5ea206"
+  },
+  {
+    "id": "a03bfa5ea206/01a13bd1-3cb6-7ad3-861c-c0a7e9e6efb5",
+    "home": "a03bfa5ea206",
+    "thread_id": "01a13bd1-3cb6-7ad3-861c-c0a7e9e6efb5",
+    "label": "home-b · beta · feat-d",
+    "cwd": "$RUN/beta-feat-d",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "low"
+    },
+    "replies": 1,
+    "switches": 1,
+    "strip": [
+      "micro"
+    ],
+    "last_switch": {
+      "At": "2026-10-14T22:08:58.740714+03:00",
+      "From": "high",
+      "To": "micro",
+      "Activity": "",
+      "MidTurn": false
+    },
+    "last_active": "2026-10-14T22:09:00.472087+03:00",
+    "footer_synced": true,
+    "endpoint_id": "brain-a03bfa5ea206"
+  }
+]

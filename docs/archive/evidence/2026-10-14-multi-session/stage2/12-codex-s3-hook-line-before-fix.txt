@@ -1,0 +1,48 @@
+› Write the numbers from 1 to 400 in English words, one per line, no other text. Do not run any commands.
+  three hundred eighty-eight
+  three hundred eighty-nine
+  three hundred ninety
+  three hundred ninety-one
+  three hundred ninety-two
+  three hundred ninety-three
+  three hundred ninety-four
+  three hundred ninety-five
+  three hundred ninety-six
+  three hundred ninety-seven
+  three hundred ninety-eight
+  three hundred ninety-nine
+  four hundred
+
+  Worked for 21s • 20:51                                                                                                                              
+
+ 
+› Reply with the single word: ok
+ 
+ 
+• ok
+ 
+  Worked for 5s • 21:01                                                                                                                               
+ 
+ 
+› Reply with the single word: back
+ 
+ 
+• back
+ 
+  Worked for 4s • 21:48                                                                                                                               
+ 
+ 
+› Reply with the single word: pinned
+ 
+ 
+• pinned
+ 
+↳ Hook · router: high ·  → gpt-6.1-sol · high · pinned to high for this turn
+ 
+  Worked for 2s • 21:50                                                                                                                               
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol high · $RUN/alpha · Reply with ok
+  ← for agents · ? for shortcuts

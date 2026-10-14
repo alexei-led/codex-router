@@ -1,0 +1,48 @@
+ 
+ 
+› Reply with the single word: ok
+ 
+ 
+• ok
+ 
+  Worked for 7s • 20:32                                                                                                                               
+ 
+ 
+› What is 7 times 6? Reply with only the number.
+ 
+ 
+• 42
+ 
+  Worked for 2s • 20:38                                                                                                                               
+ 
+ 
+› Reply with the single word: yes
+ 
+ 
+• yes
+ 
+  Worked for 4s • 20:39                                                                                                                               
+ 
+ 
+› Reply with the single word: yes
+ 
+ 
+• yes
+ 
+↳ Hook · router: micro ·  → gpt-6-luna · low · down to micro
+ 
+  Worked for 2s • 20:41                                                                                                                               
+ 
+ 
+› Reply with the single word: yes
+ 
+ 
+• yes
+ 
+  Worked for 1s • 20:42                                                                                                                               
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna low · $RUN/alpha · Reply with ok
+  ← for agents · ? for shortcuts

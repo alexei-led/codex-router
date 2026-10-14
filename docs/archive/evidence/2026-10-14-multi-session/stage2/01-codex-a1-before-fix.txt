@@ -1,0 +1,19 @@
+● home-a · alpha · feat-a  6b17dcbc00aa/01a13b78-8bad-7db2-90a0-9410d195…
+ROUTING ◐ manual · Jev ready · footer synced
+
+[Now 1] Routes 2  Policy 3  Classifier 4  Usage 5 
+
+Next turn  gpt-6.1-sol picked with /model · routing holds it · space to …
+Pin next    high  medium  low  micro  next turn only · p cycles
+
+SESSION · no routed replies yet
+
+WORTH A LOOK · this session
+  footer picked with /model: routing holds gpt-6.1-sol until resume ·
+  space resumes
+
+Codex      footer shows gpt-6.1-sol · synced via thread/settings/update
+Context    ░░░░░░░░░░░░░░░░░░░░ 0%  ~0 / 475K · fit guard: smallest wind…
+Cache      no replies yet
+
+1-5 tabs · p pin next · space pause · P pause home · q quit

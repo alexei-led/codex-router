@@ -1,0 +1,73 @@
+{"time":"2026-10-14T20:31:54.316828+03:00","level":"INFO","msg":"catalog-seeded","models":9}
+{"time":"2026-10-14T20:31:54.319505+03:00","level":"INFO","msg":"brain-ready","home":"a03bfa5ea206","link":"$RUN/state/codex-router/homes/a03bfa5ea206/brain.sock","control":"$RUN/state/codex-router/homes/a03bfa5ea206/control.sock"}
+{"time":"2026-10-14T20:31:54.319697+03:00","level":"WARN","msg":"daemon-unreachable","socket":"~/.cache/codex-router-live/home-b/app-server-control/app-server-control.sock","err":"appserver: dial: failed to WebSocket dial: failed to send handshake request: Get \"http://localhost/\": dial unix ~/.cache/codex-router-live/home-b/app-server-control/app-server-control.sock: connect: no such file or directory"}
+{"time":"2026-10-14T20:31:58.079355+03:00","level":"INFO","msg":"daemon-connected"}
+{"time":"2026-10-14T20:31:58.087125+03:00","level":"INFO","msg":"thread-started","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}
+{"time":"2026-10-14T20:31:58.115269+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","code":-32600}
+{"time":"2026-10-14T20:31:58.353496+03:00","level":"INFO","msg":"thread-started","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}
+{"time":"2026-10-14T20:31:58.378594+03:00","level":"INFO","msg":"thread-resume-skipped","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","code":-32600}
+{"time":"2026-10-14T20:32:00.999069+03:00","level":"INFO","msg":"route held unseeded","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","tier":"high","model":"gpt-6.1-sol","effort":"low"}
+{"time":"2026-10-14T20:32:01.005398+03:00","level":"INFO","msg":"route manual","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","model":"gpt-6.1-sol","effort":""}
+{"time":"2026-10-14T20:32:01.006351+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}
+{"time":"2026-10-14T20:32:01.559311+03:00","level":"INFO","msg":"route held unseeded","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","tier":"high","model":"gpt-6.1-sol","effort":"low"}
+{"time":"2026-10-14T20:32:01.56494+03:00","level":"INFO","msg":"route manual","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","model":"gpt-6.1-sol","effort":""}
+{"time":"2026-10-14T20:32:01.565922+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}
+{"time":"2026-10-14T20:38:28.771102+03:00","level":"INFO","msg":"catalog-seeded","models":9}
+{"time":"2026-10-14T20:38:28.780636+03:00","level":"INFO","msg":"brain-ready","home":"a03bfa5ea206","link":"$RUN/state/codex-router/homes/a03bfa5ea206/brain.sock","control":"$RUN/state/codex-router/homes/a03bfa5ea206/control.sock"}
+{"time":"2026-10-14T20:38:28.781799+03:00","level":"INFO","msg":"daemon-connected"}
+{"time":"2026-10-14T20:38:28.783713+03:00","level":"INFO","msg":"thread-found","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}
+{"time":"2026-10-14T20:38:28.784877+03:00","level":"INFO","msg":"thread-found","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}
+{"time":"2026-10-14T20:38:28.791074+03:00","level":"INFO","msg":"route seeded","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","tier":"high","model":"gpt-6.1-sol","effort":""}
+{"time":"2026-10-14T20:38:28.791139+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}
+{"time":"2026-10-14T20:38:28.794174+03:00","level":"INFO","msg":"route seeded","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","tier":"high","model":"gpt-6.1-sol","effort":""}
+{"time":"2026-10-14T20:38:28.794211+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}
+{"time":"2026-10-14T20:39:26.100543+03:00","level":"INFO","msg":"route command","op":"resume","scope":"session","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","tier":"","preset":""}
+{"time":"2026-10-14T20:39:26.152418+03:00","level":"INFO","msg":"route command","op":"resume","scope":"session","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","tier":"","preset":""}
+{"time":"2026-10-14T20:39:35.768721+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b7f-82e8-7f83-bc10-055d206449f7","step":0,"tier":"high","activity":"","reason":"downgrade-pending","model":"gpt-6.1-sol","effort":"high","rewritten":true}
+{"time":"2026-10-14T20:39:35.771198+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T20:41:06.133573+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","turn":"01a13b80-e620-7950-9d63-6b9b55e0af5c","step":0,"tier":"high","activity":"explore","reason":"downgrade-pending","model":"gpt-6.1-sol","effort":"high","rewritten":true}
+{"time":"2026-10-14T20:41:06.134035+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T20:41:34.277247+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b81-5437-7160-ade4-08bb6b1fe92c","step":0,"tier":"high","activity":"","reason":"downgrade-held","model":"gpt-6.1-sol","effort":"high","rewritten":false}
+{"time":"2026-10-14T20:42:00.49982+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b81-ba8f-7bf3-811c-bb43f88d6fc6","step":0,"tier":"high","activity":"","reason":"downgrade-held","model":"gpt-6.1-sol","effort":"high","rewritten":false}
+{"time":"2026-10-14T20:43:15.830447+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b82-df83-7921-9130-f409a295cd69","step":0,"tier":"low","activity":"ops","reason":"downgrade","model":"gpt-6-luna","effort":"medium","rewritten":true}
+{"time":"2026-10-14T20:43:15.831108+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","model":"gpt-6-luna","effort":"medium"}
+{"time":"2026-10-14T20:43:22.411713+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b82-df83-7921-9130-f409a295cd69","step":1,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":true}
+{"time":"2026-10-14T20:43:24.215593+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b82-df83-7921-9130-f409a295cd69","step":2,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":true}
+{"time":"2026-10-14T20:43:31.109348+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b82-df83-7921-9130-f409a295cd69","step":3,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":true}
+{"time":"2026-10-14T20:43:32.823627+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b82-df83-7921-9130-f409a295cd69","step":4,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":true}
+{"time":"2026-10-14T20:47:26.914329+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","turn":"01a13b86-b522-7c12-ac63-613404aea3a1","step":0,"tier":"low","activity":"ops","reason":"downgrade","model":"gpt-6-luna","effort":"medium","rewritten":true}
+{"time":"2026-10-14T20:47:26.914917+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","model":"gpt-6-luna","effort":"medium"}
+{"time":"2026-10-14T20:47:32.979602+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","turn":"01a13b86-b522-7c12-ac63-613404aea3a1","step":1,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":true}
+{"time":"2026-10-14T20:47:35.059142+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","turn":"01a13b86-b522-7c12-ac63-613404aea3a1","step":2,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":true}
+{"time":"2026-10-14T20:47:41.006356+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","turn":"01a13b86-b522-7c12-ac63-613404aea3a1","step":3,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":true}
+{"time":"2026-10-14T20:47:42.823098+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","turn":"01a13b86-b522-7c12-ac63-613404aea3a1","step":4,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":true}
+{"time":"2026-10-14T20:51:47.784875+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b8a-acfc-77d0-a601-1fdeae77f69a","step":0,"tier":"low","activity":"ops","reason":"same-tier","model":"gpt-6-luna","effort":"medium","rewritten":false}
+{"time":"2026-10-14T20:51:54.375018+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b8a-acfc-77d0-a601-1fdeae77f69a","step":1,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":false}
+{"time":"2026-10-14T20:51:57.055579+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b8a-acfc-77d0-a601-1fdeae77f69a","step":2,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":false}
+{"time":"2026-10-14T20:51:57.862774+03:00","level":"INFO","msg":"catalog-seeded","models":9}
+{"time":"2026-10-14T20:51:57.865959+03:00","level":"INFO","msg":"brain-ready","home":"a03bfa5ea206","link":"$RUN/state/codex-router/homes/a03bfa5ea206/brain.sock","control":"$RUN/state/codex-router/homes/a03bfa5ea206/control.sock"}
+{"time":"2026-10-14T20:51:57.866879+03:00","level":"INFO","msg":"daemon-connected"}
+{"time":"2026-10-14T20:51:57.869872+03:00","level":"INFO","msg":"thread-found","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}
+{"time":"2026-10-14T20:51:57.872896+03:00","level":"INFO","msg":"thread-found","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}
+{"time":"2026-10-14T20:51:57.882471+03:00","level":"INFO","msg":"route seeded","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","tier":"low","model":"gpt-6-luna","effort":"medium"}
+{"time":"2026-10-14T20:51:57.882513+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}
+{"time":"2026-10-14T20:51:57.887107+03:00","level":"INFO","msg":"route seeded","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","tier":"low","model":"gpt-6-luna","effort":"medium"}
+{"time":"2026-10-14T20:51:57.887187+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}
+{"time":"2026-10-14T20:52:03.775472+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b8a-acfc-77d0-a601-1fdeae77f69a","step":0,"tier":"low","activity":"ops","reason":"same-tier","model":"gpt-6-luna","effort":"medium","rewritten":false}
+{"time":"2026-10-14T20:52:05.946233+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b8a-acfc-77d0-a601-1fdeae77f69a","step":1,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":false}
+{"time":"2026-10-14T20:52:11.901317+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b8a-acfc-77d0-a601-1fdeae77f69a","step":2,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":false}
+{"time":"2026-10-14T20:52:14.428774+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b8a-acfc-77d0-a601-1fdeae77f69a","step":3,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":false}
+{"time":"2026-10-14T20:55:13.097677+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b8d-d1b1-76c3-b2c5-e61ea9f13405","step":0,"tier":"low","activity":"ops","reason":"downgrade-pending","model":"gpt-6-luna","effort":"medium","rewritten":false}
+{"time":"2026-10-14T20:55:19.659643+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b8d-d1b1-76c3-b2c5-e61ea9f13405","step":1,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":false}
+{"time":"2026-10-14T20:55:22.675824+03:00","level":"INFO","msg":"route decision","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","turn":"01a13b8d-d1b1-76c3-b2c5-e61ea9f13405","step":2,"tier":"low","activity":"ops","reason":"continue","model":"gpt-6-luna","effort":"medium","rewritten":false}
+{"time":"2026-10-14T20:55:27.642384+03:00","level":"INFO","msg":"catalog-seeded","models":9}
+{"time":"2026-10-14T20:55:27.644993+03:00","level":"INFO","msg":"brain-ready","home":"a03bfa5ea206","link":"$RUN/state/codex-router/homes/a03bfa5ea206/brain.sock","control":"$RUN/state/codex-router/homes/a03bfa5ea206/control.sock"}
+{"time":"2026-10-14T20:55:27.645823+03:00","level":"INFO","msg":"daemon-connected"}
+{"time":"2026-10-14T20:55:27.647381+03:00","level":"INFO","msg":"thread-found","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}
+{"time":"2026-10-14T20:55:27.64841+03:00","level":"INFO","msg":"thread-found","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}
+{"time":"2026-10-14T20:55:27.652661+03:00","level":"INFO","msg":"route seeded","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b","tier":"low","model":"gpt-6-luna","effort":"medium"}
+{"time":"2026-10-14T20:55:27.652712+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}
+{"time":"2026-10-14T20:55:27.656575+03:00","level":"INFO","msg":"route seeded","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81","tier":"low","model":"gpt-6-luna","effort":"medium"}
+{"time":"2026-10-14T20:55:27.656653+03:00","level":"INFO","msg":"thread-subscribed","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}
+{"time":"2026-10-14T21:48:40.465899+03:00","level":"INFO","msg":"thread-idle","thread":"01a13b78-8a0c-7681-ae9f-bb41bc62522b"}
+{"time":"2026-10-14T21:49:40.465834+03:00","level":"INFO","msg":"thread-idle","thread":"01a13b78-8aed-7b21-9a11-a26240e01f81"}

@@ -1,0 +1,13 @@
+{"time":"2026-10-14T20:49:00.714741+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b88-1461-7131-ad50-6f018acf6f97","path":"/v1/responses"}
+{"time":"2026-10-14T20:49:00.714842+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bad-7db2-90a0-9410d195018c","turn":"01a13b88-1461-7131-ad50-6f018acf6f97","status":200,"bytes":112572,"ms":3462}
+{"time":"2026-10-14T20:49:06.96322+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bc4-71e3-b702-bb7c5f42dc6f","turn":"01a13b88-184c-74e1-8b4c-5424550f04bd","path":"/v1/responses"}
+{"time":"2026-10-14T20:49:06.963261+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bc4-71e3-b702-bb7c5f42dc6f","turn":"01a13b88-184c-74e1-8b4c-5424550f04bd","status":200,"bytes":80256,"ms":8889}
+{"time":"2026-10-14T20:49:51.20641+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb","turn":"01a13b88-d812-7443-a08a-3997665bd34c","path":"/v1/responses"}
+{"time":"2026-10-14T20:49:51.206552+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb","turn":"01a13b88-d812-7443-a08a-3997665bd34c","status":200,"bytes":100384,"ms":4238}
+{"time":"2026-10-14T20:50:00.277157+03:00","level":"INFO","msg":"edge-ready","home":"6b17dcbc00aa","port":65106,"activated":true}
+{"time":"2026-10-14T20:50:01.034584+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T20:50:50.618245+03:00","level":"INFO","msg":"link-up"}
+{"time":"2026-10-14T20:50:54.990536+03:00","level":"INFO","msg":"edge-ready","home":"6b17dcbc00aa","port":65106,"activated":true}
+{"time":"2026-10-14T20:50:54.990956+03:00","level":"INFO","msg":"link-up"}
+{"time":"2026-10-14T20:51:09.24643+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb","turn":"01a13b89-cc5a-7b01-a0f2-6c913b5469b2","path":"/v1/responses"}
+{"time":"2026-10-14T20:51:09.246496+03:00","level":"DEBUG","msg":"responses","thread":"01a13b78-8bc1-7292-be17-001bb6f605eb","turn":"01a13b89-cc5a-7b01-a0f2-6c913b5469b2","status":200,"bytes":102307,"ms":14217}

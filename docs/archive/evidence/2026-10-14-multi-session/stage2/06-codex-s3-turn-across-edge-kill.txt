@@ -1,0 +1,48 @@
+› Write the numbers from 1 to 400 in English words, one per line, no other text. Do not run any commands.
+  three hundred sixty-two
+  three hundred sixty-three
+  three hundred sixty-four
+  three hundred sixty-five
+  three hundred sixty-six
+  three hundred sixty-seven
+  three hundred sixty-eight
+  three hundred sixty-nine
+  three hundred seventy
+  three hundred seventy-one
+  three hundred seventy-two
+  three hundred seventy-three
+  three hundred seventy-four
+  three hundred seventy-five
+  three hundred seventy-six
+  three hundred seventy-seven
+  three hundred seventy-eight
+  three hundred seventy-nine
+  three hundred eighty
+  three hundred eighty-one
+  three hundred eighty-two
+  three hundred eighty-three
+  three hundred eighty-four
+  three hundred eighty-five
+  three hundred eighty-six
+  three hundred eighty-seven
+  three hundred eighty-eight
+  three hundred eighty-nine
+  three hundred ninety
+  three hundred ninety-one
+  three hundred ninety-two
+  three hundred ninety-three
+  three hundred ninety-four
+  three hundred ninety-five
+  three hundred ninety-six
+  three hundred ninety-seven
+  three hundred ninety-eight
+  three hundred ninety-nine
+  four hundred
+ 
+  Worked for 21s • 20:51                                                                                                                              
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna low · $RUN/alpha · Reply with ok
+  ← for agents · ? for shortcuts

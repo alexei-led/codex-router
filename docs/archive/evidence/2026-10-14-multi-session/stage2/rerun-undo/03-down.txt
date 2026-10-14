@@ -1,0 +1,56 @@
+Codex home home-a: ~/.cache/codex-router-live/home-a (id 6b17dcbc00aa)
+~/.cache/codex-router-live/home-a/config.toml:
+@@ -3 +3 @@
+- # >>> codex-router >>>
+- model_provider = "router"
+- # <<< codex-router <<<
+@@ -47 +44 @@
+- # >>> codex-router >>>
+- [model_providers.router]
+- name = "router"
+- base_url = "http://127.0.0.1:58163/v1"
+- wire_api = "responses"
+- requires_openai_auth = true
+- http_headers = { "X-Codex-Router-Token" = "<redacted>" }
+- # <<< codex-router <<<
+backup: ~/.cache/codex-router-live/home-a/config.toml.codex-router-20261014T190950Z.bak
+wrote ~/.cache/codex-router-live/home-a/config.toml
+removed ~/Library/LaunchAgents/com.github.alexei-led.codex-router.6b17dcbc00aa.edge.plist
+removed ~/Library/LaunchAgents/com.github.alexei-led.codex-router.6b17dcbc00aa.brain.plist
+removed ~/.cache/codex-router-live/home-a/codex-router.env
+kept state dir $RUN/state/codex-router/homes/6b17dcbc00aa (--purge deletes it)
+home-a: config.toml differs from the setup backup config.toml.codex-router-20261014T190846Z.bak:
+32c32
+< "gpt-6.1-sol" = 1
+---
+> "gpt-6.1-sol" = 2
+home-a units left: 0
+Codex home home-b: ~/.cache/codex-router-live/home-b (id a03bfa5ea206)
+~/.cache/codex-router-live/home-b/config.toml:
+@@ -3 +3 @@
+- # >>> codex-router >>>
+- model_provider = "router"
+- # <<< codex-router <<<
+@@ -47 +44 @@
+- # >>> codex-router >>>
+- [model_providers.router]
+- name = "router"
+- base_url = "http://127.0.0.1:58164/v1"
+- wire_api = "responses"
+- requires_openai_auth = true
+- http_headers = { "X-Codex-Router-Token" = "<redacted>" }
+- # <<< codex-router <<<
+backup: ~/.cache/codex-router-live/home-b/config.toml.codex-router-20261014T190951Z.bak
+wrote ~/.cache/codex-router-live/home-b/config.toml
+removed ~/Library/LaunchAgents/com.github.alexei-led.codex-router.a03bfa5ea206.edge.plist
+removed ~/Library/LaunchAgents/com.github.alexei-led.codex-router.a03bfa5ea206.brain.plist
+removed ~/.cache/codex-router-live/home-b/codex-router.env
+kept state dir $RUN/state/codex-router/homes/a03bfa5ea206 (--purge deletes it)
+home-b: config.toml differs from the setup backup config.toml.codex-router-20261014T190847Z.bak:
+32c32
+< "gpt-6.1-sol" = 1
+---
+> "gpt-6.1-sol" = 2
+home-b units left: 0
+no codex-router units for the real homes
+config.toml unchanged; run dir $RUN kept for logs (remove it when done)
