@@ -252,7 +252,7 @@ An embedded app-server cannot be reached from outside, so the launcher starts it
 
 - `codex --no-daemon app-server --listen unix://<runtime>/app.sock -c model_provider=router -c model_providers.router={...}`
 - `codex --remote unix://<runtime>/app.sock`
-- The router connects as a second client. It sends `thread/resume` with `excludeTurns` once per thread (needed to receive that thread's notifications), and writes settings.
+- The router connects as a second client. It sends `thread/resume` with `excludeTurns` once per thread (needed to receive that thread's notifications), and writes settings. It never answers the app-server's requests to clients (command and patch approvals): they go to every client of the thread and the first answer wins, so the Codex TUI must be the one that answers.
 
 Only `-c` overrides are used. The user's `config.toml` and the shared Codex daemon are not touched. The app-server starts in the user's working directory, because a remote TUI's thread uses the app-server's cwd. The same notification carries a user's `/model` pick. That is how the router detects the manual hold: a value that is not one it wrote.
 

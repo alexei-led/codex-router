@@ -122,14 +122,10 @@ const (
 	// maxMessage bounds one inbound message; app-server item notifications
 	// can carry large tool output.
 	maxMessage = 64 << 20
-	// rejectTimeout bounds the reply to a server request, including the wait
-	// for the write slot.
-	rejectTimeout = 5 * time.Second
 	// writeTimeout bounds one message write: a server that reads nothing for
 	// this long is wedged, and the failed write closes the connection so the
 	// launcher sees Updates close.
-	writeTimeout       = 5 * time.Second
-	codeMethodNotFound = -32601
+	writeTimeout = 5 * time.Second
 )
 
 // ErrClosed is returned by calls made on, or pending at, a closed connection.
@@ -176,12 +172,11 @@ type reply struct {
 // the stream unusable.
 type Client struct {
 	conn         Conn
-	ctx          context.Context // lifetime: reads, writes and server-request replies
+	ctx          context.Context // lifetime: reads and writes
 	cancel       context.CancelFunc
 	nextID       atomic.Int64
 	writeSem     chan struct{} // one writer at a time; waiting honours ctx
 	writeTimeout time.Duration
-	rejects      sync.WaitGroup
 
 	mu      sync.Mutex
 	pending map[int64]chan reply
@@ -345,7 +340,6 @@ func (c *Client) Close() error {
 	err := c.closeConn()
 	c.cancel()
 	<-c.done
-	c.rejects.Wait()
 	return err
 }
 
@@ -457,7 +451,11 @@ func (c *Client) dispatch(in inbound) bool {
 	hasID := len(in.ID) > 0 && string(in.ID) != "null"
 	switch {
 	case in.Method != "" && hasID:
-		c.rejects.Go(func() { c.rejectRequest(in) })
+		// A server request (an approval, a token refresh) goes to every
+		// client of the thread, and the first answer wins. The router has
+		// nothing to say, so it stays silent and the Codex TUI answers: an
+		// error reply here failed every approval in a routed thread.
+		slog.Debug("appserver-server-request-ignored", "method", in.Method)
 	case in.Method == MethodSettingsUpdated:
 		u, ok := parseSettingsUpdated(in.Params)
 		if !ok {
@@ -484,23 +482,6 @@ func (c *Client) dispatch(in inbound) bool {
 		c.resolve(in)
 	}
 	return true
-}
-
-// rejectRequest answers a server-to-client request so the server never waits
-// on this client; the router serves no client-side methods. It runs off the
-// read loop so a stalled write never stops notifications.
-func (c *Client) rejectRequest(in inbound) {
-	var id int64
-	if err := json.Unmarshal(in.ID, &id); err != nil {
-		slog.Warn("appserver-unanswerable-request", "method", in.Method)
-		return
-	}
-	ctx, cancel := context.WithTimeout(c.ctx, rejectTimeout)
-	defer cancel()
-	err := &RPCError{Code: codeMethodNotFound, Message: "method not supported by codex-router"}
-	if werr := c.write(ctx, message{ID: &id, Error: err}); werr != nil {
-		slog.Warn("appserver-reject-failed", "method", in.Method, "err", werr)
-	}
 }
 
 func (c *Client) resolve(in inbound) {
