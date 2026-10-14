@@ -658,3 +658,88 @@ func TestCloseClosesChannels(t *testing.T) {
 	closes(t, c.Snapshots(), "Snapshots")
 	closes(t, c.Sessions(), "Sessions")
 }
+
+// dropped reports whether the server closed r's connection within d. Lines
+// the server pushed first are skipped.
+func (r *raw) dropped(d time.Duration) bool {
+	_ = r.conn.SetReadDeadline(time.Now().Add(d))
+	for {
+		if _, err := r.r.ReadBytes('\n'); err != nil {
+			return errors.Is(err, io.EOF)
+		}
+	}
+}
+
+func TestSilentClientIsDroppedAfterHelloTimeout(t *testing.T) {
+	t.Parallel()
+	_, path := startServer(t, newHandler())
+	silent := rawDial(t, path)
+
+	start := time.Now()
+	if !silent.dropped(helloTimeout + 3*time.Second) {
+		t.Fatal("a client that never said hello was not dropped")
+	}
+	if took := time.Since(start); took < helloTimeout/2 {
+		t.Errorf("dropped after %v, before the hello timeout %v", took, helloTimeout)
+	}
+	subscribed(t, path, "th")
+}
+
+func TestDialToASilentServerFailsWithinHelloTimeout(t *testing.T) {
+	t.Parallel()
+	path := sockPath(t)
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var conns []net.Conn
+	var mu sync.Mutex
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			conns = append(conns, c)
+			mu.Unlock()
+		}
+	}()
+	t.Cleanup(func() {
+		_ = ln.Close()
+		mu.Lock()
+		defer mu.Unlock()
+		for _, c := range conns {
+			_ = c.Close()
+		}
+	})
+
+	start := time.Now()
+	c, err := Dial(path)
+	if err == nil {
+		_ = c.Close()
+		t.Fatal("Dial to a server that never answers hello succeeded")
+	}
+	if took := time.Since(start); took > helloTimeout+3*time.Second {
+		t.Errorf("Dial took %v, want about the hello timeout %v", took, helloTimeout)
+	}
+}
+
+func TestOversizedLineDropsOnlyThatClient(t *testing.T) {
+	t.Parallel()
+	_, path := startServer(t, newHandler())
+	other := subscribed(t, path, "th")
+	big := rawDial(t, path)
+	big.hello(t)
+
+	// The server stops reading at maxLine and closes; a later write may fail.
+	_, _ = big.conn.Write([]byte(strings.Repeat("x", maxLine+1) + "\n"))
+
+	if !big.dropped(3 * time.Second) {
+		t.Fatal("a line over the cap did not drop its client")
+	}
+	if err := other.Send(route.Command{Op: route.OpPause, Session: sid("th")}); err != nil {
+		t.Fatalf("the other client's Send after the drop = %v", err)
+	}
+	subscribed(t, path, "th2")
+}
