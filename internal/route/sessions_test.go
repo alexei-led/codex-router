@@ -344,6 +344,25 @@ func TestSessionsCarryUSDOnlyWhenPriced(t *testing.T) {
 	}
 }
 
+func TestSideThreadIsNotASession(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("high", 0.99)))
+	h.firstStep("main", "m1")
+	title := meta("title", "t1")
+	title.ThreadSource = "thread_title"
+
+	rw, ok := h.decide(req(medium, userMsg("name this thread")), title)
+	h.reply(title, medium.Model, 1000, 0)
+
+	wantUnchanged(t, rw, ok)
+	if got := h.engine.Sessions(); len(got) != 1 || got[0].ThreadID != "main" {
+		t.Fatalf("sessions = %+v, want only the main thread", got)
+	}
+	if h.asker.Calls() != 1 {
+		t.Fatalf("classifier calls = %d, want 1 (the side thread is not classified)", h.asker.Calls())
+	}
+}
+
 func TestSnapshotForAnUnknownThread(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.apply(Command{Op: OpPause, Scope: ScopeHome})

@@ -22,9 +22,9 @@ func TestParseMeta(t *testing.T) {
 		want responses.Meta
 	}{
 		{"full metadata",
-			header("x-codex-turn-metadata", `{"session_id":"s1","thread_id":"t1","turn_id":"u1","request_kind":"turn","agent_name":"/root","extra":{"k":1}}`,
+			header("x-codex-turn-metadata", `{"session_id":"s1","thread_id":"t1","turn_id":"u1","request_kind":"turn","thread_source":"user","agent_name":"/root","extra":{"k":1}}`,
 				"x-openai-subagent", "review"),
-			responses.Meta{SessionID: "s1", ThreadID: "t1", TurnID: "u1", RequestKind: "turn", Subagent: "review"}},
+			responses.Meta{SessionID: "s1", ThreadID: "t1", TurnID: "u1", RequestKind: "turn", ThreadSource: "user", Subagent: "review"}},
 		{"no headers", http.Header{}, responses.Meta{}},
 		{"unparseable metadata keeps other headers",
 			header("x-codex-turn-metadata", `{"turn_id":`, "x-openai-subagent", "review"),
@@ -43,9 +43,14 @@ func TestParseMeta(t *testing.T) {
 }
 
 // turnMetadata is an x-codex-turn-metadata value with the keys spike 1c
-// recorded (research §9); kind and turn vary per case.
+// recorded (research §9) and the main thread's source from the stage 1 live
+// test; kind and turn vary per case.
 func turnMetadata(kind, turn string) string {
-	return `{"request_kind":"` + kind + `","turn_trigger":"user","thread_source":"cli","agent_name":"/root",` +
+	return sourcedMetadata(kind, turn, "user")
+}
+
+func sourcedMetadata(kind, turn, source string) string {
+	return `{"request_kind":"` + kind + `","turn_trigger":"user","thread_source":"` + source + `","agent_name":"/root",` +
 		`"root_turn_id":"` + turn + `","turn_id":"` + turn + `","thread_id":"th1","model":"gpt-6-sol","reasoning_effort":"medium"}`
 }
 
@@ -63,6 +68,10 @@ func TestClassify(t *testing.T) {
 		{"unparseable metadata", header("x-codex-turn-metadata", `{"request_kind":"turn",`), responses.KindPassthrough},
 		{"missing request kind", header("x-codex-turn-metadata", `{"thread_id":"th1","turn_id":"u1"}`), responses.KindPassthrough},
 		{"missing turn id", header("x-codex-turn-metadata", turnMetadata("turn", "")), responses.KindPassthrough},
+		{"thread title thread", header("x-codex-turn-metadata", sourcedMetadata("turn", "u1", "thread_title")), responses.KindPassthrough},
+		{"guardian review thread", header("x-codex-turn-metadata", sourcedMetadata("turn", "u1", "guardian_review")), responses.KindPassthrough},
+		{"memory consolidation thread", header("x-codex-turn-metadata", sourcedMetadata("turn", "u1", "memory_consolidation")), responses.KindPassthrough},
+		{"missing thread source", header("x-codex-turn-metadata", `{"request_kind":"turn","thread_id":"th1","turn_id":"u1"}`), responses.KindUserStep},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -26,13 +26,14 @@ const (
 
 // Meta is the parsed x-codex-turn-metadata header plus the subagent
 // header. RequestKind is "turn" for a user step, "compaction" for a
-// compaction request.
+// compaction request. ThreadSource says who started the thread.
 type Meta struct {
-	SessionID   string
-	ThreadID    string
-	TurnID      string
-	RequestKind string
-	Subagent    string
+	SessionID    string
+	ThreadID     string
+	TurnID       string
+	RequestKind  string
+	ThreadSource string
+	Subagent     string
 }
 
 // Item is one input item, flattened. Fields not used by a type stay empty;
