@@ -1,0 +1,27 @@
+{"time":"2026-10-14T16:10:18.201329+03:00","level":"INFO","msg":"session-start","runtime":"432959eb","codex_args":0}
+{"time":"2026-10-14T16:10:18.203196+03:00","level":"INFO","msg":"catalog-seeded","models":10}
+{"time":"2026-10-14T16:10:18.203213+03:00","level":"WARN","msg":"classifier-disabled","reason":"TYPESAFE_API_KEY is not set"}
+{"time":"2026-10-14T16:10:18.205114+03:00","level":"INFO","msg":"proxy-ready","port":52188}
+{"time":"2026-10-14T16:10:18.363123+03:00","level":"INFO","msg":"appserver-ready","port":52188}
+{"time":"2026-10-14T16:10:18.365708+03:00","level":"INFO","msg":"codex-started","pid":6158}
+{"time":"2026-10-14T16:10:19.245572+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:10:19.245867+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:10:19.626153+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:10:19.626492+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:10:24.203412+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13a89-00f1-7d81-bf4e-1204f816a60e","model":"gpt-6-luna","effort":"high"}
+{"time":"2026-10-14T16:10:25.531578+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13a89-00f1-7d81-bf4e-1204f816a60e","turn":"01a13a89-0656-7271-b709-24e72c6322e3","path":"/v1/responses"}
+{"time":"2026-10-14T16:10:25.531627+03:00","level":"DEBUG","msg":"responses","thread":"01a13a89-00f1-7d81-bf4e-1204f816a60e","turn":"01a13a89-0656-7271-b709-24e72c6322e3","status":200,"bytes":89738,"ms":1333}
+{"time":"2026-10-14T16:10:27.439393+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13a89-12d1-7402-a903-d1f8e9cbcfbd","turn":"01a13a89-12f6-78a0-b185-31fa8ac7e8da","path":"/v1/responses"}
+{"time":"2026-10-14T16:10:27.439423+03:00","level":"DEBUG","msg":"responses","thread":"01a13a89-12d1-7402-a903-d1f8e9cbcfbd","turn":"01a13a89-12f6-78a0-b185-31fa8ac7e8da","status":200,"bytes":50522,"ms":2717}
+{"time":"2026-10-14T16:13:18.544269+03:00","level":"INFO","msg":"route command","op":"pause","scope":"home","thread":"","tier":"","preset":""}
+{"time":"2026-10-14T16:13:26.345863+03:00","level":"INFO","msg":"route command","op":"resume","scope":"home","thread":"","tier":"","preset":""}
+{"time":"2026-10-14T16:14:49.845327+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:14:49.845712+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:15:27.099834+03:00","level":"INFO","msg":"route command","op":"pin","scope":"session","thread":"01a13a89-00f1-7d81-bf4e-1204f816a60e","tier":"high","preset":""}
+{"time":"2026-10-14T16:15:28.494981+03:00","level":"INFO","msg":"route decision","thread":"01a13a89-00f1-7d81-bf4e-1204f816a60e","turn":"01a13a8d-b6ec-7ab2-9e9a-466e67001a2f","step":0,"tier":"high","activity":"","reason":"pinned","model":"gpt-6.1-sol","effort":"high","rewritten":true}
+{"time":"2026-10-14T16:15:28.495077+03:00","level":"DEBUG","msg":"rewrite","thread":"01a13a89-00f1-7d81-bf4e-1204f816a60e","turn":"01a13a8d-b6ec-7ab2-9e9a-466e67001a2f","from":"gpt-6-luna","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T16:15:28.495386+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13a89-00f1-7d81-bf4e-1204f816a60e","model":"gpt-6.1-sol","effort":"high"}
+{"time":"2026-10-14T16:15:34.270637+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13a89-00f1-7d81-bf4e-1204f816a60e","turn":"01a13a8d-b6ec-7ab2-9e9a-466e67001a2f","path":"/v1/responses"}
+{"time":"2026-10-14T16:15:34.270667+03:00","level":"DEBUG","msg":"responses","thread":"01a13a89-00f1-7d81-bf4e-1204f816a60e","turn":"01a13a8d-b6ec-7ab2-9e9a-466e67001a2f","status":200,"bytes":90066,"ms":5776}
+{"time":"2026-10-14T16:19:20.509677+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:19:20.510081+03:00","level":"DEBUG","msg":"models","status":200}
