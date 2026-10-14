@@ -21,13 +21,13 @@ const rpcTimeout = 5 * time.Second
 // snapshots to the control socket. Both calls return at once; the engine
 // calls OnDecision while it holds the thread's step lock.
 type sink struct {
-	writer *settingsWriter
+	writer *SettingsWriter
 	ctl    atomic.Pointer[control.Server]
 }
 
 func (s *sink) OnDecision(d route.Decision) {
 	if d.ThreadID != "" && d.Route.Model != "" {
-		s.writer.enqueue(d.ThreadID, d.Route)
+		s.writer.Enqueue(d.ThreadID, d.Route)
 	}
 }
 
@@ -37,42 +37,45 @@ func (s *sink) OnSnapshot(snap route.Snapshot) {
 	}
 }
 
-// settingsWriter mirrors routes into the Codex footer. Per thread it keeps
+// SettingsWriter mirrors routes into the Codex footer. Per thread it keeps
 // only the newest wanted route (the engine accepts an echo of any later
-// write as covering earlier ones), resumes the thread once so this client
-// gets its notifications, and at write time skips a route equal to the
-// thread's current one: the last route written or reported by the app-server. Counting
-// reports matters: after a manual /model pick and a resume, writing the
-// router's old route again must not be skipped.
-type settingsWriter struct {
-	log  *slog.Logger
-	wake chan struct{}
+// write as covering earlier ones), and at write time skips a route equal to
+// the thread's current one: the last route written or reported by the
+// app-server. Counting reports matters: after a manual /model pick and a
+// resume, writing the router's old route again must not be skipped.
+type SettingsWriter struct {
+	log    *slog.Logger
+	wake   chan struct{}
+	resume bool
 
 	mu      sync.Mutex
 	queue   map[string]config.Route
 	order   []string
 	current map[string]config.Route
+	wanted  map[string]config.Route // the last route enqueued, for Resync
 	resumed map[string]bool
 }
 
-func newSettingsWriter(log *slog.Logger) *settingsWriter {
-	return &settingsWriter{
+// NewSettingsWriter returns a writer. With resume it resumes each thread
+// once, before its first write, so this client gets the thread's
+// notifications; a caller that subscribes threads itself passes false.
+func NewSettingsWriter(log *slog.Logger, resume bool) *SettingsWriter {
+	return &SettingsWriter{
 		log:     log,
 		wake:    make(chan struct{}, 1),
+		resume:  resume,
 		queue:   map[string]config.Route{},
 		current: map[string]config.Route{},
+		wanted:  map[string]config.Route{},
 		resumed: map[string]bool{},
 	}
 }
 
-func (w *settingsWriter) enqueue(thread string, r config.Route) {
-	// Always queue: current is stale while a write for the thread is in
-	// flight, so next() dedupes once that write has finished.
+// Enqueue asks for r in thread's footer. It never blocks.
+func (w *SettingsWriter) Enqueue(thread string, r config.Route) {
 	w.mu.Lock()
-	if _, queued := w.queue[thread]; !queued {
-		w.order = append(w.order, thread)
-	}
-	w.queue[thread] = r
+	w.wanted[thread] = r
+	w.push(thread, r)
 	w.mu.Unlock()
 	select {
 	case w.wake <- struct{}{}:
@@ -80,15 +83,54 @@ func (w *settingsWriter) enqueue(thread string, r config.Route) {
 	}
 }
 
-// reported records a thread/settings/updated value.
-func (w *settingsWriter) reported(thread string, r config.Route) {
+// push queues r under w.mu. Always queue: current is stale while a write for
+// the thread is in flight, so next() dedupes once that write has finished.
+func (w *SettingsWriter) push(thread string, r config.Route) {
+	if _, queued := w.queue[thread]; !queued {
+		w.order = append(w.order, thread)
+	}
+	w.queue[thread] = r
+}
+
+// Reported records a thread/settings/updated value.
+func (w *SettingsWriter) Reported(thread string, r config.Route) {
 	w.mu.Lock()
 	w.current[thread] = r
 	w.mu.Unlock()
 }
 
+// Resync takes the route an app-server reports for thread after a
+// (re)subscribe and queues the last wanted route again, so a restarted
+// app-server's footer catches up. Nothing is written when they match.
+func (w *SettingsWriter) Resync(thread string, current config.Route) {
+	w.mu.Lock()
+	w.current[thread] = current
+	r, ok := w.wanted[thread]
+	if ok {
+		w.push(thread, r)
+	}
+	w.mu.Unlock()
+	if ok {
+		select {
+		case w.wake <- struct{}{}:
+		default:
+		}
+	}
+}
+
+// Forget drops everything known about thread, queued write included.
+func (w *SettingsWriter) Forget(thread string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	delete(w.queue, thread)
+	w.order = slices.DeleteFunc(w.order, func(t string) bool { return t == thread })
+	delete(w.current, thread)
+	delete(w.wanted, thread)
+	delete(w.resumed, thread)
+}
+
 // next pops the oldest queued thread whose route still needs writing.
-func (w *settingsWriter) next() (thread string, r config.Route, resume, ok bool) {
+func (w *SettingsWriter) next() (thread string, r config.Route, resume, ok bool) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	for len(w.order) > 0 {
@@ -97,13 +139,15 @@ func (w *settingsWriter) next() (thread string, r config.Route, resume, ok bool)
 		r = w.queue[thread]
 		delete(w.queue, thread)
 		if w.current[thread] != r {
-			return thread, r, !w.resumed[thread], true
+			return thread, r, w.resume && !w.resumed[thread], true
 		}
 	}
 	return "", config.Route{}, false, false
 }
 
-func (w *settingsWriter) run(ctx context.Context, api appserver.API) {
+// Run writes queued routes through api until ctx ends. A caller that
+// reconnects runs it again with the new api; the queue carries over.
+func (w *SettingsWriter) Run(ctx context.Context, api appserver.API) {
 	for {
 		for {
 			thread, r, resume, ok := w.next()
@@ -120,12 +164,12 @@ func (w *settingsWriter) run(ctx context.Context, api appserver.API) {
 	}
 }
 
-func (w *settingsWriter) write(ctx context.Context, api appserver.API, thread string, r config.Route, resume bool) {
+func (w *SettingsWriter) write(ctx context.Context, api appserver.API, thread string, r config.Route, resume bool) {
 	ctx, cancel := context.WithTimeout(ctx, rpcTimeout)
 	defer cancel()
 	if resume {
 		var rpcErr *appserver.RPCError
-		switch err := api.Resume(ctx, thread); {
+		switch _, err := api.Resume(ctx, thread); {
 		case err == nil:
 			w.markResumed(thread)
 		case errors.As(err, &rpcErr):
@@ -145,7 +189,7 @@ func (w *settingsWriter) write(ctx context.Context, api appserver.API, thread st
 	w.log.Info("appserver-settings", "thread", thread, "model", r.Model, "effort", r.Effort)
 }
 
-func (w *settingsWriter) markResumed(thread string) {
+func (w *SettingsWriter) markResumed(thread string) {
 	w.mu.Lock()
 	w.resumed[thread] = true
 	w.mu.Unlock()

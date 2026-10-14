@@ -558,13 +558,18 @@ Depends on: Task 16
 - Modify: `internal/launcher/writer.go` (export the settings writer for reuse, or move it to `internal/brain` and import it back)
 - Modify: `cmd/codex-router/main.go`, `cmd/codex-router/main_test.go` (`brain --home PATH --state-dir DIR`)
 
-- [ ] connect to the home's daemon socket with `experimentalApi`; on start `thread/loaded/list` and resume each main thread (skip ephemeral and subagent threads); on `thread/started` resume the new thread; cwd per thread feeds `Deps.Cwd`
-- [ ] reuse the settings writer for footer sync; `thread/unsubscribe` when a thread's TUI is gone (no turn and no settings event for 10 min, or the thread reports closed)
-- [ ] daemon restart: reconnect with backoff, resubscribe, resync footers
-- [ ] serve the link socket and control v2 (kind `brain`), register `endpoint.json`
-- [ ] ➕ (from Task 16) the edge dials `<home dir>/brain.sock`; with the long-path fallback (`$TMPDIR/codex-router-<uid>/<home_id>.sock`) the brain records the path and the edge (`cmd/codex-router/main.go`) reads it
-- [ ] tests with a fake daemon: two threads resumed, new thread picked up, unsubscribe after idle, daemon restart resync, ephemeral thread skipped
-- [ ] run `make fmt lint test build`
+- [x] connect to the home's daemon socket with `experimentalApi`; on start `thread/loaded/list` and resume each main thread (skip ephemeral and subagent threads); on `thread/started` resume the new thread; cwd per thread feeds `Deps.Cwd`
+- [x] reuse the settings writer for footer sync; `thread/unsubscribe` when a thread's TUI is gone (no turn and no settings event for 10 min, or the thread reports closed)
+- [x] daemon restart: reconnect with backoff, resubscribe, resync footers
+- [x] serve the link socket and control v2 (kind `brain`), register `endpoint.json`
+- [x] ➕ (from Task 16) the edge dials `<home dir>/brain.sock`; with the long-path fallback (`$TMPDIR/codex-router-<uid>/<home_id>.sock`) the brain records the path and the edge (`cmd/codex-router/main.go`) reads it
+- [x] tests with a fake daemon: two threads resumed, new thread picked up, unsubscribe after idle, daemon restart resync, ephemeral thread skipped
+- [x] run `make fmt lint test build`
+- [x] ➕ `internal/appserver`: `DialDaemon` adds thread and turn events on `Threads()` (`thread/started`, `thread/closed`, `turn/started`, `turn/completed`). It is opt-in because the stage 1 launcher never drains them, and a full channel would stop its reads. `Resume` now returns the thread's settings and cwd (empty effort = model default). Also added: `LoadedThreads` (follows the cursor), `ReadThread`, `Unsubscribe`, `Thread.Main` (not ephemeral, no parent, no `subAgent` source, thread source `user` or none), `DaemonSocket`
+- [x] ➕ `internal/launcher`: the writer is exported in place as `SettingsWriter` (no move). `NewSettingsWriter(log, resume)` takes `resume=false` for the brain, which subscribes threads itself. `Resync` takes the route a resume reports and queues the last wanted route again; `Forget` drops a thread. `RouterDeps` is split out of `newRouter` (`router.go`), so the brain gets the same classifier and catalog. The brain imports the launcher
+- [x] ➕ brain layout: endpoint id `brain-<home_id>` is stable, so a restarted brain replaces its own registry entry. Control socket `<home dir>/control.sock`, with the same long-path fallback (`<home_id>-control.sock`). The recorded link path is `<home dir>/brain.path`; a brain whose path fits removes it. `brain.HomeDir` replaces main.go's `homesDir`. The brain creates the home dir 0700 and refuses it, or its parents up to `codex-router/`, when not private. A config that does not load exits 1; the edge forwards meanwhile
+- [x] ➕ thread rules: activity is `turn/started|completed`, `thread/settings/updated`, or any link request or reply on the thread. A user step on a thread the brain does not follow makes it `thread/read` and resume it. This covers threads its loaded list missed, threads dropped as idle that come back, and a `thread/started` thread that is not resumable (-32600, no rollout) until its first turn. Daemon redial: 250 ms doubling to 8 s; the brain waits for a daemon that is not up yet. Notifications are drained on their own goroutine with no RPC calls
+- ⚠️ the brain's catalog comes from `models_cache.json` only: the edge sees `/models` replies, but the link has no catalog frame. Fine while Codex keeps the cache fresh. Upgrade trigger: a model missing from routing in Task 23
 
 ### Task 18: Brain intent persistence and restart semantics
 

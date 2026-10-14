@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexei-led/codex-router/internal/brain"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
@@ -516,7 +517,7 @@ func edgeSetup(t *testing.T) (args []string, h home.Home, dir string, port int) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir = filepath.Join(state, "codex-router", homesDir, h.ID)
+	dir = brain.HomeDir(filepath.Join(state, "codex-router"), h.ID)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -752,6 +753,119 @@ func TestEdgeRefusesToStart(t *testing.T) {
 			args = tc.edit(t, args, dir)
 			var stderr bytes.Buffer
 			code := run(context.Background(), args, testEnv(t), nil, io.Discard, &stderr)
+			if code != tc.wantCode || !strings.Contains(stderr.String(), tc.want) {
+				t.Errorf("exit %d, stderr %q; want %d and %q", code, stderr.String(), tc.wantCode, tc.want)
+			}
+		})
+	}
+}
+
+func TestBrainServesTheEdgeAndListsItself(t *testing.T) {
+	backend := &fakeBackend{}
+	up := httptest.NewServer(backend)
+	defer up.Close()
+	edgeUpstream = up.URL + "/backend-api/codex"
+	t.Cleanup(func() { edgeUpstream = "" })
+
+	edgeArgs, h, _, port := edgeSetup(t)
+	brainArgs := append([]string{"brain"}, edgeArgs[1:]...)
+	state := edgeArgs[len(edgeArgs)-1]
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var brainErr, edgeErr syncBuffer
+	brainDone, edgeDone := make(chan int, 1), make(chan int, 1)
+	go func() { brainDone <- run(ctx, brainArgs, testEnv(t), nil, io.Discard, &brainErr) }()
+	go func() { edgeDone <- run(ctx, edgeArgs, testEnv(t), nil, io.Discard, &edgeErr) }()
+
+	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	waitFor(t, "brain up behind the edge", func() bool { return healthz(base) == "ok\nbrain: up\n" })
+	if code := edgePost(t, base, edgeToken); code != http.StatusOK {
+		t.Fatalf("status %d, want 200", code)
+	}
+
+	env := append(testEnv(t), "XDG_STATE_HOME="+state)
+	root, err := registry.Root(func(k string) string {
+		if k == "XDG_STATE_HOME" {
+			return state
+		}
+		return ""
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	eps, _, err := registry.List(root)
+	if err != nil || len(eps) != 1 || eps[0].Kind != registry.KindBrain || eps[0].Home.ID != h.ID {
+		t.Fatalf("registry = %+v, %v; want the brain of home %s", eps, err, h.ID)
+	}
+	var stdout, stderr bytes.Buffer
+	if code := run(context.Background(), []string{"sessions", "--json"}, env, nil, &stdout, &stderr); code != exitOK {
+		t.Errorf("sessions: exit %d, stderr %q", code, stderr.String())
+	}
+	if eps, _, _ := registry.List(root); len(eps) != 1 {
+		t.Errorf("sessions pruned the live brain: %+v", eps)
+	}
+
+	cancel()
+	for name, done := range map[string]chan int{"brain": brainDone, "edge": edgeDone} {
+		select {
+		case code := <-done:
+			if code != exitOK {
+				t.Errorf("%s exit %d, stderr %q / %q", name, code, brainErr.String(), edgeErr.String())
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatalf("%s did not stop", name)
+		}
+	}
+	if !strings.Contains(brainErr.String(), "daemon-unreachable") {
+		t.Errorf("brain log %q, want the daemon warning", brainErr.String())
+	}
+	if eps, _, _ := registry.List(root); len(eps) != 0 {
+		t.Errorf("registry after the brain stopped = %+v, want empty", eps)
+	}
+}
+
+func TestEdgeDialsTheRecordedBrainSocket(t *testing.T) {
+	args, h, dir, port := edgeSetup(t)
+	sock := filepath.Join(filepath.Dir(filepath.Dir(dir)), "elsewhere.sock")
+	if err := os.WriteFile(filepath.Join(dir, "brain.path"), []byte(sock+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	brainSrv, err := link.Listen(sock, h.ID, rewriteTo("gpt-6-luna"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = brainSrv.Close() }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan int, 1)
+	go func() { done <- run(ctx, args, testEnv(t), nil, io.Discard, io.Discard) }()
+	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	waitFor(t, "edge reaches the brain at the recorded path", func() bool { return healthz(base) == "ok\nbrain: up\n" })
+	cancel()
+	<-done
+}
+
+func TestBrainRefusesToStart(t *testing.T) {
+	bad := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(bad, []byte(`{"bogus": 1}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name     string
+		args     []string
+		wantCode int
+		want     string
+	}{
+		{"relative home", []string{"brain", "--home", "rel"}, exitUsage, "not an absolute path"},
+		{"relative state dir", []string{"brain", "--state-dir", "rel"}, exitUsage, "not an absolute path"},
+		{"stray argument", []string{"brain", "extra"}, exitUsage, `brain: unexpected argument "extra"`},
+		{"bad config", []string{"--config", bad, "brain"}, exitError, "bogus"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var stderr bytes.Buffer
+			code := run(context.Background(), tc.args, testEnv(t), nil, io.Discard, &stderr)
 			if code != tc.wantCode || !strings.Contains(stderr.String(), tc.want) {
 				t.Errorf("exit %d, stderr %q; want %d and %q", code, stderr.String(), tc.wantCode, tc.want)
 			}

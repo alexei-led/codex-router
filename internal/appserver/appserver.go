@@ -6,12 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/responses"
 )
 
 // Settings are the thread settings the router writes and reads.
@@ -24,6 +26,48 @@ type Settings struct {
 type SettingsUpdated struct {
 	ThreadID string
 	Settings Settings
+}
+
+// Resumed is what thread/resume returns: the thread's current settings and
+// cwd. An empty Effort is the model's default effort, not a missing route.
+type Resumed struct {
+	Settings Settings
+	Cwd      string
+}
+
+// Thread is the part of a Codex thread the brain reads.
+type Thread struct {
+	ID           string          `json:"id"`
+	Cwd          string          `json:"cwd"`
+	Ephemeral    bool            `json:"ephemeral"`
+	ParentID     *string         `json:"parentThreadId"`
+	Source       json.RawMessage `json:"source"`
+	ThreadSource *string         `json:"threadSource"`
+}
+
+// Main reports whether t is a thread the user started: not ephemeral, not a
+// subagent, and of the user's thread source or none. Side threads such as
+// thread_title are ephemeral and of another source.
+func (t Thread) Main() bool {
+	if t.Ephemeral || t.ParentID != nil && *t.ParentID != "" {
+		return false
+	}
+	var src struct {
+		SubAgent json.RawMessage `json:"subAgent"`
+	}
+	// A plain source such as "cli" is a JSON string and does not decode here.
+	if json.Unmarshal(t.Source, &src) == nil && len(src.SubAgent) > 0 {
+		return false
+	}
+	return t.ThreadSource == nil || *t.ThreadSource == "" || *t.ThreadSource == responses.ThreadSourceUser
+}
+
+// ThreadEvent is a thread lifecycle or turn notification. Thread is set for
+// thread/started only.
+type ThreadEvent struct {
+	Method   string
+	ThreadID string
+	Thread   *Thread
 }
 
 // Conn is one message-oriented connection to the app-server. Cancelling the
@@ -42,7 +86,7 @@ type Dialer interface {
 // API is what the launcher uses; Client implements it.
 type API interface {
 	Initialize(ctx context.Context) error
-	Resume(ctx context.Context, threadID string) error
+	Resume(ctx context.Context, threadID string) (Resumed, error)
 	UpdateSettings(ctx context.Context, threadID string, s Settings) error
 	Updates() <-chan SettingsUpdated
 	Close() error
@@ -55,7 +99,20 @@ const (
 	MethodResume          = "thread/resume"
 	MethodSettingsUpdate  = "thread/settings/update"
 	MethodSettingsUpdated = "thread/settings/updated"
+	MethodLoadedList      = "thread/loaded/list"
+	MethodRead            = "thread/read"
+	MethodUnsubscribe     = "thread/unsubscribe"
+	MethodThreadStarted   = "thread/started"
+	MethodThreadClosed    = "thread/closed"
+	MethodTurnStarted     = "turn/started"
+	MethodTurnCompleted   = "turn/completed"
 )
+
+// DaemonSocket is the control socket of the shared daemon of the Codex home
+// at codexHome. Codex makes it a symlink into a short per-user tmp dir.
+func DaemonSocket(codexHome string) string {
+	return filepath.Join(codexHome, "app-server-control", "app-server-control.sock")
+}
 
 const (
 	clientName = "codex-router"
@@ -130,6 +187,7 @@ type Client struct {
 	pending map[int64]chan reply
 
 	updates    chan SettingsUpdated
+	threads    chan ThreadEvent // nil unless DialDaemon
 	done       chan struct{}
 	connOnce   sync.Once
 	connClosed atomic.Bool
@@ -139,6 +197,20 @@ type Client struct {
 // Dial connects to the app-server socket through d and starts reading.
 // Call Initialize before any other request.
 func Dial(ctx context.Context, socketPath string, d Dialer) (API, error) {
+	c, err := dialClient(ctx, socketPath, d, false)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// DialDaemon is Dial for a home's shared daemon: the client also yields
+// thread lifecycle and turn notifications on Threads.
+func DialDaemon(ctx context.Context, socketPath string, d Dialer) (*Client, error) {
+	return dialClient(ctx, socketPath, d, true)
+}
+
+func dialClient(ctx context.Context, socketPath string, d Dialer, threads bool) (*Client, error) {
 	conn, err := d.Dial(ctx, socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("appserver: dial: %w", err)
@@ -153,6 +225,9 @@ func Dial(ctx context.Context, socketPath string, d Dialer) (API, error) {
 		pending:      make(map[int64]chan reply),
 		updates:      make(chan SettingsUpdated, updatesBuffer),
 		done:         make(chan struct{}),
+	}
+	if threads {
+		c.threads = make(chan ThreadEvent, updatesBuffer)
 	}
 	go c.readLoop()
 	return c, nil
@@ -178,12 +253,68 @@ func (c *Client) Initialize(ctx context.Context) error {
 // that cannot be resumed, such as one without a rollout (-32600 "no rollout
 // found"), comes back as an *RPCError the caller may ignore: settings writes
 // to it still work.
-func (c *Client) Resume(ctx context.Context, threadID string) error {
+func (c *Client) Resume(ctx context.Context, threadID string) (Resumed, error) {
 	params := struct {
 		ThreadID     string `json:"threadId"`
 		ExcludeTurns bool   `json:"excludeTurns"`
 	}{threadID, true}
-	return c.call(ctx, MethodResume, params, nil)
+	var r struct {
+		Model  string        `json:"model"`
+		Effort config.Effort `json:"reasoningEffort"`
+		Cwd    string        `json:"cwd"`
+	}
+	if err := c.call(ctx, MethodResume, params, &r); err != nil {
+		return Resumed{}, err
+	}
+	return Resumed{Settings: Settings{Model: r.Model, Effort: r.Effort}, Cwd: r.Cwd}, nil
+}
+
+// LoadedThreads returns the ids of the threads the app-server holds in
+// memory, following thread/loaded/list's cursor to the last page.
+func (c *Client) LoadedThreads(ctx context.Context) ([]string, error) {
+	var ids []string
+	var cursor *string
+	for {
+		params := struct {
+			Cursor *string `json:"cursor,omitempty"`
+		}{cursor}
+		var page struct {
+			Data       []string `json:"data"`
+			NextCursor *string  `json:"nextCursor"`
+		}
+		if err := c.call(ctx, MethodLoadedList, params, &page); err != nil {
+			return nil, err
+		}
+		ids = append(ids, page.Data...)
+		if page.NextCursor == nil || *page.NextCursor == "" {
+			return ids, nil
+		}
+		cursor = page.NextCursor
+	}
+}
+
+// ReadThread returns a thread's metadata without its turns.
+func (c *Client) ReadThread(ctx context.Context, threadID string) (Thread, error) {
+	params := struct {
+		ThreadID     string `json:"threadId"`
+		IncludeTurns bool   `json:"includeTurns"`
+	}{threadID, false}
+	var r struct {
+		Thread Thread `json:"thread"`
+	}
+	if err := c.call(ctx, MethodRead, params, &r); err != nil {
+		return Thread{}, err
+	}
+	return r.Thread, nil
+}
+
+// Unsubscribe ends this client's subscription to a thread. The daemon
+// unloads an idle thread only once no client is subscribed.
+func (c *Client) Unsubscribe(ctx context.Context, threadID string) error {
+	params := struct {
+		ThreadID string `json:"threadId"`
+	}{threadID}
+	return c.call(ctx, MethodUnsubscribe, params, nil)
 }
 
 // UpdateSettings sets the thread's model and effort for subsequent turns. An
@@ -200,6 +331,12 @@ func (c *Client) UpdateSettings(ctx context.Context, threadID string, s Settings
 // Updates yields thread/settings/updated notifications in arrival order. It
 // is closed when the connection ends.
 func (c *Client) Updates() <-chan SettingsUpdated { return c.updates }
+
+// Threads yields thread/started, thread/closed, turn/started and
+// turn/completed in arrival order, and is closed when the connection ends.
+// It is nil unless the client came from DialDaemon. Like Updates it must be
+// drained independently of the consumer's own RPC calls.
+func (c *Client) Threads() <-chan ThreadEvent { return c.threads }
 
 // Close closes the connection, fails pending calls with ErrClosed and waits
 // for the client's goroutines to stop. It returns the first error from
@@ -332,6 +469,17 @@ func (c *Client) dispatch(in inbound) bool {
 		case <-c.ctx.Done():
 			return false
 		}
+	case c.threads != nil && threadMethods[in.Method]:
+		ev, ok := parseThreadEvent(in.Method, in.Params)
+		if !ok {
+			slog.Warn("appserver-bad-notification", "method", in.Method)
+			return true
+		}
+		select {
+		case c.threads <- ev:
+		case <-c.ctx.Done():
+			return false
+		}
 	case in.Method == "" && hasID:
 		c.resolve(in)
 	}
@@ -384,6 +532,9 @@ func (c *Client) shutdown() {
 	c.pending = nil
 	c.mu.Unlock()
 	close(c.updates)
+	if c.threads != nil {
+		close(c.threads)
+	}
 	close(c.done)
 }
 
@@ -396,6 +547,29 @@ func parseSettingsUpdated(params json.RawMessage) (SettingsUpdated, bool) {
 		return SettingsUpdated{}, false
 	}
 	return SettingsUpdated{ThreadID: p.ThreadID, Settings: p.ThreadSettings}, true
+}
+
+var threadMethods = map[string]bool{
+	MethodThreadStarted: true, MethodThreadClosed: true,
+	MethodTurnStarted: true, MethodTurnCompleted: true,
+}
+
+func parseThreadEvent(method string, params json.RawMessage) (ThreadEvent, bool) {
+	var p struct {
+		ThreadID string  `json:"threadId"`
+		Thread   *Thread `json:"thread"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return ThreadEvent{}, false
+	}
+	ev := ThreadEvent{Method: method, ThreadID: p.ThreadID}
+	if method == MethodThreadStarted {
+		if p.Thread == nil || p.Thread.ID == "" {
+			return ThreadEvent{}, false
+		}
+		ev.ThreadID, ev.Thread = p.Thread.ID, p.Thread
+	}
+	return ev, ev.ThreadID != ""
 }
 
 func clientVersion() string {
