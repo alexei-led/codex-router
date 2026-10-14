@@ -700,12 +700,16 @@ Depends on: Tasks 20, 21, 22
 
 Depends on: Task 23 (or Task 12 when the gate stopped stage 2)
 
-- [ ] every Overview item delivered for the stages that ran; gate outcome recorded
-- [ ] edge cases covered by tests: ambiguous labels, 20 sessions, endpoint loss, account change, corrupt intent, symlinked config
-- [ ] state plainly in the summary which Linux paths are covered only by unit tests (systemd units, `LISTEN_FDS`, setup on Linux) and which were run live (none in this plan; see Post-Completion)
-- [ ] full suite: `make fmt lint test build`; `make vuln`
-- [ ] coverage not below the current level (`make coverage`)
-- [ ] release cross-build still works: `make release-build`
+- [x] every Overview item delivered for the stages that ran; gate outcome recorded
+- [x] edge cases covered by tests: ambiguous labels, 20 sessions, endpoint loss, account change, corrupt intent, symlinked config
+- [x] state plainly in the summary which Linux paths are covered only by unit tests (systemd units, `LISTEN_FDS`, setup on Linux) and which were run live (none in this plan; see Post-Completion)
+- [x] full suite: `make fmt lint test build`; `make vuln`
+- [x] coverage not below the current level (`make coverage`)
+- [x] release cross-build still works: `make release-build`
+- [x] ➕ Overview check: stage 1 (Tasks 1-11) and its live run (Task 12); gate passed G1-G5 (Gate outcome above); stage 2 edge, brain, setup, plugin, launchd/systemd units (Tasks 15-22) and its live run on macOS (Task 23). Open: the `report.md` files of Tasks 12, 14, 23 (⚠️ there), the Linux live run (Post-Completion)
+- [x] ➕ edge-case tests: ambiguous labels `TestTUIResolvesSession` in `cmd/codex-router/main_test.go` (ambiguous thread prefix, label suffix, home prefix → exit 2) and `TestDisambiguate`; 20 sessions `manyFixture` goldens `fleet-scroll-{80,140}` and `TestSessionsTabScrollKeepsTheCursorInView`; endpoint loss `TestFleetEndpointLossAndReturn`, `TestFleetRedialsALostEndpointWithinGrace`, `TestFleetLostButRegisteredSessionHasNotEnded`; account change `TestAccountBinding`, `TestAccountChangeKeepsIntent`, `TestLinkFramesCarryOnlyTheAccountHash`; corrupt intent `TestIntentStoreLoad`, `TestLostIntentPausesTheHomeUntilResume`, `TestBrainWithAnUnreadableIntentPassesThroughAsStateLost`; symlinked config `TestSetupSymlinkedConfig` (and `TestResolveSymlinkedHomeHasTheSameID`)
+- [x] ➕ Linux: covered only by unit tests, run on macOS and on CI's `ubuntu-latest`: systemd unit files (`TestUnitFilesMatchGolden`, `TestTwoHomesGetTheirOwnUnits`, `TestSystemdHonorsXDGConfigHome`), `systemctl --user` calls through a mocked runner (`TestInstallLoadsAndReinstallUnloadsFirst`, `TestUninstall`, `TestStatusAndEnsure`), `LISTEN_FDS` activation in a child process (`TestSystemdActivation`, `TestSystemdWithoutTheNamedSocket`), setup with `GOOS=linux` units. Run live on Linux: nothing. `make release-build` builds the `linux/{amd64,arm64}` binaries with `CGO_ENABLED=0`
+- [x] ➕ coverage: `main` (plan start) 90.6%, this branch before this task 90.2% (new stage 2 code, and two packages whose code other packages' tests exercise). Added `TestSettingsWriterResyncAndForget` (`internal/launcher`; `Resync`/`Forget` were run only by brain tests) and `scripts/render-docs/main_test.go` (`render` matches the committed `docs/images/*.svg`, so a stale doc image fails `make test`; a missing capture is an error). Now 91.8%. `make vuln`: no vulnerabilities. `make release-build`: 4 binaries + `checksums.txt`
 
 ### Task 25: [Final] Update documentation
 

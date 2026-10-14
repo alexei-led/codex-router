@@ -580,6 +580,46 @@ func TestSettingsWriterKeepsARouteQueuedDuringAWrite(t *testing.T) {
 	}
 }
 
+func TestSettingsWriterResyncAndForget(t *testing.T) {
+	sol := config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
+	luna := config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}
+	api := &fakeAPI{written: make(chan struct{}, 8)}
+	w := NewSettingsWriter(slog.New(slog.DiscardHandler), false)
+	w.Enqueue("gone", sol)
+	w.Forget("gone")
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		w.Run(ctx, api)
+		close(done)
+	}()
+	written := func() {
+		t.Helper()
+		select {
+		case <-api.written:
+		case <-time.After(2 * time.Second):
+			t.Fatal("no settings write")
+		}
+	}
+
+	w.Enqueue("t", sol)
+	written()
+	w.Resync("t", luna)
+	written()
+	w.Resync("t", sol)
+	w.Forget("t")
+	w.Resync("t", luna)
+	w.Enqueue("u", luna)
+	written()
+	cancel()
+	<-done
+
+	want := []string{"update t gpt-6-sol/medium", "update t gpt-6-sol/medium", "update u gpt-6-luna/low"}
+	if !slices.Equal(api.calls, want) {
+		t.Errorf("calls = %q, want %q", api.calls, want)
+	}
+}
+
 func TestRuntimeBase(t *testing.T) {
 	cases := []struct {
 		name string
