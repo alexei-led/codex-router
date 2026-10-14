@@ -701,7 +701,7 @@ func TestRenderFleetIsWidthAndHeightBound(t *testing.T) {
 	}
 }
 
-func TestRenderFleetMatchesThePanel(t *testing.T) {
+func TestRenderFleetViewMatchesThePanel(t *testing.T) {
 	st := fleetFixture()
 	var homes []home.Home
 	var sessions []route.SessionInfo
@@ -716,10 +716,11 @@ func TestRenderFleetMatchesThePanel(t *testing.T) {
 	}
 	sgr := regexp.MustCompile("\x1b\\[[0-9;]*m")
 	for _, tab := range []Tab{TabSessions, TabNow} {
-		got := sgr.ReplaceAllString(RenderFleet(homes, sessions, st.focus, fixture(), tab, 140), "")
+		v := FleetView{Homes: homes, Sessions: sessions, Focus: st.focus, Snap: fixture(), Tab: tab, Width: 140}
+		got := sgr.ReplaceAllString(RenderFleetView(v), "")
 		want := render(view{snap: fixture(), tab: tab, width: 140, fleet: &st})
 		if got != want {
-			t.Errorf("%s: RenderFleet differs from the panel\n--- got\n%s--- want\n%s", tab, got, want)
+			t.Errorf("%s: RenderFleetView differs from the panel\n--- got\n%s--- want\n%s", tab, got, want)
 		}
 	}
 }
