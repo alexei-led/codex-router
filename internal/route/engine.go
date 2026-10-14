@@ -83,7 +83,7 @@ type thread struct {
 	id   string
 	step sync.Mutex
 
-	native   config.Route // what Codex sent first: its configured route
+	native   config.Route // Codex's own route: what it sent first, or the user's /model pick
 	model    string       // the last request's model
 	tier     config.Tier
 	activity config.Activity // the activity whose route runs, "" for the base route
