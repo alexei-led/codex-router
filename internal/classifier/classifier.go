@@ -24,7 +24,6 @@ type ActivityAdvice struct {
 // nil when the protocol does not ask it.
 type Advice struct {
 	Choice        Choice
-	Confidence    float64
 	Probabilities map[Choice]float64
 	Continuation  *float64
 	Activity      *ActivityAdvice

@@ -10,7 +10,7 @@ func TestUsageFromSSE(t *testing.T) {
 	const completed = `{"type":"response.completed","response":{"id":"resp_1","model":"gpt-6-luna","usage":` +
 		`{"input_tokens":20480,"input_tokens_details":{"cached_tokens":20224},"output_tokens":310,` +
 		`"output_tokens_details":{"reasoning_tokens":128},"total_tokens":20790}}}`
-	full := responses.Usage{InputTokens: 20480, CachedInputTokens: 20224, OutputTokens: 310, ReasoningTokens: 128, TotalTokens: 20790}
+	full := responses.Usage{InputTokens: 20480, CachedInputTokens: 20224, OutputTokens: 310, TotalTokens: 20790}
 
 	tests := []struct {
 		name      string

@@ -155,7 +155,7 @@ func sampleSnapshot() route.Snapshot {
 			ByActivity:       map[config.Activity]int{config.ActivityCode: 53, config.ActivityDebug: 38, config.ActivityExplore: 27, config.ActivityPlan: 9, config.ActivityReview: 7, config.ActivityOps: 6, config.ActivityDocs: 4},
 			Strip:            strip,
 			RepliesPerCell:   4,
-			LastSwitch:       &route.Switch{At: at(18, 41), From: config.TierMedium, To: config.TierHigh, FromRoute: solHigh, ToRoute: sol61, Activity: config.ActivityDebug, MidTurn: true},
+			LastSwitch:       &route.Switch{At: at(18, 41), From: config.TierMedium, To: config.TierHigh, Activity: config.ActivityDebug, MidTurn: true},
 			CacheReusePct:    64,
 			LastInputTokens:  44_000,
 			LastCachedTokens: 42_700,

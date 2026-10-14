@@ -52,7 +52,6 @@ func (systemOne) Build(model string, in Input) ([]byte, error) {
 type soChoiceAnswer struct {
 	Type          string          `json:"type"`
 	Choice        string          `json:"choice"`
-	Confidence    any             `json:"confidence"`
 	Probabilities json.RawMessage `json:"probabilities"`
 }
 
@@ -90,7 +89,6 @@ func (systemOne) Parse(body []byte) (Advice, error) {
 	}
 	advice := Advice{
 		Choice:        Choice(route.Choice),
-		Confidence:    clamp(route.Confidence),
 		Probabilities: make(map[Choice]float64, len(routeOptions)),
 	}
 	for _, v := range routeOptions.values() {

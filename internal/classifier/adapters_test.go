@@ -129,7 +129,7 @@ func TestSystemOneParseReadsCloudflareAndBareAnswersAlike(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, a := range []Advice{fromEnvelope, bare} {
-		if a.Choice != "micro" || a.Probabilities["micro"] != 0.5923 || a.Confidence != 0.2826 {
+		if a.Choice != "micro" || a.Probabilities["micro"] != 0.5923 {
 			t.Errorf("advice = %+v", a)
 		}
 		if a.Continuation == nil || *a.Continuation != 0.0164 {
@@ -166,7 +166,7 @@ func TestSystemOneParseDegradesMissingNumbers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a.Confidence != 1 || a.Probabilities["low"] != 1 || a.Probabilities["high"] != 0 || len(a.Probabilities) != 5 {
+	if a.Probabilities["low"] != 1 || a.Probabilities["high"] != 0 || len(a.Probabilities) != 5 {
 		t.Errorf("advice = %+v", a)
 	}
 	if a.Continuation != nil {
@@ -314,9 +314,6 @@ func TestOllamaParseReadsLetterProbabilities(t *testing.T) {
 	}
 	if !near(total, 1) {
 		t.Errorf("probabilities sum to %v", total)
-	}
-	if !near(a.Confidence, (5*a.Probabilities["medium"]-1)/4) {
-		t.Errorf("confidence = %v", a.Confidence)
 	}
 }
 

@@ -2,15 +2,10 @@ package responses
 
 import "github.com/alexei-led/codex-router/internal/config"
 
-// Request headers the proxy reads or forwards. Authorization and
-// ChatGPT-Account-ID are forwarded upstream only and never read.
+// Request headers the proxy reads.
 const (
-	HeaderTurnMetadata  = "X-Codex-Turn-Metadata"
-	HeaderSubagent      = "X-Openai-Subagent"
-	HeaderResponsesLite = "X-Openai-Internal-Codex-Responses-Lite"
-	HeaderWindowID      = "X-Codex-Window-Id"
-	HeaderAuthorization = "Authorization"
-	HeaderAccountID     = "Chatgpt-Account-Id"
+	HeaderTurnMetadata = "X-Codex-Turn-Metadata"
+	HeaderSubagent     = "X-Openai-Subagent"
 )
 
 // Response headers the proxy strips: Codex reads them as the served model and
@@ -29,17 +24,15 @@ const (
 	KindPassthrough Kind = "passthrough"
 )
 
-// Meta is the parsed x-codex-turn-metadata header plus the subagent and
-// window headers. RequestKind is "turn" for a user step, "compaction" for a
-// compaction request; AgentName is "/root" on the main thread.
+// Meta is the parsed x-codex-turn-metadata header plus the subagent
+// header. RequestKind is "turn" for a user step, "compaction" for a
+// compaction request.
 type Meta struct {
 	SessionID   string
 	ThreadID    string
 	TurnID      string
 	RequestKind string
-	AgentName   string
 	Subagent    string
-	WindowID    string
 }
 
 // Item is one input item, flattened. Fields not used by a type stay empty;
@@ -78,6 +71,5 @@ type Usage struct {
 	InputTokens       int
 	CachedInputTokens int
 	OutputTokens      int
-	ReasoningTokens   int
 	TotalTokens       int
 }

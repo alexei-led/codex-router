@@ -43,15 +43,15 @@ func TestParseFixture(t *testing.T) {
 		{Type: "message", Role: "developer", Text: `<additional_tools>[{"name":"exec_command","model":"not-this-one"}]</additional_tools>`},
 		{Type: "message", Role: "user", Text: "<environment_context>\n  <cwd>/work/repo</cwd>\n</environment_context>"},
 		{Type: "message", Role: "user", Text: "Fix the flaky retry test."},
-		{Type: "reasoning", ID: "rs_1", Text: "Looking at the test."},
-		{Type: "function_call", ID: "fc_1", Name: "exec_command", CallID: "call_1", Arguments: `{"cmd":"go test ./...","model":"x"}`},
+		{Type: "reasoning", Text: "Looking at the test."},
+		{Type: "function_call", Name: "exec_command", CallID: "call_1", Arguments: `{"cmd":"go test ./...","model":"x"}`},
 		{Type: "function_call_output", CallID: "call_1", Output: "--- FAIL: TestRetry (0.01s)\nexit status 1"},
-		{Type: "custom_tool_call", ID: "ctc_1", Name: "apply_patch", CallID: "call_2", Arguments: "*** Begin Patch\n*** Update File: retry.go\n*** End Patch"},
+		{Type: "custom_tool_call", Name: "apply_patch", CallID: "call_2", Arguments: "*** Begin Patch\n*** Update File: retry.go\n*** End Patch"},
 		{Type: "custom_tool_call_output", CallID: "call_2", Output: "Success."},
-		{Type: "local_shell_call", ID: "lsc_1", CallID: "call_3", Arguments: `{"type":"exec","command":["go","test","./..."]}`},
+		{Type: "local_shell_call", CallID: "call_3", Arguments: `{"type":"exec","command":["go","test","./..."]}`},
 		{Type: "web_search_call"},
 		{Type: "compaction_summary"},
-		{Type: "message", Role: "assistant", ID: "msg_1", Text: "Fixed."},
+		{Type: "message", Role: "assistant", Text: "Fixed."},
 	}
 	if !slices.Equal(r.Input, want) {
 		for i := range max(len(r.Input), len(want)) {

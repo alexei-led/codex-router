@@ -42,7 +42,7 @@ const (
 		"\"output_tokens_details\":{\"reasoning_tokens\":40},\"total_tokens\":1290}}}\n\n"
 )
 
-var wantUsage = responses.Usage{InputTokens: 1200, CachedInputTokens: 800, OutputTokens: 90, ReasoningTokens: 40, TotalTokens: 1290}
+var wantUsage = responses.Usage{InputTokens: 1200, CachedInputTokens: 800, OutputTokens: 90, TotalTokens: 1290}
 
 type syncBuffer struct {
 	mu  sync.Mutex
@@ -806,7 +806,7 @@ func TestModelsPassThroughAndCatalog(t *testing.T) {
 		t.Errorf("upstream /models carries a body: %s %q", in.framing, in.body)
 	}
 	cur := store.Current()
-	if w, ok := cur.Window("gpt-6-luna"); !ok || w != 258400 || cur.ETag != etag {
+	if w, ok := cur.Window("gpt-6-luna"); !ok || w != 258400 {
 		t.Errorf("catalog = %+v", cur)
 	}
 

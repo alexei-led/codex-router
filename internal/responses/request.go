@@ -102,7 +102,6 @@ func parseEffort(body []byte, reasoning member) (config.Effort, error) {
 type wireItem struct {
 	Type      string          `json:"type"`
 	Role      string          `json:"role"`
-	ID        string          `json:"id"`
 	Name      string          `json:"name"`
 	CallID    string          `json:"call_id"`
 	Arguments string          `json:"arguments"`
@@ -134,7 +133,7 @@ func parseItem(raw json.RawMessage) Item {
 	if json.Unmarshal(raw, &w) != nil {
 		return opaque
 	}
-	it := Item{Type: w.Type, Role: w.Role, ID: w.ID, Name: w.Name, CallID: w.CallID}
+	it := Item{Type: w.Type, Role: w.Role, Name: w.Name, CallID: w.CallID}
 	switch w.Type {
 	case TypeMessage:
 		it.Text = joinText(w.Content)

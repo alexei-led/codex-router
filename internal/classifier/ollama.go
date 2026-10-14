@@ -127,9 +127,7 @@ func (ollama) Build(model string, in Input) ([]byte, error) {
 	return ollamaBody(model, in, routeInstructions, routeOptions)
 }
 
-// Parse reads the route letter. Confidence is TypeSafe's choice formula
-// (n*peak - 1)/(n - 1): a readout for the confidence threshold, not a
-// calibrated probability.
+// Parse reads the route letter.
 func (ollama) Parse(body []byte) (Advice, error) {
 	values := routeOptions.values()
 	choice, weights, err := letterAnswer(body, values)
@@ -140,8 +138,6 @@ func (ollama) Parse(body []byte) (Advice, error) {
 	for i, v := range values {
 		advice.Probabilities[Choice(v)] = weights[i]
 	}
-	n := float64(len(values))
-	advice.Confidence = clamp((n*advice.Probabilities[advice.Choice] - 1) / (n - 1))
 	return advice, nil
 }
 
