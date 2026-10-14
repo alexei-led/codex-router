@@ -50,15 +50,16 @@ var (
 // state, tallies and decisions are per thread; paused, lost and the preset
 // (in cfg) are the home's.
 type Engine struct {
-	cat        catalog.Source
-	ask        classifier.Asker
-	now        func() time.Time
-	sink       Sink
-	log        *slog.Logger
-	ledger     *cost.Ledger
-	home       home.Home
-	cwd        func(threadID string) string
-	saveIntent func(Intent)
+	cat          catalog.Source
+	ask          classifier.Asker
+	now          func() time.Time
+	sink         Sink
+	log          *slog.Logger
+	ledger       *cost.Ledger
+	home         home.Home
+	cwd          func(threadID string) string
+	saveIntent   func(Intent)
+	holdUnseeded bool
 	// reviews counts background classifier reviews in flight.
 	reviews sync.WaitGroup
 
@@ -87,6 +88,7 @@ type thread struct {
 	state    policy.State
 	measured bool // a reply on this thread was observed
 
+	codexTurn  string // the turn of the last user step, routed or not
 	turn       string
 	stepIndex  int
 	turnPinned bool
@@ -154,46 +156,92 @@ func New(d Deps) *Engine {
 	}
 	ms := func(n int) time.Duration { return time.Duration(n) * time.Millisecond }
 	e := &Engine{
-		cat:        d.Catalog,
-		ask:        d.Classifier,
-		now:        d.Now,
-		sink:       d.Sink,
-		log:        d.Logger,
-		ledger:     cost.NewLedger(cost.Cache{TTL: ms(d.Config.Cache.TTLMs), WarmMargin: ms(d.Config.Cache.WarmMarginMs)}),
-		home:       d.Home,
-		cwd:        d.Cwd,
-		saveIntent: d.SaveIntent,
-		cfg:        d.Config,
-		threads:    map[string]*list.Element{},
-		lru:        list.New(),
+		cat:          d.Catalog,
+		ask:          d.Classifier,
+		now:          d.Now,
+		sink:         d.Sink,
+		log:          d.Logger,
+		ledger:       cost.NewLedger(cost.Cache{TTL: ms(d.Config.Cache.TTLMs), WarmMargin: ms(d.Config.Cache.WarmMarginMs)}),
+		home:         d.Home,
+		cwd:          d.Cwd,
+		saveIntent:   d.SaveIntent,
+		holdUnseeded: d.HoldUnseeded,
+		cfg:          d.Config,
+		threads:      map[string]*list.Element{},
+		lru:          list.New(),
 	}
 	e.restore(d.Intent, d.IntentLost)
 	return e
 }
 
-// Seed starts a thread the engine has seen no request on at r, the route
-// Codex reports for it (thread/resume after a brain start; an empty effort
-// is the model's default). The thread keeps r until a reply measures the
-// cache: with an empty ledger the engine takes every cache for cold and
-// would switch on one vote. The turn that reply ends stays on r too. A
-// thread with a request seen keeps its state.
-func (e *Engine) Seed(threadID string, r config.Route) {
+// Resumed takes r, the route Codex reports for a thread on thread/resume (an
+// empty effort is the model's default), and reports whether the router's
+// last route should be written to the footer again.
+//
+// A thread the engine has seen no request on (a brain start) is seeded at
+// r. It keeps r until a reply measures the cache: with an empty ledger the
+// engine takes every cache for cold and would switch on one vote. The turn
+// that reply ends stays on r too.
+//
+// On a known thread r is checked as thread/settings/updated would be, since
+// a /model pick made while the brain was not subscribed sent it nothing: a
+// route the router wrote, or the thread's native one (a restarted daemon
+// reloads that and lost the router's write), is written again; any other is
+// the user's pick, and the thread goes manual. A pick back to the native
+// route then looks like a restarted daemon and is overwritten.
+func (e *Engine) Resumed(threadID string, r config.Route) (resync bool) {
+	defer func() {
+		if p := recover(); p != nil {
+			e.log.Error("route resume failed", "thread", threadID, "panic", panicText(p))
+			resync = false
+		}
+	}()
 	if threadID == "" || r.Model == "" {
-		return
+		return true
 	}
+	s, resync, manual := e.resumed(threadID, r)
+	if manual {
+		e.persist()
+		e.emitSnapshot(s)
+	}
+	return resync
+}
+
+func (e *Engine) resumed(threadID string, r config.Route) (s Snapshot, resync, manual bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	th := e.lookup(threadID)
 	if th == nil {
 		th = e.add(threadID)
 	}
-	if th.native.Model != "" {
-		return
+	if th.native.Model == "" {
+		th.native, th.lastWritten, th.footer = r, r, r
+		th.tier, th.activity = cellForModel(e.cfg, r)
+		th.held = true
+		e.log.Info("route seeded", "thread", threadID, "tier", th.tier, "model", r.Model, "effort", r.Effort)
+		return Snapshot{}, true, false
 	}
-	th.native, th.lastWritten, th.footer = r, r, r
-	th.tier, th.activity = cellForModel(e.cfg, r)
-	th.held = true
-	e.log.Info("route seeded", "thread", threadID, "tier", th.tier, "model", r.Model, "effort", r.Effort)
+	th.footer = r
+	switch i := slices.Index(th.pending, r); {
+	case i >= 0:
+		th.pending = slices.Clone(th.pending[i+1:])
+		return Snapshot{}, true, false
+	case th.manual:
+		th.lastWritten, th.native = r, r
+		return Snapshot{}, false, false
+	case r == th.lastWritten || r == th.native:
+		return Snapshot{}, true, false
+	}
+	e.pick(th, r)
+	return e.snapshot(th, e.now()), false, true
+}
+
+// pick puts th on the user's /model pick r (plan D12) under e.mu. The pick
+// is now what Codex would use without the router, so pause restores it
+// rather than the route the session started on.
+func (e *Engine) pick(th *thread, r config.Route) {
+	th.manual, th.pending, th.lastWritten, th.native = true, nil, r, r
+	e.log.Info("route manual", "thread", th.id, "model", r.Model, "effort", r.Effort)
 }
 
 // step is one request's inputs, gathered under the lock.
@@ -237,7 +285,11 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 	th.step.Lock()
 	defer th.step.Unlock()
 
-	st, retried, old := e.begin(th, req, m)
+	st, retried, old, picked := e.begin(th, req, m)
+	if picked {
+		e.persist()
+		e.emitSnapshot(e.lockedSnapshot(key))
+	}
 	if retried != nil {
 		return rewriteOf(*retried)
 	}
@@ -273,37 +325,53 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 }
 
 // begin reads the thread under the lock. It returns a pinned decision for a
-// retry, nil step when the request passes unchanged, and a review the new
-// turn replaced, for the caller to stop outside the lock.
-func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*step, *Decision, *review) {
+// retry, nil step when the request passes unchanged, a review the new turn
+// replaced, for the caller to stop outside the lock, and whether the request
+// showed a /model pick, for the caller to save.
+func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*step, *Decision, *review, bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	cfg := e.cfg
 	now := e.now()
 	original := config.Route{Model: req.Model, Effort: req.Effort}
 	e.bind(th, m.Account)
-	if th.native.Model == "" {
+	newTurn := th.codexTurn != m.TurnID
+	th.codexTurn = m.TurnID
+	picked := false
+	switch {
+	case th.native.Model == "":
 		th.native, th.lastWritten, th.footer = original, original, original
 		th.tier, th.activity = cellForModel(cfg, original)
+		if e.holdUnseeded && inConversation(req.Input) {
+			th.held = true
+			e.log.Info("route held unseeded", "thread", th.id, "tier", th.tier, "model", original.Model, "effort", original.Effort)
+		}
+	case newTurn && !th.manual && !th.knows(original):
+		// A turn runs on the settings it started with, so only its first
+		// step can show a /model pick. This one catches the picks
+		// thread/settings/updated did not report: the brain was not
+		// subscribed to the thread.
+		e.pick(th, original)
+		picked = true
 	}
 	th.model, th.lastActive = req.Model, now
 	if e.paused || th.paused || th.manual {
 		th.awaiting = nil
-		return nil, nil, nil
+		return nil, nil, nil, picked
 	}
 	if th.held && th.pin == nil {
 		// Unrouted until a reply ends the hold, and for the rest of that
 		// turn. A pin is the user's word and ends the hold.
 		th.awaiting = nil
 		th.turn, th.turnOff = m.TurnID, true
-		return nil, nil, nil
+		return nil, nil, nil, false
 	}
 	th.held = false
 	fp := req.Fingerprint(m)
 	for _, r := range th.retries {
 		if r.fingerprint == fp {
 			d := r.decision
-			return nil, &d, nil
+			return nil, &d, nil, false
 		}
 	}
 	th.awaiting = nil
@@ -314,7 +382,7 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 		th.turn, th.stepIndex, th.turnPinned, th.turnOff, th.advice = m.TurnID, 0, false, false, nil
 		th.retries, th.observedFrom = nil, 0
 	} else if th.turnOff {
-		return nil, nil, nil
+		return nil, nil, nil, false
 	}
 	if n := len(req.Input); n < th.lastItems {
 		// Compaction or a rewind replaced the history: cached prefixes and
@@ -331,7 +399,7 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 	th.lastItems = len(req.Input)
 	cat := e.cat.Current()
 	if _, ok := cat.GroupOf(req.Model); !ok {
-		return nil, nil, old
+		return nil, nil, old, false
 	}
 	st := &step{
 		th: th, meta: m, req: req, fp: fp, cfg: cfg, policy: cfg.Effective(), cat: cat, now: now,
@@ -347,7 +415,7 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 		// Consumed here, under the lock, so exactly one turn takes it.
 		st.pin, th.pin = th.pin, nil
 	}
-	return st, nil, old
+	return st, nil, old, false
 }
 
 // bind binds th to its first account (plan M12). Another account resets
@@ -636,6 +704,28 @@ func (e *Engine) noteLatency(a *classifier.Advice) {
 	if a != nil && a.Latency > 0 {
 		e.latencies = appendCapped(e.latencies, a.Latency, latenciesKept)
 	}
+}
+
+// knows says Codex may run on r without a /model pick: the route the
+// app-server last reported, one the router wrote, echoed or not, or the
+// thread's native route.
+func (th *thread) knows(r config.Route) bool {
+	return sameRoute(r, th.footer) || sameRoute(r, th.lastWritten) || sameRoute(r, th.native) ||
+		slices.ContainsFunc(th.pending, func(p config.Route) bool { return sameRoute(r, p) })
+}
+
+// sameRoute matches a request's route to a settings route. An empty effort
+// is the model's default, which a request may name.
+func sameRoute(a, b config.Route) bool {
+	return a.Model == b.Model && (a.Effort == b.Effort || a.Effort == "" || b.Effort == "")
+}
+
+// inConversation says the input holds an earlier turn's work: a reply or any
+// item but a message.
+func inConversation(items []responses.Item) bool {
+	return slices.ContainsFunc(items, func(it responses.Item) bool {
+		return it.Type != responses.TypeMessage || it.Role == "assistant"
+	})
 }
 
 func (th *thread) remember(d Decision) {

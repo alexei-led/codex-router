@@ -19,7 +19,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexei-led/codex-router/internal/catalog"
+	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/policy"
 	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
@@ -168,7 +171,7 @@ func TestFrameRoundTrip(t *testing.T) {
 		body []byte
 	}{
 		{"hello", Header{Type: TypeHello, HomeID: homeA}, nil},
-		{"decide", Header{Type: TypeDecide, ID: 7, Meta: &stepMeta, TimeoutMs: 1700}, smallBody},
+		{"decide", Header{Type: TypeDecide, ID: 7, Meta: &stepMeta, DeadlineUnixMs: 1_790_000_001_700}, smallBody},
 		{"rewrite", Header{Type: TypeRewrite, ID: 7, Rewrite: &toLow}, nil},
 		{"body with newlines", Header{Type: TypeDecide, ID: 1}, []byte("{\n\"model\":\"m\"\n}\n")},
 	}
@@ -182,7 +185,7 @@ func TestFrameRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if h.Type != tc.h.Type || h.ID != tc.h.ID || h.HomeID != tc.h.HomeID || h.TimeoutMs != tc.h.TimeoutMs {
+			if h.Type != tc.h.Type || h.ID != tc.h.ID || h.HomeID != tc.h.HomeID || h.DeadlineUnixMs != tc.h.DeadlineUnixMs {
 				t.Fatalf("header = %+v, want %+v", h, tc.h)
 			}
 			if !bytes.Equal(body, tc.body) {
@@ -341,11 +344,35 @@ func TestLateDecideIsNotAnswered(t *testing.T) {
 	brain := &fakeBrain{rw: toLow, ok: true}
 	brain.slow.Store(true)
 	startBrain(t, path, homeA, brain)
+	conn := rawEdge(t, path)
+
+	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(20 * time.Millisecond)}, smallBody); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "late decide", func() bool { return len(brain.calls()) == 1 })
+	time.Sleep(100 * time.Millisecond)
+	brain.slow.Store(false)
+	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 2, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(time.Second)}, smallBody); err != nil {
+		t.Fatal(err)
+	}
+
+	h, _, err := ReadFrame(conn)
+	if err != nil || h.ID != 2 || h.Type != TypeRewrite {
+		t.Fatalf("first reply = %+v, %v; want only the answer to decide 2", h, err)
+	}
+}
+
+func deadlineIn(d time.Duration) int64 { return time.Now().Add(d).UnixMilli() }
+
+// rawEdge dials the brain and says hello, for tests that write frames
+// themselves.
+func rawEdge(t *testing.T, path string) net.Conn {
+	t.Helper()
 	conn, err := net.Dial("unix", path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = conn.Close() }()
+	t.Cleanup(func() { _ = conn.Close() })
 	_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
 	if err := WriteFrame(conn, Header{Type: TypeHello, HomeID: homeA}, nil); err != nil {
 		t.Fatal(err)
@@ -353,20 +380,92 @@ func TestLateDecideIsNotAnswered(t *testing.T) {
 	if h, _, err := ReadFrame(conn); err != nil || h.Type != TypeHello {
 		t.Fatalf("hello reply = %+v, %v", h, err)
 	}
+	return conn
+}
 
-	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, TimeoutMs: 20}, smallBody); err != nil {
-		t.Fatal(err)
-	}
-	eventually(t, "late decide", func() bool { return len(brain.calls()) == 1 })
-	time.Sleep(100 * time.Millisecond)
-	brain.slow.Store(false)
-	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 2, Meta: &stepMeta, TimeoutMs: 1000}, smallBody); err != nil {
-		t.Fatal(err)
-	}
+const engineCatalog = `{"models":[
+ {"slug":"gpt-6-sol","context_window":272000,"effective_context_window_percent":95,"comp_hash":"3000",
+  "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"}]},
+ {"slug":"gpt-6-luna","context_window":272000,"effective_context_window_percent":95,"comp_hash":"3000",
+  "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"}]}
+]}`
 
-	h, _, err := ReadFrame(conn)
-	if err != nil || h.ID != 2 || h.Type != TypeRewrite {
-		t.Fatalf("first reply = %+v, %v; want only the answer to decide 2", h, err)
+// slowAsker advises the low tier after delay, unless its context ends first.
+type slowAsker struct{ delay time.Duration }
+
+func (a slowAsker) Ask(ctx context.Context, _ classifier.Input) (classifier.Advice, error) {
+	select {
+	case <-ctx.Done():
+		return classifier.Advice{}, ctx.Err()
+	case <-time.After(a.delay):
+		return classifier.Advice{Choice: "low", Probabilities: map[classifier.Choice]float64{"low": 0.99}}, nil
+	}
+}
+
+func (slowAsker) Health() classifier.Health { return classifier.Health{} }
+
+type decisionSink struct {
+	mu sync.Mutex
+	ds []route.Decision
+}
+
+func (s *decisionSink) OnDecision(d route.Decision) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ds = append(s.ds, d)
+}
+
+func (s *decisionSink) OnSnapshot(route.Snapshot) {}
+
+func (s *decisionSink) decisions() []route.Decision {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]route.Decision(nil), s.ds...)
+}
+
+func TestDecideDeadlineCoversTransitAndParse(t *testing.T) {
+	const wait, classify = 400 * time.Millisecond, 150 * time.Millisecond
+	body := []byte(`{"model":"gpt-6-sol","reasoning":{"effort":"medium"},"input":[{"type":"message","role":"user","content":"hi"}]}`)
+	cases := []struct {
+		name    string
+		transit time.Duration
+		routed  bool
+	}{
+		{"classifier answers inside the edge's wait", 0, true},
+		{"transit and parse leave too little of it", 300 * time.Millisecond, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cat, err := catalog.Parse([]byte(engineCatalog))
+			if err != nil {
+				t.Fatal(err)
+			}
+			store := &catalog.Store{}
+			store.Set(cat)
+			sink := &decisionSink{}
+			eng := route.New(route.Deps{Config: config.Default(), Catalog: store, Classifier: slowAsker{classify}, Sink: sink})
+			path := sockPath(t)
+			startBrain(t, path, homeA, eng)
+			conn := rawEdge(t, path)
+
+			deadline := deadlineIn(wait)
+			time.Sleep(tc.transit)
+			if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadline}, body); err != nil {
+				t.Fatal(err)
+			}
+			eventually(t, "decision", func() bool { return len(sink.decisions()) == 1 })
+
+			d := sink.decisions()[0]
+			if tc.routed {
+				if !d.Rewritten || d.Route.Model != "gpt-6-luna" {
+					t.Fatalf("decision = %+v, want a switch to gpt-6-luna", d)
+				}
+				return
+			}
+			if d.Reason != policy.ReasonError || d.Rewritten {
+				t.Fatalf("decision = %+v, want an unrouted turn: the edge forwarded the original", d)
+			}
+		})
 	}
 }
 

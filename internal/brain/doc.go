@@ -11,5 +11,6 @@
 // intent (pauses, manual holds, pending pins, preset) is kept in intent.json
 // and reloaded; an unreadable file pauses the home and flags it as state
 // lost. Each resumed thread is seeded with the route Codex reports and held
-// there until a reply measures its cache.
+// there until a reply measures its cache; so is a thread whose request,
+// already deep in a conversation, arrives before its resume.
 package brain

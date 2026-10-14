@@ -293,11 +293,8 @@ func (e *Engine) settingsUpdated(threadID string, r config.Route) (s Snapshot, o
 		// lastWritten starts as the native route, which the launcher writes
 		// first to subscribe, so that write's echo lands here too.
 	default:
-		// The pick is now what Codex would use without the router, so pause
-		// restores it rather than the route the session started on.
-		th.manual, th.pending, th.lastWritten, th.native = true, nil, r, r
+		e.pick(th, r)
 		manual = true
-		e.log.Info("route manual", "thread", th.id, "model", r.Model, "effort", r.Effort)
 	}
 	return e.snapshot(th, e.now()), true, manual
 }

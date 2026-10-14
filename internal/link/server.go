@@ -20,6 +20,8 @@ import (
 const (
 	helloTimeout = 2 * time.Second
 	writeTimeout = 2 * time.Second
+	// replyMargin is cut from the edge's deadline for the reply's way back.
+	replyMargin = 20 * time.Millisecond
 )
 
 // Handler decides and observes for the brain; *route.Engine is one.
@@ -190,11 +192,12 @@ func (s *Server) greet(conn net.Conn, br *bufio.Reader, w *serverWriter) bool {
 	return w.write(Header{Type: TypeHello, HomeID: s.homeID}) == nil
 }
 
-// decide answers one decide with rewrite or none. The edge's remaining wait
-// bounds the Handler, as the proxy's deadline does in process. An unparseable
-// body or a panic is none. Past the deadline nothing is sent: the edge is
-// timing out, and a late answer that beat its timer would hide the timeout
-// from its breaker.
+// decide answers one decide with rewrite or none. The edge's deadline, less
+// replyMargin, bounds the parse and the Handler, so the engine's classifier
+// call ends before the edge stops waiting and a decision the edge would not
+// apply is not committed. An unparseable body or a panic is none. Past the
+// deadline nothing is sent: the edge is timing out, and a late answer that
+// beat its timer would hide the timeout from its breaker.
 func (s *Server) decide(ctx context.Context, w *serverWriter, h Header, body []byte) {
 	reply := Header{Type: TypeNone, ID: h.ID}
 	late := false
@@ -209,15 +212,15 @@ func (s *Server) decide(ctx context.Context, w *serverWriter, h Header, body []b
 	if h.Meta == nil {
 		return
 	}
+	if h.DeadlineUnixMs > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithDeadline(ctx, time.UnixMilli(h.DeadlineUnixMs).Add(-replyMargin))
+		defer cancel()
+	}
 	req, err := responses.Parse(body)
 	if err != nil {
 		s.log.Warn("parse-error", "thread", h.Meta.ThreadID, "turn", h.Meta.TurnID, "bytes", len(body))
 		return
-	}
-	if h.TimeoutMs > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(h.TimeoutMs)*time.Millisecond)
-		defer cancel()
 	}
 	rw, ok := s.h.Decide(ctx, req, *h.Meta)
 	if late = ctx.Err() != nil; !late && ok {

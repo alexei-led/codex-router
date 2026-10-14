@@ -498,6 +498,48 @@ func TestPickBeforeTheRouterChangesTheRouteIsManual(t *testing.T) {
 	wantUnchanged(t, rw, ok)
 }
 
+func TestRequestOnAnUnreportedPickIsManual(t *testing.T) {
+	saved := &savedIntents{}
+	h := newHarness(t, testConfig(), func(d *Deps) { d.SaveIntent = saved.save })
+	h.asker.script(answer(tier("low", 0.97)), answer(tier("low", 0.97)))
+	h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+	h.engine.SettingsUpdated("th", low)
+
+	// No thread/settings/updated: the brain was not subscribed to the thread.
+	picked := config.Route{Model: "gpt-6-sol", Effort: config.EffortLow}
+	rw, ok := h.decide(req(picked, userMsg(secretPrompt), userMsg("next")), meta("th", "t2"))
+
+	wantUnchanged(t, rw, ok)
+	if s := h.session("th"); s.Mode != ModeManual || s.Attention != AttentionManual {
+		t.Fatalf("session = %+v, want manual", s)
+	}
+	if !saved.last(t).Threads["th"].Manual {
+		t.Fatalf("saved intent = %+v, want the manual hold", saved.last(t))
+	}
+	if h.asker.Calls() != 1 {
+		t.Fatalf("classifier calls = %d, want 1", h.asker.Calls())
+	}
+}
+
+func TestLaterStepsOnTheTurnsStartingRouteAreNotAPick(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("low", 0.97)), answer(tier("high", 0.99)))
+	h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+	h.engine.SettingsUpdated("th", low)
+	items := []responses.Item{userMsg(secretPrompt), userMsg("big refactor")}
+	rw, ok := h.decide(req(low, items...), meta("th", "t2"))
+	wantRoute(t, rw, ok, high)
+	h.engine.SettingsUpdated("th", high)
+
+	items = append(items, call("c1", "ls"), result("c1", 0, ""))
+	rw, ok = h.decide(req(low, items...), meta("th", "t2"))
+
+	wantRoute(t, rw, ok, high)
+	if s := h.session("th"); s.Mode != ModeOn {
+		t.Fatalf("mode = %s, want on", s.Mode)
+	}
+}
+
 func TestPauseForwardsUnchangedAndRestoresTheFooter(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("low", 0.97)), answer(tier("low", 0.97)))

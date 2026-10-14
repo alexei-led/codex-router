@@ -187,6 +187,14 @@ type request struct {
 	kind     string
 	subagent string
 	step     int
+	route    config.Route // the thread's settings; zero is nativeRoute
+}
+
+func (r request) body() []byte {
+	if r.route == (config.Route{}) {
+		return stepBody(r.step)
+	}
+	return stepBodyOn(r.route, r.step)
 }
 
 func turnReq(turn string, step int) request {
@@ -201,7 +209,7 @@ func (r request) metadata() string {
 // post sends one request through the proxy and drains the reply.
 func (e *e2e) post(t *testing.T, r request) (int, error) {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodPost, e.url, bytes.NewReader(stepBody(r.step)))
+	req, err := http.NewRequest(http.MethodPost, e.url, bytes.NewReader(r.body()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +319,7 @@ func (e *e2e) wantForwardedVerbatim(t *testing.T, i int, r request) {
 	if i >= len(e.up.bodies) {
 		t.Fatalf("upstream saw %d requests, want request %d", len(e.up.bodies), i+1)
 	}
-	if !bytes.Equal(e.up.bodies[i], stepBody(r.step)) {
+	if !bytes.Equal(e.up.bodies[i], r.body()) {
 		t.Errorf("upstream body %d differs from the client's bytes:\n%s", i+1, e.up.bodies[i])
 	}
 	if want := r.metadata(); e.up.meta[i] != want {
@@ -437,9 +445,15 @@ func TestE2EManualModelPickStopsRoutingUntilResume(t *testing.T) {
 		t.Errorf("footer = %+v, want the picked route %+v", snap.Footer, manualRoute)
 	}
 
-	e.mustPost(t, turnReq("turn-2", 1))
-	e.wantRoutes(t, routedRoute, nativeRoute)
-	e.wantForwardedVerbatim(t, 1, turnReq("turn-2", 1))
+	// Codex now runs its turns on the pick.
+	onPick := func(turn string) request {
+		r := turnReq(turn, 1)
+		r.route = manualRoute
+		return r
+	}
+	e.mustPost(t, onPick("turn-2"))
+	e.wantRoutes(t, routedRoute, manualRoute)
+	e.wantForwardedVerbatim(t, 1, onPick("turn-2"))
 	e.writes(t, 2) // the router's first route plus the manual pick, nothing since
 	if n := e.cls.calls.Load(); n != 1 {
 		t.Errorf("classifier calls while manual = %d, want 1", n)
@@ -447,8 +461,8 @@ func TestE2EManualModelPickStopsRoutingUntilResume(t *testing.T) {
 
 	e.command(t, route.Command{Op: route.OpResume})
 	e.eventually(t, "mode on", func(s route.Snapshot) bool { return s.Mode == route.ModeOn })
-	e.mustPost(t, turnReq("turn-3", 1))
-	e.wantRoutes(t, routedRoute, nativeRoute, routedRoute)
+	e.mustPost(t, onPick("turn-3"))
+	e.wantRoutes(t, routedRoute, manualRoute, routedRoute)
 	if n := e.cls.calls.Load(); n != 2 {
 		t.Errorf("classifier calls after resume = %d, want 2", n)
 	}
