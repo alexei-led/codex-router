@@ -93,6 +93,11 @@ func Extract(req *responses.Request, opts Options) Facts {
 		ApproxTokens: approxTokens(req),
 		Items:        len(items),
 	}
+	// Escalation reacts to a live loop: a pair from an earlier turn, or one a
+	// later passing check proved fixed, is over.
+	if p := f.Failure; p != nil && (p.Index <= prompt || verifiedSince(items, p.Index+1)) {
+		f.Failure = nil
+	}
 	if prompt >= 0 {
 		f.Prompt = clip(strings.TrimSpace(items[prompt].Text), opts.MaxTextChars)
 	}

@@ -463,6 +463,15 @@ func TestExtractFailure(t *testing.T) {
 			patch("c4", "y.go"), exec("c5", "go test ./..."), fail("c5", "FAIL b"),
 			patch("c6", "y.go"), exec("c7", "go test ./..."), fail("c7", "FAIL b"),
 		), 12},
+		{"pair before the last prompt", append(repeated(execOut(1, "FAIL", "1"), execOut(1, "FAIL", "1")),
+			user("now the docs"),
+		), -1},
+		{"a later passing check", append(repeated(execOut(1, "FAIL", "1"), execOut(1, "FAIL", "1")),
+			patch("c4", "x.go"), exec("c5", "go test ./..."), done("c5", 0, "ok"),
+		), -1},
+		{"a later check still failing", append(repeated(execOut(1, "FAIL", "1"), execOut(1, "FAIL", "1")),
+			patch("c4", "x.go"), exec("c5", "go test ./..."), fail("c5", "FAIL c"),
+		), 6},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
