@@ -284,12 +284,12 @@ func (e *Engine) settingsUpdated(threadID string, r config.Route) (s Snapshot, o
 		return Snapshot{}, false, false
 	}
 	th.footer = r
-	switch i := slices.Index(th.pending, r); {
+	switch i := th.pendingIndex(r); {
 	case i >= 0:
 		th.pending = slices.Clone(th.pending[i+1:])
 	case th.manual:
 		th.lastWritten, th.native = r, r
-	case r == th.lastWritten:
+	case sameRoute(r, th.lastWritten):
 		// lastWritten starts as the native route, which the launcher writes
 		// first to subscribe, so that write's echo lands here too.
 	default:
