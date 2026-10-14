@@ -3,9 +3,9 @@ package hook
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/control"
@@ -166,7 +166,15 @@ func Message(s route.Snapshot, in Input) string {
 	if d.Route == prev.Route {
 		return ""
 	}
-	return fmt.Sprintf("%s%s · %s → %s · %s · %s", MessagePrefix, d.Tier, d.Activity, d.Route.Model, d.Route.Effort, d.Why)
+	// A pinned turn has no activity and a route may keep Codex's effort:
+	// empty parts are left out rather than shown as "·  ·".
+	from := strings.Join(nonEmpty(string(d.Tier), string(d.Activity)), " · ")
+	to := strings.Join(nonEmpty(d.Route.Model, string(d.Route.Effort), d.Why), " · ")
+	return MessagePrefix + from + " → " + to
+}
+
+func nonEmpty(parts ...string) []string {
+	return slices.DeleteFunc(parts, func(p string) bool { return p == "" })
 }
 
 // lastPerTurn returns the final decision of each turn of the thread, ordered

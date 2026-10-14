@@ -36,6 +36,9 @@ func TestMessage(t *testing.T) {
 	diff := dec("th", "t2", 3, "gpt-5.5", config.EffortHigh)
 	other := dec("other", "t9", 4, "gpt-5.5", config.EffortHigh)
 	want := "router: micro · code → gpt-5.5 · high · simple edit"
+	pinned := dec("th", "t2", 3, "gpt-5.5", config.EffortHigh)
+	pinned.Tier, pinned.Activity, pinned.Why = config.TierHigh, "", "pinned to high for this turn"
+	noEffort := dec("th", "t2", 3, "gpt-5.5", "")
 
 	tests := []struct {
 		name string
@@ -51,6 +54,10 @@ func TestMessage(t *testing.T) {
 		{"no turn id uses latest", route.Snapshot{Recent: []route.Decision{a}, Last: &diff}, Input{SessionID: "th"}, want},
 		{"other thread ignored", route.Snapshot{Recent: []route.Decision{a}, Last: &other}, Input{SessionID: "th"}, ""},
 		{"empty snapshot", route.Snapshot{}, Input{SessionID: "th", TurnID: "t1"}, ""},
+		{"pinned turn without activity", route.Snapshot{Recent: []route.Decision{a}, Last: &pinned}, Input{SessionID: "th"},
+			"router: high → gpt-5.5 · high · pinned to high for this turn"},
+		{"route keeps Codex's effort", route.Snapshot{Recent: []route.Decision{a}, Last: &noEffort}, Input{SessionID: "th"},
+			"router: micro · code → gpt-5.5 · simple edit"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
