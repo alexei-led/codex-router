@@ -154,6 +154,7 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 	if e.paused {
 		s.Mode = ModePaused
 	}
+	s.StateLost = e.lost
 	cat := e.cat.Current()
 	model := s.Baseline.Model
 	if th != nil {

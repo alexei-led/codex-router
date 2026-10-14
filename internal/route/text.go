@@ -119,6 +119,9 @@ func worth(s Snapshot) []Finding {
 	add := func(k FindingKind, format string, args ...any) {
 		out = append(out, Finding{Kind: k, Text: fmt.Sprintf(format, args...)})
 	}
+	if s.StateLost {
+		add(FindingState, "state lost: saved pause, pin and preset unreadable; routing paused until resume")
+	}
 	name, h := labelOr(s.ClassifierLabel), s.Classifier
 	switch {
 	case h.PausedUntil.After(s.At):

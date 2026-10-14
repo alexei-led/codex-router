@@ -47,17 +47,18 @@ var (
 
 // Engine routes user steps. All state lives under mu; step serializes the
 // requests of one thread so a classifier call never runs under mu. Routing
-// state, tallies and decisions are per thread; paused and the preset (in
-// cfg) are the home's.
+// state, tallies and decisions are per thread; paused, lost and the preset
+// (in cfg) are the home's.
 type Engine struct {
-	cat    catalog.Source
-	ask    classifier.Asker
-	now    func() time.Time
-	sink   Sink
-	log    *slog.Logger
-	ledger *cost.Ledger
-	home   home.Home
-	cwd    func(threadID string) string
+	cat        catalog.Source
+	ask        classifier.Asker
+	now        func() time.Time
+	sink       Sink
+	log        *slog.Logger
+	ledger     *cost.Ledger
+	home       home.Home
+	cwd        func(threadID string) string
+	saveIntent func(Intent)
 	// reviews counts background classifier reviews in flight.
 	reviews sync.WaitGroup
 
@@ -66,9 +67,11 @@ type Engine struct {
 	threads map[string]*list.Element
 	lru     *list.List
 	paused  bool // the whole home
+	lost    bool // the saved intent was unreadable; a home resume clears it
 	// latencies are the recent classifier answers' latencies.
 	latencies []time.Duration
 	seq       uint64 // the last snapshot's Seq
+	intentRev uint64 // the last exported Intent's Rev
 }
 
 // thread is one Codex thread's routing state. step is held for a whole
@@ -110,6 +113,7 @@ type thread struct {
 	footer      config.Route
 
 	paused     bool         // routing paused for this thread alone
+	held       bool         // seeded: keeps its route until a reply measures the cache
 	pin        *config.Tier // the next turn's tier; its first step consumes it
 	lastActive time.Time    // the last user step or reply; zero until the first step
 	stats      tally
@@ -135,7 +139,8 @@ type review struct {
 	answer *classifier.Advice
 }
 
-// New returns an engine. A nil Now uses time.Now, a nil Logger discards.
+// New returns an engine started from d.Intent. A nil Now uses time.Now, a
+// nil Logger discards.
 func New(d Deps) *Engine {
 	if d.Now == nil {
 		d.Now = time.Now
@@ -147,19 +152,47 @@ func New(d Deps) *Engine {
 		d.Catalog = &catalog.Store{}
 	}
 	ms := func(n int) time.Duration { return time.Duration(n) * time.Millisecond }
-	return &Engine{
-		cat:     d.Catalog,
-		ask:     d.Classifier,
-		now:     d.Now,
-		sink:    d.Sink,
-		log:     d.Logger,
-		ledger:  cost.NewLedger(cost.Cache{TTL: ms(d.Config.Cache.TTLMs), WarmMargin: ms(d.Config.Cache.WarmMarginMs)}),
-		home:    d.Home,
-		cwd:     d.Cwd,
-		cfg:     d.Config,
-		threads: map[string]*list.Element{},
-		lru:     list.New(),
+	e := &Engine{
+		cat:        d.Catalog,
+		ask:        d.Classifier,
+		now:        d.Now,
+		sink:       d.Sink,
+		log:        d.Logger,
+		ledger:     cost.NewLedger(cost.Cache{TTL: ms(d.Config.Cache.TTLMs), WarmMargin: ms(d.Config.Cache.WarmMarginMs)}),
+		home:       d.Home,
+		cwd:        d.Cwd,
+		saveIntent: d.SaveIntent,
+		cfg:        d.Config,
+		threads:    map[string]*list.Element{},
+		lru:        list.New(),
 	}
+	e.restore(d.Intent, d.IntentLost)
+	return e
+}
+
+// Seed starts a thread the engine has seen no request on at r, the route
+// Codex reports for it (thread/resume after a brain start; an empty effort
+// is the model's default). The thread keeps r until a reply measures the
+// cache: with an empty ledger the engine takes every cache for cold and
+// would switch on one vote. The turn that reply ends stays on r too. A
+// thread with a request seen keeps its state.
+func (e *Engine) Seed(threadID string, r config.Route) {
+	if threadID == "" || r.Model == "" {
+		return
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	th := e.lookup(threadID)
+	if th == nil {
+		th = e.add(threadID)
+	}
+	if th.native.Model != "" {
+		return
+	}
+	th.native, th.lastWritten, th.footer = r, r, r
+	th.tier, th.activity = cellForModel(e.cfg, r)
+	th.held = true
+	e.log.Info("route seeded", "thread", threadID, "tier", th.tier, "model", r.Model, "effort", r.Effort)
 }
 
 // step is one request's inputs, gathered under the lock.
@@ -213,6 +246,9 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 	if st == nil {
 		return responses.Rewrite{}, false
 	}
+	if st.pin != nil {
+		e.persist() // the pin is spent; a restart must not run it again
+	}
 	st.facts = facts.Extract(req, st.opts)
 	st.tokens = max(st.tokens, st.facts.ApproxTokens)
 
@@ -253,6 +289,14 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 		th.awaiting = nil
 		return nil, nil, nil
 	}
+	if th.held && th.pin == nil {
+		// Unrouted until a reply ends the hold, and for the rest of that
+		// turn. A pin is the user's word and ends the hold.
+		th.awaiting = nil
+		th.turn, th.turnOff = m.TurnID, true
+		return nil, nil, nil
+	}
+	th.held = false
 	fp := req.Fingerprint(m)
 	for _, r := range th.retries {
 		if r.fingerprint == fp {
@@ -649,7 +693,7 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 			model = d.Route.Model
 		}
 		if u.InputTokens > 0 {
-			th.measured = true
+			th.measured, th.held = true, false
 			th.lastTotal = max(u.TotalTokens, u.InputTokens+u.OutputTokens)
 		}
 	}

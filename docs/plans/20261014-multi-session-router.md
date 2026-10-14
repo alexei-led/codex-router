@@ -580,10 +580,13 @@ Depends on: Task 17
 - Create: `internal/brain/intent.go`, `internal/brain/intent_test.go`
 - Modify: `internal/route/engine.go`, `internal/route/control.go`, `internal/route/sessions.go` and their tests (seeded-route hold; export/import of intent)
 
-- [ ] M11: intent file written atomically on every intent change; loaded at start; unreadable → fail open + `state lost` finding
-- [ ] after a brain start each resumed thread is seeded with the route from `thread/resume` settings and held there (attention `unknown`) until its first completed reply; then normal routing
-- [ ] tests: pause/manual/pin/preset survive a restart; learned state does not; seeded thread does not switch before its first measured reply; corrupt file → `state lost` and pass-through; concurrent writes keep the last intent
-- [ ] run `make fmt lint test build`
+- [x] M11: intent file written atomically on every intent change; loaded at start; unreadable → fail open + `state lost` finding
+- [x] after a brain start each resumed thread is seeded with the route from `thread/resume` settings and held there (attention `unknown`) until its first completed reply; then normal routing
+- [x] tests: pause/manual/pin/preset survive a restart; learned state does not; seeded thread does not switch before its first measured reply; corrupt file → `state lost` and pass-through; concurrent writes keep the last intent
+- [x] run `make fmt lint test build`
+- [x] ➕ engine API: `route.Intent{Paused, Preset, Threads{id: {Paused, Manual, Pin}}}` with `Rev` (not saved); `Engine.Intent()` exports, `Deps.Intent`/`Deps.IntentLost` restore at `New`, `Deps.SaveIntent` gets every change outside the lock (commands except `snapshot`, a `/model` pick that sets manual, a spent pin). The brain's store writes `<home dir>/intent.json` (`{"version":1,…}`, 0600, temp + rename) and drops an export older than the last one (`Rev`). Invalid pins and presets in the file are dropped on load. Tests in `internal/route/intent_test.go` (new) and `internal/brain/intent_test.go`
+- [x] ➕ "fail open" for an unreadable intent (bad JSON, empty, other version, read error) = the home starts paused (forwards unchanged), every session shows attention `state-lost`, the snapshot has `StateLost` and a `state` finding. A home resume clears it; any intent change before that saves the home as paused, so a restart never routes against a lost pause. A missing file is a first start, not lost
+- [x] ➕ seeding: `Engine.Seed(thread, route)` runs on every successful `thread/resume`, and is a no-op once the engine has seen a request on the thread (a daemon restart, or a new thread, which is not resumable before its first turn). An empty effort is kept as the model default. A held thread forwards unchanged; the reply that ends the hold (input tokens > 0) leaves the rest of its turn unrouted, and the next turn routes normally. A pending pin ends the hold. Seeded threads are listed only after a user step, like any thread. `recordLinkPath` now shares the atomic writer
 
 ### Task 19: Account binding
 
