@@ -3,6 +3,7 @@ package setup
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"os"
 	"path/filepath"
@@ -145,16 +146,22 @@ func TestDiffShowsHunksAndRedactsTheToken(t *testing.T) {
 	}
 }
 
-// fakeRunner records service manager commands; they all succeed.
+// fakeRunner records service manager commands; they succeed unless fail
+// returns an error for the command line.
 type fakeRunner struct {
 	mu    sync.Mutex
 	calls []string
+	fail  func(call string) error
 }
 
 func (f *fakeRunner) run(_ context.Context, name string, args ...string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.calls = append(f.calls, name+" "+strings.Join(args, " "))
+	call := name + " " + strings.Join(args, " ")
+	f.calls = append(f.calls, call)
+	if f.fail != nil {
+		return "", f.fail(call)
+	}
 	return "", nil
 }
 
@@ -308,6 +315,15 @@ func TestSetupAndUndoRoundTrip(t *testing.T) {
 	}
 	if got := readFile(t, f.configPath()); got != userConfig {
 		t.Errorf("config after undo is not the original byte for byte:\n%q", got)
+	}
+	bak = backups(t, f.h.Path)
+	if len(bak) != 2 {
+		t.Fatalf("backups after undo = %v; want setup's and undo's", bak)
+	}
+	for _, b := range bak {
+		if m := mode(t, b); m != 0o600 {
+			t.Errorf("backup %s mode = %v, want 0600", b, m)
+		}
 	}
 	if got := f.mgr.Installed(f.h.ID); len(got) != 0 {
 		t.Errorf("units left after undo: %v", got)
@@ -521,5 +537,85 @@ func TestTwoHomesGetDistinctPortsTokensAndUnits(t *testing.T) {
 	ua, ub := a.mgr.Installed(a.h.ID), a.mgr.Installed(b.h.ID)
 	if len(ua) != 2 || len(ub) != 2 || ua[0].Name == ub[0].Name || ua[1].Name == ub[1].Name {
 		t.Errorf("units: %v and %v; want 2 each, distinct", ua, ub)
+	}
+}
+
+func TestSetupInstallFailureLeavesConfigUntouched(t *testing.T) {
+	f := newFixture(t, userConfig)
+	f.runner.fail = func(call string) error {
+		if strings.Contains(call, "bootstrap") || strings.Contains(call, "daemon-reload") {
+			return errors.New("service manager down")
+		}
+		return nil
+	}
+	if err := f.run(t, f.options()); err == nil {
+		t.Fatalf("setup with a failing service manager succeeded\n%s", f.out)
+	}
+	if got := readFile(t, f.configPath()); got != userConfig {
+		t.Errorf("failed setup changed config.toml:\n%s", got)
+	}
+	if _, err := os.Stat(filepath.Join(f.h.Path, PluginEnvFile)); !os.IsNotExist(err) {
+		t.Errorf("failed setup wrote %s: %v", PluginEnvFile, err)
+	}
+	if bak := backups(t, f.h.Path); len(bak) != 0 {
+		t.Errorf("failed setup made backups: %v", bak)
+	}
+	dir := f.stateDir()
+	port, token := readFile(t, filepath.Join(dir, PortFile)), readFile(t, filepath.Join(dir, TokenFile))
+
+	f.runner.fail = nil
+	o := f.options()
+	o.FreePort = func() (int, error) { t.Error("re-run picked a new port"); return 1, nil }
+	if err := f.run(t, o); err != nil {
+		t.Fatalf("re-run: %v\n%s", err, f.out)
+	}
+	if readFile(t, filepath.Join(dir, PortFile)) != port || readFile(t, filepath.Join(dir, TokenFile)) != token {
+		t.Error("re-run changed the port or token")
+	}
+	if cfg := readFile(t, f.configPath()); !strings.Contains(cfg, strings.TrimSpace(token)) {
+		t.Errorf("re-run config lacks the stored token:\n%s", cfg)
+	}
+}
+
+func TestSetupUndoThroughSymlink(t *testing.T) {
+	f := newFixture(t, "")
+	dotfiles := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(dotfiles, []byte(userConfig), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(dotfiles, f.configPath()); err != nil {
+		t.Fatal(err)
+	}
+	o := f.options()
+	o.FollowSymlink = true
+	if err := f.run(t, o); err != nil {
+		t.Fatal(err)
+	}
+	setUp := readFile(t, dotfiles)
+	pluginEnv := filepath.Join(f.h.Path, PluginEnvFile)
+	envBefore := readFile(t, pluginEnv)
+
+	undo := f.options()
+	undo.Undo = true
+	err := f.run(t, undo)
+	if err == nil || !strings.Contains(err.Error(), "--follow-symlink") {
+		t.Fatalf("undo of a symlinked config = %v, want a refusal naming --follow-symlink", err)
+	}
+	if readFile(t, dotfiles) != setUp || readFile(t, pluginEnv) != envBefore || len(f.mgr.Installed(f.h.ID)) != 2 {
+		t.Error("refused undo changed the config, the plugin env or the units")
+	}
+
+	undo.FollowSymlink = true
+	if err := f.run(t, undo); err != nil {
+		t.Fatalf("undo --follow-symlink: %v\n%s", err, f.out)
+	}
+	if got := readFile(t, dotfiles); got != userConfig {
+		t.Errorf("target after undo is not the original byte for byte:\n%q", got)
+	}
+	if fi, err := os.Lstat(f.configPath()); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Error("undo replaced the symlink")
+	}
+	if got := f.mgr.Installed(f.h.ID); len(got) != 0 {
+		t.Errorf("units left after undo: %v", got)
 	}
 }
