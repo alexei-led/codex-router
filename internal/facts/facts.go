@@ -3,6 +3,7 @@ package facts
 import (
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/responses"
@@ -172,19 +173,40 @@ func dialogue(items []responses.Item, prompt int, opts Options) []Turn {
 }
 
 // clip keeps at most limit characters: the head and the tail of a long text,
-// where a request and its question usually are.
+// where a request and its question usually are. It walks runes instead of
+// converting the whole text, which may be megabytes. The kept pieces still go
+// through []rune so an invalid byte becomes U+FFFD, as it always has.
 func clip(text string, limit int) string {
-	runes := []rune(text)
-	if len(runes) <= limit {
+	if len(text) <= limit || utf8.RuneCountInString(text) <= limit {
 		return text
 	}
-	marker := []rune(clipMarker)
-	if limit <= len(marker) {
-		return string(runes[:max(0, limit)])
+	marker := utf8.RuneCountInString(clipMarker)
+	if limit <= marker {
+		return string([]rune(text[:headBytes(text, max(0, limit))]))
 	}
-	room := limit - len(marker)
+	room := limit - marker
 	head := (room + 1) / 2
-	return string(runes[:head]) + clipMarker + string(runes[len(runes)-(room-head):])
+	return string([]rune(text[:headBytes(text, head)])) + clipMarker + string([]rune(text[tailStart(text, room-head):]))
+}
+
+// headBytes is the byte length of text's first n runes.
+func headBytes(text string, n int) int {
+	i := 0
+	for range n {
+		_, size := utf8.DecodeRuneInString(text[i:])
+		i += size
+	}
+	return i
+}
+
+// tailStart is the byte offset of text's last n runes.
+func tailStart(text string, n int) int {
+	j := len(text)
+	for range n {
+		_, size := utf8.DecodeLastRuneInString(text[:j])
+		j -= size
+	}
+	return j
 }
 
 // approxTokens is a byte-based estimate: the body size, or the item text when
