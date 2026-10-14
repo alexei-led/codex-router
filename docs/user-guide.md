@@ -191,13 +191,17 @@ Without flags, the panel shows every running session of every home. The top bar 
 
 **Sessions** (`0`) lists every session, grouped by home:
 
-![Router panel, Sessions tab with the top bar](images/router-tui-sessions.svg)
+![Router panel, Sessions tab with the top bar: the default home runs three codex-router sessions, the work home is set up and shows a brain up for 2 hours](images/router-tui-sessions.svg)
 
-- **Home line**: the number of routers (endpoints) serving the home, the home's brain when it has one (`brain up 2h`, or `brain down: default model` while Codex's requests pass through unchanged), how many other routers are lost, and the totals of its sessions: replies, switches, and the saving when `prices` is set. A brain that goes down stays on the line until it is back; its sessions leave after 10 s.
+- **Home line**: the number of routers (endpoints) serving the home. In the picture, `default` has three `codex-router` runs, and `work` is [set up](#route-a-whole-home-setup), so its one endpoint is the home's brain (`brain up 2h`). A brain that is down shows `brain down: default model`, and Codex's requests pass through unchanged. The line also shows how many other routers are lost, and the totals of its sessions: replies, switches, and the saving when `prices` is set. A brain that goes down stays on the line until it is back. Its sessions leave after 10 s.
 - **Rows**: the label without the home, the state (`on`, `paused`, `manual`, `escalation`, `unknown`, `state lost`, `disconnected`), the route, the last 24 routed replies colored by tier with the reply count, and the last switch. Below 100 columns the panel drops the replies and last switch columns.
 - `↑` `↓` move the selection, and `enter` focuses that session and opens Now. A long list scrolls.
 
-`--session` locks the panel to one session: no top bar and no Sessions tab, only a header line `● home · repo · branch  <id>`. When that session's router exits, the panel shows `ended` and closes 3 s later. A session served by a brain never ends this way: a restarted brain lists it again at its next prompt, so the panel shows `disconnected` meanwhile. The value can be:
+`--session` locks the panel to one session: no top bar and no Sessions tab, only a header line `● home · repo · branch  <id>`. Keys `[`, `]` and `0` do nothing there.
+
+![Router panel locked to one session with codex-router tui --session: one header line with the session's label and id, then the Now tab](images/router-tui-locked.svg)
+
+Use it in a split next to Codex, so the panel always shows that one session. When that session's router exits, the panel shows `ended` and closes 3 s later. A session served by a brain never ends this way: a restarted brain lists it again at its next prompt, so the panel shows `disconnected` meanwhile. The value can be:
 
 1. the session id or the bare thread id, exact
 2. a unique prefix of either
@@ -306,6 +310,20 @@ command = "/usr/local/bin/codex-router hook"
 
 Then approve the hooks in Codex's hook review. Keep the command string stable, because changing it makes Codex mark the hook `modified`. The hook was run live through the plugin; the hand-written entries above were not.
 
+### Control one session from a shell (`ctl`)
+
+```sh
+codex-router ctl status|pause|resume|pin [--home PATH] [--cwd DIR] [--tier TIER]
+```
+
+`ctl` shows or changes one session's routing, with no panel. The Codex plugin's skill uses it. It picks the session of `$CODEX_THREAD_ID`, which Codex sets for its shell commands. Outside Codex, it picks the session in the deepest directory that equals or contains `--cwd` (default: the current directory), in `--home` (default `$CODEX_HOME`, else `~/.codex`).
+
+- `status` prints the session's mode, tier and route.
+- `pause` and `resume` act on that session only.
+- `pin --tier medium` routes its next turn on that tier. The tier is `micro`, `low`, `medium` or `high`.
+
+When several sessions match, `ctl` lists them and exits with 2. For a home pause, preset or other sessions, use the panel.
+
 ### Proxy only, for `codex exec`
 
 ```sh
@@ -341,7 +359,7 @@ codex-router setup --home ~/.codex-work
 
 Setup prints the home, a diff of `config.toml` with the token redacted, and each file it writes. It starts the services before it writes `config.toml`, so Codex never points at a port that nothing holds. Running it again reuses the port and token.
 
-Threads that already run keep their provider until `/new` or a Codex restart. New threads use the router.
+Threads that already run keep their provider until `/new` or a Codex restart. New threads use the router. The panel then lists the home with its brain, as `work` does in the [Sessions picture](#panel).
 
 | Where                                                                                                         | What                                                                                                                                                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -412,28 +430,29 @@ Undo backs `config.toml` up, removes the marked blocks, then stops and removes t
 
 ## Troubleshoot
 
-| Symptom                                                              | Cause and fix                                                                                                                                                                                                              |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `codex-router: <reason>; running plain codex`                        | The config is invalid, or a startup step failed. The reason names it. Fix the config, or check `codex --version` and the session log.                                                                                      |
-| Panel says `Jev off`; the model never changes                        | The classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session. A brain does not see your shell: set the classifier's `envFile`, then restart the brain.                 |
-| Panel says `paused until …`                                          | The classifier failed 3 times in a row and pauses for 60 s. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                                                            |
-| `footer not synced`                                                  | Settings writes to the app-server are pending or failed. Routing still works. If it persists, your Codex version may not support the sync (see [Codex versions](#codex-versions)).                                         |
-| Panel says `no sessions`; `codex-router sessions` prints nothing     | No session is registered for your user under this state dir. Start a session, or use the same `XDG_STATE_HOME` (or none) in the panel's shell as in the session's shell.                                                   |
-| `codex-router: the panel will not list this session: …`              | The router could not write its registry entry, usually because the registry dir is not a private directory of yours (mode `0700`). The session routes as usual.                                                            |
-| `codex-router: tui: "x" matches N sessions:`                         | `--session` named several sessions. Pass one of the listed ids, or a longer label.                                                                                                                                         |
-| Panel shows `disconnected`                                           | The session's router ended or restarted. Its rows leave after 10 s. A restarted router shows up again by itself. Routing of other sessions is unaffected.                                                                  |
-| Locked panel shows `ended` and closes                                | The session's router exited. Start the panel again with the new session's id or label.                                                                                                                                     |
-| Second session fails to start                                        | `proxy.port` is fixed, so the port is taken. Use `0` (the default) for any free port.                                                                                                                                      |
-| Model stays put after a `/model` pick                                | That is the manual hold. Press `space` in the panel to resume routing.                                                                                                                                                     |
-| `Permission overrides are not supported when resuming a remote task` | Codex refuses `-s` and `-a` with `resume` in remote mode. Drop them.                                                                                                                                                       |
-| Codex shows `Reconnecting… waiting for network`                      | The router process died, and the proxy with it. See [If the router is killed](#if-the-router-is-killed). In a set-up home: the edge service is not loaded; see [If a home's service is down](#if-a-homes-service-is-down). |
-| Home line says `brain down: default model`                           | The home's brain is not running. Requests go out unchanged, on the model in Codex's footer. See [If a home's service is down](#if-a-homes-service-is-down).                                                                |
-| `!` mark, `! state lost · paused`                                    | The brain could not read its saved pauses, pins and preset (`intent.json`). Rather than route against a pause you set, it paused the home. Press `P` to resume the home, then set your pins and pauses again.              |
-| `?` mark, `unknown`                                                  | The brain restarted. It holds the session on its current route until the next reply, then routes as usual. Nothing to do.                                                                                                  |
-| A session of a set-up home is not in the panel                       | The brain lists a session from its first prompt after the brain started. Also check that the panel's shell has the same `XDG_STATE_HOME` (or none) as the shell where you ran setup.                                       |
-| A set-up home's sessions keep their model                            | Threads that ran before setup keep their old provider. Use `/new`, or restart Codex.                                                                                                                                       |
-| `codex-router setup` refuses `config.toml`                           | It sets `model_provider`, defines `model_providers.router`, does not parse, or is a symlink. The message names which. Remove that line or table, or pass `--follow-symlink`.                                               |
-| The `router` skill says `cannot reach the router`                    | The command ran inside Codex's sandbox, which blocks local sockets. Approve running it outside the sandbox.                                                                                                                |
+| Symptom                                                                 | Cause and fix                                                                                                                                                                                                              |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `codex-router: <reason>; running plain codex`                           | The config is invalid, or a startup step failed. The reason names it. Fix the config, or check `codex --version` and the session log.                                                                                      |
+| Panel says `Jev off`; the model never changes                           | The classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session. A brain does not see your shell: set the classifier's `envFile`, then restart the brain.                 |
+| Panel says `paused until …`                                             | The classifier failed 3 times in a row and pauses for 60 s. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                                                            |
+| `footer not synced`                                                     | Settings writes to the app-server are pending or failed. Routing still works. If it persists, your Codex version may not support the sync (see [Codex versions](#codex-versions)).                                         |
+| Panel says `no sessions`; `codex-router sessions` prints nothing        | No session is registered for your user under this state dir. Start a session, or use the same `XDG_STATE_HOME` (or none) in the panel's shell as in the session's shell.                                                   |
+| `codex-router: the panel will not list this session: …`                 | The router could not write its registry entry, usually because the registry dir is not a private directory of yours (mode `0700`). The session routes as usual.                                                            |
+| `codex-router: tui: "x" matches N sessions:`                            | `--session` named several sessions. Pass one of the listed ids, or a longer label.                                                                                                                                         |
+| Panel shows `disconnected`                                              | The session's router ended or restarted. Its rows leave after 10 s. A restarted router shows up again by itself. Routing of other sessions is unaffected.                                                                  |
+| Locked panel shows `ended` and closes                                   | The session's router exited. Start the panel again with the new session's id or label.                                                                                                                                     |
+| Second session fails to start                                           | `proxy.port` is fixed, so the port is taken. Use `0` (the default) for any free port.                                                                                                                                      |
+| Model stays put after a `/model` pick                                   | That is the manual hold. Press `space` in the panel to resume routing.                                                                                                                                                     |
+| `Permission overrides are not supported when resuming a remote task`    | Codex refuses `-s` and `-a` with `resume` in remote mode. Drop them.                                                                                                                                                       |
+| Codex shows `Reconnecting… waiting for network`                         | The router process died, and the proxy with it. See [If the router is killed](#if-the-router-is-killed). In a set-up home: the edge service is not loaded; see [If a home's service is down](#if-a-homes-service-is-down). |
+| Home line says `brain down: default model`                              | The home's brain is not running. Requests go out unchanged, on the model in Codex's footer. See [If a home's service is down](#if-a-homes-service-is-down).                                                                |
+| `!` mark, `! state lost · paused`                                       | The brain could not read its saved pauses, pins and preset (`intent.json`). Rather than route against a pause you set, it paused the home. Press `P` to resume the home, then set your pins and pauses again.              |
+| `?` mark, `unknown`                                                     | The brain restarted. It holds the session on its current route until the next reply, then routes as usual. Nothing to do.                                                                                                  |
+| A session of a set-up home is not in the panel                          | The brain lists a session from its first prompt after the brain started. Also check that the panel's shell has the same `XDG_STATE_HOME` (or none) as the shell where you ran setup.                                       |
+| A set-up home's sessions keep their model                               | Threads that ran before setup keep their old provider. Use `/new`, or restart Codex.                                                                                                                                       |
+| `codex-router setup` refuses `config.toml`                              | It sets `model_provider`, defines `model_providers.router`, does not parse, or is a symlink. The message names which. Remove that line or table, or pass `--follow-symlink`.                                               |
+| `codex-router ctl` says `no running session of Codex home … works in …` | No listed session of that home runs in the directory. Run `codex-router sessions`, then pass `--home` or `--cwd`, or run it from the session's own Codex shell.                                                            |
+| The `router` skill says `cannot reach the router`                       | The command ran inside Codex's sandbox, which blocks local sockets. Approve running it outside the sandbox.                                                                                                                |
 
 How the router fails open (classifier down, upstream error, cut stream) is in [architecture](architecture.md#failure-handling). In short: the request goes out unchanged, and Codex retries on its own. The router never re-sends a request.
 
