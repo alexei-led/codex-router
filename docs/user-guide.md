@@ -194,6 +194,6 @@ Pass those to `codex exec` in another shell. Routing, pass-through and the fit g
 | --------------------------- | ---------------------------------------------------------------------------------------- |
 | `codex-router [codex args]` | Codex's exit code, 128+N for signal N, 1 when neither routed nor plain Codex could start |
 | `tui`                       | 0 on quit, 1 on error                                                                    |
-| `hook`                      | 0, also when the router is not running                                                   |
+| `hook`                      | 0, also when the router is not running; 1 only if stdout fails                                                 |
 | `proxy`                     | 0 after SIGINT or SIGTERM, 1 on error                                                    |
 | any                         | 2 on a usage error                                                                       |
