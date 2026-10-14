@@ -139,7 +139,7 @@ To use another service that speaks one of the two protocols, add an entry and se
 
 Only the active classifier is called. It receives the clipped prompt and recent dialogue (`context`), never headers or your Codex credentials, and only the `keyEnv` key as its bearer token. With `jev` that text goes to `api.typesafe.ai`. With `ollama` it stays on your machine.
 
-Failure rules for every adapter: two attempts per ask inside `timeoutMs`; three failures in a row pause the classifier for 60 s, during which turns are forwarded unrouted. A missing key, a cancelled call and a busy classifier do not count as failures. The router also gives up a decision shortly after `timeoutMs` (plus 200 ms) and forwards the request.
+Failure rules for every adapter: two attempts per ask inside `timeoutMs`; three failures in a row pause the classifier for 60 s, during which turns are forwarded unrouted. One ask runs at a time; another waits for it. A missing key and a cancelled call do not count as failures. The router also gives up a decision shortly after `timeoutMs` (plus 200 ms) and forwards the request.
 
 ### context
 
