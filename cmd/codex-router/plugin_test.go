@@ -14,6 +14,8 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -293,11 +295,26 @@ func TestPluginHooksReturnFastWithServicesDown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Fake launchctl and systemctl: every unit is down, and starting one is
-	// slow. The log shows what ran.
+	// Fake launchctl and systemctl: every unit is down, and starting one
+	// blocks on a FIFO the test holds until it releases it. The log shows
+	// what ran, so the test needs no clock: a hook that waited for the start
+	// would never return.
 	fakeBin := t.TempDir()
+	fifo := filepath.Join(t.TempDir(), "release")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	hold, err := os.OpenFile(fifo, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release := sync.OnceFunc(func() {
+		_, _ = hold.WriteString(strings.Repeat("\n", 64))
+		_ = hold.Close()
+	})
+	t.Cleanup(release)
 	smLog := filepath.Join(t.TempDir(), "service-manager.log")
-	fake := "#!/bin/sh\necho \"$0 $*\" >>" + smLog + "\ncase \"$*\" in\n*print*|*is-active*) echo inactive; exit 3 ;;\nesac\nexec sleep 5\n"
+	fake := "#!/bin/sh\necho \"$0 $*\" >>" + smLog + "\ncase \"$*\" in\n*print*|*is-active*) echo inactive; exit 3 ;;\nesac\nread _ <>" + fifo + "\n"
 	for _, name := range []string{"launchctl", "systemctl"} {
 		if err := os.WriteFile(filepath.Join(fakeBin, name), []byte(fake), 0o700); err != nil {
 			t.Fatal(err)
@@ -318,47 +335,33 @@ func TestPluginHooksReturnFastWithServicesDown(t *testing.T) {
 		}
 	}
 
-	// The budget is 1 s on top of starting the router at all, the slowest of
-	// three tries: the test binary is a race build, and on a busy host its
-	// start alone can take a second or vary by as much.
-	var startup time.Duration
-	for range 3 {
-		start := time.Now()
-		version := exec.Command("sh", filepath.Join(abs, "scripts", "codex-router.sh"), "version")
-		version.Env = env
-		if out, err := version.CombinedOutput(); err != nil {
-			t.Fatalf("version: %v: %s", err, out)
-		}
-		startup = max(startup, time.Since(start))
-	}
-	budget := time.Second + startup
-
 	_, byEvent := readHooks(t)
 	for _, event := range []string{"SessionStart", "UserPromptSubmit", "Stop"} {
 		t.Run(event, func(t *testing.T) {
-			cmd := exec.Command("sh", "-c", byEvent[event][0].Command)
+			// The timeout only stops a hang from stalling the suite.
+			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, "sh", "-c", byEvent[event][0].Command)
 			cmd.Env = append(slices.Clone(env), "PLUGIN_ROOT="+abs)
 			cmd.Stdin = strings.NewReader(`{"session_id":"t-1","hook_event_name":"` + event + `","cwd":"/"}`)
 			var stdout bytes.Buffer
 			cmd.Stdout = &stdout
-			start := time.Now()
 			if err := cmd.Run(); err != nil {
 				t.Fatalf("hook: %v", err)
-			}
-			if took := time.Since(start); took > budget {
-				t.Errorf("hook took %v, want under %v", took, budget)
 			}
 			if event != "SessionStart" && strings.TrimSpace(stdout.String()) != "{}" {
 				t.Errorf("hook stdout %q, want {}", stdout.String())
 			}
 		})
 	}
-	// The detached service ensure still runs: it starts the down units.
+	// The detached service ensure still runs: it starts the down units, and
+	// is still blocked in the fake service manager while the hooks have
+	// already returned.
 	start := "bootstrap"
 	if runtime.GOOS == "linux" {
 		start = "start --no-block"
 	}
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(30 * time.Second)
 	for {
 		b, _ := os.ReadFile(smLog)
 		if strings.Contains(string(b), start) {
@@ -369,6 +372,7 @@ func TestPluginHooksReturnFastWithServicesDown(t *testing.T) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+	release()
 }
 
 func TestPluginWrapperFindsTheRouter(t *testing.T) {
