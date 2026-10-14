@@ -108,7 +108,7 @@ func TestWindow(t *testing.T) {
 }
 
 func TestWindowUnknownWhenFieldsMissing(t *testing.T) {
-	c, err := catalog.Parse([]byte(`{"models":[{"slug":"a"},{"slug":"b","context_window":1000}]}`))
+	c, err := catalog.Parse([]byte(`{"models":[{"slug":"a"},{"slug":"b","context_window":1000,"effective_context_window_percent":0}]}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,6 +116,18 @@ func TestWindowUnknownWhenFieldsMissing(t *testing.T) {
 		if w, ok := c.Window(slug); ok {
 			t.Errorf("Window(%q) = %d, want unknown", slug, w)
 		}
+	}
+}
+
+// The live /models body omits effective_context_window_percent; Codex then
+// uses 95, and so must the guard.
+func TestWindowDefaultsPercentLikeCodex(t *testing.T) {
+	c, err := catalog.Parse([]byte(`{"models":[{"slug":"a","context_window":272000}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w, ok := c.Window("a"); w != 258400 || !ok {
+		t.Errorf("Window = %d, %v; want 258400, true", w, ok)
 	}
 }
 

@@ -30,6 +30,23 @@ type Model struct {
 	ReasoningLevels  []ReasoningLevel `json:"supported_reasoning_levels"`
 }
 
+// defaultEffectivePercent is Codex's value when /models omits
+// effective_context_window_percent, as the live body does
+// (codex-rs/protocol/src/openai_models.rs).
+const defaultEffectivePercent = 95
+
+// UnmarshalJSON applies Codex's default for an absent
+// effective_context_window_percent; an explicit 0 stays 0.
+func (m *Model) UnmarshalJSON(b []byte) error {
+	type plain Model
+	p := plain{EffectivePercent: defaultEffectivePercent}
+	if err := json.Unmarshal(b, &p); err != nil {
+		return err
+	}
+	*m = Model(p)
+	return nil
+}
+
 // Group is the compatibility key: a per-step rewrite is safe only between
 // models with an equal Group (research §1.2, spikes 3-5).
 type Group struct {
