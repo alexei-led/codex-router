@@ -1,194 +1,297 @@
 # User guide
 
-Status marks: **[verified]** means checked against a real Codex 0.162.1 in the research spikes ([research §9](research.md)). **[unverified live]** means the code does it and tests cover it, but no live run has confirmed it.
+Install codex-router, configure it, read what it shows, and fix it when something goes wrong. For how it works inside, see [architecture](architecture.md). For every config field, see the [configuration reference](configuration.md).
 
-## Launch
+## Requirements
+
+- macOS or Linux. Windows is not supported.
+- The Codex CLI on `PATH`, signed in with ChatGPT. API-key sign-in is not supported, because the router forwards to the ChatGPT backend only. It was tested with Codex 0.162.1. Other versions may work, but the footer sync relies on experimental Codex surfaces (see [Codex versions](#codex-versions)).
+- A classifier: a key for the hosted default (Jev), or a local [Ollama](https://ollama.com) model. Without either, the router still runs, but only pins change the model.
+
+## Install
+
+Prebuilt binaries for macOS and Linux (amd64, arm64) are on the [releases page](https://github.com/alexei-led/codex-router/releases), with a `checksums.txt`.
+
+```sh
+os=$(uname -s | tr '[:upper:]' '[:lower:]')                   # darwin or linux
+arch=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')     # amd64 or arm64
+curl -fsSL -o codex-router \
+  "https://github.com/alexei-led/codex-router/releases/latest/download/codex-router-$os-$arch"
+sudo install -m 0755 codex-router /usr/local/bin/codex-router
+codex-router version
+```
+
+With Go 1.27.2 or newer:
+
+```sh
+go install github.com/alexei-led/codex-router/cmd/codex-router@latest
+```
+
+From a checkout, `make build` writes `.bin/codex-router`.
+
+## First run
+
+```sh
+export TYPESAFE_API_KEY=...   # classifier key; see "Choose a classifier"
+cd your-repo
+codex-router                  # instead of `codex`
+```
+
+Codex looks and behaves as usual. The footer now shows the model that the router picked for the turn. To watch the decisions, run the panel in a second terminal or split:
+
+```sh
+codex-router tui
+```
+
+If any startup step fails, the router prints one line, `codex-router: <reason>; running plain codex`, and starts plain `codex` with your arguments.
+
+### Pass arguments to Codex
 
 ```sh
 codex-router [--config PATH] [--] [codex args...]
 ```
 
-Arguments after the router flags go to Codex unchanged. Use `--` when a Codex flag looks like a router flag. Examples:
+Everything after the router's own flags goes to Codex unchanged. Use `--` when a Codex flag could be taken for a router flag:
 
 ```sh
-codex-router                       # interactive session
-codex-router resume --last         # Codex subcommands and flags pass through
-                                   # (Codex rejects -s/-a together with resume under --remote)
-codex-router --config ./r.json --  --model gpt-6-sol
+codex-router resume --last
+codex-router --config ./router.json -- --model gpt-6-sol
 ```
 
-What it does:
+In this mode, Codex refuses `-s` and `-a` together with `resume` ("Permission overrides are not supported when resuming a remote task"). Drop those flags when you resume.
 
-1. Reads the config ([configuration](configuration.md)). Config path order: `--config`, `$CODEX_ROUTER_CONFIG`, `$XDG_CONFIG_HOME/codex-router/config.json`, `~/.config/codex-router/config.json`. A missing file means the defaults.
-2. Makes a private runtime dir (`$XDG_RUNTIME_DIR/codex-router/<id>`, else `$TMPDIR/codex-router/<id>`, else `/tmp/codex-router/<id>`; mode `0700`).
-3. Starts the proxy on `127.0.0.1` (port from `proxy.port`, default any free port) and probes `/healthz`.
-4. Starts a private `codex app-server` on a unix socket in the runtime dir, with `-c` overrides only, and connects to it as a second client.
-5. Runs `codex --remote unix://...` on your terminal. The router stays in the foreground process; Codex's exit code is returned (128+N when a signal ended it).
+### What starts
 
-The classifier key comes from the env var named by the classifier's `keyEnv` (`TYPESAFE_API_KEY` for Jev). Unset means the classifier is off for the session.
+`codex-router` does these steps in order:
 
-## Footer
+1. Reads the config. A missing file means the defaults.
+2. Creates a private runtime directory (mode `0700`) for its sockets.
+3. Starts the proxy on `127.0.0.1` and checks that it answers.
+4. Starts a private `codex app-server` for this session, with `-c` overrides only. Your `~/.codex/config.toml` is not touched.
+5. Runs the Codex TUI against that app-server in your terminal. It returns Codex's exit code when Codex quits.
 
-The Codex footer shows the model and effort the router chose, for example `GPT-6-Sol medium`. The router writes every decision to the app-server's thread settings, and the Codex TUI repaints from them **[verified]**, also while a turn runs.
+The reasons for this design are in [architecture](architecture.md#why-a-private-app-server).
 
-![Codex footer showing the routed model](images/codex-footer.svg)
+## Concepts
 
-The Codex window and context figures in the footer follow the routed model. The route applies to the next request. Codex starts its next turn natively on that model, so its own context accounting matches.
+The router uses these words in the footer, the panel, the config and the docs.
 
-## Panel
+| Term                    | Meaning                                                                                                                                        |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Turn**                | One prompt from you. Codex can send several requests for it, called **steps**.                                                                 |
+| **Tier**                | The complexity level that the router gives a turn: `micro`, `low`, `medium` or `high`, weakest first.                                          |
+| **Route**               | A model and a reasoning effort. Each tier maps to one route (`routes` in the config).                                                          |
+| **Classifier**          | A small model that reads your prompt and recent dialogue and returns probabilities for each tier and activity.                                 |
+| **Activity**            | The kind of work: `code`, `debug`, `explore`, `plan`, `review`, `ops` or `docs`. An activity can give a tier a different route (`activities`). |
+| **Policy**              | The rules that decide when to switch tier. A switch needs enough repeated classifier answers (votes), and costly switches need more support.   |
+| **Compatibility group** | Models that Codex can switch between in one thread. The router never routes outside the group of the model that Codex sent.                    |
+| **Pin**                 | A tier that you choose in the panel for the next turn. The classifier is not asked for that turn.                                              |
+| **Pause**               | Routing off for the whole session. Requests go out unchanged.                                                                                  |
+| **Manual hold**         | What a `/model` pick in Codex causes. The router keeps your model for that thread until you resume.                                            |
+| **Preset**              | A named set of policy thresholds: `thrifty`, `balanced` or `quality`.                                                                          |
+
+## Configure
+
+### Where the config lives
+
+The config is one JSON file. The router uses the first of these:
+
+1. `--config PATH`
+2. `$CODEX_ROUTER_CONFIG`
+3. `$XDG_CONFIG_HOME/codex-router/config.json`
+4. `~/.config/codex-router/config.json`
+
+A missing file means the defaults. Keys that you leave out keep their defaults. An invalid file is not ignored: the router prints why and runs plain `codex`. Changes apply to the next session. In a running session, only the preset can change, from the panel.
+
+### Choose a classifier
+
+The classifier scores each new turn. Only the active one is called. It gets the clipped prompt and recent dialogue, never your Codex credentials.
+
+| Classifier      | Where text goes       | Setup                                                                   |
+| --------------- | --------------------- | ----------------------------------------------------------------------- |
+| `jev` (default) | `api.typesafe.ai`     | `export TYPESAFE_API_KEY=...`                                           |
+| `ollama`        | stays on your machine | `ollama pull qwen3.5:9b`, then `{"classifier": "ollama"}` in the config |
+
+When the key variable is unset, the classifier is off for the session. The panel shows `Jev off`, requests keep their model, and pins still work. To send less text to a hosted classifier, lower [`context`](configuration.md#context).
+
+### Common changes
+
+```json
+{
+  "routes": { "low": { "model": "gpt-6-luna", "effort": "low" } },
+  "preset": "thrifty",
+  "prices": {
+    "gpt-6-luna": { "input": 0.5, "cachedInput": 0.05, "output": 3 },
+    "gpt-6-sol": { "input": 2.5, "cachedInput": 0.25, "output": 15 }
+  }
+}
+```
+
+- **`routes`**: the model and effort for each tier. Keep all models in one compatibility group. The defaults are in one group.
+- **`preset`**: `thrifty` moves up reluctantly and down readily. `quality` does the reverse. `balanced` (the default) uses `policy` as written.
+- **`prices`**: list prices in USD per million tokens. They are needed only for the savings estimate in the panel. The values above are placeholders.
+- **`activities`**: a different route for an activity at a tier. The default sends `debug` at `medium` to high effort.
+
+The [configuration reference](configuration.md) has every field and its default.
+
+### `model_context_window`
+
+If `~/.codex/config.toml` sets `model_context_window`, Codex sizes its context from that value whatever model the router picks. Remove it, or keep it no larger than the smallest window among your routes. See [configuration](configuration.md#model_context_window).
+
+## Use
+
+### Footer
+
+![Codex footer showing the routed model, GPT-6-Sol medium](images/codex-footer.svg)
+
+The footer shows the routed model and effort, for example `GPT-6-Sol medium`. It repaints when the route changes, also while a turn runs. The window and context figures follow the routed model.
+
+### Panel
 
 ```sh
 codex-router tui [--socket PATH]
 ```
 
-Connects to the newest live session under the runtime base. Pass `--socket` to pick one. It redials with backoff (250 ms up to 2 s) and shows `disconnected` meanwhile. Without `--socket` it looks up the newest live session again on each redial, so it follows a restarted `codex-router`. Commands are refused while disconnected.
+The panel attaches to the newest running session, or to `--socket`. If the session goes away, the panel shows `disconnected` and keeps redialing. Without `--socket`, it looks for the newest session again on each attempt, so it follows a restarted `codex-router`. Quitting the panel does not affect the session.
 
-Keys:
+| Key                | Action                                                 |
+| ------------------ | ------------------------------------------------------ |
+| `1`–`5`            | Now, Routes, Policy, Classifier, Usage                 |
+| `tab`, `shift+tab` | next, previous tab                                     |
+| `p`                | pin the next turn: none → high → medium → low → micro  |
+| `space`            | pause routing, or resume                               |
+| `c` (Policy tab)   | next preset: thrifty, balanced, quality (this session) |
+| `q`, `ctrl+c`      | quit the panel                                         |
 
-| Key                | Action                                                  |
-| ------------------ | ------------------------------------------------------- |
-| `1`-`5`            | Now, Routes, Policy, Classifier, Usage                  |
-| `tab`, `shift+tab` | next, previous tab                                      |
-| `p`                | pin the next turn: none, high, medium, low, micro, none |
-| `space`            | pause routing, or resume                                |
-| `c` (Policy tab)   | next preset: thrifty, balanced, quality                 |
-| `q`, `ctrl+c`      | quit the panel (the session keeps running)              |
+The header shows the mode (`on`, `manual`, `paused`), the classifier state, and whether the footer is synced.
 
-The header shows the mode (`on`, `manual`, `paused`), the classifier state and whether the footer is synced.
+**Now** shows the current decision and the session so far:
 
-### Now
+![Router panel, Now tab](images/router-tui-now.svg)
 
-![Now tab](images/router-tui-now.svg)
-
-- **Next turn** (or **This turn** mid-turn): tier, model, effort, and the model Codex sent (`base`) when it was rewritten.
-- **Activity**: the classifier's activity with its probability, the two likeliest alternates and the probability at which an activity route applies.
-- **Why** and a support line: the policy reason and the support it weighed against its bar, plus the uncached tokens a switch writes.
+- **Next turn**, or **This turn** while a turn runs: the tier, the model and effort, and the model that Codex sent (`base`) when it was rewritten.
+- **Activity**: the classifier's activity and probability, the two likeliest alternatives, and the probability at which an activity route applies.
+- **Why**: the policy's reason, and the support it weighed against its bar.
 - **Pin next**: one button per tier with the classifier's support. `▶` marks the tier in use.
-- **Session**: routed replies as a strip colored by tier (cells merge as it grows), counts by tier and activity, the last switch, and the estimated saving against the baseline model. The saving needs `prices` for both models; without them it says so.
-- **Worth a look**: classifier paused or failing, a manual `/model` pick, the context guard keeping a larger window, routes outside the compatibility group, low cache reuse after switches. Each names the tab where you change it.
-- **Codex**, **Context**, **Cache**: what the footer shows, how full the smallest window is, and cache reuse for the last reply and the session.
+- **Session**: routed replies as a strip colored by tier, counts by tier and activity, the last switch, and the estimated saving against the baseline route. The saving needs `prices`.
+- **Worth a look**: things to act on, each naming the tab where you change it. Examples: the classifier is paused or failing, a manual hold, the context guard kept a larger window, or cache reuse is low after switches.
+- **Codex**, **Context**, **Cache**: what the footer shows, how full the smallest window is, and prompt-cache reuse.
 
-### Routes
+**Routes** lists each tier's route, the compatibility group, models blocked because they are outside it, and the last six decisions.
 
 ![Routes tab](images/router-tui-routes.svg)
 
-The route per tier, the compatibility group (`comp_hash`), models blocked because they are outside the group, and the last six decisions.
+**Policy** shows the presets and the thresholds in effect. **Classifier** shows its state, latency, failures, and the pause time while it is paused (`off` with no key). **Usage** shows requests, switches, cache reuse, and the list-price estimate for this session. Plan billing counts usage, not dollars, so the dollar figure is only an estimate.
 
-### Policy
+### Pin, pause, preset
 
-![Policy tab](images/router-tui-policy.svg)
+- **Pin** (`p`): the next turn runs on that tier for all its steps, and the classifier is not asked. The turn uses up the pin.
+- **Pause** (`space`): every request goes out on Codex's own model, unchanged, and the footer goes back to it.
+- **Resume** (`space` again): routing continues. Resume also clears a manual hold.
+- **Preset** (`c` on the Policy tab): applies at once, for this session only. The config file is not changed.
 
-The preset buttons (`c` cycles) and the thresholds in effect. A preset change applies at once, for this session only; it is not written to the config file.
+### Pick a model yourself
 
-### Classifier
+A `/model` pick in Codex starts a manual hold. The panel shows `◐ manual`, and requests keep your model until you press `space` in the panel. If you do not want Codex to save the model to its config, use the session-only choice in Codex's picker.
 
-![Classifier tab](images/router-tui-classifier.svg)
+### What the router leaves alone
 
-State, last latency, median of recent answers, consecutive failures, and the pause time when the breaker is open. With no key (the `keyEnv` variable unset) it shows `off`, and so does the header.
+These requests go out unchanged, with no classifier call:
 
-### Usage
-
-![Usage tab](images/router-tui-usage.svg)
-
-Requests, switches, cache reuse, the list-price estimate against the baseline (plan billing is usage limits, not dollars), and counts by tier and activity. Session scope only.
-
-## Pin, pause, presets
-
-- **Pin** (`p`): the next turn runs on that tier, whatever the classifier says, and the classifier is not asked. The pin is consumed by that turn. The pinned turn keeps its tier for all its steps.
-- **Pause** (`space`): every request goes to Codex's own model unchanged. The router writes the footer back to the model Codex was using.
-- **Resume** (`space` again): routing continues, and clears a manual hold.
-- **Presets**: `thrifty` makes upgrades harder and downgrades easier, `quality` the reverse, `balanced` uses the policy as configured. Values are in [configuration](configuration.md#presets).
-
-## Picking a model by hand
-
-`/model` in Codex changes the thread settings. The router tells its own writes from yours by matching the value it wrote last. Any other value is a manual pin, even before the router has changed the model. A `/model` pick reaches the router as a settings notification **[verified]**. The thread then goes `manual`: requests keep the model you picked, the panel shows `◐ manual`, and "Worth a look" says so. Press `space` in the panel to resume routing.
-
-## What is never routed
-
-A request is routed only when its `x-codex-turn-metadata` says `request_kind = "turn"`, it has a `turn_id`, and it has no `x-openai-subagent` header **[verified]**. These forward unchanged and make no classifier call:
-
-- compaction (`request_kind = "compaction"`), local or remote
+- compaction (`/compact` or automatic)
 - subagent steps
-- anything with missing or unparsable metadata, or a model outside the catalog
+- requests whose turn metadata is missing or unreadable, or whose model is not in Codex's model catalog
 
-Compaction stays local by default. The router resets its vote streak and cache accounting when history shrinks.
+### Context guard
 
-## Context-fit guard
+A route is used only if the thread fits in `policy.contextFill` (default 80%) of that model's context window. When the chosen tier does not fit, the router takes the lowest tier that does. When none fits, the request keeps Codex's model. The router never trims history. Not verified live: the guard has not been tested on a thread above about 220k tokens.
 
-A route is used only if the thread's estimated size is at most `policy.contextFill` (default 80%) of that route's window. The size is the larger of the last reply's total tokens and a bytes/4 estimate. The window comes from Codex's model catalog (`models_cache.json`, then `/models` seen by the proxy). An unknown window never fits.
+### Escalation on repeated failures
 
-When the chosen tier does not fit, the router takes the lowest tier that does. When none fits, it forwards Codex's own request. When Codex's model does not fit but the baseline does, it moves up to the baseline. It never clips history. Each guard move counts in "Worth a look".
+When the same command fails twice with an edit in between, the turn moves up one tier without asking the classifier. It stays there for `policy.escalationHoldTurns` turns. Only a pair whose second failure is in the current turn counts, and not once a later check passed.
 
-Codex sizes its window from `model_context_window` in `config.toml` if you set it. See the [advice in configuration](configuration.md#model_context_window).
+Models in code mode (`tool_mode: code_mode_only`) run commands inside JavaScript cells, and Codex reports only how the script ended. The router reads a command's exit status from the cell output in three cases:
 
-## When things fail
+- the script printed it on its own line (`exit_code=1` or `exit code: 1`, as models usually do)
+- the script printed the nested result as JSON (`text(JSON.stringify(r))`), read for its `exit_code`
+- the script failed
 
-| Failure                           | What happens                                                                                                                                                                    |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Config file invalid or unreadable | One stderr line with the reason, then plain `codex <args>` replaces the router.                                                                                                 |
-| Any startup step fails            | The same fallback.                                                                                                                                                              |
-| Classifier key unset              | Classifier off, logged. The router runs; pins work; other turns keep their model.                                                                                               |
-| Classifier slow, down or wrong    | The turn is not routed (original model). Each ask has a deadline and two attempts. Three failures in a row pause the classifier for 60 s; the panel and "Worth a look" show it. |
-| Router decision error or panic    | The request is forwarded unchanged.                                                                                                                                             |
-| Upstream error before any output  | Codex gets a 502 and retries on its own. The proxy never re-sends a request.                                                                                                    |
-| Stream cut after output started   | Codex sees a broken stream and keeps the partial output **[verified]**. Nothing is re-sent.                                                                                     |
-| Proxy listener stops              | The launcher binds the same port again within about 200 ms. A running turn recovers **[verified]**.                                                                             |
-| The router process is killed      | The proxy goes with it, and Codex then has nothing to talk to (a dead listener blocks **[verified]**). After `kill -9` the Codex TUI and the private app-server are left running: quit Codex (or kill them) and start `codex-router` again. `codex-router proxy --port <old port>` lets the orphaned turn finish **[verified]**. Do this promptly: the orphaned app-server keeps sending your ChatGPT token to that port, and any local user who binds it first receives the token. |
-| Panel loses the router            | It shows `disconnected` and redials. Routing is unaffected.                                                                                                                     |
+A completed cell that prints no status counts neither as a failure nor as a passed check. The passed check is what `policy.minDwellRequests` needs before a move down on the same task.
 
-Ctrl-C and Ctrl-\ reach Codex through the terminal; the router ignores them. SIGTERM and SIGHUP go to Codex.
+### Router line in the transcript (optional hook)
 
-## Logs
+`codex-router hook` can print one line in the Codex transcript when the route changes, for example:
 
-JSON lines, one file per session: `$XDG_STATE_HOME/codex-router/logs/<id>.log`, else `~/.local/state/codex-router/logs/<id>.log`. The directory is `0700`, the file `0600`. `<id>` is the runtime dir name.
+```text
+router: high · debug → gpt-6.1-sol · high · escalate: same tool failure twice, edit in between
+```
 
-Logs hold thread and turn ids, decisions, statuses, sizes and timings. They never hold request or response text, `Authorization` or `ChatGPT-Account-ID`. Nothing is printed to the terminal while Codex owns it. The `proxy` subcommand logs to stderr instead.
+The footer already shows the model. The hook adds the reason. It answers within 200 ms and exits 0 even when no router is running.
 
-## Hook (optional)
+Codex runs a hook only after you trust it, and it reads trust only from your own `~/.codex/config.toml`. So the router cannot register the hook for you. To add it yourself:
 
-The hook prints one line in Codex when the route changed since the previous turn, for example `router: high · debug → gpt-6.1-sol · high · escalate: same tool failure twice, edit in between`. Codex shows it as `↳ Hook · router: ...` (from source, not seen live). The footer already shows the model; the hook adds the reason in the transcript.
+```toml
+[[hooks.UserPromptSubmit]]
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = "/usr/local/bin/codex-router hook"
 
-`codex-router hook` reads the hook input on stdin, asks the session's control socket (`$CODEX_ROUTER_CONTROL`, set by the launcher) for a snapshot and prints `{"systemMessage": "..."}` or `{}`. It answers within 200 ms and exits 0 even when the router is not running, so it never blocks Codex. It never emits `additionalContext`.
+[[hooks.Stop]]
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/usr/local/bin/codex-router hook"
+```
 
-**Trust.** Codex registers hooks passed with `-c` as `untrusted` and does not run them, and it ignores a trust value passed with `-c` **[verified]**. Trust is read only from your persisted `~/.codex/config.toml`. So the router does not register the hook itself. You add it, and you approve it:
+Then approve the hooks in Codex's hook review. Keep the command string stable, because changing it makes Codex mark the hook `modified`. Not verified live: the hook has not been run against a real Codex, so the exact approval steps are unconfirmed.
 
-1. Add the hook to `~/.codex/config.toml` (TOML form of the verified `-c` syntax; the live run of a persisted entry is **[unverified live]**):
-
-   ```toml
-   [[hooks.UserPromptSubmit]]
-   [[hooks.UserPromptSubmit.hooks]]
-   type = "command"
-   command = "/absolute/path/to/codex-router hook"
-
-   [[hooks.Stop]]
-   [[hooks.Stop.hooks]]
-   type = "command"
-   command = "/absolute/path/to/codex-router hook"
-   ```
-
-2. Start Codex and trust the hooks through Codex's own hook review. The exact steps are **[unverified live]**; Codex lists them as `untrusted` until a `hooks.state."<key>".trusted_hash` entry exists in your config.
-3. Keep the command string stable. Changing it changes the hash and Codex marks the hook `modified`.
-
-For a one-off `codex exec`, Codex has `--dangerously-bypass-hook-trust`. It runs enabled hooks without trust for that run. Use it only for a command you wrote. The router never edits your Codex config.
-
-The live firing of the hook is not verified; see [hook-registration](hook-registration.md) for the spike and a script to check it.
-
-## Proxy for `codex exec`
+### Proxy only, for `codex exec`
 
 ```sh
 codex-router [--config PATH] proxy [--port N]
 ```
 
-Runs the proxy and routing engine alone, without the app-server, the footer or the panel. It prints the flags that point Codex at it:
+This runs only the proxy and the routing engine: no footer sync, no panel, no pins. It prints the `-c` flags to pass to `codex exec` in another shell. Logs go to stderr. Stop it with Ctrl-C.
 
-```
-proxy listening on 127.0.0.1:53211; point codex at it with:
-  -c 'model_provider=router'
-  -c 'model_providers.router={name="router", base_url="http://127.0.0.1:53211/v1", wire_api="responses", requires_openai_auth=true, env_http_headers={"X-Codex-Router-Token"="CODEX_ROUTER_TOKEN"}}'
-this proxy checks no token: any local user can reach it; use it for debugging only
-```
+This proxy checks no session token, so any local user can reach it. Use it for debugging, not on a shared machine.
 
-Pass those to `codex exec` in another shell. Routing, pass-through and the fit guard work as in a session. This proxy checks no token (it prints a warning saying so), so any local user can reach it, and the `env_http_headers` entry has no effect. Use it for debugging, not on a shared host. There is no footer sync and no panel. Pins and presets cannot be changed, since no control socket is opened. Logs go to stderr as JSON. Stop with Ctrl-C; the exit code is 0.
+## Troubleshoot
+
+| Symptom                                                              | Cause and fix                                                                                                                                                                      |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `codex-router: <reason>; running plain codex`                        | The config is invalid, or a startup step failed. The reason names it. Fix the config, or check `codex --version` and the session log.                                              |
+| Panel says `Jev off`; the model never changes                        | The classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session.                                                                  |
+| Panel says `paused until …`                                          | The classifier failed 3 times in a row and pauses for 60 s. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                    |
+| `footer not synced`                                                  | Settings writes to the app-server are pending or failed. Routing still works. If it persists, your Codex version may not support the sync (see [Codex versions](#codex-versions)). |
+| `codex-router tui`: `no running codex-router session under …`        | No session is running for your user, or it uses another runtime base (`XDG_RUNTIME_DIR`, `TMPDIR`). Start a session first, or pass `--socket`.                                     |
+| Panel shows `disconnected`                                           | The session ended or restarted. The panel redials by itself. Routing is unaffected.                                                                                                |
+| Second session fails to start                                        | `proxy.port` is fixed, so the port is taken. Use `0` (the default) for any free port.                                                                                              |
+| Model stays put after a `/model` pick                                | That is the manual hold. Press `space` in the panel to resume routing.                                                                                                             |
+| `Permission overrides are not supported when resuming a remote task` | Codex refuses `-s` and `-a` with `resume` in remote mode. Drop them.                                                                                                               |
+| Codex shows `Reconnecting… waiting for network`                      | The router process died, and the proxy with it. See [If the router is killed](#if-the-router-is-killed).                                                                           |
+
+How the router fails open (classifier down, upstream error, cut stream) is in [architecture](architecture.md#failure-handling). In short: the request goes out unchanged, and Codex retries on its own. The router never re-sends a request.
+
+### If the router is killed
+
+On a normal exit, everything stops together. After `kill -9` or an out-of-memory kill, the Codex TUI and the private app-server keep running with no proxy behind them. The orphaned app-server keeps sending your ChatGPT token to the dead proxy's port. Any local user who binds that port receives the token.
+
+1. Quit Codex.
+2. Kill the leftover `codex app-server` promptly.
+3. Start `codex-router` again.
+
+To let a running turn finish first, run `codex-router proxy --port <old port>` to serve it.
+
+### Signals
+
+Ctrl-C and Ctrl-\ reach Codex through the terminal. The router ignores them. SIGTERM and SIGHUP are passed to Codex.
+
+### Logs
+
+The router writes one JSON-lines file per session: `$XDG_STATE_HOME/codex-router/logs/<id>.log`, else `~/.local/state/codex-router/logs/<id>.log` (directory `0700`, file `0600`). Logs hold thread and turn ids, decisions, statuses, sizes and timings. They never hold request or response text or credentials. Nothing is printed to the terminal while Codex owns it.
+
+### Codex versions
+
+The footer sync needs `codex --remote` and the app-server's `thread/settings/update`, both experimental. A Codex release can change them. When that happens, routing keeps working and the panel shows `footer not synced`. The router was tested with Codex 0.162.1.
 
 ## Exit codes
 
@@ -196,6 +299,6 @@ Pass those to `codex exec` in another shell. Routing, pass-through and the fit g
 | --------------------------- | ---------------------------------------------------------------------------------------- |
 | `codex-router [codex args]` | Codex's exit code, 128+N for signal N, 1 when neither routed nor plain Codex could start |
 | `tui`                       | 0 on quit, 1 on error                                                                    |
-| `hook`                      | 0, also when the router is not running; 1 only if stdout fails                                                 |
+| `hook`                      | 0, also when the router is not running. 1 only if writing stdout fails                   |
 | `proxy`                     | 0 after SIGINT or SIGTERM, 1 on error                                                    |
 | any                         | 2 on a usage error                                                                       |
