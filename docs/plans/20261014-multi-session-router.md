@@ -353,10 +353,11 @@ Depends on: Task 8
 
 - Modify: `cmd/codex-router/main.go`, `cmd/codex-router/main_test.go`
 
-- [ ] `codex-router tui [--session ID|LABEL] [--socket PATH]`; resolution rules and exit codes per Technical Details
-- [ ] `codex-router sessions [--json]`: one line per session (`id  home  label  mode  route`), `--json` prints `[]SessionInfo` with endpoint id; used by live tests and scripts
-- [ ] tests: exact id, prefix, label, ambiguous (exit 2 with candidates), not found (exit 1), `--socket` bypasses the registry, `sessions --json` shape
-- [ ] run `make fmt lint test build`
+- [x] `codex-router tui [--session ID|LABEL] [--socket PATH]`; resolution rules and exit codes per Technical Details
+- [x] `codex-router sessions [--json]`: one line per session (`id  home  label  mode  route`), `--json` prints `[]SessionInfo` with endpoint id; used by live tests and scripts
+- [x] tests: exact id, prefix, label, ambiguous (exit 2 with candidates), not found (exit 1), `--socket` bypasses the registry, `sessions --json` shape
+- [x] ➕ an id also matches the bare thread id (what Codex shows), exact or prefix; a cross-home match is ambiguous (M1). A label suffix must start at a ` · `, so `main` names the branch but `ain` matches nothing. Rules apply in order (id, id prefix, label, label suffix) and the first rule with any match decides. Both commands dial the endpoints once (2 s per endpoint for the first list), skip a stale hello, prune dead entries, and use the panel's order and disambiguated labels. `sessions` has no header line; with no session it prints nothing (`[]` with `--json`). The `--help` text covers both; `docs/user-guide.md` stays for Task 11
+- [x] run `make fmt lint test build`
 
 ### Task 10: Hook on protocol v2
 
