@@ -342,6 +342,14 @@ in `scripts/spikes/selftest.sh` against a fake request with an Authorization hea
 | Compaction           | let auto-compaction run                                                                  | request passed through (kind=passthrough), no decision, thread continues                       | `router.log`                                                                 |
 | Classifier down      | unset key / block host                                                                   | every request forwarded, TUI Classifier tab shows paused                                       | `router.log`, screenshot                                                     |
 
+## Stage 3 outcome (2026-10-14)
+
+Run by the orchestrator in an agterm split (not by the user). Results, evidence and the six bugs it
+found are in `docs/evidence/2026-10-14/README.md`. Not run: context guard above 220k tokens, hook
+line (needs a persisted hook trust entry). Plan deltas: facts must read code-mode `exec` cells
+(every catalog model is `code_mode_only`); the catalog defaults `effective_context_window_percent`
+to 95; the panel re-locates the session on redial.
+
 ## Stage 4: docs + screenshot pipeline
 
 - `scripts/render-docs/main.go` (`go run ./scripts/render-docs`): builds fixture `route.Snapshot`s

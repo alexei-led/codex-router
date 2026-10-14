@@ -414,6 +414,10 @@ What the spikes prove and do not prove:
 - `reasoning_effort_override` feature semantics.
 - VS Code extension and desktop app behaviour with a custom provider.
 - Peer-only items marked **[peer]** above (source-read by the Codex peer, not re-read here).
+- Live (2026-10-14, `docs/evidence/2026-10-14/`): the `/models` body omits
+  `effective_context_window_percent`; tool runs of `code_mode_only` models arrive as JavaScript
+  `exec` cells whose output carries a command's exit status only when the model prints it.
+  Hooks under `--remote`, image paste, approvals and Esc stay unverified.
 
 ## 8. Process notes
 

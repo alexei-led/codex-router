@@ -13,6 +13,7 @@ Arguments after the router flags go to Codex unchanged. Use `--` when a Codex fl
 ```sh
 codex-router                       # interactive session
 codex-router resume --last         # Codex subcommands and flags pass through
+                                   # (Codex rejects -s/-a together with resume under --remote)
 codex-router --config ./r.json --  --model gpt-6-sol
 ```
 
@@ -132,7 +133,7 @@ Codex sizes its window from `model_context_window` in `config.toml` if you set i
 | Upstream error before any output  | Codex gets a 502 and retries on its own. The proxy never re-sends a request.                                                                                                    |
 | Stream cut after output started   | Codex sees a broken stream and keeps the partial output **[verified]**. Nothing is re-sent.                                                                                     |
 | Proxy listener stops              | The launcher binds the same port again within about 200 ms. A running turn recovers **[verified]**.                                                                             |
-| The router process is killed      | The proxy goes with it, and Codex then has nothing to talk to (a dead listener blocks **[verified]**). Quit Codex and start `codex-router` again.                               |
+| The router process is killed      | The proxy goes with it, and Codex then has nothing to talk to (a dead listener blocks **[verified]**). After `kill -9` the Codex TUI and the private app-server are left running: quit Codex (or kill them) and start `codex-router` again. `codex-router proxy --port <old port>` lets the orphaned turn finish **[verified]**. |
 | Panel loses the router            | It shows `disconnected` and redials. Routing is unaffected.                                                                                                                     |
 
 Ctrl-C and Ctrl-\ reach Codex through the terminal; the router ignores them. SIGTERM and SIGHUP go to Codex.

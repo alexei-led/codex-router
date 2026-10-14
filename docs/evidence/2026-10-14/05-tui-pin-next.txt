@@ -1,0 +1,21 @@
+ROUTING ◉ on · Jev ready · 240 ms · footer synced
+
+[Now 1] Routes 2  Policy 3  Classifier 4  Usage 5 
+
+Next turn  ▌high  gpt-6.1-sol · high  pinned
+Activity   code 99%   debug 1%   applies at 60%+
+Why        same turn
+Pin next   [high 51%] medium 47%  low 2%  micro 0%  next turn only · p cycles
+
+SESSION · since 10:27 · 8 routed replies · 1 route switches
+  ████████  1 reply per cell
+  ■ medium 8   
+  code 8
+  last switch 10:27  micro → medium · code
+  no list-price baseline yet
+
+Codex      footer shows gpt-6-luna · high · synced via thread/settings/update
+Context    ███░░░░░░░░░░░░░░░░░ 15%  ~41.3K / 258.4K · fit guard: smallest window
+Cache      96% reused on the last reply · 86% this session · $ at list price
+
+1-5 tabs · tab next · p pin next · space pause/resume · q quit
