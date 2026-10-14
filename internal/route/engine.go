@@ -92,7 +92,8 @@ type thread struct {
 	turn       string
 	stepIndex  int
 	turnPinned bool
-	turnOff    bool // the classifier failed on the turn's first step
+	turnOff    bool // the classifier failed on the turn's first step, or the turn started held
+	heldTurn   bool // the turn started held: its steps keep the held route
 	advice     *classifier.Advice
 	retries    []retry
 	review     *review
@@ -324,8 +325,8 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 	return rewriteOf(d)
 }
 
-// begin reads the thread under the lock. It returns a pinned decision for a
-// retry, nil step when the request passes unchanged, a review the new turn
+// begin reads the thread under the lock. It returns a fixed decision (a
+// retry's, or a held turn's route), nil step when the request passes unchanged, a review the new turn
 // replaced, for the caller to stop outside the lock, and whether the request
 // showed a /model pick, for the caller to save.
 func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*step, *Decision, *review, bool) {
@@ -366,8 +367,8 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 		// Unrouted until a reply ends the hold, and for the rest of that
 		// turn. A pin is the user's word and ends the hold.
 		th.awaiting = nil
-		th.turn, th.turnOff = m.TurnID, true
-		return nil, nil, nil, false
+		th.turn, th.turnOff, th.heldTurn = m.TurnID, true, true
+		return nil, e.holdStep(th, original), nil, false
 	}
 	th.held = false
 	fp := req.Fingerprint(m)
@@ -382,10 +383,10 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 	first := th.turn != m.TurnID
 	if first {
 		old, th.review = th.review, nil
-		th.turn, th.stepIndex, th.turnPinned, th.turnOff, th.advice = m.TurnID, 0, false, false, nil
+		th.turn, th.stepIndex, th.turnPinned, th.turnOff, th.heldTurn, th.advice = m.TurnID, 0, false, false, false, nil
 		th.retries, th.observedFrom = nil, 0
 	} else if th.turnOff {
-		return nil, nil, nil, false
+		return nil, e.holdStep(th, original), nil, false
 	}
 	if n := len(req.Input); n < th.lastItems {
 		// Compaction or a rewind replaced the history: cached prefixes and
@@ -727,6 +728,22 @@ func sameRoute(a, b config.Route) bool {
 	return a.Model == b.Model && (a.Effort == b.Effort || a.Effort == "" || b.Effort == "")
 }
 
+// holdStep keeps a step of a turn that started held on the route the
+// thread is held on: the seeded route its footer shows (M11). After a brain
+// restart mid-turn the turn's steps still carry the settings the turn
+// started with, while the old brain routed them; forwarding them unchanged
+// would switch models mid-turn and write a cold prefix. Nil when the step
+// already has that route or the route cannot replace its model. An empty
+// effort (the model's default) keeps the effort Codex sent. Under e.mu.
+func (e *Engine) holdStep(th *thread, original config.Route) *Decision {
+	r := th.lastWritten
+	if !th.heldTurn || r.Model == "" || sameRoute(original, r) || !e.cat.Current().Compatible(original.Model, r.Model) {
+		return nil
+	}
+	e.log.Debug("route hold step", "thread", th.id, "model", r.Model, "effort", r.Effort)
+	return &Decision{ThreadID: th.id, TurnID: th.turn, Original: original, Route: r, Rewritten: true}
+}
+
 // inConversation says the input holds an earlier turn's work: an assistant
 // message, reasoning, or a tool call or its output.
 func inConversation(items []responses.Item) bool {
@@ -832,7 +849,7 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 				// The hold ends on a turn this engine never saw start (a
 				// brain restarted mid-turn): that turn's later steps stay
 				// unrouted, as for a turn that started held.
-				th.turn, th.turnOff = m.TurnID, true
+				th.turn, th.turnOff, th.heldTurn = m.TurnID, true, true
 			}
 			th.measured, th.held = true, false
 			th.lastTotal = max(u.TotalTokens, u.InputTokens+u.OutputTokens)
