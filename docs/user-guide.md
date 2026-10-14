@@ -101,7 +101,7 @@ Requests, switches, cache reuse, the list-price estimate against the baseline (p
 
 ## Picking a model by hand
 
-`/model` in Codex changes the thread settings. The router tells its own writes from yours by matching the value it wrote last. Any other value after its first write is a manual pin. A `/model` pick reaches the router as a settings notification **[verified]**. The thread then goes `manual`: requests keep the model you picked, the panel shows `◐ manual`, and "Worth a look" says so. Press `space` in the panel to resume routing.
+`/model` in Codex changes the thread settings. The router tells its own writes from yours by matching the value it wrote last. Any other value is a manual pin, even before the router has changed the model. A `/model` pick reaches the router as a settings notification **[verified]**. The thread then goes `manual`: requests keep the model you picked, the panel shows `◐ manual`, and "Worth a look" says so. Press `space` in the panel to resume routing.
 
 ## What is never routed
 
