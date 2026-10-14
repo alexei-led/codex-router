@@ -280,6 +280,9 @@ func splice(raw []byte, edits []edit) []byte {
 	return out.Bytes()
 }
 
+// Body returns the raw body Parse read, which the caller must not modify.
+func (r *Request) Body() []byte { return r.raw }
+
 // Fingerprint identifies one request of a turn. Retries of a request resend
 // the same body, so they share it; each later step of the turn appends items,
 // so it changes. It hashes the original model, not a rewrite.

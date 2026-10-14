@@ -38,6 +38,9 @@ func TestParseFixture(t *testing.T) {
 	if r.Model != "gpt-6.1-sol" || r.Effort != config.EffortHigh || r.Bytes != len(body) {
 		t.Fatalf("got model=%q effort=%q bytes=%d", r.Model, r.Effort, r.Bytes)
 	}
+	if !bytes.Equal(r.Body(), body) {
+		t.Fatal("Body() is not the parsed body")
+	}
 	want := []responses.Item{
 		{Type: "message", Role: "developer", Text: "You are Codex, a coding agent.\nQuote: \"be precise\" — café <tags> & {braces} [brackets]\\path"},
 		{Type: "message", Role: "developer", Text: `<additional_tools>[{"name":"exec_command","model":"not-this-one"}]</additional_tools>`},
