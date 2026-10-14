@@ -27,6 +27,9 @@ type Model struct {
 	ResponsesLite    bool             `json:"use_responses_lite"`
 	ToolMode         string           `json:"tool_mode"`
 	ReasoningLevels  []ReasoningLevel `json:"supported_reasoning_levels"`
+	// DefaultEffort is the effort Codex runs the model at when its settings
+	// name none.
+	DefaultEffort config.Effort `json:"default_reasoning_level"`
 }
 
 // defaultEffectivePercent is Codex's value when /models omits

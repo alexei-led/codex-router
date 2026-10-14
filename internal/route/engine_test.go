@@ -19,11 +19,11 @@ import (
 )
 
 const testCatalog = `{"models":[
- {"slug":"gpt-6.1-sol","context_window":500000,"effective_context_window_percent":95,"comp_hash":"3000","use_responses_lite":true,"tool_mode":"code_mode_only",
+ {"slug":"gpt-6.1-sol","context_window":500000,"effective_context_window_percent":95,"comp_hash":"3000","use_responses_lite":true,"tool_mode":"code_mode_only","default_reasoning_level":"low",
   "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"},{"effort":"xhigh"}]},
- {"slug":"gpt-6-sol","context_window":272000,"effective_context_window_percent":95,"comp_hash":"3000","use_responses_lite":true,"tool_mode":"code_mode_only",
+ {"slug":"gpt-6-sol","context_window":272000,"effective_context_window_percent":95,"comp_hash":"3000","use_responses_lite":true,"tool_mode":"code_mode_only","default_reasoning_level":"medium",
   "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"},{"effort":"xhigh"}]},
- {"slug":"gpt-6-luna","context_window":272000,"effective_context_window_percent":95,"comp_hash":"3000","use_responses_lite":true,"tool_mode":"code_mode_only",
+ {"slug":"gpt-6-luna","context_window":272000,"effective_context_window_percent":95,"comp_hash":"3000","use_responses_lite":true,"tool_mode":"code_mode_only","default_reasoning_level":"medium",
   "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"},{"effort":"xhigh"}]},
  {"slug":"gpt-5.5","context_window":272000,"effective_context_window_percent":95,"comp_hash":"2911",
   "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"}]}

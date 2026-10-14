@@ -41,6 +41,9 @@ func TestParseFields(t *testing.T) {
 	if len(m.ReasoningLevels) != 6 || m.ReasoningLevels[0].Effort != config.EffortLow {
 		t.Errorf("reasoning levels: %+v", m.ReasoningLevels)
 	}
+	if m.DefaultEffort != config.EffortLow {
+		t.Errorf("default effort = %q, want low", m.DefaultEffort)
+	}
 }
 
 func TestMissingToolModeIsNone(t *testing.T) {

@@ -223,14 +223,14 @@ func (e *Engine) resumed(threadID string, r config.Route) (s Snapshot, resync, m
 		return Snapshot{}, true, false
 	}
 	th.footer = r
-	switch i := th.pendingIndex(r); {
+	switch i := th.pendingIndex(r, e.sameSetting); {
 	case i >= 0:
 		th.pending = slices.Clone(th.pending[i+1:])
 		return Snapshot{}, true, false
 	case th.manual:
 		th.lastWritten, th.native = r, r
 		return Snapshot{}, false, false
-	case sameRoute(r, th.lastWritten) || sameRoute(r, th.native):
+	case e.sameSetting(r, th.lastWritten) || e.sameSetting(r, th.native):
 		return Snapshot{}, true, false
 	}
 	e.pick(th, r)
@@ -714,18 +714,33 @@ func (e *Engine) noteLatency(a *classifier.Advice) {
 // app-server last reported, one the router wrote, echoed or not, or the
 // thread's native route.
 func (th *thread) knows(r config.Route) bool {
-	return sameRoute(r, th.footer) || sameRoute(r, th.lastWritten) || sameRoute(r, th.native) || th.pendingIndex(r) >= 0
+	return sameRoute(r, th.footer) || sameRoute(r, th.lastWritten) || sameRoute(r, th.native) || th.pendingIndex(r, sameRoute) >= 0
 }
 
-// pendingIndex is the first pending write that settings route r echoes, or -1.
-func (th *thread) pendingIndex(r config.Route) int {
-	return slices.IndexFunc(th.pending, func(p config.Route) bool { return sameRoute(r, p) })
+// pendingIndex is the first pending write that r matches under same, or -1.
+func (th *thread) pendingIndex(r config.Route, same func(a, b config.Route) bool) int {
+	return slices.IndexFunc(th.pending, func(p config.Route) bool { return same(r, p) })
 }
 
 // sameRoute matches a request's route to a settings route. An empty effort
 // is the model's default, which a request may name.
 func sameRoute(a, b config.Route) bool {
 	return a.Model == b.Model && (a.Effort == b.Effort || a.Effort == "" || b.Effort == "")
+}
+
+// sameSetting matches a route the app-server reports to one the thread's
+// settings held. An empty effort is the model's default: it matches the
+// default the catalog lists for the model and no other effort, so a /model
+// pick of another effort is not taken for an echo. Under e.mu.
+func (e *Engine) sameSetting(a, b config.Route) bool {
+	def := e.cat.Current().Models[a.Model].DefaultEffort
+	orDefault := func(x config.Effort) config.Effort {
+		if x == "" {
+			return def
+		}
+		return x
+	}
+	return a.Model == b.Model && orDefault(a.Effort) == orDefault(b.Effort)
 }
 
 // holdStep keeps a step of a turn that started held on the route the
