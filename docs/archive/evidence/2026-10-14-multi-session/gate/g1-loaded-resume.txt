@@ -1,0 +1,12 @@
+=== RUN   TestLoadedThreadsAndResume
+    daemon_test.go:315: loaded 01a13aa1-f72a-7882-9ae6-c505d86ca17b cwd=$RUN/w1 ephemeral=false provider=openai source="vscode" threadSource="user" parent=false main=true
+    daemon_test.go:315: loaded 01a13aa1-f891-7e43-af9e-4861abfed5b0 cwd=$RUN/w2 ephemeral=false provider=openai source="vscode" threadSource="user" parent=false main=true
+    daemon_test.go:315: loaded 01a13aa2-a65a-77c3-bf95-985d258a2964 cwd=$RUN/w2 ephemeral=true provider=openai source="vscode" threadSource="thread_title" parent=false main=false
+    daemon_test.go:315: loaded 01a13aa2-a661-7cf0-9e1d-5fbcc87af136 cwd=$RUN/w1 ephemeral=true provider=openai source="vscode" threadSource="thread_title" parent=false main=false
+    daemon_test.go:325: resumed 01a13aa1-f72a-7882-9ae6-c505d86ca17b model=gpt-6.1-sol effort= provider=openai cwd=$RUN/w1
+    daemon_test.go:325: resumed 01a13aa1-f891-7e43-af9e-4861abfed5b0 model=gpt-6.1-sol effort= provider=openai cwd=$RUN/w2
+    daemon_test.go:293: thread/unsubscribe 01a13aa1-f891-7e43-af9e-4861abfed5b0: unsubscribed
+    daemon_test.go:293: thread/unsubscribe 01a13aa1-f72a-7882-9ae6-c505d86ca17b: unsubscribed
+--- PASS: TestLoadedThreadsAndResume (0.11s)
+PASS
+ok  	github.com/alexei-led/codex-router/scripts/spikes/stage2	0.808s

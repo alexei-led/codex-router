@@ -1,0 +1,15 @@
+killed the edge during a slow request
+next request: pid 55701
+ 0.018134s
+slow request: curl: (52) Empty reply from server
+ 1.010115s
+killed the edge during a slow request
+next request: pid 55771
+ 0.035497s
+slow request: curl: (52) Empty reply from server
+ 1.020140s
+killed the edge during a slow request
+next request: pid 55897
+ 0.018063s
+slow request: curl: (52) Empty reply from server
+ 1.013758s

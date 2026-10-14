@@ -1,0 +1,9 @@
+{
+  "name": "router-gate",
+  "plugins": [
+    {
+      "name": "router-gate",
+      "source": { "source": "local", "path": "./router-gate" }
+    }
+  ]
+}

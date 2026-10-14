@@ -359,7 +359,7 @@ Depends on: Task 8
 - [x] `codex-router tui [--session ID|LABEL] [--socket PATH]`; resolution rules and exit codes per Technical Details
 - [x] `codex-router sessions [--json]`: one line per session (`id  home  label  mode  route`), `--json` prints `[]SessionInfo` with endpoint id; used by live tests and scripts
 - [x] tests: exact id, prefix, label, ambiguous (exit 2 with candidates), not found (exit 1), `--socket` bypasses the registry, `sessions --json` shape
-- [x] ➕ an id also matches the bare thread id (what Codex shows), exact or prefix; a cross-home match is ambiguous (M1). A label suffix must start at a ` · `, so `main` names the branch but `ain` matches nothing. Rules apply in order (id, id prefix, label, label suffix) and the first rule with any match decides. Both commands dial the endpoints once (2 s per endpoint for the first list), skip a stale hello, prune dead entries, and use the panel's order and disambiguated labels. `sessions` has no header line; with no session it prints nothing (`[]` with `--json`). The `--help` text covers both; `docs/user-guide.md` stays for Task 11
+- [x] ➕ an id also matches the bare thread id (what Codex shows), exact or prefix; a cross-home match is ambiguous (M1). A label suffix must start at a `·`, so `main` names the branch but `ain` matches nothing. Rules apply in order (id, id prefix, label, label suffix) and the first rule with any match decides. Both commands dial the endpoints once (2 s per endpoint for the first list), skip a stale hello, prune dead entries, and use the panel's order and disambiguated labels. `sessions` has no header line; with no session it prints nothing (`[]` with `--json`). The `--help` text covers both; `docs/user-guide.md` stays for Task 11
 - [x] run `make fmt lint test build`
 
 ### Task 10: Hook on protocol v2
@@ -450,17 +450,66 @@ Depends on: Task 13
 - Create: `docs/archive/evidence/<run-date>-multi-session/gate/report.md`
 - Modify: this plan (Gate outcome section)
 
-- [ ] G1: two plain `codex` TUIs in agterm with `CODEX_HOME=<home-a>`; spike client sees both threads in `thread/loaded/list` with their cwd; `thread/resume` returns current settings; `thread/resume` + `thread/settings/update` repaints both footers
-- [ ] G2: provider block added to `<home-a>/config.toml` while its daemon runs; a new thread uses the router without a daemon restart (if not: setup must restart the daemon; record and continue only if a restart is safe for other sessions)
-- [ ] G3: a static `http_headers` token in the provider reaches the spike proxy
-- [ ] G4: macOS activation: launchd holds the port; `kill -9` the spike edge mid-request; the next connection waits in the backlog and is served by the restarted edge; measure the stall. Linux part: unit test with `LISTEN_FDS` (Task 16) stands in
-- [ ] G5: a local plugin marketplace in `<home-a>` with a SessionStart hook: hook env has `CODEX_HOME` (or it can be derived), a detached child survives the hook; a hook command can reach the registry (Task 10 lookup)
-- [ ] write the gate report and the Gate outcome section. **If G1, G3, G4 or G5 fails: stop the workflow here.** G4 failing with purego but passing with a cgo bridge: switch M8 to cgo + macOS release runner (add ➕ task to the release workflow) and continue
-- [ ] cleanup (test homes stay, logged in, for Task 23); real `config.toml` sha256 unchanged
+- [x] G1: two plain `codex` TUIs in agterm with `CODEX_HOME=<home-a>`; spike client sees both threads in `thread/loaded/list` with their cwd; `thread/resume` returns current settings; `thread/resume` + `thread/settings/update` repaints both footers
+- [x] G2: provider block added to `<home-a>/config.toml` while its daemon runs; a new thread uses the router without a daemon restart (if not: setup must restart the daemon; record and continue only if a restart is safe for other sessions)
+- [x] G3: a static `http_headers` token in the provider reaches the spike proxy
+- [x] G4: macOS activation: launchd holds the port; `kill -9` the spike edge mid-request; the next connection waits in the backlog and is served by the restarted edge; measure the stall. Linux part: unit test with `LISTEN_FDS` (Task 16) stands in
+- [x] G5: a local plugin marketplace in `<home-a>` with a SessionStart hook: hook env has `CODEX_HOME` (or it can be derived), a detached child survives the hook; a hook command can reach the registry (Task 10 lookup)
+- [x] write the gate report and the Gate outcome section. **If G1, G3, G4 or G5 fails: stop the workflow here.** G4 failing with purego but passing with a cgo bridge: switch M8 to cgo + macOS release runner (add ➕ task to the release workflow) and continue
+- [x] cleanup (test homes stay, logged in, for Task 23); real `config.toml` sha256 unchanged
+- [x] ➕ `scripts/spikes/plugin/`: local marketplace (`.agents/plugins/marketplace.json`) with the `router-gate` plugin, whose SessionStart hook `gate-hook.sh` writes a report to `$PLUGIN_DATA/gate/` (selected env names only, input keys, a detached `sleep` child, and `codex-router sessions --json` + `codex-router hook` only when `XDG_STATE_HOME` is a gate run's temp dir, so the user's registry is never read or pruned). It needs `CODEX_ROUTER_BIN` in the daemon's env: `codex-router` is not on the hook's PATH
+- ⚠️ `gate/report.md` is not in the repo, for the same reason as `stage1/report.md` (the agent harness refuses `.md` report files). The report is the Gate outcome section below; captures and logs are committed under `docs/archive/evidence/2026-10-14-multi-session/gate/`. The temp run dirs `/private/tmp/codex-router-gate.mESXcC` and `/private/tmp/codex-router-spike.7yKZGY` are left behind (logs and a throwaway token only)
 
 #### Gate outcome
 
-_(filled by Task 14)_
+**Passed: G1-G5 all pass (2026-10-14, Codex 0.162.1, test home A only). Stage 2 proceeds; M8 stays
+purego (no cgo fallback).** Real `~/.codex/config.toml` and `~/.codex-work/config.toml` sha256
+unchanged (`c409e1eb…1486` both, before and after); every process ran with
+`XDG_STATE_HOME=/private/tmp/codex-router-gate.*/state`; the user's daemons were not touched. No
+codex-router bugs found, so no fix commits. Evidence: `docs/archive/evidence/2026-10-14-multi-session/gate/`.
+
+| Gate | Result | What happened                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Evidence                                                                                                              |
+| ---- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| G1   | pass   | Two plain `codex` TUIs (cwd `w1`, `w2`) shared one home-a daemon. `thread/loaded/list` + `thread/read` gave both main threads with their cwd (plus two ephemeral `thread_title` side threads, filtered out). `thread/resume {excludeTurns}` returned model and cwd. `thread/settings/update` to `gpt-6-luna · low` repainted both footers at once.                                                                                                                                                                                                                      | `g1-loaded-resume.txt`, `g1-settings-update.txt`, `g1-tui{1,2}-after-update.txt`                                      |
+| G2   | pass   | `stage2-homes.sh serve a` wrote the router provider into `config.toml` while daemon pid 49013 ran. `/new` + a prompt in TUI 1 went through the proxy (`responses` 200 for the main thread and its title side thread); the daemon pid stayed 49013. The new thread reports `provider=router`; threads started earlier keep `provider=openai`.                                                                                                                                                                                                                            | `g2-loaded-after-provider.txt`, `g2-tui1-new-thread.txt`, `g2-g4-proxy.txt`                                           |
+| G3   | pass   | Spike edge (launchd, token file) in front of the proxy; `reset a 53611 TOKEN_FILE` put `http_headers = { "X-Codex-Router-Token" = … }` into the provider. `/new` + a prompt in TUI 2: edge logged `token=ok` for both `/v1/responses` requests; curl without or with a wrong token got 401 (`token=missing`, `token=wrong`).                                                                                                                                                                                                                                            | `g3-g4-edge.txt`, `g3-tui2-token-turn.txt`                                                                            |
+| G4   | pass   | Edge built with `CGO_ENABLED=0` (purego `launch_activate_socket`). `spike.sh stall` × 3: the request in flight got an empty reply; the next request, sent right after `kill -9`, was served by a new edge pid in **18 ms, 35 ms, 18 ms**. Real turn: `kill -9` while Codex streamed "1 to 300 as words"; Codex retried ~0.9 s later, the restarted edge served it and the turn completed (proxy: `stream-aborted`, then the same turn `responses` 200).                                                                                                                 | `g4-stall.txt`, `g3-g4-edge.txt`, `g4-tui2-turn-across-kill.txt`, `g2-g4-proxy.txt`                                   |
+| G5   | pass   | `codex plugin marketplace add scripts/spikes/plugin` + `codex plugin add router-gate@router-gate` in home-a. The hook ran only after trusting it in `/hooks` (`t`). In the daemon: `CODEX_HOME`, `PLUGIN_ROOT`, `PLUGIN_DATA` set (home also derivable from `PLUGIN_ROOT`); the `sleep` child (stdio to `/dev/null`) was alive with ppid 1 minutes later; `codex-router sessions --json` from the hook listed the home-a launcher session through the registry (hello checked); `codex-router hook` printed `{}` (no endpoint routes a daemon thread yet) in under 1 s. | `g5-hook-daemon-run{1,2}.txt`, `g5-hook-launcher.txt`, `g5-detached-children.txt`, `g5-hooks-review-before-trust.txt` |
+
+Findings that later tasks must use:
+
+- **Daemon env = env of the TUI that started it** (`ps eww`: `XDG_STATE_HOME`, `CODEX_HOME`,
+  `TMPDIR`); a plugin hook gets that env plus `PLUGIN_ROOT`, `PLUGIN_DATA`, and runs under the
+  user's `$SHELL -lc` (fish here). So the hook's registry root depends on the shell that started
+  the daemon, and `codex-router` is not on its PATH. Task 21: the hook must not rely on PATH or
+  `XDG_STATE_HOME`; setup should record the binary and state dir where the hook can read them
+  (e.g. `PLUGIN_DATA`). (Tasks 20, 21)
+- **Plugin hooks need one-time trust**: until the user presses `t` in `/hooks`, the hook does not
+  run. Trust is written by Codex to the home's `config.toml` as
+  `[hooks.state."<plugin>@<marketplace>:hooks/hooks.json:session_start:0:0"] trusted_hash = "sha256:…"`
+  and is tied to the hook's hash, so changing the hook command asks again. Setup must not write
+  that hash itself; docs tell the user to trust it. (Tasks 20, 21, 25)
+- **SessionStart timing**: on `/new` it fired when the thread started; for the TUI's first thread
+  it fired at the first prompt (that thread starts lazily). Hook input keys: `cwd`,
+  `hook_event_name`, `model`, `permission_mode`, `session_id`, `source`, `transcript_path`.
+- **A provider change applies to new threads only**: running threads keep the provider they
+  started with until `/new` or a restart. Setup and docs must say so. (Tasks 20, 25)
+- **`thread/resume` returns an empty effort** when the thread uses the model's default effort
+  (footer "default"); the brain must seed that as "model default", not as a missing route.
+  (Tasks 17, 18)
+- `thread/settings/updated` carries the full thread settings, including developer instructions;
+  the brain must not log the payload. (Task 17)
+- After `/new` the previous thread stayed in `thread/loaded/list` for the rest of the run; the
+  brain's idle rule (10 min) must not assume the daemon unloads it quickly. (Task 17)
+- The spike plist sets `ThrottleInterval` 1; with kills 3-4 s apart launchd never throttled.
+  Crash loops faster than that were not tested. **Unverified:** whether Codex re-rendered the
+  partial reply after the retry (only the screen tail was captured).
+- The detached child in G5 redirected stdio, per the Codex source; a child that keeps the hook's
+  stdout open was not tested (the source says the hook then waits until its timeout).
+
+Cleanup: agterm workspace `router-gate` deleted; launchd spike agent booted out; proxy, test
+daemon and its `pid-update-loop` stopped; detached children killed; plugin and marketplace
+removed and `home-a/config.toml` reset to empty; both test homes still logged in.
 
 ### Stage 2: per-home edge and brain
 

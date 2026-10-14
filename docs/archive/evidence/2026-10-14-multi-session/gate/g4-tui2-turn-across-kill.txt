@@ -1,0 +1,56 @@
+› Write the numbers from 1 to 300 as words, one per line, no other text.
+  two hundred fifty-five
+  two hundred fifty-six
+  two hundred fifty-seven
+  two hundred fifty-eight
+  two hundred fifty-nine
+  two hundred sixty
+  two hundred sixty-one
+  two hundred sixty-two
+  two hundred sixty-three
+  two hundred sixty-four
+  two hundred sixty-five
+  two hundred sixty-six
+  two hundred sixty-seven
+  two hundred sixty-eight
+  two hundred sixty-nine
+  two hundred seventy
+  two hundred seventy-one
+  two hundred seventy-two
+  two hundred seventy-three
+  two hundred seventy-four
+  two hundred seventy-five
+  two hundred seventy-six
+  two hundred seventy-seven
+  two hundred seventy-eight
+  two hundred seventy-nine
+  two hundred eighty
+  two hundred eighty-one
+  two hundred eighty-two
+  two hundred eighty-three
+  two hundred eighty-four
+  two hundred eighty-five
+  two hundred eighty-six
+  two hundred eighty-seven
+  two hundred eighty-eight
+  two hundred eighty-nine
+  two hundred ninety
+  two hundred ninety-one
+  two hundred ninety-two
+  two hundred ninety-three
+  two hundred ninety-four
+  two hundred ninety-five
+  two hundred ninety-six
+  two hundred ninety-seven
+  two hundred ninety-eight
+  two hundred ninety-nine
+  three hundred
+  └ Tip: Press ⌃t to open the full transcript.
+
+  Worked for 40s • 16:42                                                                                                                                                                              
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol default · $RUN/w2 · Reply with token
+  ← for agents · ? for shortcuts
