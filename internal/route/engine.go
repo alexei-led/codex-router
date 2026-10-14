@@ -75,6 +75,7 @@ type Engine struct {
 	stats   tally
 	// latencies are the recent classifier answers' latencies.
 	latencies []time.Duration
+	seq       uint64 // the last snapshot's Seq
 }
 
 // thread is one Codex thread's routing state. step is held for a whole

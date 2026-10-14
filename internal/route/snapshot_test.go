@@ -20,6 +20,17 @@ func scored(choice config.Tier, probs map[config.Tier]float64) classifier.Advice
 	return a
 }
 
+func TestSnapshotsAreSequenced(t *testing.T) {
+	h := newHarness(t, testConfig())
+	first := h.engine.Snapshot()
+	if err := h.engine.Apply(Command{Op: OpPause}); err != nil {
+		t.Fatal(err)
+	}
+	if second := h.engine.Snapshot(); second.Seq <= first.Seq {
+		t.Fatalf("seq %d then %d, want increasing", first.Seq, second.Seq)
+	}
+}
+
 func TestDecisionCarriesTheClassifierReading(t *testing.T) {
 	advice := scored("low", map[config.Tier]float64{"high": 0.02, "medium": 0.05, "low": 0.9, "micro": 0.03})
 	advice.Probabilities[classifier.ChoiceUncertain] = 0.01
