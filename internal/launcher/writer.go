@@ -40,8 +40,8 @@ func (s *sink) OnSnapshot(snap route.Snapshot) {
 // settingsWriter mirrors routes into the Codex footer. Per thread it keeps
 // only the newest wanted route (the engine accepts an echo of any later
 // write as covering earlier ones), resumes the thread once so this client
-// gets its notifications, and skips a route equal to the thread's current
-// one: the last route written or reported by the app-server. Counting
+// gets its notifications, and at write time skips a route equal to the
+// thread's current one: the last route written or reported by the app-server. Counting
 // reports matters: after a manual /model pick and a resume, writing the
 // router's old route again must not be skipped.
 type settingsWriter struct {
@@ -66,15 +66,13 @@ func newSettingsWriter(log *slog.Logger) *settingsWriter {
 }
 
 func (w *settingsWriter) enqueue(thread string, r config.Route) {
+	// Always queue: current is stale while a write for the thread is in
+	// flight, so next() dedupes once that write has finished.
 	w.mu.Lock()
-	_, queued := w.queue[thread]
-	switch {
-	case queued:
-		w.queue[thread] = r
-	case w.current[thread] != r:
-		w.queue[thread] = r
+	if _, queued := w.queue[thread]; !queued {
 		w.order = append(w.order, thread)
 	}
+	w.queue[thread] = r
 	w.mu.Unlock()
 	select {
 	case w.wake <- struct{}{}:

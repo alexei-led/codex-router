@@ -459,6 +459,62 @@ func TestSettingsWriterDedupesAndRewritesAfterManualPick(t *testing.T) {
 	}
 }
 
+// gatedAPI holds each settings write until the test releases it.
+type gatedAPI struct {
+	*fakeAPI
+	started chan struct{}
+	release chan struct{}
+}
+
+func (g *gatedAPI) UpdateSettings(ctx context.Context, thread string, s appserver.Settings) error {
+	g.started <- struct{}{}
+	<-g.release
+	return g.fakeAPI.UpdateSettings(ctx, thread, s)
+}
+
+func TestSettingsWriterKeepsARouteQueuedDuringAWrite(t *testing.T) {
+	native := config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
+	routed := config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}
+	api := &gatedAPI{fakeAPI: &fakeAPI{written: make(chan struct{}, 8)}, started: make(chan struct{}), release: make(chan struct{})}
+	w := newSettingsWriter(slog.New(slog.DiscardHandler))
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		w.run(ctx, api)
+		close(done)
+	}()
+	wait := func(c chan struct{}, what string) {
+		t.Helper()
+		select {
+		case <-c:
+		case <-time.After(2 * time.Second):
+			t.Fatal("no " + what)
+		}
+	}
+	write := func() {
+		t.Helper()
+		wait(api.started, "settings write")
+		api.release <- struct{}{}
+		wait(api.written, "settings write done")
+	}
+
+	w.enqueue("t", native)
+	write()
+	w.enqueue("t", routed)
+	wait(api.started, "settings write")
+	w.enqueue("t", native)
+	api.release <- struct{}{}
+	wait(api.written, "settings write done")
+	write()
+	cancel()
+	<-done
+
+	want := []string{"resume t", "update t gpt-6-sol/medium", "update t gpt-6-luna/low", "update t gpt-6-sol/medium"}
+	if !slices.Equal(api.calls, want) {
+		t.Errorf("calls = %q, want %q", api.calls, want)
+	}
+}
+
 func TestNewestControlSocketPicksNewestLivePrivateSession(t *testing.T) {
 	base := shortTempDir(t)
 	session := func(name string, mode os.FileMode, listen bool, age time.Duration) string {
