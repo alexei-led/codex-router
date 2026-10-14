@@ -254,6 +254,7 @@ These requests go out unchanged, with no classifier call:
 
 - compaction (`/compact` or automatic)
 - subagent steps
+- Codex's own side threads, such as the one that writes the thread title after your first prompt
 - requests whose turn metadata is missing or unreadable, or whose model is not in Codex's model catalog
 
 ### Context guard

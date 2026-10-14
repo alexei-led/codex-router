@@ -184,7 +184,7 @@ Grey boxes leave the request as Codex sent it, or keep Codex's model. A retried 
 
 The list below adds what the diagram leaves out.
 
-- **Which requests.** Only user steps are routed: turn metadata with `request_kind = "turn"`, a `turn_id`, and no `x-openai-subagent` header. Compaction and subagent steps pass through.
+- **Which requests.** Only user steps are routed: turn metadata with `request_kind = "turn"`, a `turn_id`, `thread_source = "user"` (or none), and no `x-openai-subagent` header. Compaction, subagent steps and Codex's side threads (thread title, guardian review, memory) pass through, and side threads never show up as sessions.
 - **Overrides.** A panel pin decides the next turn and is then used up. Pause sends every request unchanged. A `/model` pick (a settings value the router did not write) sets the manual hold for that thread until resume.
 - **Moving up a tier on later steps.** Tool calls that show code, docs or ops work can move a turn up to a stronger activity route without a classifier answer.
 - **Escalation.** The same tool failure twice, with an edit in between, moves one tier up without the classifier. It holds for `escalationHoldTurns` turns. Tool results come from plain tool calls and from code-mode JavaScript cells. For cells, the exit status counts only when the script printed it.
