@@ -194,10 +194,12 @@ func (s *Server) greet(conn net.Conn, br *bufio.Reader, w *serverWriter) bool {
 
 // decide answers one decide with rewrite or none. The edge's deadline, less
 // replyMargin, bounds the parse and the Handler, so the engine's classifier
-// call ends before the edge stops waiting and a decision the edge would not
-// apply is not committed. An unparseable body or a panic is none. Past the
-// deadline nothing is sent: the edge is timing out, and a late answer that
-// beat its timer would hide the timeout from its breaker.
+// call ends before the edge stops waiting. A decide already past it never
+// reaches the Handler, and the Handler commits nothing once it passes
+// (route.Engine.Decide checks), so the brain records no decision the edge
+// would not apply. An unparseable body or a panic is none. Past the deadline
+// nothing is sent: the edge is timing out, and a late answer that beat its
+// timer would hide the timeout from its breaker.
 func (s *Server) decide(ctx context.Context, w *serverWriter, h Header, body []byte) {
 	reply := Header{Type: TypeNone, ID: h.ID}
 	late := false
@@ -216,6 +218,9 @@ func (s *Server) decide(ctx context.Context, w *serverWriter, h Header, body []b
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithDeadline(ctx, time.UnixMilli(h.DeadlineUnixMs).Add(-replyMargin))
 		defer cancel()
+	}
+	if late = ctx.Err() != nil; late {
+		return
 	}
 	req, err := responses.Parse(body)
 	if err != nil {
