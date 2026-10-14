@@ -51,7 +51,7 @@ curl -fsSL -o codex-router \
   https://github.com/alexei-led/codex-router/releases/latest/download/codex-router-darwin-arm64
 sudo install -m 0755 codex-router /usr/local/bin/codex-router
 
-export TYPESAFE_API_KEY=...   # key for the default classifier (Jev); or use a local Ollama model
+export TYPESAFE_API_KEY=...   # key for the default classifier (Jev), or set envFile; or use a local Ollama model
 cd your-repo
 codex-router                  # use it like `codex`; arguments pass through
 ```

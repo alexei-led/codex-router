@@ -176,6 +176,16 @@ func TestValidateRejects(t *testing.T) {
 			cl.TimeoutMs = 0
 			c.Classifiers["ollama"] = cl
 		}, "classifiers.ollama.timeoutMs"},
+		{"relative envFile", func(c *Config) {
+			cl := c.Classifiers["jev"]
+			cl.EnvFile = ".env"
+			c.Classifiers["jev"] = cl
+		}, "classifiers.jev.envFile"},
+		{"tilde-user envFile", func(c *Config) {
+			cl := c.Classifiers["jev"]
+			cl.EnvFile = "~bob/.env"
+			c.Classifiers["jev"] = cl
+		}, "classifiers.jev.envFile"},
 		{"policy mass above one", func(c *Config) { c.Policy.DowngradeMass = 1.5 }, "policy.downgradeMass"},
 		{"policy zero votes", func(c *Config) { c.Policy.UpgradeVotes = 0 }, "policy.upgradeVotes"},
 		{"warm margin over ttl", func(c *Config) { c.Cache.WarmMarginMs = c.Cache.TTLMs }, "cache"},

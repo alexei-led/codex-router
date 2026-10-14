@@ -115,6 +115,29 @@ func TestNewClassifier(t *testing.T) {
 	}
 	unknown := config.Default()
 	unknown.Classifier = "missing"
+	dir := t.TempDir()
+	keyFile := func(name, body string, mode os.FileMode) string {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(body), mode); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(path, mode); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	withFile := func(path string) config.Config {
+		cfg := config.Default()
+		cc := cfg.Classifiers[cfg.Classifier]
+		cc.EnvFile = path
+		cfg.Classifiers[cfg.Classifier] = cc
+		return cfg
+	}
+	good := keyFile("good.env", "export TYPESAFE_API_KEY='from-file'\n", 0o600)
+	shared := keyFile("shared.env", "TYPESAFE_API_KEY=from-file\n", 0o644)
+	noKey := keyFile("nokey.env", "OTHER=x\n", 0o600)
+	keyFile("home.env", "TYPESAFE_API_KEY=from-file\n", 0o600)
+	missing := filepath.Join(dir, "missing.env")
 	cases := []struct {
 		name       string
 		cfg        config.Config
@@ -124,6 +147,15 @@ func TestNewClassifier(t *testing.T) {
 	}{
 		{"key set", config.Default(), map[string]string{"TYPESAFE_API_KEY": "k"}, true, ""},
 		{"key missing", config.Default(), nil, false, "TYPESAFE_API_KEY is not set"},
+		{"key from envFile", withFile(good), nil, true, ""},
+		{"envFile under ~/", withFile("~/home.env"), map[string]string{"HOME": dir}, true, ""},
+		{"env wins over envFile", withFile(missing), map[string]string{"TYPESAFE_API_KEY": "k"}, true, ""},
+		{"envFile shared", withFile(shared), nil, false,
+			"TYPESAFE_API_KEY is not set; envFile " + shared + ": readable by group or others; chmod 600 it"},
+		{"envFile without key", withFile(noKey), nil, false,
+			"TYPESAFE_API_KEY is not set; envFile " + noKey + ": TYPESAFE_API_KEY: key not in file"},
+		{"envFile missing", withFile(missing), nil, false,
+			"TYPESAFE_API_KEY is not set; envFile open " + missing + ": no such file or directory"},
 		{"no key needed", func() config.Config { c := config.Default(); c.Classifier = "ollama"; return c }(), nil, true, ""},
 		{"not configured", unknown, nil, false, "no classifier configured"},
 		{"unknown api", withAPI("bogus"), map[string]string{"TYPESAFE_API_KEY": "k"}, false, "unknown api bogus"},
@@ -135,6 +167,35 @@ func TestNewClassifier(t *testing.T) {
 				t.Errorf("newClassifier = on %v, %q; want on %v, %q", on, reason, tc.wantOn, tc.wantReason)
 			}
 		})
+	}
+}
+
+func TestRouterDepsNeverLogsTheFileKey(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".env")
+	if err := os.WriteFile(path, []byte("TYPESAFE_API_KEY=sk-file-secret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []os.FileMode{0o600, 0o644} {
+		if err := os.Chmod(path, mode); err != nil {
+			t.Fatal(err)
+		}
+		cfg := config.Default()
+		cc := cfg.Classifiers[cfg.Classifier]
+		cc.EnvFile = path
+		cfg.Classifiers[cfg.Classifier] = cc
+		var logs strings.Builder
+		log := slog.New(slog.NewJSONHandler(&logs, nil))
+		d, _ := RouterDeps(Options{Config: cfg, Env: []string{"HOME=" + dir, "CODEX_HOME=" + dir}}, log)
+		if on := d.Classifier != nil; on != (mode == 0o600) {
+			t.Errorf("mode %o: classifier on = %v", mode, on)
+		}
+		if strings.Contains(logs.String(), "sk-file-secret") {
+			t.Errorf("mode %o: log leaks the key: %s", mode, logs.String())
+		}
+		if mode == 0o644 && strings.Count(logs.String(), "chmod 600") != 1 {
+			t.Errorf("mode %o: want one chmod 600 log line: %s", mode, logs.String())
+		}
 	}
 }
 

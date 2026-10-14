@@ -93,13 +93,16 @@ type Policy struct {
 
 // Classifier describes one classifier endpoint. API names the wire adapter
 // ("system-one" or "ollama"). KeyEnv names the environment variable holding
-// the bearer key; empty means no key.
+// the bearer key; empty means no key. EnvFile is a dotenv file (absolute or
+// ~/ path) read for KeyEnv when the process env does not set it: service
+// units do not see the shell's env.
 type Classifier struct {
 	Label     string `json:"label"`
 	API       string `json:"api"`
 	Endpoint  string `json:"endpoint"`
 	Model     string `json:"model"`
 	KeyEnv    string `json:"keyEnv,omitempty"`
+	EnvFile   string `json:"envFile,omitempty"`
 	TimeoutMs int    `json:"timeoutMs"`
 }
 

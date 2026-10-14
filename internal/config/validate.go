@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"slices"
+	"strings"
 )
 
 // Validate checks the config and reports the first problem with its field path.
@@ -121,6 +123,9 @@ func (c Config) validateClassifiers() error {
 		}
 		if cl.TimeoutMs < 1 {
 			return fmt.Errorf("%s.timeoutMs: must be positive", path)
+		}
+		if f := cl.EnvFile; f != "" && !filepath.IsAbs(f) && !strings.HasPrefix(f, "~/") {
+			return fmt.Errorf("%s.envFile: %q is not an absolute or ~/ path", path, f)
 		}
 	}
 	return nil

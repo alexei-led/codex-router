@@ -318,6 +318,16 @@ func TestPluginHooksReturnFastWithServicesDown(t *testing.T) {
 		}
 	}
 
+	// The budget is 1 s on top of starting the router at all: the test binary
+	// is a race build, and its start alone can take a second on a busy host.
+	startup := time.Now()
+	version := exec.Command("sh", filepath.Join(abs, "scripts", "codex-router.sh"), "version")
+	version.Env = env
+	if out, err := version.CombinedOutput(); err != nil {
+		t.Fatalf("version: %v: %s", err, out)
+	}
+	budget := time.Second + time.Since(startup)
+
 	_, byEvent := readHooks(t)
 	for _, event := range []string{"SessionStart", "UserPromptSubmit", "Stop"} {
 		t.Run(event, func(t *testing.T) {
@@ -330,8 +340,8 @@ func TestPluginHooksReturnFastWithServicesDown(t *testing.T) {
 			if err := cmd.Run(); err != nil {
 				t.Fatalf("hook: %v", err)
 			}
-			if took := time.Since(start); took > time.Second {
-				t.Errorf("hook took %v, want under 1s", took)
+			if took := time.Since(start); took > budget {
+				t.Errorf("hook took %v, want under %v", took, budget)
 			}
 			if event != "SessionStart" && strings.TrimSpace(stdout.String()) != "{}" {
 				t.Errorf("hook stdout %q, want {}", stdout.String())

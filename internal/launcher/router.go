@@ -68,8 +68,9 @@ func launcherCwd() func(string) string {
 }
 
 // newClassifier returns the configured classifier, or nil and the reason it
-// is off. A key env var that is named but unset turns it off: the router
-// still runs and pins still work.
+// is off. The key comes from the env var KeyEnv names, else from the
+// classifier's envFile. A named key found in neither turns it off: the
+// router still runs and pins still work. The reason never holds the key.
 func newClassifier(cfg config.Config, getenv func(string) string) (classifier.Asker, string) {
 	cc, ok := cfg.Classifiers[cfg.Classifier]
 	if !ok {
@@ -77,8 +78,15 @@ func newClassifier(cfg config.Config, getenv func(string) string) (classifier.As
 	}
 	var key string
 	if cc.KeyEnv != "" {
-		if key = getenv(cc.KeyEnv); key == "" {
+		key = getenv(cc.KeyEnv)
+		if key == "" && cc.EnvFile == "" {
 			return nil, cc.KeyEnv + " is not set"
+		}
+		if key == "" {
+			var err error
+			if key, err = readKeyFile(cc, getenv); err != nil {
+				return nil, cc.KeyEnv + " is not set; envFile " + err.Error()
+			}
 		}
 	}
 	var a classifier.Adapter
@@ -91,6 +99,18 @@ func newClassifier(cfg config.Config, getenv func(string) string) (classifier.As
 		return nil, "unknown api " + cc.API
 	}
 	return classifier.New(cc, key, a, &http.Client{}, time.Now), ""
+}
+
+// readKeyFile reads cc.KeyEnv from cc.EnvFile, with "~/" taken from HOME.
+func readKeyFile(cc config.Classifier, getenv func(string) string) (string, error) {
+	home := getenv("HOME")
+	if home == "" {
+		var err error
+		if home, err = os.UserHomeDir(); err != nil {
+			return "", err
+		}
+	}
+	return config.ReadEnvKey(config.ExpandHome(cc.EnvFile, home), cc.KeyEnv)
 }
 
 type serveFunc func(ctx context.Context) error
