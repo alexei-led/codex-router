@@ -315,6 +315,28 @@ func TestSeedWithTheModelDefaultEffort(t *testing.T) {
 	}
 }
 
+func TestBrainRestartMidTurnIsNotAPick(t *testing.T) {
+	h := newHarness(t, testConfig(), func(d *Deps) { d.HoldUnseeded = true })
+	// The router wrote medium for the next turn; the running turn started on high.
+	h.engine.Resumed("a", medium)
+	midTurn := []responses.Item{
+		userMsg(secretPrompt), {Type: responses.TypeFunctionCall, Name: "exec", CallID: "c1"},
+		{Type: responses.TypeFunctionCallOutput, CallID: "c1", Output: "ok"},
+	}
+
+	rw, ok := h.decide(req(high, midTurn...), meta("a", "a1"))
+
+	wantUnchanged(t, rw, ok)
+	if s := h.session("a"); s.Mode == ModeManual {
+		t.Fatalf("session = %+v, want not manual: the step carries its turn's settings", s)
+	}
+	picked := config.Route{Model: "gpt-6-sol", Effort: config.EffortLow}
+	h.decide(req(picked, append(midTurn, userMsg("next"))...), meta("a", "a2"))
+	if s := h.session("a"); s.Mode != ModeManual {
+		t.Fatalf("mode = %s, want manual: the next turn shows a /model pick", s.Mode)
+	}
+}
+
 func TestPinEndsASeededHold(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.engine.Resumed("a", medium)

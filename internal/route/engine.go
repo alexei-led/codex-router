@@ -335,7 +335,10 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 	now := e.now()
 	original := config.Route{Model: req.Model, Effort: req.Effort}
 	e.bind(th, m.Account)
-	newTurn := th.codexTurn != m.TurnID
+	// seen: the engine saw a request on this thread before. A brain that
+	// restarted mid-turn sees that turn's later steps first; they still
+	// carry the settings the turn started with, not the seeded ones.
+	seen, newTurn := th.codexTurn != "", th.codexTurn != m.TurnID
 	th.codexTurn = m.TurnID
 	picked := false
 	switch {
@@ -346,7 +349,7 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 			th.held = true
 			e.log.Info("route held unseeded", "thread", th.id, "tier", th.tier, "model", original.Model, "effort", original.Effort)
 		}
-	case newTurn && !th.manual && !th.knows(original):
+	case seen && newTurn && !th.manual && !th.knows(original):
 		// A turn runs on the settings it started with, so only its first
 		// step can show a /model pick. This one catches the picks
 		// thread/settings/updated did not report: the brain was not
