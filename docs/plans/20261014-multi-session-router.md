@@ -335,12 +335,15 @@ Depends on: Task 7
 - Create: `internal/tui/sessions.go` (rendering), golden files in `internal/tui/testdata/`
 - Modify: `internal/tui/tui_test.go`
 
-- [ ] top bar: `◂ <focused label> <others…> ▸ i/n` with home dot color and attention marks (`◐` manual, `‖` paused, `↑` escalation, `?` unknown); truncates with `…` to width
-- [ ] Sessions tab `0`: grouped by home; columns SESSION, STATE, ROUTE, REPLIES strip, LAST SWITCH; home header with endpoint state and the home's totals (sum of its sessions: replies, switches, saved USD when priced); below 100 columns drop REPLIES and LAST SWITCH
-- [ ] locked header: one line `● home · repo · branch  <id>`; no bar, no tab 0; `ended` state
-- [ ] keys per Technical Details
-- [ ] golden tests: all mode with 5 sessions in 2 homes (80 and 140 cols), locked mode, ended, disconnected, empty registry, 20 sessions (scroll)
-- [ ] run `make fmt lint test build`
+- [x] top bar: `◂ <focused label> <others…> ▸ i/n` with home dot color and attention marks (`◐` manual, `‖` paused, `↑` escalation, `?` unknown); truncates with `…` to width
+- [x] Sessions tab `0`: grouped by home; columns SESSION, STATE, ROUTE, REPLIES strip, LAST SWITCH; home header with endpoint state and the home's totals (sum of its sessions: replies, switches, saved USD when priced); below 100 columns drop REPLIES and LAST SWITCH
+- [x] locked header: one line `● home · repo · branch  <id>`; no bar, no tab 0; `ended` state
+- [x] keys per Technical Details
+- [x] golden tests: all mode with 5 sessions in 2 homes (80 and 140 cols), locked mode, ended, disconnected, empty registry, 20 sessions (scroll)
+- [x] ➕ `SessionInfo` gains `switches` (`internal/route/sessions.go`, outside the Files list) for the home totals. The top bar shows `?` for any attention the panel does not know, so Task 18's `unknown` and `state-lost` need no TUI change
+- [x] ➕ `fleet.go` (outside the Files list): `focusOn` for `[`/`]` and `enter`; a chosen focus is never replaced by a cwd match. Locked `ended`: the session was listed and now no endpoint lists it, or its endpoint is lost and its registry entry is gone (the launcher removes its entry first on exit), so `ended` shows within one poll, not after the 10 s grace. The panel quits 3 s later unless the session came back
+- [x] ➕ the Sessions tab scrolls to keep the `↑↓` cursor in view (`↑ N more`/`↓ N more`), using the terminal height; `enter` focuses the cursor's session and opens Now. With no session at all the header reads `no sessions` instead of `disconnected`. Key hints wrap at the width. `Render`/`RenderPlain` (docs images, old goldens) stay a bare snapshot with no bar
+- [x] run `make fmt lint test build`
 
 ### Task 9: CLI: `tui --session`, `sessions`
 

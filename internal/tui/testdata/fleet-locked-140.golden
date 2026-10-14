@@ -1,0 +1,27 @@
+● work · api · feat/auth  aaaaaaaaaaaa/t3
+ROUTING ◉ on · Jev ready · 412 ms · footer synced
+
+[Now 1] Routes 2  Policy 3  Classifier 4  Usage 5 
+
+This turn  ▌high  gpt-6.1-sol · high  base gpt-6-sol · medium
+Activity   debug 72%   code 15% · explore 6%   applies at 60%+
+Why        escalate: same test failure twice, edit in between
+           no classifier needed · switch ≈ 41k uncached tokens · hold 2 turns
+Pin next    ▶ high 18%  medium 71%  low 9%  micro 2%  next turn only · p cycles
+
+SESSION · since 18:12 · 48 routed replies · 9 route switches
+  ██████████████████████████████████████████████  1 reply per cell
+  ■ high 6   ■ medium 22   ■ low 20   
+  code 16 · explore 12 · debug 9
+  last switch 18:41  medium → high · debug (inside a turn)
+  Routing saved ≈ $0.84 (31%) vs gpt-6.1-sol · high · switch writes 212K tokens
+
+WORTH A LOOK · this session
+  context guard kept 2 steps on a larger window than the policy chose · Routes 2
+  routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group · Routes 2
+
+Codex      footer shows gpt-6.1-sol · high · synced via thread/settings/update
+Context    ███░░░░░░░░░░░░░░░░░ 16%  ~44.6K / 272K · fit guard: smallest window
+Cache      98% reused on the last reply · 97% this session · $ at list price
+
+1-5 tabs · p pin next · space pause · P pause home · q quit

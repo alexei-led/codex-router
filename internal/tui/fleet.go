@@ -60,6 +60,7 @@ type fleetState struct {
 	focus        string
 	snap         *route.Snapshot
 	disconnected bool // no live endpoint serves the focus; with no focus, none is connected
+	ended        bool // locked mode: the session was listed, and now no endpoint lists it or its endpoint is gone
 }
 
 // focused returns the focused session.
@@ -93,6 +94,7 @@ type fleetEndpoint struct {
 	items   []route.SessionInfo
 	listed  bool // its first sessions list arrived
 	lostAt  time.Time
+	gone    bool   // lost and its registry entry is gone: the endpoint exited
 	session string // subscribed session, "" for none
 	gen     int
 }
@@ -119,6 +121,7 @@ type fleet struct {
 	// provisional: auto picked while a live endpoint had not listed its
 	// sessions yet, so a more recent session may still show up.
 	provisional bool
+	seen        bool // locked mode: the locked session was listed once
 	snap        *route.Snapshot
 	gen         int
 }
@@ -171,8 +174,9 @@ func (f *fleet) run(ctx context.Context) {
 }
 
 // poll dials every listed endpoint without a live connection, in parallel,
-// and drops lost endpoints past lostGrace. An unreadable registry keeps
-// the current connections.
+// and drops lost endpoints past lostGrace. A lost endpoint whose entry left
+// the registry is marked gone. An unreadable registry keeps the current
+// connections.
 func (f *fleet) poll() {
 	eps, err := f.list()
 	if err == nil {
@@ -193,6 +197,10 @@ func (f *fleet) poll() {
 	for id, e := range f.eps {
 		if e.c == nil && now.Sub(e.lostAt) >= lostGrace {
 			delete(f.eps, id)
+			continue
+		}
+		if e.c == nil && err == nil {
+			e.gone = !slices.ContainsFunc(eps, func(ep registry.Endpoint) bool { return ep.ID == id })
 		}
 	}
 	f.refocus()
@@ -278,11 +286,12 @@ func (f *fleet) notify() {
 // session whose cwd is the deepest one equal to or containing the panel's
 // cwd, else the most recently active. The caller holds f.mu.
 func (f *fleet) refocus() {
+	sessions := f.sessions()
 	if f.locked != "" {
 		f.focus = f.locked
+		f.seen = f.seen || len(sessions) > 0
 		return
 	}
-	sessions := f.sessions()
 	listed := slices.ContainsFunc(sessions, func(s fleetSession) bool { return s.ID == f.focus })
 	if listed && !f.auto {
 		return
@@ -439,6 +448,20 @@ func (f *fleet) owner(session string) string {
 	return best
 }
 
+// focusOn moves the focus to session id when it is listed. Locked mode
+// keeps its focus. A chosen focus is never replaced by a cwd match.
+func (f *fleet) focusOn(id string) {
+	f.mu.Lock()
+	if f.locked != "" || id == f.focus ||
+		!slices.ContainsFunc(f.sessions(), func(s fleetSession) bool { return s.ID == id }) {
+		f.mu.Unlock()
+		return
+	}
+	f.focus, f.snap, f.auto, f.provisional = id, nil, false, false
+	f.mu.Unlock()
+	f.sync()
+}
+
 // state copies the fleet for rendering.
 func (f *fleet) state() fleetState {
 	f.mu.Lock()
@@ -463,7 +486,9 @@ func (f *fleet) state() fleetState {
 		}
 		return g
 	}
-	for _, s := range f.sessions() {
+	sessions := f.sessions()
+	st.ended = f.seen && !slices.ContainsFunc(sessions, func(s fleetSession) bool { return !f.eps[s.endpoint].gone })
+	for _, s := range sessions {
 		g := group(f.eps[s.endpoint].hello.Home)
 		g.sessions = append(g.sessions, s)
 	}
