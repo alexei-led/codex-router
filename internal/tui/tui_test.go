@@ -724,6 +724,29 @@ func TestRenderFleetMatchesThePanel(t *testing.T) {
 	}
 }
 
+func TestRenderFleetViewShowsABrainHomeAndALockedPanel(t *testing.T) {
+	st := fleetFixture()
+	var homes []home.Home
+	var sessions []route.SessionInfo
+	for _, h := range st.homes {
+		homes = append(homes, h.home)
+		for _, s := range h.sessions {
+			sessions = append(sessions, s.SessionInfo)
+		}
+	}
+	sgr := regexp.MustCompile("\x1b\\[[0-9;]*m")
+	v := FleetView{Homes: homes, Sessions: sessions, Brains: map[string]time.Duration{homes[0].ID: 2 * time.Hour}, Focus: st.focus, Snap: fixture(), Tab: TabSessions, Width: 140}
+	got := sgr.ReplaceAllString(RenderFleetView(v), "")
+	if !strings.Contains(got, "1 endpoint · brain up 2h") {
+		t.Errorf("brain home line missing:\n%s", got)
+	}
+	v.Tab, v.Locked = TabNow, true
+	got = sgr.ReplaceAllString(RenderFleetView(v), "")
+	if strings.Contains(got, "Sessions 0") || strings.Contains(got, "▸ 1/") {
+		t.Errorf("locked panel shows the top bar or the Sessions tab:\n%s", got)
+	}
+}
+
 func topBar(st fleetState, width int) string {
 	c := &canvas{width: width}
 	c.topBar(st)

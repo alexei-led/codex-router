@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 679 541" width="679" height="541" role="img" aria-labelledby="title desc">
+  <title id="title">codex-router panel locked to one session</title>
+  <desc id="desc">codex-router tui --session, locked to one session. A single header line names the session, default · codex-router · main, with its home's dot and its id. There is no top bar and no Sessions tab. Below it the Now tab shows the turn that moved up to gpt-6.1-sol high after the same tool failure repeated.</desc>
+  <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
+  <rect width="679" height="541" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="678" height="540" rx="8" fill="none" stroke="#2e3340"/>
+  <text x="16.0" y="28.0" fill="#87afff" xml:space="preserve">● </text>
+  <text x="31.6" y="28.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">default · codex-router · main</text>
+  <text x="257.8" y="28.0" fill="#878787" xml:space="preserve">  3fa9c0d1e2b4/019a3c1e-7b2f-7d10-9c4e-2f6b1a8d5e01</text>
+  <text x="16.0" y="47.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
+  <text x="78.4" y="47.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
+  <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
+  <text x="273.4" y="47.0" fill="#878787" xml:space="preserve"> · footer synced</text>
+  <rect x="16.0" y="71.0" width="54.6" height="19" fill="#87afff"/>
+  <text x="16.0" y="85.0" fill="#14171f" xml:space="preserve">[Now 1]</text>
+  <text x="70.6" y="85.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
+  <text x="148.6" y="85.0" fill="#878787" xml:space="preserve"> Policy 3 </text>
+  <text x="226.6" y="85.0" fill="#878787" xml:space="preserve"> Classifier 4 </text>
+  <text x="335.8" y="85.0" fill="#878787" xml:space="preserve"> Usage 5 </text>
+  <text x="16.0" y="123.0" fill="#d0d0d0" xml:space="preserve">This turn  </text>
+  <text x="101.8" y="123.0" fill="#d75f87" xml:space="preserve">▌high</text>
+  <text x="156.4" y="123.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="296.8" y="123.0" fill="#878787" xml:space="preserve">  base gpt-6-sol · medium</text>
+  <text x="16.0" y="142.0" fill="#d0d0d0" xml:space="preserve">Activity   </text>
+  <text x="101.8" y="142.0" fill="#d7875f" xml:space="preserve">debug</text>
+  <text x="140.8" y="142.0" fill="#d0d0d0" xml:space="preserve"> 72%</text>
+  <text x="172.0" y="142.0" fill="#878787" xml:space="preserve">   code 15% · explore 6%</text>
+  <text x="359.2" y="142.0" fill="#878787" xml:space="preserve">   applies at 60%+</text>
+  <text x="16.0" y="161.0" fill="#d0d0d0" xml:space="preserve">Why        escalate: same tool failure twice, edit in between</text>
+  <text x="101.8" y="180.0" fill="#878787" xml:space="preserve">no classifier needed · switch ≈ 38k uncached tokens</text>
+  <text x="16.0" y="199.0" fill="#d0d0d0" xml:space="preserve">Pin next   </text>
+  <text x="101.8" y="199.0" fill="#d75f87" xml:space="preserve"> ▶ high 18% </text>
+  <text x="195.4" y="199.0" fill="#d7af5f" xml:space="preserve"> medium 71% </text>
+  <text x="289.0" y="199.0" fill="#5fafd7" xml:space="preserve"> low 9% </text>
+  <text x="351.4" y="199.0" fill="#5fd7af" xml:space="preserve"> micro 2% </text>
+  <text x="429.4" y="199.0" fill="#878787" xml:space="preserve"> next turn only · p cycles</text>
+  <text x="16.0" y="237.0" fill="#878787" xml:space="preserve">SESSION</text>
+  <text x="70.6" y="237.0" fill="#d0d0d0" xml:space="preserve"> · since 18:02 · 144 routed replies · 19 route switches</text>
+  <text x="31.6" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="39.4" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="47.2" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="55.0" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="62.8" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="70.6" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="78.4" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="86.2" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="94.0" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="101.8" y="256.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="109.6" y="256.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="117.4" y="256.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="125.2" y="256.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="133.0" y="256.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="140.8" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="148.6" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="156.4" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="164.2" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="172.0" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="179.8" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="187.6" y="256.0" fill="#5fd7af" xml:space="preserve">█</text>
+  <text x="195.4" y="256.0" fill="#5fd7af" xml:space="preserve">█</text>
+  <text x="203.2" y="256.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="211.0" y="256.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="218.8" y="256.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="226.6" y="256.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="234.4" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="242.2" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="250.0" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="257.8" y="256.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="265.6" y="256.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="273.4" y="256.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="281.2" y="256.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="289.0" y="256.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="296.8" y="256.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="304.6" y="256.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="312.4" y="256.0" fill="#878787" xml:space="preserve">  4 replies per cell</text>
+  <text x="31.6" y="275.0" fill="#d75f87" xml:space="preserve">■</text>
+  <text x="39.4" y="275.0" fill="#d0d0d0" xml:space="preserve"> high 24   </text>
+  <text x="125.2" y="275.0" fill="#d7af5f" xml:space="preserve">■</text>
+  <text x="133.0" y="275.0" fill="#d0d0d0" xml:space="preserve"> medium 76   </text>
+  <text x="234.4" y="275.0" fill="#5fafd7" xml:space="preserve">■</text>
+  <text x="242.2" y="275.0" fill="#d0d0d0" xml:space="preserve"> low 36   </text>
+  <text x="320.2" y="275.0" fill="#5fd7af" xml:space="preserve">■</text>
+  <text x="328.0" y="275.0" fill="#d0d0d0" xml:space="preserve"> micro 8   </text>
+  <text x="31.6" y="294.0" fill="#d7875f" xml:space="preserve">code</text>
+  <text x="62.8" y="294.0" fill="#d0d0d0" xml:space="preserve"> 53 · </text>
+  <text x="109.6" y="294.0" fill="#d7875f" xml:space="preserve">debug</text>
+  <text x="148.6" y="294.0" fill="#d0d0d0" xml:space="preserve"> 38 · </text>
+  <text x="195.4" y="294.0" fill="#d7875f" xml:space="preserve">explore</text>
+  <text x="250.0" y="294.0" fill="#d0d0d0" xml:space="preserve"> 27</text>
+  <text x="16.0" y="313.0" fill="#d0d0d0" xml:space="preserve">  last switch 18:42  medium → high · debug</text>
+  <text x="343.6" y="313.0" fill="#878787" xml:space="preserve"> (inside a turn)</text>
+  <text x="16.0" y="332.0" fill="#d0d0d0" xml:space="preserve">  Routing saved </text>
+  <text x="140.8" y="332.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
+  <text x="242.2" y="332.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6-sol · medium</text>
+  <text x="413.8" y="332.0" fill="#878787" xml:space="preserve"> · switch writes 612K tokens</text>
+  <text x="16.0" y="370.0" fill="#878787" xml:space="preserve">WORTH A LOOK</text>
+  <text x="109.6" y="370.0" fill="#878787" xml:space="preserve"> · this session</text>
+  <text x="16.0" y="389.0" fill="#d0d0d0" xml:space="preserve">  cache reuse 64% after 19 switches; switches wrote 612K uncached tokens · Policy 3</text>
+  <text x="16.0" y="408.0" fill="#d0d0d0" xml:space="preserve">  context guard kept 3 steps on a larger window than the policy chose · Routes 2</text>
+  <text x="16.0" y="446.0" fill="#d0d0d0" xml:space="preserve">Codex      footer shows </text>
+  <text x="203.2" y="446.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="343.6" y="446.0" fill="#878787" xml:space="preserve"> · synced via thread/settings/update</text>
+  <text x="16.0" y="465.0" fill="#d0d0d0" xml:space="preserve">Context    ██░░░░░░░░░░░░░░░░░░ 10%  </text>
+  <text x="304.6" y="465.0" fill="#878787" xml:space="preserve">~91K / 828K · fit guard: smallest window</text>
+  <text x="16.0" y="484.0" fill="#d0d0d0" xml:space="preserve">Cache      97% reused on the last reply</text>
+  <text x="320.2" y="484.0" fill="#878787" xml:space="preserve"> · 64% this session · $ at list price</text>
+  <text x="16.0" y="522.0" fill="#878787" xml:space="preserve">1-5 tabs · p pin next · space pause · P pause home · q quit</text>
+</svg>

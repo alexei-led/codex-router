@@ -5,7 +5,7 @@
 //	go run ./scripts/render-docs
 //
 // It writes one SVG per TUI tab, one for the all-sessions panel (top bar and
-// Sessions tab) and one for the Codex footer capture, and a PNG beside each
+// Sessions tab), one for the panel locked to a session and one for the Codex footer capture, and a PNG beside each
 // when rsvg-convert is on PATH. The data is made up; it matches the
 // debugging session described in docs/user-guide.md.
 package main
@@ -67,9 +67,15 @@ func render(out, footerPath, sessionPath string) error {
 		}
 	}
 	homes, sessions := sampleFleet(snap)
-	const sessionsDesc = "codex-router tui with every running session. Top bar: the focused session first, then the others, each with its home's dot and a mark for sessions that need a look, and the focus position 1 of 5. Sessions tab: two Codex homes, default and work, each with its endpoints, replies, switches and saving, then one row per session with its state, route, routed replies by tier and last switch."
-	svg := toSVG(parseANSI(tui.RenderFleet(homes, sessions, sessions[0].ID, snap, tui.TabSessions, sessionsWidth)), "codex-router panel, Sessions tab", sessionsDesc)
+	const sessionsDesc = "codex-router tui with every running session. Top bar: the focused session first, then the others, each with its home's dot and a mark for sessions that need a look, and the focus position 1 of 5. Sessions tab: two Codex homes. The default home has three codex-router runs. The work home is set up and has a brain that has run for 2 hours. Each home line has its replies, switches and saving, then one row per session with its state, route, routed replies by tier and last switch."
+	fleet := tui.FleetView{Homes: homes, Sessions: sessions, Brains: sampleBrains(homes), Focus: sessions[0].ID, Snap: snap, Tab: tui.TabSessions, Width: sessionsWidth}
+	svg := toSVG(parseANSI(tui.RenderFleetView(fleet)), "codex-router panel, Sessions tab", sessionsDesc)
 	if err := write(out, "router-tui-sessions", svg); err != nil {
+		return err
+	}
+	fleet.Tab, fleet.Width, fleet.Locked = tui.TabNow, panelWidth, true
+	const lockedDesc = "codex-router tui --session, locked to one session. A single header line names the session, default · codex-router · main, with its home's dot and its id. There is no top bar and no Sessions tab. Below it the Now tab shows the turn that moved up to gpt-6.1-sol high after the same tool failure repeated."
+	if err := write(out, "router-tui-locked", toSVG(parseANSI(tui.RenderFleetView(fleet)), "codex-router panel locked to one session", lockedDesc)); err != nil {
 		return err
 	}
 	text, err := os.ReadFile(footerPath)
@@ -115,6 +121,17 @@ func write(dir, name, svg string) error {
 }
 
 func at(h, m int) time.Time { return time.Date(2026, 10, 13, h, m, 0, 0, time.UTC) }
+
+// sampleBrains marks the work home as set up, with its brain up for 2 hours.
+// The default home runs plain codex-router sessions, one endpoint each.
+func sampleBrains(homes []home.Home) map[string]time.Duration {
+	for _, h := range homes {
+		if h.Name == "work" {
+			return map[string]time.Duration{h.ID: 2 * time.Hour}
+		}
+	}
+	return nil
+}
 
 // sampleFleet is five sessions in two Codex homes, in panel order. The first
 // is the session of snap, the focus.
