@@ -272,58 +272,43 @@ func TestListMissingRoot(t *testing.T) {
 	}
 }
 
-func TestPruneKeepsLiveDropsDead(t *testing.T) {
-	root := newRoot(t)
+func TestPruneRemovesOnlyADeadUnchangedEntry(t *testing.T) {
 	t0 := time.Now()
-	for i, id := range []string{"live1", "dead1", "live2", "dead2"} {
-		if err := Write(root, endpoint(id, t0.Add(time.Duration(i)*time.Second))); err != nil {
-			t.Fatal(err)
-		}
+	dead := func(started time.Time) Endpoint {
+		ep := endpoint("a", started)
+		ep.PID = 0
+		return ep
 	}
-	if err := os.WriteFile(filepath.Join(root, "garbage.json"), []byte("{"), 0o600); err != nil {
-		t.Fatal(err)
+	live := endpoint("a", t0)
+	live.PID = os.Getpid()
+	cases := []struct {
+		name         string
+		stored, read Endpoint
+		kept         bool
+	}{
+		{"dead", dead(t0), dead(t0), false},
+		{"alive", live, live, true},
+		{"rewritten since the read", dead(t0.Add(time.Minute)), dead(t0), true},
 	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := newRoot(t)
+			if err := Write(root, tc.stored); err != nil {
+				t.Fatal(err)
+			}
 
-	removed, err := Prune(root, func(ep Endpoint) bool { return ep.ID == "live1" || ep.ID == "live2" })
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := ids(removed); !slices.Equal(got, []string{"dead1", "dead2"}) {
-		t.Errorf("removed = %q, want [dead1 dead2]", got)
-	}
-	eps, skipped, _ := List(root)
-	if got := ids(eps); !slices.Equal(got, []string{"live1", "live2"}) {
-		t.Errorf("left = %q, want [live1 live2]", got)
-	}
-	if len(skipped) != 1 {
-		t.Errorf("skipped = %v, want the unparseable file kept", skipped)
-	}
-}
+			if err := Prune(root, tc.read); err != nil {
+				t.Fatal(err)
+			}
 
-func TestPruneKeepsAnEntryRewrittenAfterList(t *testing.T) {
-	root := newRoot(t)
-	t0 := time.Now()
-	if err := Write(root, endpoint("a", t0)); err != nil {
-		t.Fatal(err)
-	}
-	fresh := endpoint("a", t0.Add(time.Minute))
-	fresh.PID++
-
-	removed, err := Prune(root, func(ep Endpoint) bool {
-		if err := Write(root, fresh); err != nil {
-			t.Error(err)
-		}
-		return false
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(removed) != 0 {
-		t.Errorf("removed = %q, want the rewritten entry kept", ids(removed))
-	}
-	eps, _, _ := List(root)
-	if len(eps) != 1 || eps[0].PID != fresh.PID || !eps[0].Started.Equal(fresh.Started) {
-		t.Errorf("left = %+v, want the rewritten entry", eps)
+			eps, _, err := List(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if kept := len(eps) == 1 && eps[0].Started.Equal(tc.stored.Started); kept != tc.kept {
+				t.Fatalf("entries = %+v, want kept %v", eps, tc.kept)
+			}
+		})
 	}
 }
 

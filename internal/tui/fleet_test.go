@@ -820,3 +820,26 @@ func TestFleetLockedBrainSessionNeverEnds(t *testing.T) {
 		})
 	}
 }
+
+func TestRegistryPruneKeepsAnEntryRewrittenSinceTheList(t *testing.T) {
+	root, err := registry.Root(func(k string) string { return map[string]string{"XDG_STATE_HOME": t.TempDir()}[k] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed := registry.Endpoint{ID: "brain-x", Kind: registry.KindBrain, Home: homeWork, Socket: "/nonexistent/control.sock", Started: at(18, 1)}
+	restarted := listed
+	restarted.Started = at(18, 2)
+	if err := registry.Write(root, restarted); err != nil {
+		t.Fatal(err)
+	}
+
+	registryPrune(root)(listed)
+
+	eps, _, err := registry.List(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eps) != 1 || !eps[0].Started.Equal(restarted.Started) {
+		t.Fatalf("entries = %+v, want the restarted endpoint's kept", eps)
+	}
+}
