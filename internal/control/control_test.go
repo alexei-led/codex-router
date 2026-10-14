@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -661,11 +662,14 @@ func TestCloseClosesChannels(t *testing.T) {
 
 // dropped reports whether the server closed r's connection within d. Lines
 // the server pushed first are skipped.
+// dropped reports whether the server closed the connection within d. Linux
+// resets a unix socket closed with unread data in it, so ECONNRESET counts
+// as a close too; a timeout does not.
 func (r *raw) dropped(d time.Duration) bool {
 	_ = r.conn.SetReadDeadline(time.Now().Add(d))
 	for {
 		if _, err := r.r.ReadBytes('\n'); err != nil {
-			return errors.Is(err, io.EOF)
+			return errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNRESET)
 		}
 	}
 }
