@@ -5,6 +5,7 @@
     {
       "slug": "gpt-6.1-sol",
       "visibility": "list",
+      "default_reasoning_level": "low",
       "context_window": 500000,
       "max_context_window": 872000,
       "effective_context_window_percent": 95,

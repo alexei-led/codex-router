@@ -316,6 +316,49 @@ func TestSeedWithTheModelDefaultEffort(t *testing.T) {
 	}
 }
 
+func TestSeedWithTheDefaultEffortThenAnExplicitEffort(t *testing.T) {
+	seed := config.Route{Model: medium.Model}
+	cases := []struct {
+		name   string
+		report func(e *Engine, r config.Route)
+		effort config.Effort
+		manual bool
+	}{
+		{"settings at the model's default", settings, config.EffortMedium, false},
+		{"settings at another effort", settings, config.EffortHigh, true},
+		{"resume at the model's default", resume, config.EffortMedium, false},
+		{"resume at another effort", resume, config.EffortHigh, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t, testConfig(), func(d *Deps) { d.HoldUnseeded = true })
+			h.asker.script(answer(tier("low", 0.97)))
+			h.engine.Resumed("a", seed)
+			picked := config.Route{Model: medium.Model, Effort: tc.effort}
+			history := []responses.Item{userMsg(secretPrompt), {Type: responses.TypeMessage, Role: "assistant", Text: "done"}}
+
+			tc.report(h.engine, picked)
+			h.decide(req(picked, append(history, userMsg("next"))...), meta("a", "a1"))
+			h.reply(meta("a", "a1"), medium.Model, 1000, 0)
+			rw, ok := h.decide(req(picked, append(history, userMsg("next"), userMsg("more"))...), meta("a", "a2"))
+
+			if manual := h.session("a").Mode == ModeManual; manual != tc.manual {
+				t.Fatalf("manual = %v, want %v", manual, tc.manual)
+			}
+			if tc.manual {
+				wantUnchanged(t, rw, ok)
+				if h.asker.Calls() != 0 {
+					t.Fatalf("classifier calls = %d, want none: the pick holds the thread", h.asker.Calls())
+				}
+			}
+		})
+	}
+}
+
+func settings(e *Engine, r config.Route) { e.SettingsUpdated("a", r) }
+
+func resume(e *Engine, r config.Route) { e.Resumed("a", r) }
+
 func TestBrainRestartMidTurnIsNotAPick(t *testing.T) {
 	h := newHarness(t, testConfig(), func(d *Deps) { d.HoldUnseeded = true })
 	// The router wrote medium for the next turn; the running turn started on high.
