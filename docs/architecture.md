@@ -449,6 +449,6 @@ A set-up home closes this for edge crashes and upgrades, because the service man
 - [implementation plan](archive/plans/2026-10-13-codex-router-impl.md): decisions D1 to D12
 - [live test report](archive/evidence/2026-10-14/live-test-report.md): what was checked against a real Codex, and the bugs it found
 - [multi-session plan](archive/plans/20261014-multi-session-router.md): decisions M1 to M13 for sessions, the registry, the edge and the brain
-- [stage 1 live run](archive/plans/20261014-multi-session-router.md#task-12-live-stage-1-in-agterm-with-real-codex): five `codex-router` sessions in two homes, the checks and the bug found ([captures](archive/evidence/2026-10-14-multi-session/stage1/))
-- [stage 2 gate](archive/plans/20261014-multi-session-router.md#gate-outcome): G1 to G5 on a test home, the Codex facts the edge and brain rely on ([captures](archive/evidence/2026-10-14-multi-session/gate/))
-- [stage 2 live run](archive/plans/20261014-multi-session-router.md#task-23-live-stage-2-in-agterm-with-real-codex): five plain `codex` sessions in two set-up homes, edge and brain kills, daemon restart, undo, and the seven bugs found ([captures](archive/evidence/2026-10-14-multi-session/stage2/))
+- [stage 1 live run](archive/evidence/2026-10-14-multi-session/stage1/report.md): five `codex-router` sessions in two homes, the checks and the bug found ([captures](archive/evidence/2026-10-14-multi-session/stage1/))
+- [stage 2 gate](archive/evidence/2026-10-14-multi-session/gate/report.md): G1 to G5 on a test home, the Codex facts the edge and brain rely on ([captures](archive/evidence/2026-10-14-multi-session/gate/))
+- [stage 2 live run](archive/evidence/2026-10-14-multi-session/stage2/report.md): five plain `codex` sessions in two set-up homes, edge and brain kills, daemon restart, undo, and the seven bugs found ([captures](archive/evidence/2026-10-14-multi-session/stage2/))
