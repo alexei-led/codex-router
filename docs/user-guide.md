@@ -184,10 +184,11 @@ Runs the proxy and routing engine alone, without the app-server, the footer or t
 ```
 proxy listening on 127.0.0.1:53211; point codex at it with:
   -c 'model_provider=router'
-  -c 'model_providers.router={name="router", base_url="http://127.0.0.1:53211/v1", wire_api="responses", requires_openai_auth=true}'
+  -c 'model_providers.router={name="router", base_url="http://127.0.0.1:53211/v1", wire_api="responses", requires_openai_auth=true, env_http_headers={"X-Codex-Router-Token"="CODEX_ROUTER_TOKEN"}}'
+this proxy checks no token: any local user can reach it; use it for debugging only
 ```
 
-Pass those to `codex exec` in another shell. Routing, pass-through and the fit guard work as in a session. There is no footer sync and no panel. Pins and presets cannot be changed, since no control socket is opened. Logs go to stderr as JSON. Stop with Ctrl-C; the exit code is 0.
+Pass those to `codex exec` in another shell. Routing, pass-through and the fit guard work as in a session. This proxy checks no token (it prints a warning saying so), so any local user can reach it, and the `env_http_headers` entry has no effect. Use it for debugging, not on a shared host. There is no footer sync and no panel. Pins and presets cannot be changed, since no control socket is opened. Logs go to stderr as JSON. Stop with Ctrl-C; the exit code is 0.
 
 ## Exit codes
 

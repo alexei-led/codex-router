@@ -96,6 +96,7 @@ cmd/codex-router
 ## Security invariants
 
 - **Loopback only.** The proxy refuses any listen address but `127.0.0.1`. It serves `POST /v1/responses`, `GET /v1/models` and `GET /healthz`; anything else is 404. Bodies over 32 MiB get 413.
+- **Session token.** Any local user can reach a loopback port, and the port is in the app-server's argv, which `ps` shows to every user. So each session makes a random 128-bit token and puts it in the app-server's environment as `CODEX_ROUTER_TOKEN`, never in argv. The provider's `env_http_headers={"X-Codex-Router-Token"="CODEX_ROUTER_TOKEN"}` makes Codex send it on every request. `/v1/responses` and `/v1/models` without the matching header get 401 before the body is read, so nothing reaches the engine, the classifier or upstream. The header is stripped before forwarding, and the token is never logged. `/healthz` stays open. The `codex --remote` TUI uses the app-server socket and does not get the token. `codex-router proxy` runs without a token, and it prints a warning saying so.
 - **Fixed upstream.** Requests go to `https://chatgpt.com/backend-api/codex` plus the allowed path. The destination never comes from a request, header or response.
 - **Allow-list.** Two proxied paths. No generic forwarding.
 - **No redirects.** The client refuses every redirect, and the proxy also rejects 3xx statuses the client would hand back. A refused redirect's URL, which comes from upstream, is dropped from logs.

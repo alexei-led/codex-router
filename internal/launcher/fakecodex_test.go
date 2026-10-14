@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
+	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
 )
@@ -112,7 +114,9 @@ func fakeAppServer(args []string) int {
 		}
 	}
 	cwd, _ := os.Getwd()
-	writeRecord("start", map[string]any{"overrides": overrides, "cwd": cwd, "control": os.Getenv(control.EnvSocket)})
+	writeRecord("start", map[string]any{
+		"overrides": overrides, "cwd": cwd, "control": os.Getenv(control.EnvSocket), "token": os.Getenv(EnvToken),
+	})
 	if os.Getenv(envAppServerDies) != "" {
 		return exitFailed
 	}
@@ -177,13 +181,34 @@ func serveRPC(ctx context.Context, ws *websocket.Conn) {
 }
 
 func fakeRemote(addr string, args []string) int {
-	writeRecord("remote", map[string]any{"args": args})
+	writeRecord("remote", map[string]any{"args": args, "token": os.Getenv(EnvToken)})
 	if err := driveTurn(filepath.Dir(strings.TrimPrefix(addr, "unix://"))); err != nil {
 		fmt.Fprintln(os.Stderr, "fake codex:", err)
 		return exitFailed
 	}
 	code, _ := strconv.Atoi(os.Getenv(envExit))
 	return code
+}
+
+// recordedToken returns the proxy token the fake app-server was started with:
+// in real Codex the app-server makes the proxy calls, here the remote does.
+func recordedToken() string {
+	f, err := os.Open(os.Getenv(envRecord))
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = f.Close() }()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		var r record
+		var start struct {
+			Token string `json:"token"`
+		}
+		if json.Unmarshal(sc.Bytes(), &r) == nil && r.Kind == "start" && json.Unmarshal(r.Data, &start) == nil {
+			return start.Token
+		}
+	}
+	return ""
 }
 
 // driveTurn pins the next turn to low over the control socket, runs one
@@ -203,11 +228,12 @@ func driveTurn(rt string) error {
 		return err
 	}
 	base := "http://127.0.0.1:" + strings.TrimSpace(string(port)) + "/v1"
-	if err := call(http.MethodGet, base+"/models", nil); err != nil {
+	token := recordedToken()
+	if err := call(http.MethodGet, base+"/models", token, nil); err != nil {
 		return err
 	}
 	for step := 1; step <= 3; step++ {
-		if err := call(http.MethodPost, base+"/responses", stepBody(step)); err != nil {
+		if err := call(http.MethodPost, base+"/responses", token, stepBody(step)); err != nil {
 			return err
 		}
 	}
@@ -224,12 +250,13 @@ func driveTurn(rt string) error {
 	}
 }
 
-func call(method, url string, body []byte) error {
+func call(method, url, token string, body []byte) error {
 	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Authorization", fakeToken)
+	req.Header.Set(proxy.HeaderToken, token)
 	req.Header.Set(responses.HeaderTurnMetadata,
 		`{"session_id":"s1","thread_id":"`+fakeThread+`","turn_id":"turn-1","request_kind":"turn","agent_name":"/root"}`)
 	resp, err := http.DefaultClient.Do(req)
