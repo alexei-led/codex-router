@@ -60,8 +60,8 @@ flowchart LR
     r1["codex-router<br/>api · main"]:::core
     r2["codex-router<br/>api · feat/auth"]:::core
   end
-  subgraph work["home work: ~/.codex-work"]
-    r3["codex-router<br/>infra · main"]:::core
+  subgraph work["home work: ~/.codex-work, set up"]
+    b1["brain<br/>serves every session of the home"]:::core
   end
   reg[("registry<br/>one entry per router")]:::store
   panel["codex-router tui"]:::tool
@@ -69,11 +69,11 @@ flowchart LR
 
   r1 -->|"entry"| reg
   r2 -->|"entry"| reg
-  r3 -->|"entry"| reg
+  b1 -->|"entry, kind=brain"| reg
   panel -->|"list every 1 s"| reg
-  panel <-->|"control socket<br/>of each router"| r1
+  panel <-->|"control socket<br/>of each endpoint"| r1
   panel <--> r2
-  panel <--> r3
+  panel <--> b1
   hook -.->|"entries of its own home"| reg
 
   classDef core fill:#ecfdf5,stroke:#059669,color:#064e3b
@@ -330,11 +330,11 @@ sequenceDiagram
 
 ### Units and setup
 
-| Unit  | macOS (launchd agent)                                                                                                                                                     | Linux (systemd user unit)                                                                                                      |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| edge  | `com.github.alexei-led.codex-router.<home id>.edge`. `Sockets` holds the port; the job starts on the first connection and takes the socket with `launch_activate_socket`. | `codex-router-edge@<home id>.socket` holds the port; it starts `codex-router-edge@<home id>.service`, which gets `LISTEN_FDS`. |
-| brain | `com.github.alexei-led.codex-router.<home id>.brain`, `RunAtLoad` and `KeepAlive`.                                                                                        | `codex-router-brain@<home id>.service`, `Restart=always`.                                                                      |
-| logs  | `<home state dir>/logs/{edge,brain}.log`                                                                                                                                  | the journal                                                                                                                    |
+| Unit  | macOS (launchd agent)                                                                                                                                                     | Linux (systemd user unit)                                                                                                                             |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| edge  | `com.github.alexei-led.codex-router.<home id>.edge`. `Sockets` holds the port; the job starts on the first connection and takes the socket with `launch_activate_socket`. | `codex-router-edge@<home id>.socket` holds the port; it starts `codex-router-edge@<home id>.service` (`Restart=on-failure`), which gets `LISTEN_FDS`. |
+| brain | `com.github.alexei-led.codex-router.<home id>.brain`, `RunAtLoad` and `KeepAlive`.                                                                                        | `codex-router-brain@<home id>.service`, `Restart=always`.                                                                                             |
+| logs  | `<home state dir>/logs/{edge,brain}.log`                                                                                                                                  | the journal                                                                                                                                           |
 
 - **Socket activation.** The service manager owns the listening socket. A crashed or upgraded edge never frees the port, so the next connection waits in the backlog for the new edge and no other process can take the port. On macOS, `launch_activate_socket` is called through `purego`, so builds stay `CGO_ENABLED=0`. An edge started without activation (by hand) binds the stored port itself and warns.
 - **Flags.** launchd and systemd do not see the shell's env, so every unit gets `--home`, `--state-dir` and `--config` as absolute paths. The brain reads the classifier key from the env, else from the classifier's `envFile`.
@@ -451,4 +451,4 @@ A set-up home closes this for edge crashes and upgrades, because the service man
 - [multi-session plan](archive/plans/20261014-multi-session-router.md): decisions M1 to M13 for sessions, the registry, the edge and the brain
 - [stage 1 live run](archive/evidence/2026-10-14-multi-session/stage1/report.md): five `codex-router` sessions in two homes, the checks and the bug found ([captures](archive/evidence/2026-10-14-multi-session/stage1/))
 - [stage 2 gate](archive/evidence/2026-10-14-multi-session/gate/report.md): G1 to G5 on a test home, the Codex facts the edge and brain rely on ([captures](archive/evidence/2026-10-14-multi-session/gate/))
-- [stage 2 live run](archive/evidence/2026-10-14-multi-session/stage2/report.md): five plain `codex` sessions in two set-up homes, edge and brain kills, daemon restart, undo, and the seven bugs found ([captures](archive/evidence/2026-10-14-multi-session/stage2/))
+- [stage 2 live run](archive/evidence/2026-10-14-multi-session/stage2/report.md): five plain `codex` sessions in two set-up homes, edge and brain kills, daemon restart, undo, and the bugs found ([captures](archive/evidence/2026-10-14-multi-session/stage2/))

@@ -60,9 +60,9 @@ In a second pane, run `codex-router tui` for the panel. The [user guide](docs/us
 
 ## Many sessions, one panel
 
-![Router panel, Sessions tab: five sessions in two Codex homes, each row with its state, route and recent replies](docs/images/router-tui-sessions.svg)
+![Router panel, Sessions tab: five sessions in two Codex homes, one of them set up with a brain, each row with its state, route and recent replies](docs/images/router-tui-sessions.svg)
 
-- Run as many sessions as you like, in any repo or worktree and under any Codex home (`CODEX_HOME`). `codex-router tui` shows them all; `--session` locks it to one.
+- Run as many sessions as you like, in any repo or worktree and under any Codex home (`CODEX_HOME`). `codex-router tui` shows them all; `--session` locks it to one ([picture](docs/user-guide.md#panel)).
 - `codex-router setup --home ~/.codex-work` routes every plain `codex` session of that home, through a small service that launchd or systemd keeps running. Add the Codex plugin for the transcript line and the `router` skill.
 - `codex-router setup --undo` puts `config.toml` back and removes the services. See [Route a whole home](docs/user-guide.md#route-a-whole-home-setup).
 
