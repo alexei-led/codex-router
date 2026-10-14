@@ -50,8 +50,8 @@ Global flags:
 
 Arguments after the router flags (or after --) go to codex unchanged. If the
 router cannot start, it prints one line why and runs plain codex.
-tui --socket defaults to the newest running session's control socket, looked up
-again on every reconnect so the panel follows a restarted session.
+tui shows every running session of every Codex home, found in the session
+registry; --socket shows only the endpoint at that control socket.
 proxy --port defaults to the config's proxy.port (0 = any free port) and
 prints the codex -c flags that point at it.
 The classifier key comes from the env var named by the classifier's keyEnv.
@@ -204,7 +204,7 @@ func (c cli) launch(configPath string, codexArgs []string) int {
 func (c cli) tui(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("tui", flag.ContinueOnError)
 	fs.SetOutput(c.stderr)
-	socket := fs.String("socket", "", "control socket `path` (default: newest running session)")
+	socket := fs.String("socket", "", "control socket `path` (default: every running session in the registry)")
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
 	}
@@ -213,12 +213,11 @@ func (c cli) tui(ctx context.Context, args []string) int {
 	}
 	o := tui.Options{Socket: *socket}
 	if *socket == "" {
-		o.Locate = func() (string, error) { return newestSession(c.getenv) }
-		s, err := o.Locate()
+		root, err := registry.Root(c.getenv)
 		if err != nil {
 			return c.fail(err)
 		}
-		o.Socket = s
+		o.Registry = root
 	}
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -226,25 +225,6 @@ func (c cli) tui(ctx context.Context, args []string) int {
 		return c.fail(err)
 	}
 	return exitOK
-}
-
-// newestSession returns the control socket of the most recently started
-// live endpoint in the registry.
-func newestSession(getenv func(string) string) (string, error) {
-	root, err := registry.Root(getenv)
-	if err != nil {
-		return "", err
-	}
-	eps, _, err := registry.List(root)
-	if err != nil {
-		return "", err
-	}
-	for _, ep := range slices.Backward(eps) {
-		if registry.Alive(ep) {
-			return ep.Socket, nil
-		}
-	}
-	return "", fmt.Errorf("no running codex-router session in %s", root)
 }
 
 func (c cli) proxy(ctx context.Context, configPath string, args []string) int {

@@ -17,8 +17,9 @@ import (
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
-	"github.com/alexei-led/codex-router/internal/control"
+	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/policy"
+	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/route"
 )
 
@@ -194,52 +195,37 @@ func TestPlainHasNoEscapesAndStyledDoes(t *testing.T) {
 	}
 }
 
+var testHome = home.Home{ID: "h1", Path: "/u/.codex", Name: "default"}
+
 const testSession = "h1/th"
 
-type fakeConn struct {
-	updates    chan route.Snapshot
-	sessions   chan []route.SessionInfo
-	sent       []route.Command
-	subscribed []string
-	err        error
-	closed     bool
-}
-
-func newFakeConn() *fakeConn {
-	return &fakeConn{updates: make(chan route.Snapshot, 4), sessions: make(chan []route.SessionInfo, 1)}
-}
-
-func (f *fakeConn) Snapshots() <-chan route.Snapshot     { return f.updates }
-func (f *fakeConn) Sessions() <-chan []route.SessionInfo { return f.sessions }
-func (f *fakeConn) Subscribe(s string) error             { f.subscribed = append(f.subscribed, s); return f.err }
-func (f *fakeConn) Send(c route.Command) error           { f.sent = append(f.sent, c); return f.err }
-func (f *fakeConn) Close() error                         { f.closed = true; return nil }
-
-// listed feeds a sessions list and runs the commands it starts.
-func listed(m *model, f *fakeConn, ids ...string) {
-	items := make([]route.SessionInfo, len(ids))
-	for i, id := range ids {
-		items[i] = route.SessionInfo{ID: id}
-	}
-	f.sessions <- nil // the next-list wait returns at once instead of blocking
-	_, cmd := m.Update(sessionsMsg{items, m.gen})
-	if batch, ok := cmd().(tea.BatchMsg); ok {
-		for _, c := range batch {
-			if msg, ok := c().(sentMsg); ok {
-				m.Update(msg)
-			}
-		}
-	}
-}
-
+// connected returns a panel focused on testSession whose snapshot is snap,
+// and that session's connection.
 func connected(t *testing.T, snap route.Snapshot) (*model, *fakeConn) {
 	t.Helper()
-	f := newFakeConn()
-	m := newModel("sock", func(string) (conn, error) { return f, nil })
-	m.Update(dialedMsg{c: f})
-	listed(m, f, testSession)
-	m.Update(snapMsg(snap))
+	tf := newTestFleet(t)
+	f := tf.add("e1", registry.KindSession, testHome)
+	tf.poll()
+	f.sessions <- []route.SessionInfo{{ID: testSession, Home: testHome.ID, ThreadID: "th", Mode: snap.Mode}}
+	tf.settle(func(fleetState) bool { return slices.Equal(f.subs(), []string{testSession}) })
+	f.updates <- snap
+	tf.settle(func(st fleetState) bool { return st.snap != nil })
+	m := newModel(tf.fleet)
+	m.Update(fleetMsg{})
 	return m, f
+}
+
+// refresh waits until the fleet's state satisfies ok and hands it to m.
+func refresh(t *testing.T, m *model, ok func(fleetState) bool) {
+	t.Helper()
+	deadline := time.After(3 * time.Second)
+	for m.Update(fleetMsg{}); !ok(m.st); m.Update(fleetMsg{}) {
+		select {
+		case <-m.f.changed:
+		case <-deadline:
+			t.Fatalf("state did not settle: %+v", m.st)
+		}
+	}
 }
 
 // run executes a command and feeds the resulting message back into the model.
@@ -277,11 +263,13 @@ func TestKeysSendCommands(t *testing.T) {
 		{"pin from none", func(*route.Snapshot) {}, TabNow, "p", route.Command{Op: route.OpPin, Session: testSession, Tier: config.TierHigh}},
 		{"pin advances", func(s *route.Snapshot) { s.Pin = &low }, TabNow, "p", route.Command{Op: route.OpPin, Session: testSession, Tier: config.TierMicro}},
 		{"pin wraps to unpin", func(s *route.Snapshot) { s.Pin = &micro }, TabNow, "p", route.Command{Op: route.OpUnpin, Session: testSession}},
-		{"space pauses", func(*route.Snapshot) {}, TabNow, " ", route.Command{Op: route.OpPause}},
-		{"space resumes paused", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabNow, " ", route.Command{Op: route.OpResume}},
-		{"space resumes manual", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabNow, " ", route.Command{Op: route.OpResume}},
-		{"preset cycles on policy", func(*route.Snapshot) {}, TabPolicy, "c", route.Command{Op: route.OpPreset, Preset: config.PresetQuality}},
-		{"preset wraps", func(s *route.Snapshot) { s.Preset = config.PresetQuality }, TabPolicy, "c", route.Command{Op: route.OpPreset, Preset: config.PresetThrifty}},
+		{"space pauses the session", func(*route.Snapshot) {}, TabNow, " ", route.Command{Op: route.OpPause, Session: testSession}},
+		{"space resumes paused", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabNow, " ", route.Command{Op: route.OpResume, Session: testSession}},
+		{"space resumes manual", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabNow, " ", route.Command{Op: route.OpResume, Session: testSession}},
+		{"P pauses the home", func(*route.Snapshot) {}, TabNow, "P", route.Command{Op: route.OpPause, Scope: route.ScopeHome}},
+		{"P resumes a paused home", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabNow, "P", route.Command{Op: route.OpResume, Scope: route.ScopeHome}},
+		{"preset cycles on policy", func(*route.Snapshot) {}, TabPolicy, "c", route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetQuality}},
+		{"preset wraps", func(s *route.Snapshot) { s.Preset = config.PresetQuality }, TabPolicy, "c", route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetThrifty}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -290,31 +278,18 @@ func TestKeysSendCommands(t *testing.T) {
 			m, f := connected(t, s)
 			m.tab = tt.tab
 			run(m, key(m, tt.key))
-			if len(f.sent) != 1 || f.sent[0] != tt.want {
-				t.Errorf("sent %+v, want [%+v]", f.sent, tt.want)
+			if got := f.sentCmds(); len(got) != 1 || got[0] != tt.want {
+				t.Errorf("sent %+v, want [%+v]", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestFollowsTheMostRecentSession(t *testing.T) {
-	m, f := connected(t, fixture())
-	listed(m, f, testSession, "h1/older")
-	listed(m, f, "h1/newer", testSession)
-	if want := []string{testSession, "h1/newer"}; !slices.Equal(f.subscribed, want) {
-		t.Fatalf("subscribed %v, want %v", f.subscribed, want)
-	}
-	listed(m, f)
-	if len(f.subscribed) != 2 {
-		t.Errorf("an empty list changed the subscription: %v", f.subscribed)
 	}
 }
 
 func TestPresetKeyIgnoredOutsidePolicy(t *testing.T) {
 	m, f := connected(t, fixture())
 	run(m, key(m, "c"))
-	if len(f.sent) != 0 {
-		t.Errorf("sent %+v", f.sent)
+	if got := f.sentCmds(); len(got) != 0 {
+		t.Errorf("sent %+v", got)
 	}
 }
 
@@ -334,122 +309,51 @@ func TestTabKeys(t *testing.T) {
 	}
 }
 
-func TestQuitClosesConnection(t *testing.T) {
-	m, f := connected(t, fixture())
-	if cmd := key(m, "q"); cmd == nil {
+func TestQuitKey(t *testing.T) {
+	m, _ := connected(t, fixture())
+	cmd := key(m, "q")
+	if cmd == nil {
 		t.Fatal("no quit command")
 	}
-	if !f.closed {
-		t.Error("connection left open")
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Error("q does not quit")
 	}
 }
 
-func TestDisconnectedHeaderAndRedial(t *testing.T) {
+func TestDisconnectedHeaderBlocksCommands(t *testing.T) {
 	m, f := connected(t, fixture())
 	if strings.Contains(m.View(), "disconnected") {
 		t.Fatal("connected view says disconnected")
 	}
-	_, cmd := m.Update(closedMsg{gen: m.gen})
-	if cmd == nil || !m.disconnected {
-		t.Fatal("loss not detected")
-	}
+	f.lose()
+	refresh(t, m, func(st fleetState) bool { return st.disconnected })
 	view := m.View()
 	for _, w := range []string{"✕ disconnected", "retrying", "last snapshot 18:42:00"} {
 		if !strings.Contains(view, w) {
 			t.Errorf("view missing %q", w)
 		}
 	}
-	if k := key(m, "p"); k != nil || !strings.Contains(m.View(), "command not sent") || len(f.sent) != 0 {
+	if k := key(m, "p"); k != nil || !strings.Contains(m.View(), "command not sent") || len(f.sentCmds()) != 0 {
 		t.Error("command went out while disconnected")
 	}
-
-	dials := 0
-	g := newFakeConn()
-	m.dial = func(string) (conn, error) {
-		dials++
-		if dials < 3 {
-			return nil, errors.New("refused")
-		}
-		return g, nil
-	}
-	for range 3 {
-		msg := m.dialCmd()()
-		m.Update(msg)
-	}
-	if m.c != conn(g) {
-		t.Fatal("did not reconnect")
-	}
-	m.Update(snapMsg(fixture()))
-	if strings.Contains(m.View(), "disconnected") {
-		t.Error("still disconnected after snapshot")
-	}
 }
 
-func TestRedialFollowsLocatedSocket(t *testing.T) {
-	sessions := []string{"old/control.sock", "new/control.sock"}
-	var dialed []string
-	dial := dialer(func() (string, error) {
-		s := sessions[0]
-		sessions = sessions[1:]
-		return s, nil
-	}, func(path string) (conn, error) {
-		dialed = append(dialed, path)
-		return newFakeConn(), nil
-	})
-	for range 2 {
-		if _, err := dial("old/control.sock"); err != nil {
-			t.Fatal(err)
-		}
+func TestPanelWithoutEndpointsIsDisconnected(t *testing.T) {
+	m := newModel(newTestFleet(t).fleet)
+	m.Update(fleetMsg{})
+	if !strings.Contains(m.View(), "✕ disconnected") {
+		t.Errorf("view:\n%s", m.View())
 	}
-	if want := []string{"old/control.sock", "new/control.sock"}; !slices.Equal(dialed, want) {
-		t.Errorf("dialed %v, want %v", dialed, want)
-	}
-}
-
-func TestRedialWithoutLiveSessionFails(t *testing.T) {
-	dial := dialer(func() (string, error) { return "", errors.New("no running session") },
-		func(string) (conn, error) { t.Fatal("dialed without a socket"); return nil, nil })
-	if _, err := dial("old/control.sock"); err == nil {
-		t.Error("want an error")
-	}
-}
-
-func TestHeartbeatDetectsLostSocket(t *testing.T) {
-	m, f := connected(t, fixture())
-	f.err = control.ErrDisconnected
-	_, cmd := m.Update(beatMsg{gen: m.gen})
-	if cmd == nil {
-		t.Fatal("no heartbeat command")
-	}
-	_, cmd = m.Update(sentMsg{f.Send(route.Command{Op: route.OpSnapshot}), m.gen})
-	if !m.disconnected || !f.closed {
-		t.Fatalf("lost socket: disconnected %v, closed %v", m.disconnected, f.closed)
-	}
-	if cmd == nil {
-		t.Fatal("no redial scheduled")
-	}
-	if _, ok := cmd().(redialMsg); !ok {
-		t.Error("lost socket does not lead to a redial")
-	}
-}
-
-func TestStaleCloseKeepsNewConnection(t *testing.T) {
-	m, _ := connected(t, fixture())
-	oldGen := m.gen
-	m.Update(closedMsg{gen: oldGen})
-	g := newFakeConn()
-	m.Update(dialedMsg{c: g})
-	m.Update(closedMsg{gen: oldGen})
-	if m.c != conn(g) || g.closed {
-		t.Error("close of the old connection dropped the new one")
+	if k := key(m, "P"); k != nil || !strings.Contains(m.View(), "command not sent") {
+		t.Error("home command without a focus")
 	}
 }
 
 func TestRejectedCommandShowsNotice(t *testing.T) {
 	m, f := connected(t, fixture())
-	f.err = errors.New("unknown tier")
+	f.setErr(errors.New("unknown tier"))
 	run(m, key(m, "p"))
-	if m.disconnected || !strings.Contains(m.View(), "command failed: unknown tier") {
+	if m.st.disconnected || !strings.Contains(m.View(), "command failed: unknown tier") {
 		t.Errorf("view:\n%s", m.View())
 	}
 }
@@ -459,23 +363,6 @@ func TestWindowSizeSetsWidth(t *testing.T) {
 	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	if m.width != 120 {
 		t.Errorf("width = %d", m.width)
-	}
-}
-
-func TestStaleHeartbeatAndErrorsAreIgnoredAfterReconnect(t *testing.T) {
-	m, _ := connected(t, fixture())
-	oldGen := m.gen
-	m.Update(closedMsg{gen: oldGen})
-	g := newFakeConn()
-	m.Update(dialedMsg{c: g})
-
-	if _, cmd := m.Update(beatMsg{gen: oldGen}); cmd != nil {
-		t.Error("stale heartbeat chain kept running")
-	}
-	m.Update(sentMsg{err: control.ErrDisconnected, gen: oldGen})
-	m.Update(snapMsg(fixture()))
-	if m.disconnected {
-		t.Error("stale error from old connection marked new one disconnected")
 	}
 }
 

@@ -13,13 +13,12 @@ import (
 
 const (
 	heartbeat    = 2 * time.Second
-	redialMin    = 250 * time.Millisecond
-	redialMax    = 2 * time.Second
 	defaultWidth = 80
 )
 
 // conn is the part of control.Client the panel uses.
 type conn interface {
+	Hello() control.Hello
 	Snapshots() <-chan route.Snapshot
 	Sessions() <-chan []route.SessionInfo
 	Subscribe(session string) error
@@ -28,175 +27,63 @@ type conn interface {
 }
 
 type (
-	dialedMsg struct {
-		c   conn
-		err error
-	}
-	redialMsg   struct{}
-	snapMsg     route.Snapshot
-	sessionsMsg struct {
-		items []route.SessionInfo
-		gen   int
-	}
-	closedMsg struct{ gen int }
-	beatMsg   struct{ gen int }
-	sentMsg   struct {
-		err error
-		gen int
-	}
+	fleetMsg struct{}
+	beatMsg  struct{}
+	sentMsg  struct{ err error }
 )
 
 type model struct {
-	socket       string
-	dial         func(string) (conn, error)
-	c            conn
-	session      string // subscribed session id
-	snap         route.Snapshot
-	disconnected bool
-	tab          Tab
-	width        int
-	notice       string
-	backoff      time.Duration
-	gen          int
+	f      *fleet
+	st     fleetState
+	tab    Tab
+	width  int
+	notice string
 }
 
-func newModel(socket string, dial func(string) (conn, error)) *model {
-	return &model{socket: socket, dial: dial, tab: TabNow, width: defaultWidth, disconnected: true, backoff: redialMin}
+func newModel(f *fleet) *model {
+	return &model{f: f, st: fleetState{disconnected: true}, tab: TabNow, width: defaultWidth}
 }
 
-func (m *model) Init() tea.Cmd { return m.dialCmd() }
+func (m *model) Init() tea.Cmd { return tea.Batch(waitFleetCmd(m.f), beatCmd()) }
 
-func (m *model) dialCmd() tea.Cmd {
+func waitFleetCmd(f *fleet) tea.Cmd {
 	return func() tea.Msg {
-		c, err := m.dial(m.socket)
-		return dialedMsg{c, err}
+		<-f.changed
+		return fleetMsg{}
 	}
 }
 
-func waitCmd(c conn, gen int) tea.Cmd {
-	return func() tea.Msg {
-		s, ok := <-c.Snapshots()
-		if !ok {
-			return closedMsg{gen}
-		}
-		return snapMsg(s)
-	}
-}
-
-func waitSessionsCmd(c conn, gen int) tea.Cmd {
-	return func() tea.Msg {
-		items, ok := <-c.Sessions()
-		if !ok {
-			return closedMsg{gen}
-		}
-		return sessionsMsg{items, gen}
-	}
-}
-
-func beatCmd(gen int) tea.Cmd {
-	return tea.Tick(heartbeat, func(time.Time) tea.Msg { return beatMsg{gen} })
-}
-
-func sendCmd(c conn, gen int, cmd route.Command) tea.Cmd {
-	return func() tea.Msg { return sentMsg{c.Send(cmd), gen} }
+func beatCmd() tea.Cmd {
+	return tea.Tick(heartbeat, func(time.Time) tea.Msg { return beatMsg{} })
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-	case dialedMsg:
-		return m, m.dialed(msg)
-	case redialMsg:
-		return m, m.dialCmd()
-	case snapMsg:
-		if m.c == nil {
-			return m, nil
-		}
-		m.snap, m.disconnected, m.notice = route.Snapshot(msg), false, ""
-		return m, waitCmd(m.c, m.gen)
-	case sessionsMsg:
-		if m.c == nil || msg.gen != m.gen {
-			return m, nil
-		}
-		return m, tea.Batch(waitSessionsCmd(m.c, m.gen), m.follow(msg.items))
-	case closedMsg:
-		if msg.gen != m.gen {
-			return m, nil
-		}
-		return m, m.lost()
+	case fleetMsg:
+		m.st = m.f.state()
+		return m, waitFleetCmd(m.f)
 	case beatMsg:
-		if m.c == nil || msg.gen != m.gen {
-			return m, nil
-		}
-		return m, tea.Batch(sendCmd(m.c, m.gen, route.Command{Op: route.OpSnapshot}), beatCmd(m.gen))
+		f := m.f
+		return m, tea.Batch(func() tea.Msg { f.heartbeat(); return nil }, beatCmd())
 	case sentMsg:
-		return m, m.sent(msg)
+		m.notice = ""
+		switch {
+		case errors.Is(msg.err, errNotConnected):
+			m.notice = msg.err.Error()
+		case msg.err != nil:
+			m.notice = "command failed: " + msg.err.Error()
+		}
 	case tea.KeyMsg:
 		return m, m.key(msg)
 	}
 	return m, nil
 }
 
-func (m *model) dialed(msg dialedMsg) tea.Cmd {
-	if msg.err != nil {
-		m.disconnected = true
-		wait := m.backoff
-		m.backoff = min(m.backoff*2, redialMax)
-		return tea.Tick(wait, func(time.Time) tea.Msg { return redialMsg{} })
-	}
-	m.c, m.backoff, m.session = msg.c, redialMin, ""
-	m.gen++
-	return tea.Batch(waitCmd(m.c, m.gen), waitSessionsCmd(m.c, m.gen), beatCmd(m.gen),
-		sendCmd(m.c, m.gen, route.Command{Op: route.OpSnapshot}))
-}
-
-// follow subscribes to the most recently active session, the first in the
-// list: the panel shows one session.
-func (m *model) follow(items []route.SessionInfo) tea.Cmd {
-	if len(items) == 0 || items[0].ID == m.session {
-		return nil
-	}
-	c, gen, session := m.c, m.gen, items[0].ID
-	m.session = session
-	return func() tea.Msg { return sentMsg{c.Subscribe(session), gen} }
-}
-
-// lost drops the connection and redials through m.dial, which may locate a
-// different socket. The control client would only redial its own path.
-func (m *model) lost() tea.Cmd {
-	m.disconnected = true
-	if m.c != nil {
-		_ = m.c.Close()
-	}
-	m.c = nil
-	m.gen++
-	return tea.Tick(m.backoff, func(time.Time) tea.Msg { return redialMsg{} })
-}
-
-func (m *model) sent(msg sentMsg) tea.Cmd {
-	err := msg.err
-	if msg.gen != m.gen {
-		return nil
-	}
-	switch {
-	case errors.Is(err, control.ErrDisconnected):
-		return m.lost()
-	case err != nil:
-		m.notice = "command failed: " + err.Error()
-	default:
-		m.disconnected = false
-		m.notice = ""
-	}
-	return nil
-}
-
 func (m *model) key(k tea.KeyMsg) tea.Cmd {
 	switch s := k.String(); s {
 	case "q", "ctrl+c":
-		if m.c != nil {
-			_ = m.c.Close()
-		}
 		return tea.Quit
 	case "1", "2", "3", "4", "5":
 		m.tab = Tabs[s[0]-'1']
@@ -205,12 +92,14 @@ func (m *model) key(k tea.KeyMsg) tea.Cmd {
 	case "shift+tab":
 		m.tab = Tabs[(m.tabIndex()+len(Tabs)-1)%len(Tabs)]
 	case "p":
-		return m.command(pinCycle(m.session, m.snap.Pin))
+		return m.command(pinCycle(m.st.focus, m.snap().Pin))
 	case " ":
-		return m.command(toggleCommand(m.snap.Mode))
+		return m.command(toggleCommand(m.st.focus, m.snap().Mode))
+	case "P":
+		return m.homeCommand(m.homeToggle())
 	case "c":
 		if m.tab == TabPolicy {
-			return m.command(route.Command{Op: route.OpPreset, Preset: nextPreset(m.snap.Preset)})
+			return m.homeCommand(route.Command{Op: route.OpPreset, Preset: nextPreset(m.snap().Preset)})
 		}
 	}
 	return nil
@@ -225,12 +114,48 @@ func (m *model) tabIndex() int {
 	return 0
 }
 
+// snap is the focused session's snapshot, empty until one arrives.
+func (m *model) snap() route.Snapshot {
+	if m.st.snap == nil {
+		return route.Snapshot{}
+	}
+	return *m.st.snap
+}
+
+// command sends a command for the focused session.
 func (m *model) command(cmd route.Command) tea.Cmd {
-	if m.c == nil || m.disconnected {
-		m.notice = "disconnected: command not sent"
+	if m.st.focus == "" || m.st.disconnected {
+		m.notice = errNotConnected.Error()
 		return nil
 	}
-	return sendCmd(m.c, m.gen, cmd)
+	f := m.f
+	return func() tea.Msg { return sentMsg{f.send(cmd)} }
+}
+
+// homeCommand sends cmd to every endpoint of the focused session's home.
+func (m *model) homeCommand(cmd route.Command) tea.Cmd {
+	s, ok := m.st.focused()
+	if !ok {
+		m.notice = errNotConnected.Error()
+		return nil
+	}
+	f, h := m.f, s.Home
+	return func() tea.Msg { return sentMsg{f.sendHome(h, cmd)} }
+}
+
+// homeToggle pauses the focused home unless every session of it is already
+// paused, then it resumes. The sessions list carries no home pause flag, so
+// a home whose sessions are all paused one by one gets a resume that keeps
+// those session pauses; space resumes each.
+func (m *model) homeToggle() route.Command {
+	s, _ := m.st.focused()
+	h, _ := m.st.homeOf(s.Home)
+	for _, x := range h.sessions {
+		if x.Mode != route.ModePaused {
+			return route.Command{Op: route.OpPause}
+		}
+	}
+	return route.Command{Op: route.OpResume}
 }
 
 // pinCycle walks session's pin through none, high, medium, low, micro, none.
@@ -246,11 +171,12 @@ func pinCycle(session string, cur *config.Tier) route.Command {
 	return route.Command{Op: route.OpUnpin, Session: session}
 }
 
-func toggleCommand(mode route.Mode) route.Command {
+// toggleCommand pauses session, or resumes it when paused or manual.
+func toggleCommand(session string, mode route.Mode) route.Command {
 	if mode == route.ModeOn || mode == "" {
-		return route.Command{Op: route.OpPause}
+		return route.Command{Op: route.OpPause, Session: session}
 	}
-	return route.Command{Op: route.OpResume}
+	return route.Command{Op: route.OpResume, Session: session}
 }
 
 func nextPreset(cur config.Preset) config.Preset {
@@ -263,5 +189,5 @@ func nextPreset(cur config.Preset) config.Preset {
 }
 
 func (m *model) View() string {
-	return render(view{snap: m.snap, tab: m.tab, width: m.width, disconnected: m.disconnected, notice: m.notice, styled: true})
+	return render(view{snap: m.snap(), tab: m.tab, width: m.width, disconnected: m.st.disconnected, notice: m.notice, styled: true})
 }
