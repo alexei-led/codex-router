@@ -60,9 +60,11 @@ func (s *Server) handleResponses(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = resp.Body.Close() }()
 
 	var tee func([]byte)
+	completed := false
 	if resp.StatusCode/100 == 2 {
 		sse := &sseSplitter{onEvent: func(ev []byte) {
 			if u, served, ok := responses.UsageFromSSE(ev); ok {
+				completed = true
 				s.observe(meta, served, u, resp.StatusCode)
 			}
 		}}
@@ -70,7 +72,7 @@ func (s *Server) handleResponses(w http.ResponseWriter, r *http.Request) {
 	} else {
 		s.observe(meta, "", responses.Usage{}, resp.StatusCode)
 	}
-	s.relay(w, r, resp, resp.Body, tee, ids)
+	s.relay(w, r, resp, resp.Body, tee, ids, func() bool { return completed })
 	s.log.Debug("responses", append(ids, "status", resp.StatusCode, "bytes", len(body), "ms", time.Since(start).Milliseconds())...)
 }
 
@@ -94,7 +96,7 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 		}
 		body = io.MultiReader(bytes.NewReader(head), resp.Body)
 	}
-	s.relay(w, r, resp, body, nil, nil)
+	s.relay(w, r, resp, body, nil, nil, nil)
 	s.log.Debug("models", "status", resp.StatusCode)
 }
 
@@ -218,8 +220,10 @@ func cause(err error) error {
 // headers) and streams body with a flush per chunk. tee sees each chunk just
 // before the client does, so usage is observed before Codex can send its
 // next step. An upstream failure mid-stream aborts the client
-// connection so Codex sees a broken stream, not a clean end.
-func (s *Server) relay(w http.ResponseWriter, r *http.Request, resp *http.Response, body io.Reader, tee func([]byte), ids []any) {
+// connection so Codex sees a broken stream, not a clean end. Codex closes the
+// connection right after response.completed, so a client close once completed
+// reports true is a normal end, not an abort.
+func (s *Server) relay(w http.ResponseWriter, r *http.Request, resp *http.Response, body io.Reader, tee func([]byte), ids []any, completed func() bool) {
 	h := w.Header()
 	for k, v := range withoutHop(resp.Header) {
 		h[k] = v
@@ -236,6 +240,10 @@ func (s *Server) relay(w http.ResponseWriter, r *http.Request, resp *http.Respon
 	}
 	if r.Context().Err() != nil {
 		stage = stageClient
+	}
+	if stage == stageClient && completed != nil && completed() {
+		s.log.Debug("stream-closed-after-completed", append(ids, "path", r.URL.Path)...)
+		return
 	}
 	s.log.Warn("stream-aborted", append(ids, "path", r.URL.Path, "stage", stage)...)
 	if stage == stageUpstream {
