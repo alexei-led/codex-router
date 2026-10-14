@@ -10,9 +10,11 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -33,10 +35,27 @@ const (
 	envResumeFail    = "CODEX_ROUTER_FAKE_RESUME_FAIL"
 	envAppServerDies = "CODEX_ROUTER_FAKE_APPSERVER_DIES"
 
-	fakeThread = "thread-1"
-	fakeToken  = "Bearer SECRET-TOKEN-123"
-	exitFailed = 3
+	fakeThread     = "thread-1"
+	fakeToken      = "Bearer SECRET-TOKEN-123"
+	fakeSignalsArg = "signals"
+	exitFailed     = 3
+	exitOnTerm     = 9
 )
+
+// fakeSignals prints "ready", then the name of every signal it gets, and
+// exits with exitOnTerm on SIGTERM.
+func fakeSignals() int {
+	sigs := make(chan os.Signal, 4)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGTERM)
+	fmt.Println("ready")
+	for sig := range sigs {
+		fmt.Println(sig)
+		if sig == syscall.SIGTERM {
+			return exitOnTerm
+		}
+	}
+	return exitFailed
+}
 
 var pinnedRoute = config.Route{Model: "gpt-6-luna", Effort: config.EffortMedium}
 
@@ -72,6 +91,8 @@ func fakeCodex(args []string) int {
 		return fakeAppServer(args[1:])
 	case len(args) > 1 && args[0] == "--remote":
 		return fakeRemote(args[1], args[2:])
+	case len(args) > 0 && args[0] == fakeSignalsArg:
+		return fakeSignals()
 	}
 	fmt.Fprintln(os.Stderr, "fake codex: unexpected args", args)
 	return exitFailed

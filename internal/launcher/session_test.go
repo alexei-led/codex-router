@@ -1,0 +1,226 @@
+package launcher
+
+import (
+	"bufio"
+	"context"
+	"log/slog"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"testing"
+	"time"
+
+	"github.com/alexei-led/codex-router/internal/config"
+)
+
+func TestWaitCodexForwardsTermAndHupAndDropsIntAndQuit(t *testing.T) {
+	cases := []struct {
+		name string
+		end  func(sigs chan<- os.Signal, cancel context.CancelFunc)
+	}{
+		{"SIGTERM is forwarded", func(sigs chan<- os.Signal, _ context.CancelFunc) { sigs <- syscall.SIGTERM }},
+		{"context end sends SIGTERM", func(_ chan<- os.Signal, cancel context.CancelFunc) { cancel() }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			exe, err := os.Executable()
+			if err != nil {
+				t.Fatal(err)
+			}
+			r, w, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = r.Close() }()
+			cmd := exec.Command(exe, fakeSignalsArg)
+			cmd.Env = append(os.Environ(), envFake+"=1")
+			cmd.Stdout = w
+			if err := cmd.Start(); err != nil {
+				t.Fatal(err)
+			}
+			_ = w.Close()
+			lines := make(chan string)
+			go func() {
+				defer close(lines)
+				sc := bufio.NewScanner(r)
+				for sc.Scan() {
+					lines <- sc.Text()
+				}
+			}()
+			var got []string
+			expect := func(want string) {
+				t.Helper()
+				select {
+				case line := <-lines:
+					got = append(got, line)
+					if line != want {
+						t.Fatalf("child printed %q, want %q (so far %q)", line, want, got)
+					}
+				case <-time.After(5 * time.Second):
+					t.Fatalf("child never printed %q (so far %q)", want, got)
+				}
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			sigs := make(chan os.Signal)
+			s := &session{log: slog.New(slog.DiscardHandler), codex: cmd}
+			code := make(chan int, 1)
+			go func() { code <- s.waitCodex(ctx, sigs) }()
+
+			expect("ready")
+			sigs <- syscall.SIGINT
+			sigs <- syscall.SIGQUIT
+			sigs <- syscall.SIGHUP
+			expect("hangup")
+			tc.end(sigs, cancel)
+			expect("terminated")
+
+			select {
+			case c := <-code:
+				if c != exitOnTerm {
+					t.Errorf("exit code = %d, want %d", c, exitOnTerm)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("waitCodex did not return")
+			}
+			for line := range lines {
+				t.Errorf("child also printed %q", line)
+			}
+		})
+	}
+}
+
+func TestWaitCodexReportsSignalDeath(t *testing.T) {
+	cmd := exec.Command("sleep", "30")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	s := &session{log: slog.New(slog.DiscardHandler), codex: cmd}
+	_ = cmd.Process.Signal(syscall.SIGKILL)
+	if code := s.waitCodex(context.Background(), nil); code != 128+int(syscall.SIGKILL) {
+		t.Errorf("exit code = %d, want %d", code, 128+int(syscall.SIGKILL))
+	}
+}
+
+func TestNewClassifier(t *testing.T) {
+	withAPI := func(api string) config.Config {
+		cfg := config.Default()
+		cc := cfg.Classifiers[cfg.Classifier]
+		cc.API = api
+		cfg.Classifiers[cfg.Classifier] = cc
+		return cfg
+	}
+	unknown := config.Default()
+	unknown.Classifier = "missing"
+	cases := []struct {
+		name       string
+		cfg        config.Config
+		env        map[string]string
+		wantOn     bool
+		wantReason string
+	}{
+		{"key set", config.Default(), map[string]string{"TYPESAFE_API_KEY": "k"}, true, ""},
+		{"key missing", config.Default(), nil, false, "TYPESAFE_API_KEY is not set"},
+		{"no key needed", func() config.Config { c := config.Default(); c.Classifier = "ollama"; return c }(), nil, true, ""},
+		{"not configured", unknown, nil, false, "no classifier configured"},
+		{"unknown api", withAPI("bogus"), map[string]string{"TYPESAFE_API_KEY": "k"}, false, "unknown api bogus"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			asker, reason := newClassifier(tc.cfg, func(k string) string { return tc.env[k] })
+			if on := asker != nil; on != tc.wantOn || reason != tc.wantReason {
+				t.Errorf("newClassifier = on %v, %q; want on %v, %q", on, reason, tc.wantOn, tc.wantReason)
+			}
+		})
+	}
+}
+
+func TestRunLogsClassifierDisabledAndStillPins(t *testing.T) {
+	up := newUpstream(t)
+	h := newHarness(t)
+	h.opts.Upstream = up.URL + "/backend-api/codex"
+
+	if code := h.run(t); code != 7 {
+		t.Fatalf("exit code = %d, want 7; stderr: %s", code, h.stderr.String())
+	}
+	if logs := h.logs.String(); !strings.Contains(logs, `"msg":"classifier-disabled"`) ||
+		!strings.Contains(logs, "CODEX_ROUTER_TEST_UNSET_KEY is not set") {
+		t.Errorf("log does not say the classifier is off: %s", logs)
+	}
+	if updates := h.recorded(t, "update"); len(updates) != 1 || !strings.Contains(string(updates[0]), `"model":"gpt-6-luna"`) {
+		t.Errorf("settings writes = %s, want the pinned route", updates)
+	}
+}
+
+func TestMakeRuntimeDirCreatesPrivateDirs(t *testing.T) {
+	base := filepath.Join(shortTempDir(t), "rt")
+	dir, id, err := makeRuntimeDir(base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dir != filepath.Join(base, id) || len(id) != 2*runtimeIDBytes {
+		t.Errorf("dir = %q, id = %q", dir, id)
+	}
+	for _, p := range []string{base, dir} {
+		fi, err := os.Stat(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if fi.Mode().Perm() != 0o700 {
+			t.Errorf("%s mode = %o, want 700", p, fi.Mode().Perm())
+		}
+	}
+	other, _, err := makeRuntimeDir(base, nil)
+	if err != nil || other == dir {
+		t.Errorf("second session dir = %q, %v; want a fresh one", other, err)
+	}
+}
+
+func TestMakeRuntimeDirRejectsUnsafeBase(t *testing.T) {
+	cases := []struct {
+		name    string
+		prepare func(t *testing.T, base string)
+		want    string
+	}{
+		{"group readable", func(t *testing.T, base string) { mkdirMode(t, base, 0o750) }, "must not be accessible"},
+		{"world writable", func(t *testing.T, base string) { mkdirMode(t, base, 0o777) }, "must not be accessible"},
+		{"symlink", func(t *testing.T, base string) {
+			target := base + "-target"
+			mkdirMode(t, target, 0o700)
+			if err := os.Symlink(target, base); err != nil {
+				t.Fatal(err)
+			}
+		}, "is not a directory"},
+		{"regular file", func(t *testing.T, base string) {
+			if err := os.WriteFile(base, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}, "runtime dir"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			base := filepath.Join(shortTempDir(t), "rt")
+			tc.prepare(t, base)
+			_, _, err := makeRuntimeDir(base, nil)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("makeRuntimeDir err = %v, want it to contain %q", err, tc.want)
+			}
+			if entries, _ := os.ReadDir(base); len(entries) != 0 {
+				t.Errorf("created %v under an unsafe base", entries)
+			}
+		})
+	}
+}
+
+func mkdirMode(t *testing.T, dir string, mode os.FileMode) {
+	t.Helper()
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, mode); err != nil {
+		t.Fatal(err)
+	}
+}
