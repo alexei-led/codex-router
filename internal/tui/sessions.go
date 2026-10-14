@@ -63,14 +63,6 @@ type FleetView struct {
 	Locked   bool // a panel run with --session: no top bar, no Sessions tab
 }
 
-// RenderFleet draws the all-sessions panel with ANSI colors, top bar
-// included, for the docs images. homes and sessions come in display order,
-// each session on its own endpoint as stage 1 launchers run them; s is the
-// focused session's snapshot. Output depends only on its arguments.
-func RenderFleet(homes []home.Home, sessions []route.SessionInfo, focus string, s route.Snapshot, tab Tab, width int) string {
-	return RenderFleetView(FleetView{Homes: homes, Sessions: sessions, Focus: focus, Snap: s, Tab: tab, Width: width})
-}
-
 // RenderFleetView draws v with ANSI colors. Output depends only on v.
 func RenderFleetView(v FleetView) string {
 	st := fleetState{focus: v.Focus, snap: &v.Snap}
