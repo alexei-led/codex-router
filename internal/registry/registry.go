@@ -192,7 +192,11 @@ func readEntry(p string, typ os.FileMode) (Endpoint, error) {
 }
 
 // Prune removes the entries isLive rejects and returns them. Skipped files
-// stay: a file that does not parse is not proof its endpoint is gone.
+// stay: a file that does not parse is not proof its endpoint is gone. An
+// entry rewritten since List (a restart reusing the id) stays: Prune re-reads
+// it and removes it only if its pid and start time are unchanged. A write
+// between that read and the remove can still lose; the entry then comes back
+// with the endpoint's next registration.
 func Prune(root string, isLive func(Endpoint) bool) ([]Endpoint, error) {
 	eps, _, err := List(root)
 	if err != nil {
@@ -201,7 +205,7 @@ func Prune(root string, isLive func(Endpoint) bool) ([]Endpoint, error) {
 	var removed []Endpoint
 	var errs []error
 	for _, ep := range eps {
-		if isLive(ep) {
+		if isLive(ep) || !unchanged(root, ep) {
 			continue
 		}
 		if err := Remove(root, ep.ID); err != nil {
@@ -211,6 +215,12 @@ func Prune(root string, isLive func(Endpoint) bool) ([]Endpoint, error) {
 		removed = append(removed, ep)
 	}
 	return removed, errors.Join(errs...)
+}
+
+// unchanged reports whether the entry for ep.ID still has ep's pid and start.
+func unchanged(root string, ep Endpoint) bool {
+	cur, err := readEntry(entryPath(root, ep.ID), 0)
+	return err == nil && cur.PID == ep.PID && cur.Started.Equal(ep.Started)
 }
 
 // Alive reports whether ep's socket answers or its process still exists. The
