@@ -503,18 +503,21 @@ func TestConcurrentCallsAreMatchedByID(t *testing.T) {
 	})
 }
 
-func TestServerRequestIsRejected(t *testing.T) {
+func TestServerRequestIsLeftToTheTUI(t *testing.T) {
 	each(t, func(t *testing.T, tr transport) {
-		_, srv := connect(t, tr)
+		api, srv := connect(t, tr)
 		srv.send(map[string]any{"id": 7, "method": "item/commandExecution/requestApproval", "params": map[string]any{}})
 
+		errc := async(func() error { return api.UpdateSettings(context.Background(), "t1", Settings{Model: "m"}) })
+		req := srv.expect(MethodSettingsUpdate)
+		srv.reply(req.ID, map[string]any{})
+		if err := await(t, errc); err != nil {
+			t.Fatalf("call after a server request: %v", err)
+		}
 		select {
 		case m := <-srv.in:
-			if m.ID == nil || *m.ID != 7 || m.Error == nil || m.Error.Code != codeMethodNotFound {
-				t.Fatalf("reply = %+v, want method-not-found for id 7", m)
-			}
-		case <-time.After(waitFor):
-			t.Fatal("server request never answered")
+			t.Fatalf("client answered %+v; a server request must be left to the Codex TUI", m)
+		case <-time.After(100 * time.Millisecond):
 		}
 	})
 }
