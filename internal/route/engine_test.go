@@ -434,6 +434,30 @@ func TestManualPinAfterForeignSettingsUpdate(t *testing.T) {
 	}
 }
 
+func TestPauseAfterManualPickRestoresThePick(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("low", 0.97)), answer(tier("high", 0.99)))
+	h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+	h.engine.SettingsUpdated("th", low)
+	picked := config.Route{Model: "gpt-6-sol", Effort: config.EffortLow}
+	h.engine.SettingsUpdated("th", picked)
+	if err := h.engine.Apply(Command{Op: OpResume}); err != nil {
+		t.Fatal(err)
+	}
+	rw, ok := h.decide(req(picked, userMsg(secretPrompt), userMsg("big refactor")), meta("th", "t2"))
+	wantRoute(t, rw, ok, high)
+
+	if err := h.engine.Apply(Command{Op: OpPause}); err != nil {
+		t.Fatal(err)
+	}
+	if restore := h.last(); restore.Reason != policy.ReasonPaused || restore.Route != picked {
+		t.Fatalf("restore write = %+v, want the /model pick %+v", restore, picked)
+	}
+	if s := h.engine.Snapshot(); s.Baseline != picked {
+		t.Fatalf("baseline = %+v, want %+v", s.Baseline, picked)
+	}
+}
+
 func TestEchoesOfQueuedWritesAreNotManual(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("low", 0.97)), answer(tier("high", 0.99)))

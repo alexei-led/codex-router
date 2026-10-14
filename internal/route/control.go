@@ -120,10 +120,12 @@ func (e *Engine) settingsUpdated(threadID string, r config.Route) (Snapshot, boo
 	case i >= 0:
 		th.pending = slices.Clone(th.pending[i+1:])
 	case th.manual:
-		th.lastWritten = r
+		th.lastWritten, th.native = r, r
 	case !th.wrote || r == th.lastWritten:
 	default:
-		th.manual, th.pending, th.lastWritten = true, nil, r
+		// The pick is now what Codex would use without the router, so pause
+		// restores it rather than the route the session started on.
+		th.manual, th.pending, th.lastWritten, th.native = true, nil, r, r
 		e.log.Info("route manual", "thread", th.id, "model", r.Model, "effort", r.Effort)
 	}
 	return e.snapshot(e.now()), true
