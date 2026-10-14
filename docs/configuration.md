@@ -1,10 +1,15 @@
 # Configuration
 
-The config is one JSON file. A missing file means the defaults below. Keys you omit keep their default. A map entry you name (a tier, an activity, a classifier, a price) replaces the default entry whole. Unknown keys, trailing data and invalid values are errors, and the router then runs plain `codex` with one line saying why.
+Every field of the config file, with its default. To get started, and to find where the file lives, see [Configure](user-guide.md#configure) in the user guide. Words such as tier, route, activity and preset are defined in [Concepts](user-guide.md#concepts).
 
-Path order: `--config PATH`, `$CODEX_ROUTER_CONFIG`, `$XDG_CONFIG_HOME/codex-router/config.json` (absolute values only), `~/.config/codex-router/config.json`.
+How the file is read:
 
-Edits apply to the next session. The panel changes only the preset, and only for the running session.
+- A missing file means the defaults below. Keys you omit keep their default.
+- Objects such as `policy`, `context` and `cache` merge field by field.
+- A map entry you name (a tier, an activity, a classifier, a price) replaces the default entry whole.
+- Unknown keys, trailing data and invalid values are errors. The router then runs plain `codex` with one line that says why.
+- `$XDG_CONFIG_HOME` is used only when it is an absolute path.
+- Edits apply to the next session. The panel changes only the preset, and only for the running session.
 
 ## Example
 
@@ -31,7 +36,7 @@ Cheaper low tier, a price table for the Usage tab, a local classifier:
 }
 ```
 
-The prices are placeholders: use the list prices you want estimates against. Objects such as `policy`, `context` and `cache` merge field by field, so `"policy": {"minDwellRequests": 6}` changes one field. Map entries do not merge: `routes.low` below replaces the whole default `low` route.
+The prices are placeholders: use the list prices you want estimates against. Because objects merge, `"policy": {"minDwellRequests": 6}` changes one field. Because map entries replace, `routes.low` above replaces the whole default `low` route.
 
 ## Fields
 
@@ -94,9 +99,7 @@ Counts are integers, masses and fills are in (0, 1], slopes are not negative.
 | `activityMass`          | 0.6     | Activity probability needed to apply an activity route on a new task.                                                                                         |
 | `contextFill`           | 0.8     | A route is used only if the thread's estimated size is at most this fraction of its window.                                                                   |
 
-Escalation: the same tool failure twice with an edit in between moves up one tier without asking the classifier. Only a pair whose second failure is in the current turn counts, and not once a later check passed.
-
-Code mode (`tool_mode: code_mode_only` models) runs commands inside JavaScript cells, and Codex reports only how the script ended. The router reads a command's exit status from the cell output only when the script printed it on its own line (`exit_code=1` or `exit code: 1`, as models usually do), when the script printed the nested result as JSON (`text(JSON.stringify(r))`, read for its `exit_code`), or when the script failed. A completed cell that prints no status counts toward neither escalation nor the passed check that `minDwellRequests` needs.
+`escalationHoldTurns` and `minDwellRequests` depend on how the router reads tool results. That is described in [Escalation on repeated failures](user-guide.md#escalation-on-repeated-failures).
 
 ### presets
 
