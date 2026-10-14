@@ -686,6 +686,46 @@ func TestClientDisconnectCancelsUpstream(t *testing.T) {
 	}
 }
 
+func TestClientCloseAfterCompletedIsNotAnAbort(t *testing.T) {
+	cancelled := make(chan struct{})
+	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, evCreated+evCompleted)
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+		close(cancelled)
+	})
+	h := startProxy(t, up.url())
+
+	ctx, cancel := context.WithCancel(t.Context())
+	resp, err := http.DefaultClient.Do(newRequest(t, ctx, http.MethodPost, h.base+PathResponses, requestBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rd := bufio.NewReader(resp.Body)
+	for {
+		line, err := rd.ReadString('\n')
+		if err != nil {
+			t.Fatalf("stream ended before response.completed: %v", err)
+		}
+		if strings.Contains(line, `"response.completed"`) {
+			break
+		}
+	}
+	cancel()
+	_ = resp.Body.Close()
+
+	select {
+	case <-cancelled:
+	case <-time.After(3 * time.Second):
+		t.Fatal("upstream request not cancelled after client close")
+	}
+	waitFor(t, func() bool { return strings.Contains(h.logs.String(), "stream-closed-after-completed") })
+	if strings.Contains(h.logs.String(), "stream-aborted") {
+		t.Errorf("normal close logged as abort:\n%s", h.logs.String())
+	}
+}
+
 func TestRedirectRefused(t *testing.T) {
 	target := newUpstream(t, func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "{}") })
 	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
@@ -1023,5 +1063,16 @@ func TestWithoutHop(t *testing.T) {
 	}
 	if in.Get("Connection") == "" {
 		t.Error("withoutHop modified its input")
+	}
+}
+
+func waitFor(t *testing.T, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatal("condition not met within 3s")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
