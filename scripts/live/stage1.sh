@@ -155,8 +155,11 @@ down() {
 	agtermctl workspace delete --target "$WS" >/dev/null 2>&1 || true
 	sleep 3
 	# A router killed with -9 orphans its Codex TUI and app-server; their
-	# command lines name the run's runtime or state dir.
-	pkill -f "$RUN" 2>/dev/null || true
+	# command lines name the run's runtime or state dir. The patterns start
+	# at the program, so they never match the caller's own pipeline (a sed
+	# or this script naming $RUN).
+	pkill -f "^/usr/bin/login .*$RUN/state" 2>/dev/null || true
+	pkill -f "^([^ ]*/)?(codex-router|codex)( .*)? [^ ]*$RUN/(rt|state)" 2>/dev/null || true
 	if ! diff <(grep '^# before: ' "$RUN/run.env" | sed 's/^# before: //') <(hashes); then
 		die "a real config.toml changed during the run"
 	fi
