@@ -48,23 +48,52 @@ func attentionMark(a route.Attention) string {
 	return "?"
 }
 
+// FleetView is what RenderFleetView draws for the docs images. Each session
+// is on its own endpoint, as stage 1 launchers run them, unless its home is
+// in Brains: then one brain serves the home, and the value is how long it
+// has run.
+type FleetView struct {
+	Homes    []home.Home
+	Sessions []route.SessionInfo
+	Brains   map[string]time.Duration
+	Focus    string
+	Snap     route.Snapshot // the focused session's snapshot
+	Tab      Tab
+	Width    int
+	Locked   bool // a panel run with --session: no top bar, no Sessions tab
+}
+
 // RenderFleet draws the all-sessions panel with ANSI colors, top bar
 // included, for the docs images. homes and sessions come in display order,
 // each session on its own endpoint as stage 1 launchers run them; s is the
 // focused session's snapshot. Output depends only on its arguments.
 func RenderFleet(homes []home.Home, sessions []route.SessionInfo, focus string, s route.Snapshot, tab Tab, width int) string {
-	st := fleetState{focus: focus, snap: &s}
-	for _, h := range homes {
+	return RenderFleetView(FleetView{Homes: homes, Sessions: sessions, Focus: focus, Snap: s, Tab: tab, Width: width})
+}
+
+// RenderFleetView draws v with ANSI colors. Output depends only on v.
+func RenderFleetView(v FleetView) string {
+	st := fleetState{focus: v.Focus, snap: &v.Snap}
+	for _, h := range v.Homes {
 		g := fleetHome{home: h}
-		for _, x := range sessions {
-			if x.Home == h.ID {
-				g.endpoints = append(g.endpoints, fleetEndpointInfo{id: x.ID, kind: registry.KindSession})
-				g.sessions = append(g.sessions, fleetSession{SessionInfo: x, endpoint: x.ID})
+		if up, ok := v.Brains[h.ID]; ok {
+			g.endpoints = append(g.endpoints, fleetEndpointInfo{id: "brain-" + h.ID, kind: registry.KindBrain, up: up})
+		}
+		for _, x := range v.Sessions {
+			if x.Home != h.ID {
+				continue
 			}
+			ep := x.ID
+			if _, ok := v.Brains[h.ID]; ok {
+				ep = "brain-" + h.ID
+			} else {
+				g.endpoints = append(g.endpoints, fleetEndpointInfo{id: ep, kind: registry.KindSession})
+			}
+			g.sessions = append(g.sessions, fleetSession{SessionInfo: x, endpoint: ep})
 		}
 		st.homes = append(st.homes, g)
 	}
-	return render(view{snap: s, tab: tab, width: width, styled: true, fleet: &st})
+	return render(view{snap: v.Snap, tab: v.Tab, width: v.Width, styled: true, fleet: &st, locked: v.Locked})
 }
 
 // all lists every session, home by home, in display order.

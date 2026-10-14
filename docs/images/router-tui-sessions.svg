@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 968 351" width="968" height="351" role="img" aria-labelledby="title desc">
   <title id="title">codex-router panel, Sessions tab</title>
-  <desc id="desc">codex-router tui with every running session. Top bar: the focused session first, then the others, each with its home's dot and a mark for sessions that need a look, and the focus position 1 of 5. Sessions tab: two Codex homes, default and work, each with its endpoints, replies, switches and saving, then one row per session with its state, route, routed replies by tier and last switch.</desc>
+  <desc id="desc">codex-router tui with every running session. Top bar: the focused session first, then the others, each with its home's dot and a mark for sessions that need a look, and the focus position 1 of 5. Sessions tab: two Codex homes. The default home has three codex-router runs. The work home is set up and has a brain that has run for 2 hours. Each home line has its replies, switches and saving, then one row per session with its state, route, routed replies by tier and last switch.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
   <rect width="968" height="351" rx="8" fill="#14171f"/>
   <rect x="0.5" y="0.5" width="967" height="350" rx="8" fill="none" stroke="#2e3340"/>
@@ -115,10 +115,12 @@
   <text x="819.4" y="218.0" fill="#878787" xml:space="preserve">-</text>
   <text x="16.0" y="256.0" fill="#d787d7" xml:space="preserve">● </text>
   <text x="31.6" y="256.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">work</text>
-  <text x="62.8" y="256.0" fill="#878787" xml:space="preserve"> · 2 endpoints</text>
-  <text x="172.0" y="256.0" fill="#878787" xml:space="preserve"> · 70 replies · 8 switches</text>
-  <text x="374.8" y="256.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="398.2" y="256.0" fill="#5fd7af" xml:space="preserve">saved ≈ $0.75</text>
+  <text x="62.8" y="256.0" fill="#878787" xml:space="preserve"> · 1 endpoint</text>
+  <text x="164.2" y="256.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="187.6" y="256.0" fill="#5fd7af" xml:space="preserve">brain up 2h</text>
+  <text x="273.4" y="256.0" fill="#878787" xml:space="preserve"> · 70 replies · 8 switches</text>
+  <text x="476.2" y="256.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="499.6" y="256.0" fill="#5fd7af" xml:space="preserve">saved ≈ $0.75</text>
   <text x="16.0" y="275.0" fill="#d0d0d0" xml:space="preserve">  api · feat/auth                  </text>
   <text x="289.0" y="275.0" fill="#ffaf00" xml:space="preserve">◐ manual      </text>
   <text x="398.2" y="275.0" fill="#d0d0d0" xml:space="preserve">  gpt-6-sol · medium    </text>
