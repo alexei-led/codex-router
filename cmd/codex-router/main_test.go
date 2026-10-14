@@ -16,7 +16,7 @@ import (
 func testEnv(t *testing.T) []string {
 	t.Helper()
 	home := t.TempDir()
-	return []string{"HOME=" + home, "CODEX_HOME=" + home, envConfig + "=" + filepath.Join(home, "none.json")}
+	return []string{"HOME=" + home, "TMPDIR=" + home, "CODEX_HOME=" + home, envConfig + "=" + filepath.Join(home, "none.json")}
 }
 
 func TestRunPrintsAndRejects(t *testing.T) {
@@ -33,6 +33,8 @@ func TestRunPrintsAndRejects(t *testing.T) {
 		{"config without path", []string{"--config"}, exitUsage, "", "--config needs a path"},
 		{"unknown proxy flag", []string{"proxy", "--bogus"}, exitUsage, "", "flag provided but not defined"},
 		{"stray tui argument", []string{"tui", "extra"}, exitUsage, "", `unexpected argument "extra"`},
+		{"tui without a running session", []string{"tui"}, exitError, "", "no running codex-router session"},
+		{"hook without a router", []string{"hook"}, exitOK, "{}\n", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
