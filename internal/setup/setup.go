@@ -16,18 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alexei-led/codex-router/internal/brain"
 	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/proxy"
-	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/service"
-)
-
-// Files in a home's state dir (brain.HomeDir): setup writes the provider
-// port and token, the edge reads them.
-const (
-	PortFile  = "port"
-	TokenFile = "token"
+	"github.com/alexei-led/codex-router/internal/statedir"
 )
 
 // ConfigFile is Codex's config in a home.
@@ -98,7 +90,7 @@ func Run(ctx context.Context, o Options) error {
 	if !filepath.IsAbs(o.StateDir) {
 		return fmt.Errorf("setup: state dir %q is not an absolute path", o.StateDir)
 	}
-	app, err := registry.StateDir(func(k string) string {
+	app, err := statedir.Dir(func(k string) string {
 		if k == "XDG_STATE_HOME" {
 			return o.StateDir
 		}
@@ -107,7 +99,7 @@ func Run(ctx context.Context, o Options) error {
 	if err != nil {
 		return err
 	}
-	r := runner{o: o, app: app, dir: brain.HomeDir(app, o.Home.ID)}
+	r := runner{o: o, app: app, dir: statedir.HomeDir(app, o.Home.ID)}
 	if o.Undo {
 		return r.undo(ctx)
 	}
@@ -165,7 +157,7 @@ func (r runner) install(ctx context.Context) error {
 	for _, u := range r.o.Service.Units(r.o.Home.ID) {
 		r.printf("installed %s\n", u.Path)
 	}
-	if err := writeAtomic(r.o.Home.Path, PluginEnvFile, pluginEnv); err != nil {
+	if err := statedir.WriteAtomic(r.o.Home.Path, PluginEnvFile, pluginEnv); err != nil {
 		return fmt.Errorf("setup: write %s: %w", r.pluginEnvPath(), err)
 	}
 	r.printf("wrote %s\n", r.pluginEnvPath())
@@ -319,7 +311,7 @@ func (r runner) writeConfig(target string, old []byte, existed bool, data []byte
 		}
 		r.printf("backup: %s\n", b)
 	}
-	if err := writeAtomic(filepath.Dir(target), filepath.Base(target), data); err != nil {
+	if err := statedir.WriteAtomic(filepath.Dir(target), filepath.Base(target), data); err != nil {
 		return fmt.Errorf("setup: write %s: %w", target, err)
 	}
 	r.printf("wrote %s\n", target)
@@ -356,8 +348,8 @@ func (r runner) backup(data []byte) (string, error) {
 // credentials returns the stored port and token, or new ones. Reusing them
 // keeps a re-run from moving a port the units already hold.
 func (r runner) credentials() (port int, token string, err error) {
-	port = readPort(filepath.Join(r.dir, PortFile))
-	if b, err := os.ReadFile(filepath.Join(r.dir, TokenFile)); err == nil {
+	port, _ = statedir.ReadPort(r.dir)
+	if b, err := os.ReadFile(filepath.Join(r.dir, statedir.TokenFile)); err == nil {
 		token = strings.TrimSpace(string(b))
 	}
 	if port == 0 {
@@ -375,10 +367,11 @@ func (r runner) credentials() (port int, token string, err error) {
 // that is down still owns its port.
 func (r runner) pickPort() (int, error) {
 	taken := map[int]bool{}
-	others, _ := filepath.Glob(filepath.Join(brain.HomeDir(r.app, "*"), PortFile))
+	others, _ := filepath.Glob(filepath.Join(statedir.HomeDir(r.app, "*"), statedir.PortFile))
 	for _, p := range others {
-		if filepath.Dir(p) != r.dir {
-			taken[readPort(p)] = true
+		if dir := filepath.Dir(p); dir != r.dir {
+			port, _ := statedir.ReadPort(dir)
+			taken[port] = true
 		}
 	}
 	for range portTries {
@@ -393,19 +386,6 @@ func (r runner) pickPort() (int, error) {
 	return 0, errors.New("setup: found no free port that no other home uses")
 }
 
-// readPort returns the port stored at path, or 0.
-func readPort(path string) int {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return 0
-	}
-	p, err := strconv.Atoi(strings.TrimSpace(string(b)))
-	if err != nil || p < 1 || p > 65535 {
-		return 0
-	}
-	return p
-}
-
 // writeState makes the home's state dir and its logs dir (0700, private up
 // to codex-router/, as the edge and brain require) and stores port and
 // token (0600).
@@ -413,37 +393,15 @@ func (r runner) writeState(port int, token string) error {
 	if err := os.MkdirAll(filepath.Join(r.dir, logsDir), 0o700); err != nil {
 		return fmt.Errorf("setup: %w", err)
 	}
-	for _, d := range []string{r.app, filepath.Dir(r.dir), r.dir} {
-		if err := registry.CheckPrivate(d); err != nil {
-			return fmt.Errorf("setup: %w", err)
-		}
+	if err := statedir.CheckHome(r.app, r.dir); err != nil {
+		return fmt.Errorf("setup: %w", err)
 	}
-	for name, data := range map[string]string{PortFile: strconv.Itoa(port) + "\n", TokenFile: token + "\n"} {
-		if err := writeAtomic(r.dir, name, []byte(data)); err != nil {
+	for name, data := range map[string]string{statedir.PortFile: strconv.Itoa(port) + "\n", statedir.TokenFile: token + "\n"} {
+		if err := statedir.WriteAtomic(r.dir, name, []byte(data)); err != nil {
 			return fmt.Errorf("setup: write %s: %w", name, err)
 		}
 	}
 	return nil
-}
-
-// writeAtomic replaces dir/name with data through a temp file (0600) and a
-// rename, so a reader sees the old file or the new one, never a part.
-func writeAtomic(dir, name string, data []byte) error {
-	f, err := os.CreateTemp(dir, "."+name+".*")
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(data)
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil {
-		err = os.Rename(f.Name(), filepath.Join(dir, name))
-	}
-	if err != nil {
-		_ = os.Remove(f.Name())
-	}
-	return err
 }
 
 // freePort asks the kernel for a free loopback port.

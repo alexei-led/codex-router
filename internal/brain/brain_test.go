@@ -26,6 +26,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
+	"github.com/alexei-led/codex-router/internal/statedir"
 )
 
 const waitTime = 5 * time.Second
@@ -326,7 +327,7 @@ func (r *rig) getenv(k string) string { return r.env[k] }
 
 func (r *rig) stateDir() string { return filepath.Join(r.env["XDG_STATE_HOME"], "codex-router") }
 
-func (r *rig) homeDir() string { return HomeDir(r.stateDir(), r.home.ID) }
+func (r *rig) homeDir() string { return statedir.HomeDir(r.stateDir(), r.home.ID) }
 
 func newRig(t *testing.T, state string) *rig {
 	t.Helper()

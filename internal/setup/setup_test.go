@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alexei-led/codex-router/internal/brain"
 	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/service"
+	"github.com/alexei-led/codex-router/internal/statedir"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")
@@ -235,7 +235,7 @@ func (f *fixture) run(t *testing.T, o Options) error {
 func (f *fixture) configPath() string { return filepath.Join(f.h.Path, ConfigFile) }
 
 func (f *fixture) stateDir() string {
-	return brain.HomeDir(filepath.Join(f.state, "codex-router"), f.h.ID)
+	return statedir.HomeDir(filepath.Join(f.state, "codex-router"), f.h.ID)
 }
 
 func readFile(t *testing.T, p string) string {
@@ -275,8 +275,8 @@ func TestSetupAndUndoRoundTrip(t *testing.T) {
 		t.Fatalf("setup: %v\n%s", err, f.out)
 	}
 	dir := f.stateDir()
-	token := strings.TrimSpace(readFile(t, filepath.Join(dir, TokenFile)))
-	port := strings.TrimSpace(readFile(t, filepath.Join(dir, PortFile)))
+	token := strings.TrimSpace(readFile(t, filepath.Join(dir, statedir.TokenFile)))
+	port := strings.TrimSpace(readFile(t, filepath.Join(dir, statedir.PortFile)))
 	if !hexToken.MatchString(token) {
 		t.Errorf("token = %q, want 32 hex", token)
 	}
@@ -293,7 +293,7 @@ func TestSetupAndUndoRoundTrip(t *testing.T) {
 	if got, want := readFile(t, pluginEnv), "CODEX_ROUTER_BIN=/usr/local/bin/codex-router\nXDG_STATE_HOME="+f.state+"\n"; !strings.HasSuffix(got, want) {
 		t.Errorf("%s =\n%s\nwant it to end with\n%s", PluginEnvFile, got, want)
 	}
-	for _, p := range []string{f.configPath(), filepath.Join(dir, TokenFile), filepath.Join(dir, PortFile), pluginEnv} {
+	for _, p := range []string{f.configPath(), filepath.Join(dir, statedir.TokenFile), filepath.Join(dir, statedir.PortFile), pluginEnv} {
 		if m := mode(t, p); m != 0o600 {
 			t.Errorf("%s mode = %v, want 0600", p, m)
 		}
@@ -338,7 +338,7 @@ func TestSetupAndUndoRoundTrip(t *testing.T) {
 	if _, err := os.Stat(pluginEnv); !os.IsNotExist(err) {
 		t.Errorf("%s after undo: %v, want gone", PluginEnvFile, err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, TokenFile)); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, statedir.TokenFile)); err != nil {
 		t.Errorf("undo without --purge removed state: %v", err)
 	}
 	if strings.Contains(f.out.String(), token) {
@@ -411,13 +411,13 @@ func TestSetupRerunKeepsPortAndToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := f.stateDir()
-	port, token, cfg := readFile(t, filepath.Join(dir, PortFile)), readFile(t, filepath.Join(dir, TokenFile)), readFile(t, f.configPath())
+	port, token, cfg := readFile(t, filepath.Join(dir, statedir.PortFile)), readFile(t, filepath.Join(dir, statedir.TokenFile)), readFile(t, f.configPath())
 	o := f.options()
 	o.FreePort = func() (int, error) { t.Error("re-run picked a new port"); return 1, nil }
 	if err := f.run(t, o); err != nil {
 		t.Fatal(err)
 	}
-	if readFile(t, filepath.Join(dir, PortFile)) != port || readFile(t, filepath.Join(dir, TokenFile)) != token || readFile(t, f.configPath()) != cfg {
+	if readFile(t, filepath.Join(dir, statedir.PortFile)) != port || readFile(t, filepath.Join(dir, statedir.TokenFile)) != token || readFile(t, f.configPath()) != cfg {
 		t.Error("re-run changed the port, token or config")
 	}
 	if !strings.Contains(f.out.String(), "no change") {
@@ -564,11 +564,11 @@ func TestTwoHomesGetDistinctPortsTokensAndUnits(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	pa, pb := readFile(t, filepath.Join(a.stateDir(), PortFile)), readFile(t, filepath.Join(b.stateDir(), PortFile))
+	pa, pb := readFile(t, filepath.Join(a.stateDir(), statedir.PortFile)), readFile(t, filepath.Join(b.stateDir(), statedir.PortFile))
 	if pa != "41001\n" || pb != "41002\n" {
 		t.Errorf("ports = %q, %q; want 41001 and 41002 (41001 is home a's)", pa, pb)
 	}
-	if readFile(t, filepath.Join(a.stateDir(), TokenFile)) == readFile(t, filepath.Join(b.stateDir(), TokenFile)) {
+	if readFile(t, filepath.Join(a.stateDir(), statedir.TokenFile)) == readFile(t, filepath.Join(b.stateDir(), statedir.TokenFile)) {
 		t.Error("homes share a token")
 	}
 	ua, ub := a.mgr.Installed(a.h.ID), a.mgr.Installed(b.h.ID)
@@ -598,7 +598,7 @@ func TestSetupInstallFailureLeavesConfigUntouched(t *testing.T) {
 		t.Errorf("failed setup made backups: %v", bak)
 	}
 	dir := f.stateDir()
-	port, token := readFile(t, filepath.Join(dir, PortFile)), readFile(t, filepath.Join(dir, TokenFile))
+	port, token := readFile(t, filepath.Join(dir, statedir.PortFile)), readFile(t, filepath.Join(dir, statedir.TokenFile))
 
 	f.runner.fail = nil
 	o := f.options()
@@ -606,7 +606,7 @@ func TestSetupInstallFailureLeavesConfigUntouched(t *testing.T) {
 	if err := f.run(t, o); err != nil {
 		t.Fatalf("re-run: %v\n%s", err, f.out)
 	}
-	if readFile(t, filepath.Join(dir, PortFile)) != port || readFile(t, filepath.Join(dir, TokenFile)) != token {
+	if readFile(t, filepath.Join(dir, statedir.PortFile)) != port || readFile(t, filepath.Join(dir, statedir.TokenFile)) != token {
 		t.Error("re-run changed the port or token")
 	}
 	if cfg := readFile(t, f.configPath()); !strings.Contains(cfg, strings.TrimSpace(token)) {

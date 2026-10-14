@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/proxy"
-	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/responses"
+	"github.com/alexei-led/codex-router/internal/statedir"
 )
 
 const (
@@ -49,14 +49,14 @@ type Server struct {
 }
 
 // Listen binds the socket at path with mode 0600 and starts serving. The
-// parent dir must be private (registry.CheckPrivate): the mode is set right
+// parent dir must be private (statedir.CheckPrivate): the mode is set right
 // after bind, and the dir closes that window. A stale socket file is
 // replaced; a live one or a non-socket file is refused.
 func Listen(path, homeID string, h Handler, log *slog.Logger) (*Server, error) {
 	if log == nil {
 		log = slog.Default()
 	}
-	if err := registry.CheckPrivate(filepath.Dir(path)); err != nil {
+	if err := statedir.CheckPrivate(filepath.Dir(path)); err != nil {
 		return nil, fmt.Errorf("link socket dir: %w", err)
 	}
 	if c, err := net.DialTimeout("unix", path, time.Second); err == nil {

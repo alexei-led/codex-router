@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alexei-led/codex-router/internal/brain"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
@@ -29,7 +28,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
 	"github.com/alexei-led/codex-router/internal/service"
-	"github.com/alexei-led/codex-router/internal/setup"
+	"github.com/alexei-led/codex-router/internal/statedir"
 	"github.com/alexei-led/codex-router/internal/tui"
 )
 
@@ -520,7 +519,7 @@ func edgeSetup(t *testing.T) (args []string, h home.Home, dir string, port int) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir = brain.HomeDir(filepath.Join(state, "codex-router"), h.ID)
+	dir = statedir.HomeDir(filepath.Join(state, "codex-router"), h.ID)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -530,7 +529,7 @@ func edgeSetup(t *testing.T) (args []string, h home.Home, dir string, port int) 
 	}
 	port = ln.Addr().(*net.TCPAddr).Port
 	_ = ln.Close()
-	for name, v := range map[string]string{setup.TokenFile: edgeToken + "\n", setup.PortFile: strconv.Itoa(port) + "\n"} {
+	for name, v := range map[string]string{statedir.TokenFile: edgeToken + "\n", statedir.PortFile: strconv.Itoa(port) + "\n"} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(v), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -748,13 +747,13 @@ func TestEdgeRefusesToStart(t *testing.T) {
 			return args
 		}, exitError, "is not set up"},
 		{"no token", func(t *testing.T, args []string, dir string) []string {
-			if err := os.Remove(filepath.Join(dir, setup.TokenFile)); err != nil {
+			if err := os.Remove(filepath.Join(dir, statedir.TokenFile)); err != nil {
 				t.Fatal(err)
 			}
 			return args
 		}, exitError, "edge: token"},
 		{"empty token", func(t *testing.T, args []string, dir string) []string {
-			if err := os.WriteFile(filepath.Join(dir, setup.TokenFile), []byte("\n"), 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, statedir.TokenFile), []byte("\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			return args
@@ -772,7 +771,7 @@ func TestEdgeRefusesToStart(t *testing.T) {
 			return args
 		}, exitError, "must not be accessible"},
 		{"bad port", func(t *testing.T, args []string, dir string) []string {
-			if err := os.WriteFile(filepath.Join(dir, setup.PortFile), []byte("http"), 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, statedir.PortFile), []byte("http"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			return args
@@ -997,15 +996,15 @@ func TestSetupThenEdgeThenUndo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := brain.HomeDir(filepath.Join(state, "codex-router"), h.ID)
-	token, err := os.ReadFile(filepath.Join(dir, setup.TokenFile))
+	dir := statedir.HomeDir(filepath.Join(state, "codex-router"), h.ID)
+	token, err := os.ReadFile(filepath.Join(dir, statedir.TokenFile))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(out, strings.TrimSpace(string(token))) {
 		t.Error("setup printed the token")
 	}
-	port, err := readPort(dir)
+	port, err := statedir.ReadPort(dir)
 	if err != nil {
 		t.Fatal(err)
 	}

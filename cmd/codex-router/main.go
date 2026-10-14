@@ -39,6 +39,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/route"
 	"github.com/alexei-led/codex-router/internal/service"
 	"github.com/alexei-led/codex-router/internal/setup"
+	"github.com/alexei-led/codex-router/internal/statedir"
 	"github.com/alexei-led/codex-router/internal/tui"
 )
 
@@ -794,9 +795,9 @@ func (c cli) edge(ctx context.Context, configPath string, args []string) int {
 	var addr string
 	switch {
 	case errors.Is(err, listen.ErrNotActivated):
-		port, perr := readPort(dir)
+		port, perr := statedir.ReadPort(dir)
 		if perr != nil {
-			return c.fail(perr)
+			return c.fail(fmt.Errorf("edge: %w", perr))
 		}
 		addr = net.JoinHostPort(proxy.LoopbackHost, strconv.Itoa(port))
 		log.Warn("edge-self-bind", "port", port, "why", err.Error(),
@@ -861,38 +862,22 @@ func (c cli) brain(ctx context.Context, configPath string, args []string) int {
 // its parents up to codex-router/ must be private to this user: whoever can
 // write there can swap the token.
 func edgeState(getenv func(string) string, h home.Home) (dir, token string, err error) {
-	app, err := registry.StateDir(getenv)
+	app, err := statedir.Dir(getenv)
 	if err != nil {
 		return "", "", err
 	}
-	dir = brain.HomeDir(app, h.ID)
-	for _, d := range []string{app, filepath.Dir(dir), dir} {
-		if err := registry.CheckPrivate(d); err != nil {
-			return "", "", fmt.Errorf("edge: home %s is not set up (run codex-router setup --home %s): %w", h.Name, h.Path, err)
-		}
+	dir = statedir.HomeDir(app, h.ID)
+	if err := statedir.CheckHome(app, dir); err != nil {
+		return "", "", fmt.Errorf("edge: home %s is not set up (run codex-router setup --home %s): %w", h.Name, h.Path, err)
 	}
-	b, err := os.ReadFile(filepath.Join(dir, setup.TokenFile))
+	b, err := os.ReadFile(filepath.Join(dir, statedir.TokenFile))
 	if err != nil {
 		return "", "", fmt.Errorf("edge: token: %w", err)
 	}
 	if token = strings.TrimSpace(string(b)); token == "" {
-		return "", "", fmt.Errorf("edge: token file %s is empty", filepath.Join(dir, setup.TokenFile))
+		return "", "", fmt.Errorf("edge: token file %s is empty", filepath.Join(dir, statedir.TokenFile))
 	}
 	return dir, token, nil
-}
-
-// readPort reads the provider port setup stored in dir.
-func readPort(dir string) (int, error) {
-	path := filepath.Join(dir, setup.PortFile)
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return 0, fmt.Errorf("edge: port: %w", err)
-	}
-	p, err := strconv.Atoi(strings.TrimSpace(string(b)))
-	if err != nil || p < 1 || p > 65535 {
-		return 0, fmt.Errorf("edge: %s does not hold a port", path)
-	}
-	return p, nil
 }
 
 // executable is the binary the service units run; tests replace it.
@@ -929,7 +914,7 @@ func (c cli) setup(ctx context.Context, configPath string, args []string) int {
 	if err != nil {
 		return c.fail(err)
 	}
-	app, err := registry.StateDir(c.getenv)
+	app, err := statedir.Dir(c.getenv)
 	if err != nil {
 		return c.fail(err)
 	}
