@@ -83,7 +83,7 @@ The preset buttons (`c` cycles) and the thresholds in effect. A preset change ap
 
 ![Classifier tab](images/router-tui-classifier.svg)
 
-State, last latency, median of recent answers, consecutive failures, and the pause time when the breaker is open.
+State, last latency, median of recent answers, consecutive failures, and the pause time when the breaker is open. With no key (the `keyEnv` variable unset) it shows `off`, and so does the header.
 
 ### Usage
 
