@@ -882,6 +882,23 @@ func TestEdgeDialsTheRecordedBrainSocket(t *testing.T) {
 	go func() { done <- run(ctx, args, testEnv(t), nil, io.Discard, io.Discard) }()
 	base := "http://127.0.0.1:" + strconv.Itoa(port)
 	waitFor(t, "edge reaches the brain at the recorded path", func() bool { return healthz(base) == "ok\nbrain: up\n" })
+
+	// A brain that restarts with a new socket path records it after the
+	// edge started.
+	if err := brainSrv.Close(); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "edge sees the brain go", func() bool { return healthz(base) == "ok\nbrain: down\n" })
+	moved := filepath.Join(filepath.Dir(sock), "moved.sock")
+	if err := os.WriteFile(filepath.Join(dir, "brain.path"), []byte(moved+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	brainSrv2, err := link.Listen(moved, h.ID, rewriteTo("gpt-6-luna"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = brainSrv2.Close() }()
+	waitFor(t, "edge follows the brain to the new path", func() bool { return healthz(base) == "ok\nbrain: up\n" })
 	cancel()
 	<-done
 }
