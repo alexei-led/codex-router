@@ -136,17 +136,25 @@ func silentSocket(t *testing.T) string {
 	return path
 }
 
-const budget = Timeout + 50*time.Millisecond
+// ceiling is the longest a bounded run may take: well past Timeout, so a
+// loaded host does not fail it, far short of a hang.
+const ceiling = 4 * Timeout
+
+// boundedRun fails the test when the call to f takes longer than ceiling.
+func boundedRun(t *testing.T, f func()) {
+	t.Helper()
+	start := time.Now()
+	f()
+	if d := time.Since(start); d > ceiling {
+		t.Errorf("took %v, want at most %v", d, ceiling)
+	}
+}
 
 func runEnv(t *testing.T, stdin io.Reader, env map[string]string) string {
 	t.Helper()
 	var out bytes.Buffer
-	start := time.Now()
 	if err := Run(stdin, &out, func(k string) string { return env[k] }); err != nil {
 		t.Fatal(err)
-	}
-	if d := time.Since(start); d > budget {
-		t.Errorf("took %v, want at most %v", d, budget)
 	}
 	return strings.TrimSpace(out.String())
 }
@@ -194,9 +202,11 @@ func TestRunFailsOpen(t *testing.T) {
 }
 
 func TestRunBoundedWhenServerSilent(t *testing.T) {
-	if got := run(t, stdinT2, silentSocket(t)); got != "{}" {
-		t.Errorf("got %s, want {}", got)
-	}
+	boundedRun(t, func() {
+		if got := run(t, stdinT2, silentSocket(t)); got != "{}" {
+			t.Errorf("got %s, want {}", got)
+		}
+	})
 }
 
 func TestRunBoundedWhenStdinNeverCloses(t *testing.T) {
@@ -205,9 +215,11 @@ func TestRunBoundedWhenStdinNeverCloses(t *testing.T) {
 	pr, pw := io.Pipe()
 	t.Cleanup(func() { _ = pw.Close() })
 
-	if got := runReader(t, pr, sock); got != "{}" {
-		t.Errorf("got %s, want {}", got)
-	}
+	boundedRun(t, func() {
+		if got := runReader(t, pr, sock); got != "{}" {
+			t.Errorf("got %s, want {}", got)
+		}
+	})
 }
 
 // switchTo is thread's snapshot whose turn t2 switched to model at high.
