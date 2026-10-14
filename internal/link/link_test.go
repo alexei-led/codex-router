@@ -5,8 +5,12 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -332,6 +336,40 @@ func TestBreakerSkipsSlowBrainUntilCooldown(t *testing.T) {
 	}
 }
 
+func TestLateDecideIsNotAnswered(t *testing.T) {
+	path := sockPath(t)
+	brain := &fakeBrain{rw: toLow, ok: true}
+	brain.slow.Store(true)
+	startBrain(t, path, homeA, brain)
+	conn, err := net.Dial("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
+	if err := WriteFrame(conn, Header{Type: TypeHello, HomeID: homeA}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if h, _, err := ReadFrame(conn); err != nil || h.Type != TypeHello {
+		t.Fatalf("hello reply = %+v, %v", h, err)
+	}
+
+	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, TimeoutMs: 20}, smallBody); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "late decide", func() bool { return len(brain.calls()) == 1 })
+	time.Sleep(100 * time.Millisecond)
+	brain.slow.Store(false)
+	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 2, Meta: &stepMeta, TimeoutMs: 1000}, smallBody); err != nil {
+		t.Fatal(err)
+	}
+
+	h, _, err := ReadFrame(conn)
+	if err != nil || h.ID != 2 || h.Type != TypeRewrite {
+		t.Fatalf("first reply = %+v, %v; want only the answer to decide 2", h, err)
+	}
+}
+
 func TestClientReconnectsAfterBrainRestart(t *testing.T) {
 	path := sockPath(t)
 	brain := &fakeBrain{rw: toLow, ok: true}
@@ -466,5 +504,112 @@ func TestListenSocketRules(t *testing.T) {
 	}
 	if _, err := Listen(file, homeA, &fakeBrain{}, nil); err == nil {
 		t.Fatal("Listen replaced a regular file")
+	}
+}
+
+// sniff relays unix connections from front to back and records every byte
+// the edge sends.
+type sniff struct {
+	mu   sync.Mutex
+	sent bytes.Buffer
+}
+
+func (s *sniff) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sent.Write(p)
+}
+
+func (s *sniff) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sent.String()
+}
+
+func startSniff(t *testing.T, front, back string) *sniff {
+	t.Helper()
+	ln, err := net.Listen("unix", front)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	s := &sniff{}
+	go func() {
+		for {
+			in, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			out, err := net.Dial("unix", back)
+			if err != nil {
+				_ = in.Close()
+				continue
+			}
+			go func() { _, _ = io.Copy(out, io.TeeReader(in, s)); _ = out.Close() }()
+			go func() { _, _ = io.Copy(in, out); _ = in.Close() }()
+		}
+	}()
+	return s
+}
+
+func TestLinkFramesCarryOnlyTheAccountHash(t *testing.T) {
+	const account = "acct-raw-secret-4567"
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":"+
+			"{\"model\":\"gpt-6-luna\",\"usage\":{\"input_tokens\":10,\"output_tokens\":2,\"total_tokens\":12}}}\n\n")
+	}))
+	t.Cleanup(upstream.Close)
+	back := sockPath(t)
+	brain := &fakeBrain{rw: toLow, ok: true}
+	startBrain(t, back, homeA, brain)
+	front := sockPath(t)
+	frames := startSniff(t, front, back)
+	c := newClient(t, front, homeA, time.Second)
+	logs := &bytes.Buffer{}
+	p := proxy.New(proxy.Options{
+		Upstream: upstream.URL, Decider: c, Observer: c,
+		Logger: slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+	})
+	port, err := p.Listen()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- p.Serve(ctx) }()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost,
+		fmt.Sprintf("http://127.0.0.1:%d%s", port, proxy.PathResponses), bytes.NewReader(smallBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set(responses.HeaderAccount, account)
+	req.Header.Set(responses.HeaderTurnMetadata, `{"thread_id":"th-1","turn_id":"tu-1","request_kind":"turn"}`)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+	eventually(t, "observe", func() bool { return len(brain.observed()) == 1 })
+
+	hash := responses.AccountHash(account)
+	if calls := brain.calls(); len(calls) != 1 || calls[0].meta.Account != hash {
+		t.Fatalf("brain saw %+v, want account %s", calls, hash)
+	}
+	if got := brain.observed()[0].meta.Account; got != hash {
+		t.Fatalf("observed account %q, want %s", got, hash)
+	}
+	if sent := frames.String(); !strings.Contains(sent, hash) || strings.Contains(sent, account) {
+		t.Fatalf("frames carry the raw account or miss its hash:\n%q", sent)
+	}
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatalf("Serve: %v", err)
+	}
+	if strings.Contains(logs.String(), account) {
+		t.Fatalf("logs carry the raw account:\n%s", logs.String())
 	}
 }

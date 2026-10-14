@@ -3,5 +3,6 @@
 // through unchanged except for the stripped model headers. It asks a Decider
 // for a rewrite before the upstream call and reports usage to an Observer
 // after it. Authorization and ChatGPT-Account-ID are forwarded upstream only
-// and never logged. Nothing is re-sent once upstream has started.
+// and never logged; the Decider and Observer get only a hash of the account
+// (Meta.Account). Nothing is re-sent once upstream has started.
 package proxy

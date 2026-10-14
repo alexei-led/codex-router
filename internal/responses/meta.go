@@ -1,6 +1,8 @@
 package responses
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 )
@@ -16,10 +18,13 @@ const RequestKindTurn = "turn"
 // prompt).
 const ThreadSourceUser = "user"
 
-// ParseMeta reads the turn metadata, and subagent headers. A missing
+// accountHexLen is how many hex digits of the account hash Meta keeps.
+const accountHexLen = 12
+
+// ParseMeta reads the turn metadata, subagent and account headers. A missing
 // or unparseable turn metadata header leaves the metadata fields empty.
 func ParseMeta(h http.Header) Meta {
-	m := Meta{Subagent: h.Get(HeaderSubagent)}
+	m := Meta{Subagent: h.Get(HeaderSubagent), Account: AccountHash(h.Get(HeaderAccount))}
 	raw := h.Get(HeaderTurnMetadata)
 	if raw == "" {
 		return m
@@ -37,6 +42,16 @@ func ParseMeta(h http.Header) Meta {
 	m.SessionID, m.ThreadID, m.TurnID = tm.SessionID, tm.ThreadID, tm.TurnID
 	m.RequestKind, m.ThreadSource = tm.RequestKind, tm.ThreadSource
 	return m
+}
+
+// AccountHash is the first 12 hex of sha256(id), or "" for an empty id
+// (plan M12). Engines and link frames see only this, never the raw id.
+func AccountHash(id string) string {
+	if id == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(id))
+	return hex.EncodeToString(sum[:])[:accountHexLen]
 }
 
 // Classify applies plan decision D5 as spike 1c settled it: only a main-thread

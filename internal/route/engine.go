@@ -114,6 +114,7 @@ type thread struct {
 
 	paused     bool         // routing paused for this thread alone
 	held       bool         // seeded: keeps its route until a reply measures the cache
+	account    string       // the account hash the thread is bound to, "" until one is seen
 	pin        *config.Tier // the next turn's tier; its first step consumes it
 	lastActive time.Time    // the last user step or reply; zero until the first step
 	stats      tally
@@ -280,6 +281,7 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 	cfg := e.cfg
 	now := e.now()
 	original := config.Route{Model: req.Model, Effort: req.Effort}
+	e.bind(th, m.Account)
 	if th.native.Model == "" {
 		th.native, th.lastWritten, th.footer = original, original, original
 		th.tier, th.activity = cellForModel(cfg, original)
@@ -346,6 +348,31 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 		st.pin, th.pin = th.pin, nil
 	}
 	return st, nil, old
+}
+
+// bind binds th to its first account (plan M12). Another account resets
+// what the engine learned on the old one: the cache ledger (prompt caches
+// are per account), votes and escalation, the turn in progress and its
+// retries and review. Intent (pause, manual, pin), the footer, the running
+// tier and the tallies stay. A missing account changes nothing. Under e.mu.
+func (e *Engine) bind(th *thread, account string) {
+	if account == "" || account == th.account {
+		return
+	}
+	if th.account == "" {
+		th.account = account
+		return
+	}
+	th.account = account
+	if th.review != nil {
+		th.review.cancel()
+	}
+	th.review, th.retries, th.advice, th.awaiting = nil, nil, nil, nil
+	th.turn, th.turnOff = "", false
+	th.state = policy.State{Turn: th.state.Turn}
+	th.measured, th.lastTotal = false, 0
+	e.ledger.Forget(th.id)
+	e.log.Info("route account changed", "thread", th.id)
 }
 
 // classify asks the classifier for the turn's first step; a panic counts as
@@ -684,6 +711,7 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 	model := served
 	var d *Decision
 	if th != nil {
+		e.bind(th, m.Account)
 		th.lastActive = now
 		d, th.awaiting = th.awaiting, nil
 		if d != nil && d.TurnID != m.TurnID {

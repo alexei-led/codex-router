@@ -23,8 +23,9 @@ func TestParseMeta(t *testing.T) {
 	}{
 		{"full metadata",
 			header("x-codex-turn-metadata", `{"session_id":"s1","thread_id":"t1","turn_id":"u1","request_kind":"turn","thread_source":"user","agent_name":"/root","extra":{"k":1}}`,
-				"x-openai-subagent", "review"),
-			responses.Meta{SessionID: "s1", ThreadID: "t1", TurnID: "u1", RequestKind: "turn", ThreadSource: "user", Subagent: "review"}},
+				"x-openai-subagent", "review", "chatgpt-account-id", "acct-raw-123"),
+			responses.Meta{SessionID: "s1", ThreadID: "t1", TurnID: "u1", RequestKind: "turn", ThreadSource: "user", Subagent: "review",
+				Account: responses.AccountHash("acct-raw-123")}},
 		{"no headers", http.Header{}, responses.Meta{}},
 		{"unparseable metadata keeps other headers",
 			header("x-codex-turn-metadata", `{"turn_id":`, "x-openai-subagent", "review"),
@@ -52,6 +53,25 @@ func turnMetadata(kind, turn string) string {
 func sourcedMetadata(kind, turn, source string) string {
 	return `{"request_kind":"` + kind + `","turn_trigger":"user","thread_source":"` + source + `","agent_name":"/root",` +
 		`"root_turn_id":"` + turn + `","turn_id":"` + turn + `","thread_id":"th1","model":"gpt-6-sol","reasoning_effort":"medium"}`
+}
+
+func TestAccountHash(t *testing.T) {
+	tests := []struct {
+		name, id, want string
+	}{
+		{"empty id", "", ""},
+		{"first 12 hex of sha256", "acct-raw-123", "e35932f46677"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := responses.AccountHash(tt.id); got != tt.want {
+				t.Fatalf("AccountHash(%q) = %q, want %q", tt.id, got, tt.want)
+			}
+		})
+	}
+	if responses.AccountHash("acct-1") == responses.AccountHash("acct-2") {
+		t.Fatal("two accounts share a hash")
+	}
 }
 
 func TestClassify(t *testing.T) {
