@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -71,9 +72,13 @@ type Observer interface {
 // catalog.Store.Set). DecideTimeout bounds each Decide call. Token, when set,
 // must arrive in HeaderToken on /v1/responses and /v1/models, or the request
 // gets 401 unread: any local uid can reach the loopback port. Empty disables
-// the check.
+// the check. Listener, when set, is served instead of binding Addr: a
+// socket from the service manager, which must be TCP on LoopbackHost.
+// Health, when set, adds one line to the /healthz body.
 type Options struct {
 	Addr          string
+	Listener      net.Listener
+	Health        func(context.Context) string
 	Token         string
 	Upstream      string
 	Client        *http.Client
@@ -126,8 +131,8 @@ func upstreamClient(c *http.Client) *http.Client {
 	return &out
 }
 
-// Listen validates the options and binds the loopback listener. It returns
-// the bound port.
+// Listen validates the options and binds the loopback listener, or checks
+// Options.Listener. It returns the port.
 func (s *Server) Listen() (int, error) {
 	if s.ln != nil {
 		return 0, errors.New("proxy: already listening")
@@ -136,23 +141,36 @@ func (s *Server) Listen() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	addr := s.opts.Addr
+	ln := s.opts.Listener
+	if ln == nil {
+		if ln, err = bind(s.opts.Addr); err != nil {
+			return 0, err
+		}
+	}
+	a, ok := ln.Addr().(*net.TCPAddr)
+	if !ok || !a.IP.Equal(net.ParseIP(LoopbackHost)) {
+		return 0, fmt.Errorf("proxy: listener on %s: only %s may be served", ln.Addr(), LoopbackHost)
+	}
+	s.upstream, s.ln = up, ln
+	return a.Port, nil
+}
+
+func bind(addr string) (net.Listener, error) {
 	if addr == "" {
 		addr = DefaultAddr
 	}
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
-		return 0, fmt.Errorf("proxy: addr %q: %w", addr, err)
+		return nil, fmt.Errorf("proxy: addr %q: %w", addr, err)
 	}
 	if host != LoopbackHost {
-		return 0, fmt.Errorf("proxy: addr %q: only %s may be bound", addr, LoopbackHost)
+		return nil, fmt.Errorf("proxy: addr %q: only %s may be bound", addr, LoopbackHost)
 	}
 	ln, err := net.Listen("tcp4", addr)
 	if err != nil {
-		return 0, fmt.Errorf("proxy: listen: %w", err)
+		return nil, fmt.Errorf("proxy: listen: %w", err)
 	}
-	s.upstream, s.ln = up, ln
-	return ln.Addr().(*net.TCPAddr).Port, nil
+	return ln, nil
 }
 
 func parseUpstream(raw string) (*url.URL, error) {
@@ -203,8 +221,12 @@ func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(http.MethodPost+" "+PathResponses, s.authorized(s.handleResponses))
 	mux.HandleFunc(http.MethodGet+" "+PathModels, s.authorized(s.handleModels))
-	mux.HandleFunc(http.MethodGet+" "+PathHealth, func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("ok\n"))
+	mux.HandleFunc(http.MethodGet+" "+PathHealth, func(w http.ResponseWriter, r *http.Request) {
+		body := "ok\n"
+		if s.opts.Health != nil {
+			body += s.opts.Health(r.Context()) + "\n"
+		}
+		_, _ = io.WriteString(w, body)
 	})
 	return mux
 }

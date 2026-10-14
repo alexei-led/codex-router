@@ -11,6 +11,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1034,6 +1036,70 @@ func TestListenBindsLoopbackOnly(t *testing.T) {
 				t.Errorf("bound %s port %d", got, port)
 			}
 		})
+	}
+}
+
+func TestListenerMustBeLoopbackTCP(t *testing.T) {
+	short, err := os.MkdirTemp("", "px") // a unix socket path must stay short on macOS
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(short) })
+	tests := []struct {
+		name    string
+		network string
+		addr    string
+		wantErr bool
+	}{
+		{"loopback", "tcp4", "127.0.0.1:0", false},
+		{"all interfaces", "tcp4", "0.0.0.0:0", true},
+		{"unix socket", "unix", filepath.Join(short, "p.sock"), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ln, err := net.Listen(tt.network, tt.addr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = ln.Close() }()
+			s := New(Options{Listener: ln, Addr: "0.0.0.0:1", Logger: slog.New(slog.DiscardHandler)})
+			port, err := s.Listen()
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("Listen accepted a listener on %s", ln.Addr())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := ln.Addr().(*net.TCPAddr).Port; port != want {
+				t.Errorf("port = %d, want the listener's %d", port, want)
+			}
+		})
+	}
+}
+
+func TestHealthAddsStatusLine(t *testing.T) {
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := startProxy(t, sseUpstream(t).url(), func(o *Options) {
+		o.Listener = ln
+		o.Health = func(context.Context) string { return "brain: down" }
+	})
+	if want := fmt.Sprintf("http://%s", ln.Addr()); h.base != want {
+		t.Fatalf("proxy serves %s, want the given listener %s", h.base, want)
+	}
+	resp, err := http.Get(h.base + PathHealth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK || string(body) != "ok\nbrain: down\n" {
+		t.Errorf("healthz = %d %q", resp.StatusCode, body)
 	}
 }
 

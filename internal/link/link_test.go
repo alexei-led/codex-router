@@ -356,6 +356,20 @@ func TestClientReconnectsAfterBrainRestart(t *testing.T) {
 	})
 }
 
+func TestUpFollowsTheBrain(t *testing.T) {
+	path := sockPath(t)
+	c := newClient(t, path, homeA, time.Second)
+	if c.Up(context.Background()) {
+		t.Fatal("Up with no brain")
+	}
+	brain := startBrain(t, path, homeA, &fakeBrain{})
+	eventually(t, "brain up", func() bool { return c.Up(context.Background()) })
+	if err := brain.Close(); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "brain down", func() bool { return !c.Up(context.Background()) })
+}
+
 func TestWrongHomeRejected(t *testing.T) {
 	path := sockPath(t)
 	brain := &fakeBrain{rw: toLow, ok: true}

@@ -6,18 +6,25 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
+	"github.com/alexei-led/codex-router/internal/link"
+	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/registry"
+	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
 	"github.com/alexei-led/codex-router/internal/tui"
 )
@@ -479,5 +486,275 @@ func TestSessionsEmptyRegistry(t *testing.T) {
 		if code := run(context.Background(), tc.args, env, nil, &stdout, &stderr); code != exitOK || stdout.String() != tc.want {
 			t.Errorf("%v: exit %d, stdout %q, stderr %q; want 0 and %q", tc.args, code, stdout.String(), stderr.String(), tc.want)
 		}
+	}
+}
+
+const (
+	edgeToken = "edge-token-under-test"
+	edgeBody  = `{"model":"gpt-6-sol","reasoning":{"effort":"medium"},"input":[` +
+		`{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]}],"stream":true}`
+	edgeTurn = `{"session_id":"s-1","thread_id":"th-1","turn_id":"tu-1","agent_name":"main"}`
+)
+
+// edgeSetup lays out a home's stage 2 state the way setup does: a private
+// homes/<id> dir with a token and a free port. The state base is under
+// /tmp so the brain socket path fits the macOS limit.
+func edgeSetup(t *testing.T) (args []string, h home.Home, dir string, port int) {
+	t.Helper()
+	state, err := os.MkdirTemp("/tmp", "cre")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(state) })
+	codexHome := t.TempDir()
+	h, err = home.Resolve(func(k string) string {
+		if k == "CODEX_HOME" {
+			return codexHome
+		}
+		return ""
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir = filepath.Join(state, "codex-router", homesDir, h.ID)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port = ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+	for name, v := range map[string]string{tokenFile: edgeToken + "\n", portFile: strconv.Itoa(port) + "\n"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(v), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return []string{"edge", "--home", codexHome, "--state-dir", state}, h, dir, port
+}
+
+// syncBuffer is a bytes.Buffer the edge logs into while the test reads it.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// fakeBackend records what reaches upstream and answers one completed
+// response.
+type fakeBackend struct {
+	mu     sync.Mutex
+	bodies []string
+	tokens []string
+}
+
+func (b *fakeBackend) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	b.mu.Lock()
+	b.bodies = append(b.bodies, string(body))
+	b.tokens = append(b.tokens, r.Header.Get(proxy.HeaderToken))
+	b.mu.Unlock()
+	w.Header().Set("Content-Type", "text/event-stream")
+	_, _ = io.WriteString(w, "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"model\":\"m\",\"usage\":{}}}\n\n")
+}
+
+func (b *fakeBackend) seen() (bodies, tokens []string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return slices.Clone(b.bodies), slices.Clone(b.tokens)
+}
+
+// rewriteTo is a brain that routes every step to one model.
+type rewriteTo string
+
+func (m rewriteTo) Decide(context.Context, *responses.Request, responses.Meta) (responses.Rewrite, bool) {
+	return responses.Rewrite{Model: string(m)}, true
+}
+
+func (rewriteTo) Observe(responses.Meta, string, responses.Usage, int) {}
+
+func edgePost(t *testing.T, base, token string) int {
+	t.Helper()
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, base+proxy.PathResponses, strings.NewReader(edgeBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set(responses.HeaderTurnMetadata, edgeTurn)
+	if token != "" {
+		req.Header.Set(proxy.HeaderToken, token)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+	return resp.StatusCode
+}
+
+// healthz returns the edge's /healthz body, or "" while it does not answer.
+func healthz(base string) string {
+	resp, err := http.Get(base + proxy.PathHealth)
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = resp.Body.Close() }()
+	b, _ := io.ReadAll(resp.Body)
+	return string(b)
+}
+
+func waitFor(t *testing.T, what string, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for %s", what)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func TestEdgeForwardsWithBrainDownAndRoutesWithBrainUp(t *testing.T) {
+	backend := &fakeBackend{}
+	up := httptest.NewServer(backend)
+	defer up.Close()
+	edgeUpstream = up.URL + "/backend-api/codex"
+	t.Cleanup(func() { edgeUpstream = "" })
+
+	args, h, dir, port := edgeSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var stderr syncBuffer
+	done := make(chan int, 1)
+	go func() { done <- run(ctx, args, testEnv(t), nil, io.Discard, &stderr) }()
+
+	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	waitFor(t, "edge up", func() bool { return healthz(base) != "" })
+	if got := healthz(base); got != "ok\nbrain: down\n" {
+		t.Errorf("healthz with no brain = %q", got)
+	}
+	if !strings.Contains(stderr.String(), "edge-self-bind") {
+		t.Errorf("stderr %q, want the self-bind warning", stderr.String())
+	}
+
+	for _, token := range []string{"", "wrong"} {
+		if code := edgePost(t, base, token); code != http.StatusUnauthorized {
+			t.Errorf("token %q: status %d, want 401", token, code)
+		}
+	}
+	if bodies, _ := backend.seen(); len(bodies) != 0 {
+		t.Fatalf("requests without the token reached upstream: %d", len(bodies))
+	}
+
+	if code := edgePost(t, base, edgeToken); code != http.StatusOK {
+		t.Fatalf("brain down: status %d, want 200", code)
+	}
+	bodies, tokens := backend.seen()
+	if len(bodies) != 1 || bodies[0] != edgeBody || tokens[0] != "" {
+		t.Fatalf("brain down: upstream got %q (token %q), want the original body and no token", bodies, tokens)
+	}
+
+	brain, err := link.Listen(filepath.Join(dir, link.SocketName), h.ID, rewriteTo("gpt-6-luna"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = brain.Close() }()
+	waitFor(t, "brain up", func() bool { return healthz(base) == "ok\nbrain: up\n" })
+	if code := edgePost(t, base, edgeToken); code != http.StatusOK {
+		t.Fatalf("brain up: status %d, want 200", code)
+	}
+	if bodies, _ = backend.seen(); len(bodies) != 2 || !strings.Contains(bodies[1], `"model":"gpt-6-luna"`) {
+		t.Errorf("brain up: upstream got %q, want the brain's model", bodies)
+	}
+
+	cancel()
+	select {
+	case code := <-done:
+		if code != exitOK {
+			t.Errorf("exit %d, stderr %q", code, stderr.String())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("edge did not stop")
+	}
+	if strings.Contains(stderr.String(), edgeToken) {
+		t.Error("the token reached the log")
+	}
+}
+
+func TestEdgeRefusesToStart(t *testing.T) {
+	cases := []struct {
+		name     string
+		edit     func(t *testing.T, args []string, dir string) []string
+		wantCode int
+		want     string
+	}{
+		{"not set up", func(t *testing.T, args []string, dir string) []string {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Fatal(err)
+			}
+			return args
+		}, exitError, "is not set up"},
+		{"no token", func(t *testing.T, args []string, dir string) []string {
+			if err := os.Remove(filepath.Join(dir, tokenFile)); err != nil {
+				t.Fatal(err)
+			}
+			return args
+		}, exitError, "edge: token"},
+		{"empty token", func(t *testing.T, args []string, dir string) []string {
+			if err := os.WriteFile(filepath.Join(dir, tokenFile), []byte("\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			return args
+		}, exitError, "is empty"},
+		{"state dir open to others", func(t *testing.T, args []string, dir string) []string {
+			if err := os.Chmod(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			return args
+		}, exitError, "must not be accessible"},
+		{"homes dir open to group", func(t *testing.T, args []string, dir string) []string {
+			if err := os.Chmod(filepath.Dir(dir), 0o750); err != nil {
+				t.Fatal(err)
+			}
+			return args
+		}, exitError, "must not be accessible"},
+		{"bad port", func(t *testing.T, args []string, dir string) []string {
+			if err := os.WriteFile(filepath.Join(dir, portFile), []byte("http"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			return args
+		}, exitError, "does not hold a port"},
+		{"relative home", func(_ *testing.T, args []string, _ string) []string {
+			return append(args, "--home", "rel")
+		}, exitUsage, "not an absolute path"},
+		{"relative state dir", func(_ *testing.T, args []string, _ string) []string {
+			return append(args, "--state-dir", "rel")
+		}, exitUsage, "not an absolute path"},
+		{"stray argument", func(_ *testing.T, args []string, _ string) []string {
+			return append(args, "extra")
+		}, exitUsage, `unexpected argument "extra"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args, _, dir, _ := edgeSetup(t)
+			args = tc.edit(t, args, dir)
+			var stderr bytes.Buffer
+			code := run(context.Background(), args, testEnv(t), nil, io.Discard, &stderr)
+			if code != tc.wantCode || !strings.Contains(stderr.String(), tc.want) {
+				t.Errorf("exit %d, stderr %q; want %d and %q", code, stderr.String(), tc.wantCode, tc.want)
+			}
+		})
 	}
 }

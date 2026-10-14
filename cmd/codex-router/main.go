@@ -10,10 +10,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
+	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -25,6 +29,9 @@ import (
 	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/hook"
 	"github.com/alexei-led/codex-router/internal/launcher"
+	"github.com/alexei-led/codex-router/internal/link"
+	"github.com/alexei-led/codex-router/internal/listen"
+	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/route"
 	"github.com/alexei-led/codex-router/internal/tui"
@@ -51,6 +58,8 @@ Usage:
   codex-router sessions [--json]                     list running sessions
   codex-router hook                                  Codex hook: print a line when the route switched
   codex-router [--config PATH] proxy [--port N]      run the proxy alone (debugging, codex exec)
+  codex-router [--config PATH] edge [--home PATH] [--state-dir DIR]
+                                                     serve a Codex home's provider port
   codex-router version                               print the version
 
 Global flags:
@@ -70,6 +79,12 @@ sessions prints one line per session: id, home, label, mode, route; --json
 prints the full session list with each session's endpoint_id.
 proxy --port defaults to the config's proxy.port (0 = any free port) and
 prints the codex -c flags that point at it.
+edge holds the provider port of one Codex home (--home, else $CODEX_HOME,
+else ~/.codex) and asks that home's brain for each step's route; with the
+brain down it forwards requests unchanged. Its socket comes from launchd or
+systemd; without one it binds the port codex-router setup stored and warns.
+--state-dir is the base the service units pass, as $XDG_STATE_HOME (else
+~/.local/state); the edge reads codex-router/homes/<home id>/ in it.
 The classifier key comes from the env var named by the classifier's keyEnv.
 When it is unset the classifier is off: requests keep their model unless a
 route is pinned from the panel.
@@ -82,6 +97,7 @@ Exit codes:
   sessions 0, also when no session runs; 1 on error
   hook     0, also when the router is not running; 1 only when stdout fails
   proxy    0 after SIGINT or SIGTERM, 1 on error
+  edge     0 after SIGINT or SIGTERM, 1 on error or when the home is not set up
   any      2 on a usage error
 `
 
@@ -145,6 +161,8 @@ func run(ctx context.Context, args, env []string, stdin io.Reader, stdout, stder
 			return c.sessions(rest)
 		case "proxy":
 			return c.proxy(ctx, g.config, rest)
+		case "edge":
+			return c.edge(ctx, g.config, rest)
 		}
 	}
 	return c.launch(g.config, g.rest)
@@ -478,4 +496,144 @@ func (c cli) proxy(ctx context.Context, configPath string, args []string) int {
 		return c.fail(err)
 	}
 	return exitOK
+}
+
+// Stage 2 state of one home, $STATE/codex-router/homes/<home_id>/: setup
+// writes the port and token; the edge reads them.
+const (
+	homesDir  = "homes"
+	portFile  = "port"
+	tokenFile = "token"
+)
+
+// edgeSocketName names the edge's socket in the launchd Sockets dict and
+// the systemd FileDescriptorName.
+const edgeSocketName = "edge"
+
+// edgeUpstream is the edge's backend; empty is proxy.Upstream. Tests point
+// it at a fake.
+var edgeUpstream string
+
+func (c cli) edge(ctx context.Context, configPath string, args []string) int {
+	fs := flag.NewFlagSet("edge", flag.ContinueOnError)
+	fs.SetOutput(c.stderr)
+	homePath := fs.String("home", "", "Codex home `path` (default: $CODEX_HOME, else ~/.codex)")
+	stateDir := fs.String("state-dir", "", "state base `dir`, as $XDG_STATE_HOME (default: $XDG_STATE_HOME, else ~/.local/state)")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	if fs.NArg() > 0 {
+		return c.usageError(fmt.Errorf("edge: unexpected argument %q", fs.Arg(0)))
+	}
+	for _, f := range []struct{ name, value, env string }{
+		{"--home", *homePath, "CODEX_HOME"},
+		{"--state-dir", *stateDir, "XDG_STATE_HOME"},
+	} {
+		if f.value == "" {
+			continue
+		}
+		if !filepath.IsAbs(f.value) {
+			return c.usageError(fmt.Errorf("edge: %s %q is not an absolute path", f.name, f.value))
+		}
+		c.env = append(slices.Clip(c.env), f.env+"="+f.value)
+	}
+	h, err := home.Resolve(c.getenv)
+	if err != nil {
+		return c.fail(err)
+	}
+	dir, token, err := edgeState(c.getenv, h)
+	if err != nil {
+		return c.fail(err)
+	}
+	log := slog.New(slog.NewJSONHandler(c.stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	cfg, err := c.loadConfig(configPath)
+	if err != nil {
+		// Codex has no other way to its backend: forward with defaults
+		// rather than leave the port dead.
+		log.Warn("config-unreadable", "err", err)
+		cfg = config.Default()
+	}
+	ln, err := listen.Activated(edgeSocketName)
+	var addr string
+	switch {
+	case errors.Is(err, listen.ErrNotActivated):
+		port, perr := readPort(dir)
+		if perr != nil {
+			return c.fail(perr)
+		}
+		addr = net.JoinHostPort(proxy.LoopbackHost, strconv.Itoa(port))
+		log.Warn("edge-self-bind", "port", port, "why", err.Error(),
+			"note", "the port is free while the edge is down; run codex-router setup to install the service units")
+	case err != nil:
+		return c.fail(err)
+	}
+	lc := link.NewClient(link.ClientOptions{
+		Path: filepath.Join(dir, link.SocketName), HomeID: h.ID, Timeout: cfg.DecideTimeout(), Logger: log,
+	})
+	defer func() { _ = lc.Close() }()
+	srv := proxy.New(proxy.Options{
+		Addr:          addr,
+		Listener:      ln,
+		Token:         token,
+		Upstream:      edgeUpstream,
+		Decider:       lc,
+		Observer:      lc,
+		Logger:        log,
+		DecideTimeout: cfg.DecideTimeout(),
+		Health: func(ctx context.Context) string {
+			if lc.Up(ctx) {
+				return "brain: up"
+			}
+			return "brain: down"
+		},
+	})
+	port, err := srv.Listen()
+	if err != nil {
+		return c.fail(err)
+	}
+	log.Info("edge-ready", "home", h.ID, "port", port, "activated", ln != nil)
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	if err := srv.Serve(ctx); err != nil {
+		return c.fail(err)
+	}
+	return exitOK
+}
+
+// edgeState returns h's stage 2 state dir and the token in it. The dir and
+// its parents up to codex-router/ must be private to this user: whoever can
+// write there can swap the token.
+func edgeState(getenv func(string) string, h home.Home) (dir, token string, err error) {
+	app, err := registry.StateDir(getenv)
+	if err != nil {
+		return "", "", err
+	}
+	dir = filepath.Join(app, homesDir, h.ID)
+	for _, d := range []string{app, filepath.Dir(dir), dir} {
+		if err := registry.CheckPrivate(d); err != nil {
+			return "", "", fmt.Errorf("edge: home %s is not set up (run codex-router setup --home %s): %w", h.Name, h.Path, err)
+		}
+	}
+	b, err := os.ReadFile(filepath.Join(dir, tokenFile))
+	if err != nil {
+		return "", "", fmt.Errorf("edge: token: %w", err)
+	}
+	if token = strings.TrimSpace(string(b)); token == "" {
+		return "", "", fmt.Errorf("edge: token file %s is empty", filepath.Join(dir, tokenFile))
+	}
+	return dir, token, nil
+}
+
+// readPort reads the provider port setup stored in dir.
+func readPort(dir string) (int, error) {
+	path := filepath.Join(dir, portFile)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return 0, fmt.Errorf("edge: port: %w", err)
+	}
+	p, err := strconv.Atoi(strings.TrimSpace(string(b)))
+	if err != nil || p < 1 || p > 65535 {
+		return 0, fmt.Errorf("edge: %s does not hold a port", path)
+	}
+	return p, nil
 }
