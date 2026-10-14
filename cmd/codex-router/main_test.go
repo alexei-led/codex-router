@@ -171,6 +171,22 @@ func (h endpointHandler) Hello() control.Hello              { return h.hello }
 // points at the registry and the sockets by endpoint id.
 func fleetFixture(t *testing.T) (env []string, sockets map[string]string) {
 	t.Helper()
+	env, root, sockDir := testRegistry(t)
+	sockets = map[string]string{
+		"ep-work":    serveEndpoint(t, root, sockDir, "ep-work", homeWork, sessWorkFeat, sessWorkMain),
+		"ep-default": serveEndpoint(t, root, sockDir, "ep-default", homeDefault, sessDefault),
+	}
+	dead := registry.Endpoint{ID: "ep-dead", Kind: registry.KindSession, Home: homeWork, Socket: filepath.Join(sockDir, "dead.sock")}
+	if err := registry.Write(root, dead); err != nil {
+		t.Fatal(err)
+	}
+	return env, sockets
+}
+
+// testRegistry returns the env that points at a fresh registry, its root,
+// and a dir for sockets.
+func testRegistry(t *testing.T) (env []string, root, sockDir string) {
+	t.Helper()
 	state := t.TempDir()
 	env = append(testEnv(t), "XDG_STATE_HOME="+state)
 	root, err := registry.Root(func(k string) string {
@@ -183,34 +199,31 @@ func fleetFixture(t *testing.T) (env []string, sockets map[string]string) {
 		t.Fatal(err)
 	}
 	// Unix socket paths are short on macOS, so not under t.TempDir.
-	sockDir, err := os.MkdirTemp("", "crm")
+	sockDir, err = os.MkdirTemp("", "crm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(sockDir) })
-	sockets = map[string]string{}
-	serve := func(id string, h home.Home, sessions ...route.SessionInfo) {
-		sock := filepath.Join(sockDir, id+".sock")
-		srv, err := control.Listen(sock, endpointHandler{
-			hello:    control.Hello{EndpointID: id, Kind: registry.KindSession, Home: h},
-			sessions: sessions,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = srv.Close() })
-		if err := registry.Write(root, registry.Endpoint{ID: id, Kind: registry.KindSession, Home: h, Socket: sock}); err != nil {
-			t.Fatal(err)
-		}
-		sockets[id] = sock
-	}
-	serve("ep-work", homeWork, sessWorkFeat, sessWorkMain)
-	serve("ep-default", homeDefault, sessDefault)
-	dead := registry.Endpoint{ID: "ep-dead", Kind: registry.KindSession, Home: homeWork, Socket: filepath.Join(sockDir, "dead.sock")}
-	if err := registry.Write(root, dead); err != nil {
+	return env, root, sockDir
+}
+
+// serveEndpoint serves sessions as endpoint id of home h on a socket in
+// sockDir, registers it under root, and returns the socket path.
+func serveEndpoint(t *testing.T, root, sockDir, id string, h home.Home, sessions ...route.SessionInfo) string {
+	t.Helper()
+	sock := filepath.Join(sockDir, id+".sock")
+	srv, err := control.Listen(sock, endpointHandler{
+		hello:    control.Hello{EndpointID: id, Kind: registry.KindSession, Home: h},
+		sessions: sessions,
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
-	return env, sockets
+	t.Cleanup(func() { _ = srv.Close() })
+	if err := registry.Write(root, registry.Endpoint{ID: id, Kind: registry.KindSession, Home: h, Socket: sock}); err != nil {
+		t.Fatal(err)
+	}
+	return sock
 }
 
 // stubPanel replaces the panel for one test and returns the options it got.
@@ -265,6 +278,50 @@ func TestTUIResolvesSession(t *testing.T) {
 				t.Errorf("panel ran with %+v", *got)
 			case tc.wantID != "" && (len(*got) != 1 || (*got)[0].Session != tc.wantID || (*got)[0].Registry == ""):
 				t.Errorf("panel options %+v, want session %s over the registry", *got, tc.wantID)
+			}
+		})
+	}
+}
+
+func TestTUIResolvesCollidingLabels(t *testing.T) {
+	env, root, sockDir := testRegistry(t)
+	const shared = "work · repo · main"
+	twinA := testSession(homeWork, "t-a", shared, 2)
+	twinB := testSession(homeWork, "t-b", shared, 1)
+	serveEndpoint(t, root, sockDir, "ep", homeWork, twinA, twinB)
+	shown := home.Disambiguate([]string{shared, shared}, []string{twinA.ID, twinB.ID})
+	hexA := strings.TrimPrefix(shown[0], shared+labelSep)
+
+	cases := []struct {
+		name     string
+		query    string
+		wantCode int
+		wantID   string
+	}{
+		{"shared full label", shared, exitUsage, ""},
+		{"shared branch suffix", "main", exitUsage, ""},
+		{"shared repo and branch suffix", "repo · main", exitUsage, ""},
+		{"disambiguated label", shown[1], exitOK, twinB.ID},
+		{"hex suffix", hexA, exitOK, twinA.ID},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := stubPanel(t)
+			var stderr bytes.Buffer
+			code := run(context.Background(), []string{"tui", "--session", tc.query}, env, nil, io.Discard, &stderr)
+			if code != tc.wantCode {
+				t.Fatalf("exit %d, want %d (stderr %q)", code, tc.wantCode, stderr.String())
+			}
+			if tc.wantCode == exitUsage {
+				for _, w := range shown {
+					if !strings.Contains(stderr.String(), w) {
+						t.Errorf("stderr %q, want it to list %q", stderr.String(), w)
+					}
+				}
+				return
+			}
+			if len(*got) != 1 || (*got)[0].Session != tc.wantID {
+				t.Errorf("panel options %+v, want session %s", *got, tc.wantID)
 			}
 		})
 	}

@@ -42,9 +42,17 @@ type SessionInfo struct {
 	SpentUSD     *float64      `json:"spent_usd,omitempty"`
 }
 
+// sessionIdle is how long a thread may go without a user step or reply
+// before the sessions list hides it, so a thread left behind by /new leaves.
+// The control server recomputes the list only when it pushes, so an idle
+// row leaves with the engine's next step or reply, not on the dot.
+const sessionIdle = 10 * time.Minute
+
 // Sessions lists the threads that have had a user step, most recently
-// active first, then by thread id. Cwd and the label, which reads the cwd's
-// git metadata, are filled outside the engine lock.
+// active first, then by thread id. A thread idle for sessionIdle is left
+// out unless it is the engine's most recently active one. Cwd and the
+// label, which reads the cwd's git metadata, are filled outside the engine
+// lock.
 func (e *Engine) Sessions() []SessionInfo {
 	out := e.sessions()
 	for i := range out {
@@ -61,8 +69,9 @@ func (e *Engine) sessions() []SessionInfo {
 	defer e.mu.Unlock()
 	priced := len(e.cfg.Prices) > 0
 	var out []SessionInfo
+	latest, now := e.latest(), e.now()
 	for _, th := range e.all() {
-		if th.lastActive.IsZero() {
+		if th.lastActive.IsZero() || th != latest && now.Sub(th.lastActive) >= sessionIdle {
 			continue
 		}
 		mode := e.mode(th)
