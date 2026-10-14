@@ -299,10 +299,12 @@ Depends on: Tasks 1, 3, 5
 - Modify: `internal/launcher/launcher.go`, `internal/launcher/runtime.go`, `internal/launcher/router.go`
 - Modify: `internal/launcher/launcher_test.go`, `internal/launcher/session_test.go`, `internal/launcher/e2e_test.go`
 
-- [ ] after the control socket is up, write `endpoint.json` (kind `session`, home, socket, pid); remove it on every exit path including fallback
-- [ ] pass `Deps.Cwd` = launcher cwd; drop `NewestControlSocket` (replaced by the registry in Task 7); use `registry.CheckPrivate` and delete `checkPrivate` from `runtime.go`
-- [ ] tests: entry exists while running and is gone after exit; startup failure leaves no entry; e2e with the fake Codex sees `hello` with the right home
-- [ ] run `make fmt lint test build`
+- [x] after the control socket is up, write `endpoint.json` (kind `session`, home, socket, pid); remove it on every exit path including fallback
+- [x] pass `Deps.Cwd` = launcher cwd; drop `NewestControlSocket` (replaced by the registry in Task 7); use `registry.CheckPrivate` and delete `checkPrivate` from `runtime.go`
+- [x] tests: entry exists while running and is gone after exit; startup failure leaves no entry; e2e with the fake Codex sees `hello` with the right home
+- [x] ➕ a registry that cannot be written does not stop the session: it routes, logs `registry-write-failed` and prints one stderr line that the panel will not list it. `session.close` removes the entry first, so every exit path (fallback, signal during startup, codex exit) drops it
+- [x] ➕ `cmd/codex-router/main.go` (outside the Files list, to keep the build green): `tui` without `--socket` locates the newest live registry endpoint instead of `NewestControlSocket`, until Task 7 replaces it with the fleet
+- [x] run `make fmt lint test build`
 
 ### Task 7: TUI fleet client
 

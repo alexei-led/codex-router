@@ -17,6 +17,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/hook"
 	"github.com/alexei-led/codex-router/internal/launcher"
+	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/tui"
 )
 
@@ -212,8 +213,7 @@ func (c cli) tui(ctx context.Context, args []string) int {
 	}
 	o := tui.Options{Socket: *socket}
 	if *socket == "" {
-		base := launcher.RuntimeBase(c.getenv)
-		o.Locate = func() (string, error) { return launcher.NewestControlSocket(base) }
+		o.Locate = func() (string, error) { return newestSession(c.getenv) }
 		s, err := o.Locate()
 		if err != nil {
 			return c.fail(err)
@@ -226,6 +226,25 @@ func (c cli) tui(ctx context.Context, args []string) int {
 		return c.fail(err)
 	}
 	return exitOK
+}
+
+// newestSession returns the control socket of the most recently started
+// live endpoint in the registry.
+func newestSession(getenv func(string) string) (string, error) {
+	root, err := registry.Root(getenv)
+	if err != nil {
+		return "", err
+	}
+	eps, _, err := registry.List(root)
+	if err != nil {
+		return "", err
+	}
+	for _, ep := range slices.Backward(eps) {
+		if registry.Alive(ep) {
+			return ep.Socket, nil
+		}
+	}
+	return "", fmt.Errorf("no running codex-router session in %s", root)
 }
 
 func (c cli) proxy(ctx context.Context, configPath string, args []string) int {

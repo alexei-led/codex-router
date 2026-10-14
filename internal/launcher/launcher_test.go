@@ -8,7 +8,6 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,6 +21,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/appserver"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
+	"github.com/alexei-led/codex-router/internal/registry"
 )
 
 const evCompleted = "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"model\":\"gpt-6-luna\"," +
@@ -102,6 +102,7 @@ func shortTempDir(t *testing.T) string {
 type harness struct {
 	opts    Options
 	base    string
+	state   string // XDG_STATE_HOME: the registry lives under it
 	records string
 	stderr  *syncBuffer
 	logs    *syncBuffer
@@ -129,13 +130,14 @@ func newHarness(t *testing.T, extraEnv ...string) *harness {
 
 	h := &harness{
 		base:    shortTempDir(t),
+		state:   t.TempDir(),
 		records: filepath.Join(t.TempDir(), "records.jsonl"),
 		stderr:  &syncBuffer{},
 		logs:    &syncBuffer{},
 	}
 	env := append(os.Environ(),
 		envFake+"=1", envRecord+"="+h.records, envExit+"=7",
-		"CODEX_HOME="+codexHome, "XDG_STATE_HOME="+t.TempDir())
+		"CODEX_HOME="+codexHome, "XDG_STATE_HOME="+h.state)
 	h.opts = Options{
 		Config:     cfg,
 		RuntimeDir: h.base,
@@ -198,6 +200,27 @@ func (h *harness) assertRuntimeRemoved(t *testing.T) {
 	}
 }
 
+// registered lists the registry under the harness's state dir.
+func (h *harness) registered(t *testing.T) []registry.Endpoint {
+	t.Helper()
+	root, err := registry.Root(h.opts.getenv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eps, skipped, err := registry.List(root)
+	if err != nil || len(skipped) != 0 {
+		t.Fatalf("registry.List: %v, skipped %v", err, skipped)
+	}
+	return eps
+}
+
+func (h *harness) assertUnregistered(t *testing.T) {
+	t.Helper()
+	if eps := h.registered(t); len(eps) != 0 {
+		t.Errorf("registry still holds %+v", eps)
+	}
+}
+
 func TestRunRoutesASessionAndReturnsCodexExitCode(t *testing.T) {
 	cases := []struct {
 		name string
@@ -236,6 +259,7 @@ func TestRunRoutesASessionAndReturnsCodexExitCode(t *testing.T) {
 			h.assertStart(t)
 			h.assertRemoteArgs(t)
 			h.assertRuntimeRemoved(t)
+			h.assertUnregistered(t)
 			if len(h.execed) != 0 {
 				t.Errorf("fell back to plain codex: %v", h.execed)
 			}
@@ -347,8 +371,34 @@ func TestRunFallsBackToPlainCodex(t *testing.T) {
 				t.Error("codex --remote ran")
 			}
 			h.assertRuntimeRemoved(t)
+			h.assertUnregistered(t)
 		})
 	}
+}
+
+func TestRunWithoutARegistryStillRoutes(t *testing.T) {
+	up := newUpstream(t)
+	h := newHarness(t)
+	h.opts.Upstream = up.URL + "/backend-api/codex"
+	state := filepath.Join(t.TempDir(), "state")
+	if err := os.WriteFile(state, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h.opts.Env = append(h.opts.Env, "XDG_STATE_HOME="+state)
+
+	if code := h.run(t); code != 7 {
+		t.Fatalf("exit code = %d, want 7; stderr: %s", code, h.stderr.String())
+	}
+	if got := h.stderr.String(); !strings.HasPrefix(got, "codex-router: the panel will not list this session: registry:") {
+		t.Errorf("stderr = %q, want one registry warning", got)
+	}
+	if !strings.Contains(h.logs.String(), `"msg":"registry-write-failed"`) {
+		t.Error("log does not record the registry failure")
+	}
+	if len(h.execed) != 0 {
+		t.Errorf("fell back to plain codex: %v", h.execed)
+	}
+	h.assertRuntimeRemoved(t)
 }
 
 func TestServeAnswersHealthAndPrintsPort(t *testing.T) {
@@ -527,48 +577,6 @@ func TestSettingsWriterKeepsARouteQueuedDuringAWrite(t *testing.T) {
 	want := []string{"resume t", "update t gpt-6-sol/medium", "update t gpt-6-luna/low", "update t gpt-6-sol/medium"}
 	if !slices.Equal(api.calls, want) {
 		t.Errorf("calls = %q, want %q", api.calls, want)
-	}
-}
-
-func TestNewestControlSocketPicksNewestLivePrivateSession(t *testing.T) {
-	base := shortTempDir(t)
-	session := func(name string, mode os.FileMode, listen bool, age time.Duration) string {
-		t.Helper()
-		dir := filepath.Join(base, name)
-		if err := os.Mkdir(dir, 0o700); err != nil {
-			t.Fatal(err)
-		}
-		sock := filepath.Join(dir, control.SocketName)
-		ln, err := net.Listen("unix", sock)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if listen {
-			t.Cleanup(func() { _ = ln.Close() })
-		} else {
-			ln.(*net.UnixListener).SetUnlinkOnClose(false)
-			_ = ln.Close()
-		}
-		at := time.Now().Add(-age)
-		if err := os.Chtimes(sock, at, at); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Chmod(dir, mode); err != nil {
-			t.Fatal(err)
-		}
-		return sock
-	}
-	session("old", 0o700, true, time.Hour)
-	want := session("new", 0o700, true, time.Minute)
-	session("dead", 0o700, false, 0)
-	session("open", 0o755, true, 0)
-
-	got, err := NewestControlSocket(base)
-	if err != nil || got != want {
-		t.Errorf("NewestControlSocket = %q, %v; want %q", got, err, want)
-	}
-	if _, err := NewestControlSocket(filepath.Join(base, "missing")); err == nil {
-		t.Error("no sessions: want error")
 	}
 }
 

@@ -5,12 +5,15 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/alexei-led/codex-router/internal/registry"
 )
 
 func testEnv(t *testing.T) []string {
@@ -50,6 +53,48 @@ func TestRunPrintsAndRejects(t *testing.T) {
 				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), tc.wantStderr)
 			}
 		})
+	}
+}
+
+func TestNewestSessionPicksTheNewestLiveEndpoint(t *testing.T) {
+	env := map[string]string{"XDG_STATE_HOME": t.TempDir()}
+	getenv := func(k string) string { return env[k] }
+	root, err := registry.Root(getenv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := newestSession(getenv); err == nil || !strings.Contains(err.Error(), "no running codex-router session") {
+		t.Errorf("empty registry: err = %v", err)
+	}
+
+	sockDir, err := os.MkdirTemp("", "crm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(sockDir) })
+	now := time.Now()
+	add := func(id string, age time.Duration, listen bool) string {
+		t.Helper()
+		sock := filepath.Join(sockDir, id+".sock")
+		if listen {
+			ln, err := net.Listen("unix", sock)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = ln.Close() })
+		}
+		ep := registry.Endpoint{ID: id, Kind: registry.KindSession, Started: now.Add(-age), Socket: sock}
+		if err := registry.Write(root, ep); err != nil {
+			t.Fatal(err)
+		}
+		return sock
+	}
+	add("old", time.Hour, true)
+	want := add("new", time.Minute, true)
+	add("dead", 0, false)
+
+	if got, err := newestSession(getenv); err != nil || got != want {
+		t.Errorf("newestSession = %q, %v; want %q", got, err, want)
 	}
 }
 

@@ -19,7 +19,9 @@ import (
 	"github.com/alexei-led/codex-router/internal/appserver"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
+	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/proxy"
+	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
 )
@@ -345,6 +347,42 @@ func TestE2EThreeToolTurnClassifiesOnceAndPinsEveryStep(t *testing.T) {
 	e.eventually(t, "footer synced to the route", func(s route.Snapshot) bool {
 		return s.FooterSynced && s.Footer == routedRoute
 	})
+}
+
+func TestE2ESessionRegistersAndSaysHelloWithItsHome(t *testing.T) {
+	e := newE2E(t)
+	want, err := home.Resolve(e.h.opts.getenv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hello := e.ctl.Hello()
+	if hello.Kind != registry.KindSession || hello.Home != want || hello.EndpointID != filepath.Base(e.s.dir) {
+		t.Errorf("hello = %+v, want kind %q, home %+v, endpoint id %q", hello, registry.KindSession, want, filepath.Base(e.s.dir))
+	}
+
+	eps := e.h.registered(t)
+	if len(eps) != 1 {
+		t.Fatalf("registry = %+v, want one entry", eps)
+	}
+	ep := eps[0]
+	if ep.ID != hello.EndpointID || ep.Kind != registry.KindSession || ep.Protocol != control.Protocol ||
+		ep.PID != os.Getpid() || ep.Home != want || ep.Socket != filepath.Join(e.s.dir, control.SocketName) || ep.Started.IsZero() {
+		t.Errorf("registry entry = %+v", ep)
+	}
+
+	e.mustPost(t, turnReq("turn-1", 1))
+	wd, _ := os.Getwd()
+	deadline := time.After(e2eWait)
+	for {
+		select {
+		case list := <-e.ctl.Sessions():
+			if len(list) == 1 && list[0].Cwd == wd {
+				return
+			}
+		case <-deadline:
+			t.Fatalf("no sessions list with cwd %q", wd)
+		}
+	}
 }
 
 func TestE2ESubagentRequestIsForwardedUnchanged(t *testing.T) {
