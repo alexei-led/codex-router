@@ -401,9 +401,9 @@ Depends on: Tasks 9, 10
 - Create: `scripts/live/stage1.sh` (up/down: throwaway repos and worktrees, agterm workspace, sessions)
 - Create: `docs/archive/evidence/<run-date>-multi-session/stage1/` (captures, logs, `report.md`)
 
-- [ ] `make build`; record sha256 of both real `config.toml` files; export a temp `XDG_STATE_HOME` for every process the script starts
-- [ ] `scripts/live/stage1.sh up`: temp repo with 2 worktrees + a second temp repo; agterm workspace `router-live`; 5 sessions via `agtermctl session new --command` (fish login wrapper so the classifier key is in env): 3 × `codex-router` under `~/.codex` (worktree A, worktree B, repo 2), 2 × `CODEX_HOME=~/.codex-work codex-router` (repo 2 worktrees); split in session 1 runs `codex-router tui --session <its label>`; a 6th session runs `codex-router tui`
-- [ ] checks, each with an `agtermctl session text` capture or log excerpt:
+- [x] `make build`; record sha256 of both real `config.toml` files; export a temp `XDG_STATE_HOME` for every process the script starts
+- [x] `scripts/live/stage1.sh up`: temp repo with 2 worktrees + a second temp repo; agterm workspace `router-live`; 5 sessions via `agtermctl session new --command` (fish login wrapper so the classifier key is in env): 3 × `codex-router` under `~/.codex` (worktree A, worktree B, repo 2), 2 × `CODEX_HOME=~/.codex-work codex-router` (repo 2 worktrees); split in session 1 runs `codex-router tui --session <its label>`; a 6th session runs `codex-router tui`
+- [x] checks, each with an `agtermctl session text` capture or log excerpt:
   - `codex-router sessions --json` lists 5 sessions with the right homes and labels
   - all-panel: 2 home groups, `[` `]` cycle all 5, Sessions tab rows match
   - locked panel shows only its session and no bar
@@ -413,9 +413,13 @@ Depends on: Tasks 9, 10
   - `/model` in session 3 → `◐ manual` on that row only
   - `kill -9` one router → its row `disconnected`, then gone; others keep routing; registry entry pruned
   - `/new` in session 4 → a new row; the old row leaves after the thread goes idle
-- [ ] each bug: fix + regression test + entry in `report.md`; re-run the failed check
-- [ ] `scripts/live/stage1.sh down`; assert real `config.toml` sha256 unchanged
-- [ ] run `make fmt lint test build`
+- [x] each bug: fix + regression test + entry in the stage report (see ⚠️ below on `report.md`); re-run the failed check
+- [x] `scripts/live/stage1.sh down`; assert real `config.toml` sha256 unchanged
+- [x] run `make fmt lint test build`
+- [x] ➕ bug 1 (`9fbb8b2`): Codex's thread-title side thread (`thread_source = "thread_title"`, `request_kind = "turn"`, no subagent header) was routed and listed as a second session of every router. Requests whose thread source is set and is not `user` now pass through (`internal/responses`, outside the Files list); regression tests `TestClassify`, `TestSideThreadIsNotASession`; architecture and user guide lines updated. Check 1 re-run: 5 sessions
+- [x] ➕ `stage1.sh` also has `env`, `capture NAME SESSION [PANE]` (path-sanitized capture) and `focus LABEL` (press `]` in the all-panel until LABEL is focused). Routers get the run's `XDG_RUNTIME_DIR` too, so `down` finds the app-server a `kill -9` orphans by its command line. Codex runs under `/private/tmp`, which the user's config already trusts, so no trust prompt writes `config.toml`
+- [x] ➕ the classifier key was not in the fish login env, so all routers ran `Jev off` and turns were routed by pins only; every check above holds with pins. Classifier decisions were not exercised (stage 1 did not change them)
+- ⚠️ `stage1/report.md` is not in the repo: the agent harness refuses to write `.md` report files from this workflow. Its text is in the Task 12 stage report; add it as `docs/archive/evidence/2026-10-14-multi-session/stage1/report.md`. Captures and logs are committed. The temp run dirs `/private/tmp/codex-router-live.*` are left behind (deleting them was not permitted); they hold only throwaway repos and logs
 
 ### Gate
 

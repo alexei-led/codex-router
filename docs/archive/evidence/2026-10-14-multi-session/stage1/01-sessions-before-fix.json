@@ -1,0 +1,192 @@
+[
+  {
+    "id": "68a7f56701a9/01a13a85-d733-7c90-94be-3333343f1edf",
+    "home": "68a7f56701a9",
+    "thread_id": "01a13a85-d733-7c90-94be-3333343f1edf",
+    "label": "default · beta · main · 7462",
+    "cwd": "$RUN/beta",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:06:55.89307+03:00",
+    "footer_synced": true,
+    "endpoint_id": "0a3e9619"
+  },
+  {
+    "id": "68a7f56701a9/01a13a85-d35b-7f50-b2d6-3d80e6e27446",
+    "home": "68a7f56701a9",
+    "thread_id": "01a13a85-d35b-7f50-b2d6-3d80e6e27446",
+    "label": "default · alpha · feat-a · d841",
+    "cwd": "$RUN/alpha-feat-a",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:06:55.580889+03:00",
+    "footer_synced": true,
+    "endpoint_id": "70294340"
+  },
+  {
+    "id": "68a7f56701a9/01a13a85-d608-7613-9879-52112721fe3f",
+    "home": "68a7f56701a9",
+    "thread_id": "01a13a85-d608-7613-9879-52112721fe3f",
+    "label": "default · alpha · feat-b · 5306",
+    "cwd": "$RUN/alpha-feat-b",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:06:54.965493+03:00",
+    "footer_synced": true,
+    "endpoint_id": "36cf87e0"
+  },
+  {
+    "id": "68a7f56701a9/01a13a85-c8a6-72a1-b422-fd1b402bbb0f",
+    "home": "68a7f56701a9",
+    "thread_id": "01a13a85-c8a6-72a1-b422-fd1b402bbb0f",
+    "label": "default · beta · main · 0760",
+    "cwd": "$RUN/beta",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:06:54.691471+03:00",
+    "footer_synced": true,
+    "endpoint_id": "0a3e9619"
+  },
+  {
+    "id": "68a7f56701a9/01a13a85-ca95-7293-bc82-fb15fd2a528d",
+    "home": "68a7f56701a9",
+    "thread_id": "01a13a85-ca95-7293-bc82-fb15fd2a528d",
+    "label": "default · alpha · feat-b · 8a21",
+    "cwd": "$RUN/alpha-feat-b",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:06:54.089076+03:00",
+    "footer_synced": true,
+    "endpoint_id": "36cf87e0"
+  },
+  {
+    "id": "68a7f56701a9/01a13a85-c768-72d2-b3b2-cfae99b642e2",
+    "home": "68a7f56701a9",
+    "thread_id": "01a13a85-c768-72d2-b3b2-cfae99b642e2",
+    "label": "default · alpha · feat-a · ccf2",
+    "cwd": "$RUN/alpha-feat-a",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:06:52.960789+03:00",
+    "footer_synced": true,
+    "endpoint_id": "70294340"
+  },
+  {
+    "id": "367e0181334d/01a13a85-e51c-7753-91c4-6ae79f5e6fc1",
+    "home": "367e0181334d",
+    "thread_id": "01a13a85-e51c-7753-91c4-6ae79f5e6fc1",
+    "label": "work · beta · feat-c · 5fa7",
+    "cwd": "$RUN/beta-feat-c",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:06:59.209238+03:00",
+    "footer_synced": true,
+    "endpoint_id": "c08bddfe"
+  },
+  {
+    "id": "367e0181334d/01a13a85-dbe2-7672-aec7-20b41df58752",
+    "home": "367e0181334d",
+    "thread_id": "01a13a85-dbe2-7672-aec7-20b41df58752",
+    "label": "work · beta · feat-c · d0de",
+    "cwd": "$RUN/beta-feat-c",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:06:58.956909+03:00",
+    "footer_synced": true,
+    "endpoint_id": "c08bddfe"
+  },
+  {
+    "id": "367e0181334d/01a13a85-d9a0-7560-835f-67882875b7eb",
+    "home": "367e0181334d",
+    "thread_id": "01a13a85-d9a0-7560-835f-67882875b7eb",
+    "label": "work · beta · feat-d · 6a88",
+    "cwd": "$RUN/beta-feat-d",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:06:56.278378+03:00",
+    "footer_synced": true,
+    "endpoint_id": "c19ab3af"
+  },
+  {
+    "id": "367e0181334d/01a13a85-cc5a-7f32-81a4-6d7b0ab70e99",
+    "home": "367e0181334d",
+    "thread_id": "01a13a85-cc5a-7f32-81a4-6d7b0ab70e99",
+    "label": "work · beta · feat-d · 72ab",
+    "cwd": "$RUN/beta-feat-d",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:06:55.386516+03:00",
+    "footer_synced": true,
+    "endpoint_id": "c19ab3af"
+  }
+]
