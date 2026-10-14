@@ -96,7 +96,7 @@ Counts are integers, masses and fills are in (0, 1], slopes are not negative.
 
 Escalation: the same tool failure twice with an edit in between moves up one tier without asking the classifier.
 
-Code mode (`tool_mode: code_mode_only` models) runs commands inside JavaScript cells, and Codex reports only how the script ended. The router reads a command's exit status from the cell output only when the script printed it (`exit_code=1`, as models usually do) or the script failed. A completed cell that prints no status counts toward neither escalation nor the passed check that `minDwellRequests` needs.
+Code mode (`tool_mode: code_mode_only` models) runs commands inside JavaScript cells, and Codex reports only how the script ended. The router reads a command's exit status from the cell output only when the script printed it on its own line (`exit_code=1` or `exit code: 1`, as models usually do) or the script failed. A completed cell that prints no status counts toward neither escalation nor the passed check that `minDwellRequests` needs.
 
 ### presets
 
