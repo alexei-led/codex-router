@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/alexei-led/codex-router/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/alexei-led/codex-router/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/alexei-led/codex-router?sort=semver&display_name=tag)](https://github.com/alexei-led/codex-router/releases)
-[![Go Report Card](https://goreportcard.com/badge/github.com/alexei-led/codex-router)](https://goreportcard.com/report/github.com/alexei-led/codex-router)
 [![Go Reference](https://pkg.go.dev/badge/github.com/alexei-led/codex-router.svg)](https://pkg.go.dev/github.com/alexei-led/codex-router)
 [![Go version](https://img.shields.io/github/go-mod/go-version/alexei-led/codex-router)](go.mod)
 [![License: MIT](https://img.shields.io/github/license/alexei-led/codex-router)](LICENSE)
