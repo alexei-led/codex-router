@@ -3,6 +3,7 @@ package route
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -159,7 +160,7 @@ func pct(f float64) int { return int(math.Round(f * 100)) }
 
 func kilo(n int) string {
 	if n < 1000 {
-		return fmt.Sprint(n)
+		return strconv.Itoa(n)
 	}
 	return fmt.Sprintf("%dk", int(math.Round(float64(n)/1000)))
 }

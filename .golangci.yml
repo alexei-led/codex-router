@@ -4,7 +4,14 @@ run:
 linters:
   default: standard
   enable:
+    - errorlint
+    - gocritic
     - misspell
+    - nolintlint
+    - perfsprint
+    - unconvert
+    - usestdlibvars
+    - whitespace
 formatters:
   enable:
     - gofmt
