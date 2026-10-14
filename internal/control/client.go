@@ -12,18 +12,12 @@ import (
 	"github.com/alexei-led/codex-router/internal/route"
 )
 
-const (
-	reconnectMin = 50 * time.Millisecond
-	reconnectMax = time.Second
-)
-
 // ErrDisconnected is returned by Send while the socket is down.
 var ErrDisconnected = errors.New("control socket disconnected")
 
-// Client talks to a Server. After the first connect it redials on EOF with
-// backoff until Close; Updates stays open across reconnects.
+// Client talks to a Server. It never redials: when the socket is lost,
+// Updates closes and Send returns ErrDisconnected, so the owner redials.
 type Client struct {
-	path    string
 	updates chan route.Snapshot
 	replies chan Message
 	done    chan struct{}
@@ -42,7 +36,6 @@ func Dial(path string) (*Client, error) {
 		return nil, fmt.Errorf("dial control socket: %w", err)
 	}
 	c := &Client{
-		path:    path,
 		updates: make(chan route.Snapshot, 8),
 		replies: make(chan Message, 1),
 		done:    make(chan struct{}),
@@ -54,7 +47,8 @@ func Dial(path string) (*Client, error) {
 }
 
 // Updates yields every pushed snapshot. When the consumer lags, the oldest
-// queued snapshot is dropped. The channel closes on Close.
+// queued snapshot is dropped. The channel closes on Close or when the
+// connection is lost.
 func (c *Client) Updates() <-chan route.Snapshot { return c.updates }
 
 // Send issues a command and waits for the server's ack. A server-side
@@ -63,7 +57,7 @@ func (c *Client) Send(cmd route.Command) error {
 	c.send.Lock()
 	defer c.send.Unlock()
 	c.mu.Lock()
-	conn, lost := c.conn, c.lost
+	conn := c.conn
 	c.mu.Unlock()
 	if conn == nil {
 		return ErrDisconnected
@@ -86,7 +80,7 @@ func (c *Client) Send(cmd route.Command) error {
 			return errors.New(m.Error)
 		}
 		return nil
-	case <-lost:
+	case <-c.lost:
 		return ErrDisconnected
 	case <-time.After(sendTimeout):
 		// A late reply must not answer the next Send; drop the connection.
@@ -112,45 +106,11 @@ func (c *Client) Close() error {
 
 func (c *Client) run(conn net.Conn) {
 	defer close(c.updates)
-	backoff := reconnectMin
-	for {
-		c.read(conn)
-		c.mu.Lock()
-		c.conn = nil
-		close(c.lost)
-		c.mu.Unlock()
-		conn = c.redial(&backoff)
-		if conn == nil {
-			return
-		}
-	}
-}
-
-func (c *Client) redial(backoff *time.Duration) net.Conn {
-	for {
-		select {
-		case <-c.done:
-			return nil
-		case <-time.After(*backoff):
-		}
-		next, err := net.DialTimeout("unix", c.path, time.Second)
-		if err != nil {
-			*backoff = min(*backoff*2, reconnectMax)
-			continue
-		}
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		select {
-		case <-c.done:
-			_ = next.Close()
-			return nil
-		default:
-		}
-		c.conn = next
-		c.lost = make(chan struct{})
-		*backoff = reconnectMin
-		return next
-	}
+	c.read(conn)
+	c.mu.Lock()
+	c.conn = nil
+	close(c.lost)
+	c.mu.Unlock()
 }
 
 func (c *Client) read(conn net.Conn) {
