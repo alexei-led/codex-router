@@ -828,6 +828,12 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 			model = d.Route.Model
 		}
 		if u.InputTokens > 0 {
+			if th.held && th.turn != m.TurnID {
+				// The hold ends on a turn this engine never saw start (a
+				// brain restarted mid-turn): that turn's later steps stay
+				// unrouted, as for a turn that started held.
+				th.turn, th.turnOff = m.TurnID, true
+			}
 			th.measured, th.held = true, false
 			th.lastTotal = max(u.TotalTokens, u.InputTokens+u.OutputTokens)
 		}
