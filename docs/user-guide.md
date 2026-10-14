@@ -180,17 +180,17 @@ It prints one line per session: id, home, label, mode and route, in the panel's 
 codex-router tui [--session ID|LABEL] [--socket PATH]
 ```
 
-Without flags, the panel shows every running session of every home. The top bar lists them, the focused session first, then the rest in list order, with the focus position on the right (`▸ 1/5`). Each session has its home's colored dot, and a mark when it needs a look: `◐` manual hold, `‖` paused, `↑` escalation, `?` any other flag. The panel first focuses the session whose directory is the panel's directory or the closest one above it, else the most recently active session. Tabs 1-5 show the focused session.
+Without flags, the panel shows every running session of every home. The top bar lists them, the focused session first, then the rest in list order, with the focus position on the right (`▸ 1/5`). Each session has its home's colored dot, and a mark when it needs a look: `◐` manual hold, `‖` paused, `↑` escalation, `?` unknown (a restarted brain holds the session's route until its next reply), `!` state lost (the brain could not read its saved pause, pin and preset, so the home is paused until `P` resumes it), `?` also for any other flag. The panel first focuses the session whose directory is the panel's directory or the closest one above it, else the most recently active session. Tabs 1-5 show the focused session.
 
 **Sessions** (`0`) lists every session, grouped by home:
 
 ![Router panel, Sessions tab with the top bar](images/router-tui-sessions.svg)
 
-- **Home line**: the number of routers (endpoints) serving the home, how many are lost, and the totals of its sessions: replies, switches, and the saving when `prices` is set.
-- **Rows**: the label without the home, the state (`on`, `paused`, `manual`, `escalation`, `disconnected`), the route, the last 24 routed replies colored by tier with the reply count, and the last switch. Below 100 columns the panel drops the replies and last switch columns.
+- **Home line**: the number of routers (endpoints) serving the home, the home's brain when it has one (`brain up 2h`, or `brain down: default model` while Codex's requests pass through unchanged), how many other routers are lost, and the totals of its sessions: replies, switches, and the saving when `prices` is set. A brain that goes down stays on the line until it is back; its sessions leave after 10 s.
+- **Rows**: the label without the home, the state (`on`, `paused`, `manual`, `escalation`, `unknown`, `state lost`, `disconnected`), the route, the last 24 routed replies colored by tier with the reply count, and the last switch. Below 100 columns the panel drops the replies and last switch columns.
 - `↑` `↓` move the selection, and `enter` focuses that session and opens Now. A long list scrolls.
 
-`--session` locks the panel to one session: no top bar and no Sessions tab, only a header line `● home · repo · branch  <id>`. When that session ends, the panel shows `ended` and closes 3 s later. The value can be:
+`--session` locks the panel to one session: no top bar and no Sessions tab, only a header line `● home · repo · branch  <id>`. When that session's router exits, the panel shows `ended` and closes 3 s later. A session served by a brain never ends this way: a restarted brain lists it again at its next prompt, so the panel shows `disconnected` meanwhile. The value can be:
 
 1. the session id or the bare thread id, exact
 2. a unique prefix of either

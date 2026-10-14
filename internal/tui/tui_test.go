@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -434,7 +435,7 @@ func fleetFixture() fleetState {
 			},
 			{
 				home:      homeWork,
-				endpoints: []fleetEndpointInfo{{id: "w1", kind: registry.KindSession}, {id: "w2", kind: registry.KindBrain}},
+				endpoints: []fleetEndpointInfo{{id: "w1", kind: registry.KindSession}, {id: "w2", kind: registry.KindBrain, up: 2*time.Hour + 12*time.Minute}},
 				sessions: []fleetSession{
 					info(homeWork, "t3", "api · feat/auth", func(s *route.SessionInfo) {
 						s.Replies, s.Switches, s.Strip, s.Mode, s.Attention = 12, 2, strip("mmmmllllmmmm"), route.ModeManual, route.AttentionManual
@@ -486,52 +487,199 @@ func disconnectedFixture() fleetState {
 	return st
 }
 
+// brainFixture is the fleet fixture with the work home served by its brain
+// alone; one of its sessions is still held on its seeded route.
+func brainFixture() fleetState {
+	st := fleetFixture()
+	work := &st.homes[1]
+	work.endpoints = work.endpoints[1:]
+	work.sessions[1].Attention = route.AttentionUnknown
+	return st
+}
+
+// brainDownFixture is brainFixture with the brain lost: its sessions are
+// disconnected until they leave.
+func brainDownFixture() fleetState {
+	st := brainFixture()
+	st.disconnected = true
+	work := &st.homes[1]
+	work.endpoints[0].lost, work.endpoints[0].up = true, 0
+	for i := range work.sessions {
+		work.sessions[i].disconnected = true
+	}
+	return st
+}
+
+// stateLostFixture is brainFixture after the brain found its saved intent
+// unreadable: the whole home is paused and every session says so.
+func stateLostFixture() fleetState {
+	st := brainFixture()
+	work := &st.homes[1]
+	for i := range work.sessions {
+		work.sessions[i].Mode, work.sessions[i].Attention = route.ModePaused, route.AttentionStateLost
+	}
+	return st
+}
+
+func stateLostSnapshot() route.Snapshot {
+	s := fixture()
+	s.Mode, s.StateLost, s.Pin = route.ModePaused, true, nil
+	s.Worth = append([]route.Finding{{Kind: route.FindingState, Text: "state lost: saved pause, pin and preset unreadable; routing paused until resume"}}, s.Worth...)
+	return s
+}
+
 type fleetCase struct {
 	name   string
 	st     fleetState
 	tab    Tab
 	locked bool
 	height int
+	snap   *route.Snapshot // nil for fixture()
 }
 
 func fleetCases() []fleetCase {
 	ended := lockedFixture()
 	ended.ended = true
+	lost := stateLostSnapshot()
 	return []fleetCase{
-		{"all-now", fleetFixture(), TabNow, false, 0},
-		{"all-sessions", fleetFixture(), TabSessions, false, 0},
-		{"locked", lockedFixture(), TabNow, true, 0},
-		{"ended", ended, TabNow, true, 0},
-		{"disconnected", disconnectedFixture(), TabSessions, false, 0},
-		{"empty", fleetState{disconnected: true}, TabNow, false, 0},
-		{"scroll", manyFixture(), TabSessions, false, 24},
+		{"all-now", fleetFixture(), TabNow, false, 0, nil},
+		{"all-sessions", fleetFixture(), TabSessions, false, 0, nil},
+		{"locked", lockedFixture(), TabNow, true, 0, nil},
+		{"ended", ended, TabNow, true, 0, nil},
+		{"disconnected", disconnectedFixture(), TabSessions, false, 0, nil},
+		{"empty", fleetState{disconnected: true}, TabNow, false, 0, nil},
+		{"scroll", manyFixture(), TabSessions, false, 24, nil},
+		{"brain-up", brainFixture(), TabSessions, false, 0, nil},
+		{"brain-down", brainDownFixture(), TabSessions, false, 0, nil},
+		{"state-lost", stateLostFixture(), TabNow, false, 0, &lost},
+		{"state-lost-sessions", stateLostFixture(), TabSessions, false, 0, &lost},
 	}
 }
 
 func renderCase(c fleetCase, width int) string {
-	st := c.st
-	return render(view{snap: fixture(), tab: c.tab, width: width, height: c.height, disconnected: st.disconnected, fleet: &st, locked: c.locked})
+	st, snap := c.st, fixture()
+	if c.snap != nil {
+		snap = *c.snap
+	}
+	return render(view{snap: snap, tab: c.tab, width: width, height: c.height, disconnected: st.disconnected, fleet: &st, locked: c.locked})
+}
+
+// checkGolden compares got with testdata/name, rewriting it under -update.
+func checkGolden(t *testing.T, name, got string) {
+	t.Helper()
+	path := filepath.Join("testdata", name)
+	if *update {
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != string(want) {
+		t.Errorf("render differs from %s\n--- got\n%s--- want\n%s", path, got, want)
+	}
 }
 
 func TestRenderFleetGolden(t *testing.T) {
 	for _, c := range fleetCases() {
 		for _, width := range []int{80, 140} {
 			t.Run(fmt.Sprintf("%s-%d", c.name, width), func(t *testing.T) {
-				got := renderCase(c, width)
-				path := filepath.Join("testdata", fmt.Sprintf("fleet-%s-%d.golden", c.name, width))
-				if *update {
-					if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
-						t.Fatal(err)
-					}
-				}
-				want, err := os.ReadFile(path)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if got != string(want) {
-					t.Errorf("render differs from %s\n--- got\n%s--- want\n%s", path, got, want)
-				}
+				checkGolden(t, fmt.Sprintf("fleet-%s-%d.golden", c.name, width), renderCase(c, width))
 			})
+		}
+	}
+}
+
+// TestRenderMixedFleetGolden renders what the fleet merges from a stage 1
+// launcher and a brain of one home, next to another home's launcher.
+func TestRenderMixedFleetGolden(t *testing.T) {
+	tf := newTestFleet(t)
+	launcher := tf.add("w-launcher", registry.KindSession, homeWork)
+	brain := tf.add("w-brain", registry.KindBrain, homeWork)
+	tf.started("w-brain", at(18, 0).Add(-3*time.Hour-20*time.Minute))
+	other := tf.add("d-launcher", registry.KindSession, homeDefault)
+	tf.poll()
+	launcher.sessions <- []route.SessionInfo{session(homeWork, "t1", "/src/api", at(17, 50))}
+	brain.sessions <- []route.SessionInfo{
+		session(homeWork, "t2", "/src/infra", at(17, 58)),
+		session(homeWork, "t3", "/src/web", at(17, 40)),
+	}
+	other.sessions <- []route.SessionInfo{session(homeDefault, "t4", "/src/notes", at(17, 30))}
+	st := tf.settleCount(4)
+	if len(st.homes) != 2 || len(st.homes[1].sessions) != 3 || len(st.homes[1].endpoints) != 2 {
+		t.Fatalf("work home not one group of a launcher and a brain: %+v", st.homes)
+	}
+	for _, width := range []int{80, 140} {
+		t.Run(strconv.Itoa(width), func(t *testing.T) {
+			got := render(view{snap: fixture(), tab: TabSessions, width: width, fleet: &st})
+			checkGolden(t, fmt.Sprintf("fleet-mixed-%d.golden", width), got)
+		})
+	}
+}
+
+func TestUptime(t *testing.T) {
+	tests := []struct {
+		d    time.Duration
+		want string
+	}{
+		{0, "0s"},
+		{59 * time.Second, "59s"},
+		{time.Minute, "1m"},
+		{59*time.Minute + 59*time.Second, "59m"},
+		{2*time.Hour + 12*time.Minute, "2h"},
+		{23*time.Hour + 59*time.Minute, "23h"},
+		{50 * time.Hour, "2d"},
+	}
+	for _, tt := range tests {
+		if got := uptime(tt.d); got != tt.want {
+			t.Errorf("uptime(%v) = %q, want %q", tt.d, got, tt.want)
+		}
+	}
+}
+
+func TestSessionsTabBrainState(t *testing.T) {
+	tests := []struct {
+		name string
+		st   fleetState
+		want string
+	}{
+		{"up", brainFixture(), "● work · 1 endpoint · brain up 2h · 19 replies"},
+		{"up, start unknown", func() fleetState {
+			st := brainFixture()
+			st.homes[1].endpoints[0].up = 0
+			return st
+		}(), "● work · 1 endpoint · brain up · 19 replies"},
+		{"down", brainDownFixture(), "● work · 1 endpoint · brain down: default model · 19 replies"},
+		{"down, no sessions left", func() fleetState {
+			st := brainDownFixture()
+			st.homes[1].sessions = nil
+			return st
+		}(), "● work · 1 endpoint · brain down: default model · 0 replies"},
+		{"down with a lost launcher", func() fleetState {
+			st := brainDownFixture()
+			st.homes[1].endpoints = append(st.homes[1].endpoints, fleetEndpointInfo{id: "w1", kind: registry.KindSession, lost: true})
+			return st
+		}(), "● work · 2 endpoints · brain down: default model · 1 lost · 19 replies"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := render(view{tab: TabSessions, width: 140, fleet: &tt.st}); !strings.Contains(got, tt.want) {
+				t.Errorf("missing %q in\n%s", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestSessionsTabListsAHomeWithoutSessions(t *testing.T) {
+	st := brainDownFixture()
+	st.homes = st.homes[1:]
+	st.homes[0].sessions, st.focus = nil, ""
+	got := render(view{tab: TabSessions, width: 80, fleet: &st})
+	for _, want := range []string{"0 sessions in 1 home", "brain down: default model"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in\n%s", want, got)
 		}
 	}
 }
@@ -590,7 +738,9 @@ func TestTopBarMarksAttention(t *testing.T) {
 		{route.AttentionManual, " ◐"},
 		{route.AttentionPaused, " ‖"},
 		{route.AttentionEscalation, " ↑"},
-		{"unknown", " ?"},
+		{route.AttentionUnknown, " ?"},
+		{route.AttentionStateLost, " !"},
+		{"from-a-newer-router", " ?"},
 		{"", ""},
 	}
 	for _, tt := range tests {
@@ -641,7 +791,7 @@ func TestSessionsTabHomeTotals(t *testing.T) {
 	got := render(view{tab: TabSessions, width: 140, fleet: &st})
 	for _, want := range []string{
 		"● default · 1 endpoint · 51 replies · 9 switches · saved ≈ $0.82",
-		"● work · 2 endpoints · 19 replies · 3 switches\n",
+		"● work · 2 endpoints · brain up 2h · 19 replies · 3 switches\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in\n%s", want, got)

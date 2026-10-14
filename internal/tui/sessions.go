@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/alexei-led/codex-router/internal/config"
@@ -31,6 +32,8 @@ var attentionMarks = map[route.Attention]string{
 	route.AttentionManual:     "◐",
 	route.AttentionPaused:     "‖",
 	route.AttentionEscalation: "↑",
+	route.AttentionUnknown:    "?",
+	route.AttentionStateLost:  "!",
 }
 
 // attentionMark is the top bar mark for a; an attention this panel does not
@@ -199,7 +202,7 @@ func columns(width int) sessionCols {
 // fit; 0 means no limit. Past it, the list scrolls to keep cursor in view.
 func (c *canvas) sessionsTab(st fleetState, cursor string, room int) {
 	all := st.all()
-	if len(all) == 0 {
+	if len(st.homes) == 0 {
 		c.add(dim("SESSIONS"), dim(" · none yet"))
 		c.add(dim("each codex-router run lists its Codex session here"))
 		return
@@ -261,13 +264,21 @@ func countSessions(lines []sessionLine) int {
 	return n
 }
 
-// homeHeader is a home's line: its endpoints' state and the sums of its
-// sessions' tallies.
+// homeHeader is a home's line: its endpoints' state, its brain's state, and
+// the sums of its sessions' tallies. A lost brain is not counted as lost: it
+// has its own words.
 func homeHeader(st fleetState, h fleetHome) []seg {
 	segs := []seg{col(st.homeColor(h.home.ID), "● "), bold(h.home.Name), dim(" · " + plural(len(h.endpoints), "endpoint", "endpoints"))}
 	lost := 0
 	for _, e := range h.endpoints {
-		if e.lost {
+		switch {
+		case e.kind == registry.KindBrain && e.lost:
+			segs = append(segs, dim(" · "), col(colorWarn, "brain down: default model"))
+		case e.kind == registry.KindBrain && e.up > 0:
+			segs = append(segs, dim(" · "), col(colorOK, "brain up "+uptime(e.up)))
+		case e.kind == registry.KindBrain:
+			segs = append(segs, dim(" · "), col(colorOK, "brain up"))
+		case e.lost:
 			lost++
 		}
 	}
@@ -293,6 +304,19 @@ func homeHeader(st fleetState, h fleetHome) []seg {
 		segs = append(segs, dim(" · "), col(colorOK, fmt.Sprintf("saved ≈ $%.2f", saved)))
 	}
 	return segs
+}
+
+// uptime is d in its largest whole unit: 45s, 12m, 2h, 3d.
+func uptime(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%ds", int(d/time.Second))
+	case d < time.Hour:
+		return fmt.Sprintf("%dm", int(d/time.Minute))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("%dh", int(d/time.Hour))
+	}
+	return fmt.Sprintf("%dd", int(d/(24*time.Hour)))
 }
 
 // sessionRow is one session's columns. The label drops its home prefix,
@@ -337,6 +361,10 @@ func stateCell(s fleetSession) seg {
 		text, color = "◐ manual", colorWarn
 	case s.Attention == route.AttentionEscalation:
 		text, color = "↑ escalation", tierColor[config.TierHigh]
+	case s.Attention == route.AttentionStateLost:
+		text, color = "! state lost", colorWarn
+	case s.Attention == route.AttentionUnknown:
+		text, color = "? unknown", colorDim
 	case s.Attention != "":
 		text, color = "? "+string(s.Attention), colorWarn
 	case s.Mode == "":

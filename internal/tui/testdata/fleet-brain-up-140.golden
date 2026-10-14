@@ -1,0 +1,17 @@
+◂ ● work · api · feat/auth ◐  ● work · api · fix/retry ?  ● work · infra · main  ● default · codex-router · main  ● default · notes ‖  ▸ 3/5
+ROUTING ◉ on · Jev ready · 412 ms · footer synced
+
+[Sessions 0] Now 1  Routes 2  Policy 3  Classifier 4  Usage 5 
+
+SESSIONS · 5 sessions in 2 homes
+  SESSION                                   STATE           ROUTE                 REPLIES                       LAST SWITCH
+● default · 1 endpoint · 51 replies · 9 switches · saved ≈ $0.82
+  codex-router · main                       ◉ on            gpt-6-sol · medium    ████████████████████████  48  18:41 medium→high
+  notes                                     ‖ paused        gpt-6-sol · medium    ███                        3  -
+
+● work · 1 endpoint · brain up 2h · 19 replies · 3 switches
+▸ api · feat/auth                           ◐ manual        gpt-6-sol · medium    ████████████              12  -
+  api · fix/retry                           ? unknown       gpt-6.1-sol · high    ███████                    7  18:41 medium→high
+  infra · main                              ◉ on            gpt-6-sol · medium                               0  -
+
+↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause · P pause home · q quit

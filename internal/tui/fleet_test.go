@@ -172,6 +172,17 @@ func (tf *testFleet) add(id, kind string, h home.Home) *fakeConn {
 	return c
 }
 
+// started sets the start time in endpoint id's registry entry.
+func (tf *testFleet) started(id string, at time.Time) {
+	tf.mu.Lock()
+	defer tf.mu.Unlock()
+	for i := range tf.entries {
+		if tf.entries[i].ID == id {
+			tf.entries[i].Started = at
+		}
+	}
+}
+
 func (tf *testFleet) remove(id string) {
 	tf.mu.Lock()
 	defer tf.mu.Unlock()
@@ -726,5 +737,86 @@ func TestFleetAllModeNeverEnds(t *testing.T) {
 	e.sessions <- nil
 	if st := tf.settleCount(0); st.ended {
 		t.Error("all mode ended")
+	}
+}
+
+func TestFleetBrainStaysWhileDown(t *testing.T) {
+	tf := newTestFleet(t)
+	brain := tf.add("b1", registry.KindBrain, homeWork)
+	tf.started("b1", at(18, 0).Add(-2*time.Hour))
+	launcher := tf.add("e1", registry.KindSession, homeWork)
+	tf.poll()
+	sb := session(homeWork, "t-brain", "/r", at(18, 1))
+	sl := session(homeWork, "t-launcher", "/q", at(17, 50))
+	brain.sessions <- []route.SessionInfo{sb}
+	launcher.sessions <- []route.SessionInfo{sl}
+	st := tf.settleCount(2)
+	want := []fleetEndpointInfo{{id: "b1", kind: registry.KindBrain, up: 2 * time.Hour}, {id: "e1", kind: registry.KindSession}}
+	if len(st.homes) != 1 || !slices.Equal(st.homes[0].endpoints, want) {
+		t.Fatalf("homes = %+v, want one group with endpoints %+v", st.homes, want)
+	}
+
+	brain.lose()
+	tf.settle(func(st fleetState) bool { return len(flat(st)) == 2 && flat(st)[0].disconnected })
+	tf.remove("b1")
+	tf.advance(lostGrace)
+	tf.poll()
+	st = tf.state()
+	if got := ids(flat(st)); !slices.Equal(got, []string{sl.ID}) {
+		t.Fatalf("sessions past the grace period: %v, want only the launcher's", got)
+	}
+	want = []fleetEndpointInfo{{id: "b1", kind: registry.KindBrain, lost: true}, {id: "e1", kind: registry.KindSession}}
+	if !slices.Equal(st.homes[0].endpoints, want) {
+		t.Errorf("endpoints = %+v, want the brain kept as lost", st.homes[0].endpoints)
+	}
+
+	back := tf.add("b1", registry.KindBrain, homeWork)
+	tf.started("b1", at(18, 0))
+	tf.poll()
+	back.sessions <- []route.SessionInfo{sb}
+	st = tf.settleCount(2)
+	if b := st.homes[0].endpoints[0]; b.lost || b.up != lostGrace {
+		t.Errorf("returned brain = %+v, want up %v", b, lostGrace)
+	}
+}
+
+func TestFleetLockedBrainSessionNeverEnds(t *testing.T) {
+	tests := []struct {
+		name string
+		end  func(tf *testFleet, e *fakeConn)
+	}{
+		{"brain stops listing it", func(tf *testFleet, e *fakeConn) {
+			e.sessions <- nil
+			tf.settleCount(0)
+		}},
+		{"brain exits and leaves the registry", func(tf *testFleet, e *fakeConn) {
+			e.lose()
+			tf.settle(func(st fleetState) bool { return st.disconnected })
+			tf.remove("b1")
+			tf.poll()
+		}},
+		{"lost brain past the grace period", func(tf *testFleet, e *fakeConn) {
+			e.lose()
+			tf.settle(func(st fleetState) bool { return st.disconnected })
+			tf.remove("b1")
+			tf.advance(lostGrace)
+			tf.poll()
+			tf.settleCount(0)
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tf := newTestFleet(t)
+			locked := session(homeWork, "t1", "/r", at(18, 1))
+			tf.locked = locked.ID
+			e := tf.add("b1", registry.KindBrain, homeWork)
+			tf.poll()
+			e.sessions <- []route.SessionInfo{locked}
+			tf.settleCount(1)
+			tt.end(tf, e)
+			if st := tf.state(); st.ended {
+				t.Error("a brain session ended")
+			}
+		})
 	}
 }

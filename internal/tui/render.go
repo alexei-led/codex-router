@@ -272,10 +272,12 @@ func (c *canvas) header(v view) {
 		c.add(segs...)
 		return
 	}
-	switch s.Mode {
-	case route.ModeManual:
+	switch {
+	case s.StateLost:
+		segs = append(segs, col(colorWarn, "! state lost"), dim(" · paused"))
+	case s.Mode == route.ModeManual:
 		segs = append(segs, col(colorWarn, "◐ manual"))
-	case route.ModePaused:
+	case s.Mode == route.ModePaused:
 		segs = append(segs, col(colorDim, "○ paused"))
 	default:
 		segs = append(segs, col(colorOK, "◉ on"))
@@ -570,6 +572,7 @@ var findingHint = map[route.FindingKind]string{
 	route.FindingContext:    "Routes 2",
 	route.FindingBlocked:    "Routes 2",
 	route.FindingCache:      "Policy 3",
+	route.FindingState:      "P resumes the home",
 }
 
 func (c *canvas) worth(findings []route.Finding) {

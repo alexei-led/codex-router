@@ -1,0 +1,18 @@
+◂ ● work · api · feat/auth ◐  ● work · api · fix/retry ? …                 ▸ 3/5
+ROUTING ✕ disconnected · retrying · last snapshot 18:42:00
+
+[Sessions 0] Now 1  Routes 2  Policy 3  Classifier 4  Usage 5 
+
+SESSIONS · 5 sessions in 2 homes
+  SESSION                                   STATE           ROUTE
+● default · 1 endpoint · 51 replies · 9 switches · saved ≈ $0.82
+  codex-router · main                       ◉ on            gpt-6-sol · medium
+  notes                                     ‖ paused        gpt-6-sol · medium
+
+● work · 1 endpoint · brain down: default model · 19 replies · 3 switches
+▸ api · feat/auth                           ✕ disconnected  gpt-6-sol · medium
+  api · fix/retry                           ✕ disconnected  gpt-6.1-sol · high
+  infra · main                              ✕ disconnected  gpt-6-sol · medium
+
+↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause · P pause home
+q quit
