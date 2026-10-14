@@ -337,6 +337,29 @@ func TestBrainRestartMidTurnIsNotAPick(t *testing.T) {
 	}
 }
 
+func TestHoldEndedByARunningTurnsReplyLeavesThatTurnUnrouted(t *testing.T) {
+	h := newHarness(t, testConfig(), func(d *Deps) { d.HoldUnseeded = true })
+	h.asker.script(answer(tier("low", 0.97)), answer(tier("low", 0.97)))
+	h.engine.Resumed("a", medium)
+	midTurn := []responses.Item{
+		userMsg(secretPrompt), {Type: responses.TypeFunctionCall, Name: "exec", CallID: "c1"},
+		{Type: responses.TypeFunctionCallOutput, CallID: "c1", Output: "ok"},
+	}
+
+	// The restarted brain first sees the reply to a step the old brain decided.
+	h.reply(meta("a", "a1"), medium.Model, 1000, 0)
+	rw, ok := h.decide(req(medium, midTurn...), meta("a", "a1"))
+
+	wantUnchanged(t, rw, ok)
+	if h.asker.Calls() != 0 {
+		t.Fatalf("classifier calls = %d mid-turn, want the rest of the turn unrouted", h.asker.Calls())
+	}
+	rw, ok = h.decide(req(medium, append(midTurn, userMsg("next"))...), meta("a", "a2"))
+	if h.asker.Calls() != 1 {
+		t.Fatalf("next turn: classifier calls = %d, want routed (rewrite %+v %v)", h.asker.Calls(), rw, ok)
+	}
+}
+
 func TestPinEndsASeededHold(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.engine.Resumed("a", medium)
