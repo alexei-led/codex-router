@@ -1,0 +1,23 @@
+ROUTING ◉ on · Jev ready · 279 ms · footer synced
+
+[Now 1] Routes 2  Policy 3  Classifier 4  Usage 5 
+
+This turn  ▌medium  gpt-6-luna · high
+Activity   code 67%   debug 33%   applies at 60%+
+Why        context fit: ~31k tokens need a larger window
+Pin next    high 5%  ▶ medium 84%  low 11%  micro 0%  next turn only · p cycles
+
+SESSION · since 10:19 · 6 routed replies · 0 route switches
+  ██████  1 reply per cell
+  ■ medium 5   ■ micro 1   
+  code 6
+  no list-price baseline yet
+
+WORTH A LOOK · this session
+  context guard kept 6 steps on a larger window than the policy chose · Routes 2
+
+Codex      footer shows gpt-6-luna · high · synced via thread/settings/update
+Context    window unknown
+Cache      94% reused on the last reply · 74% this session · $ at list price
+
+1-5 tabs · tab next · p pin next · space pause/resume · q quit

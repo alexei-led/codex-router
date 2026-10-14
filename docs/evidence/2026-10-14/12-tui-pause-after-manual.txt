@@ -1,0 +1,6 @@
+ROUTING ○ paused · Jev ready · 243 ms · footer synced
+
+[Now 1] Routes 2  Policy 3  Classifier 4  Usage 5 
+
+Next turn  paused · every request goes to gpt-6-astra · high unchanged
+Activity   code 49%   ops 45% · debug 6%   applies at 60%+
