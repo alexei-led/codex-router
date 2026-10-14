@@ -40,7 +40,7 @@ The Codex window and context figures in the footer follow the routed model. The 
 codex-router tui [--socket PATH]
 ```
 
-Connects to the newest live session under the runtime base. Pass `--socket` to pick one. It redials with backoff (250 ms up to 2 s) when the router restarts, and shows `disconnected` meanwhile. Commands are refused while disconnected.
+Connects to the newest live session under the runtime base. Pass `--socket` to pick one. It redials with backoff (250 ms up to 2 s) and shows `disconnected` meanwhile. Without `--socket` it looks up the newest live session again on each redial, so it follows a restarted `codex-router`. Commands are refused while disconnected.
 
 Keys:
 

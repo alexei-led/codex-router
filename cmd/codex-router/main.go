@@ -49,7 +49,8 @@ Global flags:
 
 Arguments after the router flags (or after --) go to codex unchanged. If the
 router cannot start, it prints one line why and runs plain codex.
-tui --socket defaults to the newest running session's control socket.
+tui --socket defaults to the newest running session's control socket, looked up
+again on every reconnect so the panel follows a restarted session.
 proxy --port defaults to the config's proxy.port (0 = any free port) and
 prints the codex -c flags that point at it.
 The classifier key comes from the env var named by the classifier's keyEnv.
@@ -209,16 +210,19 @@ func (c cli) tui(ctx context.Context, args []string) int {
 	if fs.NArg() > 0 {
 		return c.usageError(fmt.Errorf("tui: unexpected argument %q", fs.Arg(0)))
 	}
+	o := tui.Options{Socket: *socket}
 	if *socket == "" {
-		s, err := launcher.NewestControlSocket(launcher.RuntimeBase(c.getenv))
+		base := launcher.RuntimeBase(c.getenv)
+		o.Locate = func() (string, error) { return launcher.NewestControlSocket(base) }
+		s, err := o.Locate()
 		if err != nil {
 			return c.fail(err)
 		}
-		*socket = s
+		o.Socket = s
 	}
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := tui.Run(ctx, tui.Options{Socket: *socket}); err != nil {
+	if err := tui.Run(ctx, o); err != nil {
 		return c.fail(err)
 	}
 	return exitOK
