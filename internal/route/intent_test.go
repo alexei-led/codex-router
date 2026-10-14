@@ -99,8 +99,46 @@ func TestRestoreDropsInvalidIntent(t *testing.T) {
 
 	h := newHarness(t, testConfig(), func(d *Deps) { d.Intent = in })
 
-	if got := withoutRev(h.engine.Intent()); !reflect.DeepEqual(got, Intent{Preset: config.PresetBalanced}) {
-		t.Fatalf("intent = %+v, want the config's preset and nothing else", got)
+	if got := withoutRev(h.engine.Intent()); !reflect.DeepEqual(got, Intent{}) {
+		t.Fatalf("intent = %+v, want none", got)
+	}
+	if s := h.engine.Snapshot(); s.Preset != config.PresetBalanced {
+		t.Fatalf("preset = %s, want the config's", s.Preset)
+	}
+}
+
+func TestRestartKeepsOnlyAPresetACommandSet(t *testing.T) {
+	cases := []struct {
+		name      string
+		command   config.Preset // "" sends no preset command
+		want      config.Preset
+		wantSaved config.Preset
+	}{
+		{"the config's preset follows a config edit", "", config.PresetQuality, ""},
+		{"a commanded preset survives", config.PresetThrifty, config.PresetThrifty, config.PresetThrifty},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			saved := &savedIntents{}
+			h := newHarness(t, testConfig(), func(d *Deps) { d.SaveIntent = saved.save })
+			if tc.command != "" {
+				h.apply(Command{Op: OpPreset, Preset: tc.command, Scope: ScopeHome})
+			}
+			h.apply(Command{Op: OpPause, Session: "a"})
+
+			edited := testConfig()
+			edited.Preset = config.PresetQuality
+			again := &savedIntents{}
+			r := newHarness(t, edited, func(d *Deps) { d.Intent, d.SaveIntent = saved.last(t), again.save })
+			r.apply(Command{Op: OpResume, Session: "a"})
+
+			if s := r.engine.Snapshot(); s.Preset != tc.want {
+				t.Fatalf("preset after restart = %s, want %s", s.Preset, tc.want)
+			}
+			if p := again.last(t).Preset; p != tc.wantSaved {
+				t.Fatalf("saved preset after restart = %q, want %q", p, tc.wantSaved)
+			}
+		})
 	}
 }
 

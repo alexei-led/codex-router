@@ -9,7 +9,7 @@ How the file is read:
 - A map entry you name (a tier, an activity, a classifier, a price) replaces the default entry whole.
 - Unknown keys, trailing data and invalid values are errors. The router then runs plain `codex` with one line that says why.
 - `$XDG_CONFIG_HOME` is used only when it is an absolute path.
-- Edits apply to the next session. In a home set up with `codex-router setup`, they apply when its brain and edge restart (see [Check and restart the services](user-guide.md#check-and-restart-the-services)). The panel changes only the preset, and only for the running sessions of one Codex home.
+- Edits apply to the next session. In a home set up with `codex-router setup`, they apply when its brain and edge restart (see [Check and restart the services](user-guide.md#check-and-restart-the-services)). The panel changes only the preset, and only for the running sessions of one Codex home. A preset picked in the panel for a set-up home outlives a brain restart and wins over `preset` here.
 
 ## Example
 

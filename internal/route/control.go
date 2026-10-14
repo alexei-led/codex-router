@@ -12,8 +12,9 @@ import (
 var errCommandPanic = errors.New("command failed")
 
 // Intent is the user's routing intent, which a restarted brain restores
-// (plan M11): the home's pause and preset, and per thread its pause, a
-// manual hold (a /model pick) and a pending pin. Learned state (tiers,
+// (plan M11): the home's pause and the preset a command picked, and per
+// thread its pause, a manual hold (a /model pick) and a pending pin. A
+// preset from the config is not intent: a restart reads the config again. Learned state (tiers,
 // votes, escalations, the cache ledger) is not intent. Rev orders exports:
 // a later state has a higher Rev.
 type Intent struct {
@@ -41,7 +42,10 @@ func (e *Engine) Intent() Intent {
 // listed.
 func (e *Engine) intent() Intent {
 	e.intentRev++
-	in := Intent{Rev: e.intentRev, Paused: e.paused, Preset: e.cfg.Preset}
+	in := Intent{Rev: e.intentRev, Paused: e.paused}
+	if e.presetSet {
+		in.Preset = e.cfg.Preset
+	}
 	for _, th := range e.all() {
 		if !th.hasIntent() {
 			continue
@@ -70,7 +74,7 @@ func (e *Engine) restore(in Intent, lost bool) {
 	}
 	e.paused = in.Paused
 	if validPreset(in.Preset) {
-		e.cfg.Preset = in.Preset
+		e.cfg.Preset, e.presetSet = in.Preset, true
 	}
 	for id, ti := range in.Threads {
 		if id == "" {
@@ -206,7 +210,7 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 		if !validPreset(c.Preset) {
 			return nil, Snapshot{}, fmt.Errorf("preset: unknown preset %q", c.Preset)
 		}
-		e.cfg.Preset = c.Preset
+		e.cfg.Preset, e.presetSet = c.Preset, true
 	case OpSnapshot:
 	default:
 		return nil, Snapshot{}, fmt.Errorf("unknown op %q", c.Op)

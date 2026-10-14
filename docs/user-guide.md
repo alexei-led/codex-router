@@ -415,7 +415,7 @@ launchctl kickstart -k "gui/$(id -u)/com.github.alexei-led.codex-router.<home id
 systemctl --user restart codex-router-brain@<home id>.service codex-router-edge@<home id>.service
 ```
 
-If the binary moves, run setup again. A restarted brain keeps your pauses, manual holds, pending pins and preset. It forgets what it learned about each session, so it holds each session on its current route (`?` in the panel) until the next reply, then routes as usual.
+If the binary moves, run setup again. A restarted brain keeps your pauses, manual holds, pending pins and the preset you picked in the panel. Without such a pick it uses the config's preset. It forgets what it learned about each session, so it holds each session on its current route (`?` in the panel) until the next reply, then routes as usual.
 
 ### Undo
 

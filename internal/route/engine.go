@@ -69,6 +69,8 @@ type Engine struct {
 	lru     *list.List
 	paused  bool // the whole home
 	lost    bool // the saved intent was unreadable; a home resume clears it
+	// presetSet: a command picked cfg.Preset, so the intent carries it.
+	presetSet bool
 	// latencies are the recent classifier answers' latencies.
 	latencies []time.Duration
 	seq       uint64 // the last snapshot's Seq
