@@ -1,0 +1,10 @@
+[Unit]
+Description=codex-router brain (3fa9c0d1e2b4)
+
+[Service]
+ExecStart="/opt/homebrew/bin/codex-router" "--config" "/Users/u/.config/codex-router/config.json" "brain" "--home" "/Users/u/.codex-work" "--state-dir" "/Users/u/.local/state"
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=default.target

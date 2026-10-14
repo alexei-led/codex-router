@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.github.alexei-led.codex-router.3fa9c0d1e2b4.edge</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/homebrew/bin/codex-router</string>
+		<string>--config</string>
+		<string>/Users/u/.config/codex-router/config.json</string>
+		<string>edge</string>
+		<string>--home</string>
+		<string>/Users/u/.codex-work</string>
+		<string>--state-dir</string>
+		<string>/Users/u/.local/state</string>
+	</array>
+	<key>Sockets</key>
+	<dict>
+		<key>edge</key>
+		<dict>
+			<key>SockNodeName</key>
+			<string>127.0.0.1</string>
+			<key>SockServiceName</key>
+			<string>53611</string>
+			<key>SockType</key>
+			<string>stream</string>
+			<key>SockFamily</key>
+			<string>IPv4</string>
+		</dict>
+	</dict>
+	<key>ThrottleInterval</key>
+	<integer>1</integer>
+	<key>StandardOutPath</key>
+	<string>/Users/u/.local/state/codex-router/homes/3fa9c0d1e2b4/logs/edge.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/u/.local/state/codex-router/homes/3fa9c0d1e2b4/logs/edge.log</string>
+</dict>
+</plist>

@@ -1,0 +1,35 @@
+# Codex config, kept in a dotfiles-free home.
+model = "gpt-5.5"           # the default model
+model_reasoning_effort = "high"
+
+notes = """
+[not a table]
+this line sits in a multi-line string
+"""
+matrix = [
+  [1, 2],
+  [3, 4],
+]
+
+# >>> codex-router >>>
+model_provider = "router"
+# <<< codex-router <<<
+[profiles.fast]
+model = "gpt-5.5-mini"
+
+# Local models.
+[model_providers.ollama]
+name = "Ollama"
+base_url = "http://localhost:11434/v1"
+
+[[skills.config]]
+path = "/tmp/skill"
+enabled = false
+# >>> codex-router >>>
+[model_providers.router]
+name = "router"
+base_url = "http://127.0.0.1:53611/v1"
+wire_api = "responses"
+requires_openai_auth = true
+http_headers = { "X-Codex-Router-Token" = "test-token" }
+# <<< codex-router <<<

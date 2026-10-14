@@ -1,0 +1,24 @@
+# Codex config, kept in a dotfiles-free home.
+model = "gpt-5.5"           # the default model
+model_reasoning_effort = "high"
+
+notes = """
+[not a table]
+this line sits in a multi-line string
+"""
+matrix = [
+  [1, 2],
+  [3, 4],
+]
+
+[profiles.fast]
+model = "gpt-5.5-mini"
+
+# Local models.
+[model_providers.ollama]
+name = "Ollama"
+base_url = "http://localhost:11434/v1"
+
+[[skills.config]]
+path = "/tmp/skill"
+enabled = false

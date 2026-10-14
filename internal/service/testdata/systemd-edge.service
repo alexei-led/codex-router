@@ -1,0 +1,8 @@
+[Unit]
+Description=codex-router edge (3fa9c0d1e2b4)
+Requires=codex-router-edge@3fa9c0d1e2b4.socket
+After=codex-router-edge@3fa9c0d1e2b4.socket
+
+[Service]
+ExecStart="/opt/homebrew/bin/codex-router" "--config" "/Users/u/.config/codex-router/config.json" "edge" "--home" "/Users/u/.codex-work" "--state-dir" "/Users/u/.local/state"
+Restart=on-failure

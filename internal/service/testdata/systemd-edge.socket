@@ -1,0 +1,10 @@
+[Unit]
+Description=codex-router edge socket (3fa9c0d1e2b4)
+
+[Socket]
+ListenStream=127.0.0.1:53611
+FileDescriptorName=edge
+Service=codex-router-edge@3fa9c0d1e2b4.service
+
+[Install]
+WantedBy=sockets.target

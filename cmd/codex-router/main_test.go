@@ -27,6 +27,8 @@ import (
 	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
+	"github.com/alexei-led/codex-router/internal/service"
+	"github.com/alexei-led/codex-router/internal/setup"
 	"github.com/alexei-led/codex-router/internal/tui"
 )
 
@@ -527,7 +529,7 @@ func edgeSetup(t *testing.T) (args []string, h home.Home, dir string, port int) 
 	}
 	port = ln.Addr().(*net.TCPAddr).Port
 	_ = ln.Close()
-	for name, v := range map[string]string{tokenFile: edgeToken + "\n", portFile: strconv.Itoa(port) + "\n"} {
+	for name, v := range map[string]string{setup.TokenFile: edgeToken + "\n", setup.PortFile: strconv.Itoa(port) + "\n"} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(v), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -708,13 +710,13 @@ func TestEdgeRefusesToStart(t *testing.T) {
 			return args
 		}, exitError, "is not set up"},
 		{"no token", func(t *testing.T, args []string, dir string) []string {
-			if err := os.Remove(filepath.Join(dir, tokenFile)); err != nil {
+			if err := os.Remove(filepath.Join(dir, setup.TokenFile)); err != nil {
 				t.Fatal(err)
 			}
 			return args
 		}, exitError, "edge: token"},
 		{"empty token", func(t *testing.T, args []string, dir string) []string {
-			if err := os.WriteFile(filepath.Join(dir, tokenFile), []byte("\n"), 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, setup.TokenFile), []byte("\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			return args
@@ -732,7 +734,7 @@ func TestEdgeRefusesToStart(t *testing.T) {
 			return args
 		}, exitError, "must not be accessible"},
 		{"bad port", func(t *testing.T, args []string, dir string) []string {
-			if err := os.WriteFile(filepath.Join(dir, portFile), []byte("http"), 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, setup.PortFile), []byte("http"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			return args
@@ -870,5 +872,156 @@ func TestBrainRefusesToStart(t *testing.T) {
 				t.Errorf("exit %d, stderr %q; want %d and %q", code, stderr.String(), tc.wantCode, tc.want)
 			}
 		})
+	}
+}
+
+// fakeServices replaces launchctl, systemctl and the binary path; every
+// service command succeeds with no output.
+func fakeServices(t *testing.T) func() []string {
+	t.Helper()
+	var mu sync.Mutex
+	var calls []string
+	serviceRunner = func(_ context.Context, name string, args ...string) (string, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		calls = append(calls, name+" "+strings.Join(args, " "))
+		return "", nil
+	}
+	executable = func() (string, error) { return "/usr/local/bin/codex-router", nil }
+	t.Cleanup(func() { serviceRunner, executable = service.Exec, os.Executable })
+	return func() []string {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(calls)
+	}
+}
+
+func TestSetupThenEdgeThenUndo(t *testing.T) {
+	calls := fakeServices(t)
+	backend := &fakeBackend{}
+	up := httptest.NewServer(backend)
+	defer up.Close()
+	edgeUpstream = up.URL + "/backend-api/codex"
+	t.Cleanup(func() { edgeUpstream = "" })
+
+	state, err := os.MkdirTemp("/tmp", "cre")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(state) })
+	codexHome := t.TempDir()
+	const userConfig = "# mine\nmodel = \"gpt-5.5\"\n"
+	cfgPath := filepath.Join(codexHome, "config.toml")
+	if err := os.WriteFile(cfgPath, []byte(userConfig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env := testEnv(t)
+	homeArgs := []string{"--home", codexHome, "--state-dir", state}
+	cmd := func(args ...string) (int, string, string) {
+		var stdout, stderr bytes.Buffer
+		code := run(context.Background(), args, env, strings.NewReader(""), &stdout, &stderr)
+		return code, stdout.String(), stderr.String()
+	}
+
+	code, out, errOut := cmd(append([]string{"setup"}, homeArgs...)...)
+	if code != exitOK {
+		t.Fatalf("setup: exit %d, stderr %q", code, errOut)
+	}
+	if !strings.HasPrefix(out, "Codex home ") || !strings.Contains(out, "<redacted>") {
+		t.Errorf("setup output wants the home first and a redacted diff:\n%s", out)
+	}
+	if len(calls()) == 0 {
+		t.Error("setup loaded no units")
+	}
+	h, err := home.Resolve(func(k string) string {
+		if k == "CODEX_HOME" {
+			return codexHome
+		}
+		return ""
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := brain.HomeDir(filepath.Join(state, "codex-router"), h.ID)
+	token, err := os.ReadFile(filepath.Join(dir, setup.TokenFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out, strings.TrimSpace(string(token))) {
+		t.Error("setup printed the token")
+	}
+	port, err := readPort(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan int, 1)
+	var edgeErr syncBuffer
+	go func() { done <- run(ctx, append([]string{"edge"}, homeArgs...), env, nil, io.Discard, &edgeErr) }()
+	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	waitFor(t, "edge up on the stored port", func() bool { return healthz(base) != "" })
+	if code := edgePost(t, base, strings.TrimSpace(string(token))); code != http.StatusOK {
+		t.Errorf("edge with setup's token: status %d, want 200", code)
+	}
+	cancel()
+	<-done
+
+	code, out, _ = cmd("service", "status", "--home", codexHome)
+	if code != exitOK || !strings.Contains(out, "edge") || !strings.Contains(out, "brain") || strings.Contains(out, "not installed") {
+		t.Errorf("service status: exit %d\n%s", code, out)
+	}
+	if code, out, _ = cmd("service", "ensure", "--home", codexHome); code != exitOK || out != "" {
+		t.Errorf("service ensure on a set-up home: exit %d, stdout %q", code, out)
+	}
+
+	if code, _, errOut = cmd(append([]string{"setup", "--undo"}, homeArgs...)...); code != exitOK {
+		t.Fatalf("setup --undo: exit %d, stderr %q", code, errOut)
+	}
+	if got, _ := os.ReadFile(cfgPath); string(got) != userConfig {
+		t.Errorf("config.toml after undo = %q, want the original", got)
+	}
+	code, out, _ = cmd("service", "ensure", "--home", codexHome)
+	if code != exitOK || !strings.Contains(out, "codex-router setup --home "+h.Path) || strings.Count(out, "\n") != 1 {
+		t.Errorf("service ensure on a home not set up: exit %d, want one hint line, got %q", code, out)
+	}
+}
+
+func TestSetupAndServiceUsage(t *testing.T) {
+	fakeServices(t)
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"purge without undo", []string{"setup", "--purge"}, "--purge needs --undo"},
+		{"relative home", []string{"setup", "--home", "rel"}, "not an absolute path"},
+		{"service without a subcommand", []string{"service"}, "want ensure or status"},
+		{"service unknown subcommand", []string{"service", "restart"}, "want ensure or status"},
+		{"service stray argument", []string{"service", "status", "extra"}, `unexpected argument "extra"`},
+		{"service takes no state dir", []string{"service", "ensure", "--state-dir", "/x"}, "flag provided but not defined"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var stderr bytes.Buffer
+			code := run(context.Background(), tc.args, testEnv(t), strings.NewReader(""), io.Discard, &stderr)
+			if code != exitUsage || !strings.Contains(stderr.String(), tc.want) {
+				t.Errorf("exit %d, stderr %q; want %d and %q", code, stderr.String(), exitUsage, tc.want)
+			}
+		})
+	}
+}
+
+func TestSetupRefusalExitsOne(t *testing.T) {
+	fakeServices(t)
+	codexHome := t.TempDir()
+	if err := os.WriteFile(filepath.Join(codexHome, "config.toml"), []byte("model_provider = \"openai\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{"setup", "--home", codexHome, "--state-dir", t.TempDir()}, testEnv(t), strings.NewReader(""), &stdout, &stderr)
+	if code != exitError || !strings.Contains(stderr.String(), "already sets model_provider") || !strings.HasPrefix(stdout.String(), "Codex home ") {
+		t.Errorf("exit %d, stdout %q, stderr %q", code, stdout.String(), stderr.String())
 	}
 }
