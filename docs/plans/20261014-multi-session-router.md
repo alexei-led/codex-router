@@ -367,10 +367,11 @@ Depends on: Tasks 1, 3, 5, 9 (runs after Task 9; shares no files with it)
 
 - Modify: `internal/hook/hook.go`, `internal/hook/hook_test.go`
 
-- [ ] the hook finds its endpoint: `CODEX_ROUTER_CONTROL` when set (stage 1 launcher), else the registry entries of `home.Resolve(CODEX_HOME)` whose sessions include its thread (stage 2 plain `codex`); whole lookup within the existing 200 ms budget
-- [ ] the hook dials with `hello`, subscribes to its own thread (hook stdin `session_id` is the thread id, as today) and reports that thread's switch only, from that thread's own recent decisions
-- [ ] tests: two threads on one endpoint, the hook reports only its own; lookup by registry when the env var is unset; two homes, the hook picks its own; endpoint missing → silent no-op; slow registry stays within budget
-- [ ] run `make fmt lint test build`
+- [x] the hook finds its endpoint: `CODEX_ROUTER_CONTROL` when set (stage 1 launcher), else the registry entries of `home.Resolve(CODEX_HOME)` whose sessions include its thread (stage 2 plain `codex`); whole lookup within the existing 200 ms budget
+- [x] the hook dials with `hello`, subscribes to its own thread (hook stdin `session_id` is the thread id, as today) and reports that thread's switch only, from that thread's own recent decisions
+- [x] tests: two threads on one endpoint, the hook reports only its own; lookup by registry when the env var is unset; two homes, the hook picks its own; endpoint missing → silent no-op; slow registry stays within budget
+- [x] ➕ the registry lookup dials every entry of the hook's home in parallel and takes the first whose hello matches the entry and whose first sessions list has the thread; other homes are never dialed (a thread id may repeat across homes, M1). The hook never prunes. `CODEX_ROUTER_CONTROL` skips the registry and the list check, as before
+- [x] run `make fmt lint test build`
 
 ### Task 11: Stage 1 docs
 

@@ -2,12 +2,15 @@ package hook
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/control"
+	"github.com/alexei-led/codex-router/internal/home"
+	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/route"
 )
 
@@ -25,15 +28,17 @@ type Output struct {
 // MessagePrefix starts every line; Codex renders it as "↳ Hook · router: …".
 const MessagePrefix = "router: "
 
-// Timeout bounds the whole hook run, socket included.
+// Timeout bounds the whole hook run, registry lookup and socket included.
 const Timeout = 200 * time.Millisecond
 
-// Run reads one hook input from stdin, asks the control socket named by
-// control.EnvSocket (read through getenv) for its thread's snapshot and
-// writes {"systemMessage": ...} when the turn's route differs from the
-// previous turn's, else {}. A missing or unreachable socket, unreadable input
-// or a slow stdin or router all print {} within Timeout and return nil: a
-// hook must never block Codex.
+// Run reads one hook input from stdin, finds the endpoint that routes its
+// thread, asks it for that thread's snapshot and writes
+// {"systemMessage": ...} when the turn's route differs from the previous
+// turn's, else {}. The endpoint is the control socket named by
+// control.EnvSocket (read through getenv; set by the launcher), else the
+// registry endpoint of the hook's Codex home that lists the thread (plain
+// codex). No endpoint, unreadable input or a slow stdin, registry or router
+// all print {} within Timeout and return nil: a hook must never block Codex.
 func Run(stdin io.Reader, stdout io.Writer, getenv func(string) string) error {
 	deadline := time.After(Timeout)
 	inCh := make(chan Input, 1)
@@ -49,7 +54,7 @@ func Run(stdin io.Reader, stdout io.Writer, getenv func(string) string) error {
 	select {
 	case in := <-inCh:
 		snapCh := make(chan route.Snapshot, 1)
-		go func() { snapCh <- fetch(getenv(control.EnvSocket), in.SessionID) }()
+		go func() { snapCh <- fetch(getenv, in.SessionID) }()
 		select {
 		case snap := <-snapCh:
 			out.SystemMessage = Message(snap, in)
@@ -60,22 +65,89 @@ func Run(stdin io.Reader, stdout io.Writer, getenv func(string) string) error {
 	return json.NewEncoder(stdout).Encode(out)
 }
 
-// fetch returns thread's snapshot, or the zero Snapshot when the socket is
-// unset or unreachable or the thread is unknown. The caller abandons it at
-// the deadline; the process exits right after.
-func fetch(socket, thread string) route.Snapshot {
-	if socket == "" || thread == "" {
+// fetch returns thread's snapshot, or the zero Snapshot when no endpoint
+// routes the thread. The caller abandons it at the deadline; the process
+// exits right after.
+func fetch(getenv func(string) string, thread string) route.Snapshot {
+	if thread == "" {
 		return route.Snapshot{}
 	}
-	c, err := control.Dial(socket)
+	if socket := getenv(control.EnvSocket); socket != "" {
+		snap, _ := snapshotAt(registry.Endpoint{Socket: socket}, thread)
+		return snap
+	}
+	return lookup(getenv, thread)
+}
+
+// lookup asks every registry endpoint of the hook's Codex home, in
+// parallel, and returns the snapshot from the first that lists thread. A
+// thread id alone may repeat across homes (M1), so other homes are never
+// asked. The hook only reads the registry: pruning is the panel's job.
+func lookup(getenv func(string) string, thread string) route.Snapshot {
+	h, err := home.Resolve(getenv)
 	if err != nil {
 		return route.Snapshot{}
 	}
-	defer func() { _ = c.Close() }()
-	if c.Subscribe(control.SessionID(c.Hello().Home.ID, thread)) != nil {
+	root, err := registry.Root(getenv)
+	if err != nil {
 		return route.Snapshot{}
 	}
-	return <-c.Snapshots()
+	eps, _, err := registry.List(root)
+	if err != nil {
+		return route.Snapshot{}
+	}
+	eps = slices.DeleteFunc(eps, func(ep registry.Endpoint) bool { return ep.Home.ID != h.ID })
+	found := make(chan route.Snapshot, len(eps))
+	failed := make(chan struct{}, len(eps))
+	for _, ep := range eps {
+		go func() {
+			if snap, err := snapshotAt(ep, thread); err == nil {
+				found <- snap
+				return
+			}
+			failed <- struct{}{}
+		}()
+	}
+	for range eps {
+		select {
+		case snap := <-found:
+			return snap
+		case <-failed:
+		}
+	}
+	return route.Snapshot{}
+}
+
+// snapshotAt dials ep and returns thread's snapshot. For a registry entry
+// (one with an ID) the hello must name the entry's endpoint and home (M3),
+// and the endpoint's first sessions list must include thread.
+func snapshotAt(ep registry.Endpoint, thread string) (route.Snapshot, error) {
+	c, err := control.Dial(ep.Socket)
+	if err != nil {
+		return route.Snapshot{}, err
+	}
+	defer func() { _ = c.Close() }()
+	hello := c.Hello()
+	if ep.ID != "" {
+		if hello.EndpointID != ep.ID || hello.Home.ID != ep.Home.ID {
+			return route.Snapshot{}, errors.New("stale registry entry")
+		}
+		items, ok := <-c.Sessions()
+		if !ok {
+			return route.Snapshot{}, control.ErrDisconnected
+		}
+		if !slices.ContainsFunc(items, func(s route.SessionInfo) bool { return s.ThreadID == thread }) {
+			return route.Snapshot{}, errors.New("thread not listed")
+		}
+	}
+	if err := c.Subscribe(control.SessionID(hello.Home.ID, thread)); err != nil {
+		return route.Snapshot{}, err
+	}
+	snap, ok := <-c.Snapshots()
+	if !ok {
+		return route.Snapshot{}, control.ErrDisconnected
+	}
+	return snap, nil
 }
 
 // Message returns the switch line for the hook's turn, or "" when there is
