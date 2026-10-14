@@ -1025,3 +1025,173 @@ func TestSetupRefusalExitsOne(t *testing.T) {
 		t.Errorf("exit %d, stdout %q, stderr %q", code, stdout.String(), stderr.String())
 	}
 }
+
+// recordingHandler serves fixed sessions and records the commands it gets.
+type recordingHandler struct {
+	endpointHandler
+	mu  *sync.Mutex
+	got *[]route.Command
+}
+
+func (h recordingHandler) Apply(c route.Command) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	*h.got = append(*h.got, c)
+	return nil
+}
+
+// ctlFixture serves, for a real Codex home, sessions in repo, in repo/sub
+// and two in twin, plus a session of another home in repo/sub/deep. It
+// returns the env, the home path, the project dir and a func that returns
+// the commands the home's endpoint got.
+func ctlFixture(t *testing.T) (env []string, codexHome, projects string, applied func() []route.Command) {
+	t.Helper()
+	env, root, sockDir := testRegistry(t)
+	codexHome, projects = t.TempDir(), t.TempDir()
+	for _, d := range []string{"repo/sub/deep", "twin"} {
+		if err := os.MkdirAll(filepath.Join(projects, d), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h, err := home.Resolve(func(k string) string { return map[string]string{"CODEX_HOME": codexHome}[k] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	inDir := func(s route.SessionInfo, dir string) route.SessionInfo {
+		s.Cwd = filepath.Join(projects, dir)
+		return s
+	}
+	paused := testSession(h, "t-sub", "work · repo · sub", 2)
+	paused.Mode, paused.Attention = route.ModePaused, route.AttentionPaused
+	sessions := []route.SessionInfo{
+		inDir(testSession(h, "t-repo", "work · repo · main", 1), "repo"),
+		inDir(paused, "repo/sub"),
+		inDir(testSession(h, "t-twin1", "work · twin · a", 3), "twin"),
+		inDir(testSession(h, "t-twin2", "work · twin · b", 4), "twin"),
+	}
+	var mu sync.Mutex
+	var got []route.Command
+	sock := filepath.Join(sockDir, "ep.sock")
+	srv, err := control.Listen(sock, recordingHandler{
+		endpointHandler: endpointHandler{hello: control.Hello{EndpointID: "ep", Kind: registry.KindBrain, Home: h}, sessions: sessions},
+		mu:              &mu, got: &got,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = srv.Close() })
+	if err := registry.Write(root, registry.Endpoint{ID: "ep", Kind: registry.KindBrain, Home: h, Socket: sock}); err != nil {
+		t.Fatal(err)
+	}
+	serveEndpoint(t, root, sockDir, "ep-other", homeWork, inDir(testSession(homeWork, "t-other", "other · repo · deep", 5), "repo/sub/deep"))
+	return env, codexHome, projects, func() []route.Command {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(got)
+	}
+}
+
+func TestCtlResolvesTheShellSession(t *testing.T) {
+	env, codexHome, projects, _ := ctlFixture(t)
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(filepath.Join(projects, "repo"), link); err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name       string
+		cwd        string
+		thread     string
+		wantCode   int
+		wantStdout []string
+		wantStderr []string
+	}{
+		{"cwd of a session", filepath.Join(projects, "repo"), "", exitOK, []string{"label    work · repo · main\n", "mode     on\n", "route    gpt-5.5 · low\n"}, nil},
+		{"deepest cwd wins", filepath.Join(projects, "repo/sub"), "", exitOK, []string{"work · repo · sub", "attention  paused\n"}, nil},
+		{"below a session's cwd, other home deeper", filepath.Join(projects, "repo/sub/deep"), "", exitOK, []string{"work · repo · sub"}, nil},
+		{"cwd through a symlink", link, "", exitOK, []string{"work · repo · main"}, nil},
+		{"thread id beats cwd", filepath.Join(projects, "twin"), "t-repo", exitOK, []string{"work · repo · main"}, nil},
+		{"unknown thread id falls back to cwd", filepath.Join(projects, "repo"), "t-gone", exitOK, []string{"work · repo · main"}, nil},
+		{"other home's thread id is not used", filepath.Join(projects, "repo"), "t-other", exitOK, []string{"work · repo · main"}, nil},
+		{"two sessions share the cwd", filepath.Join(projects, "twin"), "", exitUsage, nil, []string{"2 sessions", "work · twin · a", "work · twin · b"}},
+		{"no session works there", projects, "", exitError, nil, []string{"no running session of Codex home"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env := append(slices.Clone(env), envThread+"="+tc.thread)
+			var stdout, stderr bytes.Buffer
+			code := run(context.Background(), []string{"ctl", "status", "--home", codexHome, "--cwd", tc.cwd}, env, nil, &stdout, &stderr)
+			if code != tc.wantCode {
+				t.Fatalf("exit %d, want %d (stdout %q, stderr %q)", code, tc.wantCode, stdout.String(), stderr.String())
+			}
+			for _, w := range tc.wantStdout {
+				if !strings.Contains(stdout.String(), w) {
+					t.Errorf("stdout %q, want it to contain %q", stdout.String(), w)
+				}
+			}
+			for _, w := range tc.wantStderr {
+				if !strings.Contains(stderr.String(), w) {
+					t.Errorf("stderr %q, want it to contain %q", stderr.String(), w)
+				}
+			}
+		})
+	}
+}
+
+func TestCtlSendsSessionCommands(t *testing.T) {
+	cases := []struct {
+		name       string
+		args       []string
+		wantStdout string
+		want       route.Command
+	}{
+		{"pause", []string{"pause"}, "paused routing of work · repo · sub", route.Command{Op: route.OpPause, Session: "t-sub", Scope: route.ScopeSession}},
+		{"resume", []string{"resume"}, "resumed routing of work · repo · sub", route.Command{Op: route.OpResume, Session: "t-sub", Scope: route.ScopeSession}},
+		{"pin", []string{"pin", "--tier", "high"}, "pinned the next turn of work · repo · sub to high", route.Command{Op: route.OpPin, Session: "t-sub", Scope: route.ScopeSession, Tier: config.TierHigh}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env, codexHome, projects, applied := ctlFixture(t)
+			args := append([]string{"ctl"}, tc.args...)
+			args = append(args, "--home", codexHome, "--cwd", filepath.Join(projects, "repo/sub"))
+			var stdout, stderr bytes.Buffer
+			if code := run(context.Background(), args, env, nil, &stdout, &stderr); code != exitOK {
+				t.Fatalf("exit %d, stderr %q", code, stderr.String())
+			}
+			if !strings.Contains(stdout.String(), tc.wantStdout) {
+				t.Errorf("stdout %q, want %q", stdout.String(), tc.wantStdout)
+			}
+			got := slices.DeleteFunc(applied(), func(c route.Command) bool { return c.Op == control.OpSubscribe })
+			if len(got) != 1 {
+				t.Fatalf("endpoint got %+v, want one command", got)
+			}
+			got[0].ID = ""
+			if got[0] != tc.want {
+				t.Errorf("endpoint got %+v, want %+v", got[0], tc.want)
+			}
+		})
+	}
+}
+
+func TestCtlUsage(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"no subcommand", []string{"ctl"}, "want status, pause, resume or pin"},
+		{"unknown subcommand", []string{"ctl", "preset"}, "want status, pause, resume or pin"},
+		{"pin without a tier", []string{"ctl", "pin"}, `--tier "" is not`},
+		{"pin with a bad tier", []string{"ctl", "pin", "--tier", "huge"}, `--tier "huge" is not`},
+		{"tier on status", []string{"ctl", "status", "--tier", "high"}, "flag provided but not defined"},
+		{"stray argument", []string{"ctl", "pause", "now"}, `unexpected argument "now"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var stderr bytes.Buffer
+			code := run(context.Background(), tc.args, testEnv(t), nil, io.Discard, &stderr)
+			if code != exitUsage || !strings.Contains(stderr.String(), tc.want) {
+				t.Errorf("exit %d, stderr %q; want %d and %q", code, stderr.String(), exitUsage, tc.want)
+			}
+		})
+	}
+}

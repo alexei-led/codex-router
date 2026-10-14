@@ -635,10 +635,13 @@ Depends on: Task 20
 - Modify: `cmd/codex-router/main.go`, `cmd/codex-router/main_test.go` (`ctl status|pause|resume|pin --cwd DIR` for the skill)
 - Create: `cmd/codex-router/plugin_test.go` (manifest validation)
 
-- [ ] manifest and marketplace in the formats from Context; the plugin calls `codex-router` from PATH and ships no binary
-- [ ] skill: status, pause/resume and pin for the session whose cwd matches, through `codex-router ctl`
-- [ ] tests: manifests parse and reference existing files; `ctl` resolves the session by cwd; hook command returns within 1 s when services are down
-- [ ] run `make fmt lint test build`
+- [x] manifest and marketplace in the formats from Context; the plugin calls `codex-router` from PATH and ships no binary
+- [x] skill: status, pause/resume and pin for the session whose cwd matches, through `codex-router ctl`
+- [x] tests: manifests parse and reference existing files; `ctl` resolves the session by cwd; hook command returns within 1 s when services are down
+- [x] run `make fmt lint test build`
+- [x] ➕ PATH and `XDG_STATE_HOME` (gate finding): every hook and the skill run `sh "$PLUGIN_ROOT/scripts/codex-router.sh" ARGS`, a wrapper that finds the binary as `$CODEX_ROUTER_BIN`, else the one setup recorded, else `codex-router` on PATH, and exports the recorded state dir. Setup (`internal/setup`, outside the Files list) writes `<Codex home>/codex-router.env` (`setup.PluginEnvFile`, 0600, `CODEX_ROUTER_BIN=` and `XDG_STATE_HOME=` lines); `--dry-run` only prints it, `--undo` removes it. The wrapper takes the home from `$CODEX_HOME`, else from `PLUGIN_ROOT` (`<home>/plugins/cache/…`), else `~/.codex`. With no binary, `hook` prints `{}` and exits 0 (a hook never fails a turn); other commands exit 127 with a hint
+- [x] ➕ hooks: SessionStart runs `hooks/session-start.sh` (`async: true`), which starts `service ensure` with `nohup … </dev/null >/dev/null 2>&1 &` and returns at once; UserPromptSubmit and Stop run `codex-router hook` (the status line). Commands are `sh "$PLUGIN_ROOT/…"`, which works under any `$SHELL` (fish in the gate). Marketplace `codex-router` at the repo root, plugin `codex-router` at `plugins/codex-router`, so install is `codex plugin marketplace add alexei-led/codex-router` + `codex plugin add codex-router@codex-router`. Checked with Codex 0.162.1 in a throwaway `CODEX_HOME` (marketplace add, plugin add, plugin list: installed, enabled); the hooks and the skill have not run in a live Codex session yet (Task 23)
+- [x] ➕ `ctl status|pause|resume|pin [--home PATH] [--cwd DIR] [--tier T]`: the session is `$CODEX_THREAD_ID` when a router of the home lists it (Codex 0.162.1 sets it for shell commands, `core/src/exec_env.rs`; not checked live), else the deepest cwd equal to or containing `--cwd` (default: the current dir), compared with symlinks resolved. Only the home's sessions count (M1). Several at the deepest cwd: exit 2 with the list; none: exit 1. Pause and resume are session-scoped; pin needs `--tier`. Tests: `TestCtl*` in `main_test.go`; `plugin_test.go` checks the manifests strictly against Codex's schema, the skill's `ctl` subcommands, `sh -n` on the scripts, the hooks with fake `launchctl`/`systemctl` (units down, start slow: each hook returns under 1 s, the detached ensure still starts the units), and the wrapper's lookup in an installed-plugin layout. The user guide's plugin section is Task 25
 
 ### Task 22: TUI with brain endpoints
 

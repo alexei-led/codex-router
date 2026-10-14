@@ -1,0 +1,15 @@
+{
+  "name": "codex-router",
+  "version": "0.1.0",
+  "description": "Starts this Codex home's codex-router services at session start, prints a line when the route switches, and lets Codex show, pause, resume or pin the routing of its own session. Needs the codex-router binary and codex-router setup for the home; ships no binary.",
+  "keywords": ["routing", "model", "reasoning effort"],
+  "skills": "./skills",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "codex-router",
+    "shortDescription": "Per-step model and effort routing for Codex",
+    "developerName": "Alexei Ledenev",
+    "category": "Productivity",
+    "websiteURL": "https://github.com/alexei-led/codex-router"
+  }
+}
