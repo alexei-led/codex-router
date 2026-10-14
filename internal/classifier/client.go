@@ -14,9 +14,9 @@ import (
 )
 
 // Client asks one classifier endpoint. It allows one request at a time: a
-// call answers ErrBusy while another is in flight, and a request abandoned at
-// the deadline holds the slot until it settles, so a late answer never
-// overlaps the next turn's. now measures the budget, the breaker and the
+// call waits, under its context, while another is in flight, and a request
+// abandoned at the deadline holds the slot until it settles, so a late answer
+// never overlaps the next turn's. now measures the budget, the breaker and the
 // latency; the context carries the same timeout as a duration, so an injected
 // clock never makes the request expire early or late.
 type Client struct {
@@ -49,7 +49,7 @@ func (c *Client) Health() Health {
 }
 
 // Ask returns the classifier's advice for in, or a Code error. Missing key,
-// cancellation, pause and busy answers do not count toward the breaker.
+// cancellation and pause answers do not count toward the breaker.
 func (c *Client) Ask(ctx context.Context, in Input) (Advice, error) {
 	if c.cfg.KeyEnv != "" && c.key == "" {
 		return Advice{}, ErrMissingKey
@@ -63,10 +63,12 @@ func (c *Client) Ask(ctx context.Context, in Input) (Advice, error) {
 	if paused {
 		return Advice{}, ErrPaused
 	}
+	// Wait rather than fail fast: a review the next turn cancelled frees the
+	// slot only once its abandoned post settles, moments later.
 	select {
 	case c.slot <- struct{}{}:
-	default:
-		return Advice{}, ErrBusy
+	case <-ctx.Done():
+		return Advice{}, ErrCancelled
 	}
 	defer c.release()
 

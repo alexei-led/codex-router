@@ -81,7 +81,6 @@ const (
 	ErrHTTP        Code = "http"
 	ErrUnreachable Code = "unreachable"
 	ErrPaused      Code = "paused"
-	ErrBusy        Code = "busy"
 	ErrMissingKey  Code = "missing-key"
 	ErrCancelled   Code = "cancelled"
 )

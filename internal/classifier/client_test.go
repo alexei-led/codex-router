@@ -241,10 +241,10 @@ func TestATimedOutRequestHoldsTheSlotUntilItSettles(t *testing.T) {
 		if _, err := c.Ask(t.Context(), smallInput); !errors.Is(err, ErrTimeout) {
 			t.Fatalf("err = %v, want %v", err, ErrTimeout)
 		}
-		for range 3 {
-			if _, err := c.Ask(t.Context(), smallInput); !errors.Is(err, ErrBusy) {
-				t.Errorf("err = %v, want %v", err, ErrBusy)
-			}
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		if _, err := c.Ask(ctx, smallInput); !errors.Is(err, ErrCancelled) {
+			t.Errorf("err = %v, want %v", err, ErrCancelled)
 		}
 		if rec.count() != 1 {
 			t.Errorf("requests = %d, want 1", rec.count())
@@ -259,6 +259,45 @@ func TestATimedOutRequestHoldsTheSlotUntilItSettles(t *testing.T) {
 		}
 		if c.Health().Failures != 0 {
 			t.Errorf("failures = %d, want 0 after a success", c.Health().Failures)
+		}
+	})
+}
+
+func TestAnAskWaitsForTheSlot(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		release := make(chan struct{})
+		rec := script(func(*http.Request) (*http.Response, error) {
+			<-release
+			return respond(http.StatusOK, jevAnswer), nil
+		})
+		c := jevClient(rec)
+		review, cancel := context.WithCancel(t.Context())
+		reviewed := make(chan error)
+		go func() {
+			_, err := c.Ask(review, smallInput)
+			reviewed <- err
+		}()
+		synctest.Wait()
+		cancel()
+		if err := <-reviewed; !errors.Is(err, ErrCancelled) {
+			t.Fatalf("cancelled ask err = %v, want %v", err, ErrCancelled)
+		}
+
+		asked := make(chan error)
+		go func() {
+			_, err := c.Ask(t.Context(), smallInput)
+			asked <- err
+		}()
+		synctest.Wait()
+		if rec.count() != 1 {
+			t.Errorf("requests while the slot is held = %d, want 1", rec.count())
+		}
+		close(release)
+		if err := <-asked; err != nil {
+			t.Errorf("waiting ask err = %v", err)
+		}
+		if rec.count() != 2 {
+			t.Errorf("requests = %d, want 2", rec.count())
 		}
 	})
 }
@@ -304,8 +343,10 @@ func TestTheSlotStaysTakenDuringBackoff(t *testing.T) {
 			done <- err
 		}()
 		synctest.Wait()
-		if _, err := c.Ask(t.Context(), smallInput); !errors.Is(err, ErrBusy) {
-			t.Errorf("err during backoff = %v, want %v", err, ErrBusy)
+		ctx, cancel := context.WithTimeout(t.Context(), RetryDelay/2)
+		defer cancel()
+		if _, err := c.Ask(ctx, smallInput); !errors.Is(err, ErrCancelled) {
+			t.Errorf("err during backoff = %v, want %v", err, ErrCancelled)
 		}
 		if err := <-done; err != nil {
 			t.Errorf("first ask err = %v", err)
@@ -568,8 +609,10 @@ func TestATimedOutOllamaActivityStepKeepsTheRouteAndHoldsTheSlot(t *testing.T) {
 		if c.Health().Failures != 0 {
 			t.Errorf("failures = %d, want 0", c.Health().Failures)
 		}
-		if _, err := c.Ask(t.Context(), smallInput); !errors.Is(err, ErrBusy) {
-			t.Errorf("err = %v, want %v", err, ErrBusy)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		if _, err := c.Ask(ctx, smallInput); !errors.Is(err, ErrCancelled) {
+			t.Errorf("err = %v, want %v", err, ErrCancelled)
 		}
 		close(release)
 		synctest.Wait()
