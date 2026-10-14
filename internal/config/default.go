@@ -1,5 +1,14 @@
 package config
 
+import "time"
+
+const (
+	// decideMargin is the proxy's slack over the classifier's own timeout.
+	decideMargin = 200 * time.Millisecond
+	// fallbackClassifierTimeout applies when the selected classifier has none.
+	fallbackClassifierTimeout = 1500 * time.Millisecond
+)
+
 // Default returns the built-in configuration: the four gpt-6 models that share
 // one compatibility group (plan D2), classifier Jev with a local Ollama option.
 func Default() Config {
@@ -102,4 +111,14 @@ func (c Config) RouteFor(t Tier, a Activity) Route {
 		r.Effort = o.Effort
 	}
 	return r
+}
+
+// DecideTimeout bounds one routing decision: the selected classifier's
+// timeout plus a margin, so the proxy outlasts the classifier call.
+func (c Config) DecideTimeout() time.Duration {
+	t := time.Duration(c.Classifiers[c.Classifier].TimeoutMs) * time.Millisecond
+	if t <= 0 {
+		t = fallbackClassifierTimeout
+	}
+	return t + decideMargin
 }

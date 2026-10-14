@@ -40,7 +40,8 @@ const (
 )
 
 // DefaultDecideTimeout bounds Decide when Options.DecideTimeout is zero: the
-// default classifier deadline (1500 ms) plus 200 ms.
+// default classifier deadline (1500 ms) plus 200 ms, as config.DecideTimeout
+// computes for a classifier without a timeout.
 const DefaultDecideTimeout = 1700 * time.Millisecond
 
 const (

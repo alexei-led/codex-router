@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDefaultRoutesMatchPlan(t *testing.T) {
@@ -259,5 +260,24 @@ func TestPath(t *testing.T) {
 	t.Setenv("HOME", "/home/u")
 	if got, _ := Path(); got != filepath.Join("/home/u", ".config", "codex-router", "config.json") {
 		t.Errorf("fallback path = %q", got)
+	}
+}
+
+func TestDecideTimeout(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		timeoutMs int
+		want      time.Duration
+	}{
+		{"configured", 900, 1100 * time.Millisecond},
+		{"unset falls back", 0, 1700 * time.Millisecond},
+		{"negative falls back", -5, 1700 * time.Millisecond},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := Config{Classifier: "k", Classifiers: map[string]Classifier{"k": {TimeoutMs: tc.timeoutMs}}}
+			if got := c.DecideTimeout(); got != tc.want {
+				t.Errorf("DecideTimeout = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

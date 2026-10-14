@@ -20,7 +20,6 @@ import (
 
 const (
 	probeTimeout  = 2 * time.Second
-	decideMargin  = 200 * time.Millisecond
 	relistenDelay = 200 * time.Millisecond
 	modelsCache   = "models_cache.json"
 )
@@ -76,14 +75,6 @@ func newClassifier(cfg config.Config, getenv func(string) string) (classifier.As
 	return classifier.New(cc, key, a, &http.Client{}, time.Now), ""
 }
 
-func decideTimeout(cfg config.Config) time.Duration {
-	ms := cfg.Classifiers[cfg.Classifier].TimeoutMs
-	if ms <= 0 {
-		return 0
-	}
-	return time.Duration(ms)*time.Millisecond + decideMargin
-}
-
 type serveFunc func(ctx context.Context) error
 
 // startProxy binds the proxy, serves it under runCtx with re-listen on the
@@ -98,7 +89,7 @@ func startProxy(ctx, runCtx context.Context, wg *sync.WaitGroup, o Options, toke
 			Observer:      eng,
 			OnCatalog:     store.Set,
 			Logger:        log,
-			DecideTimeout: decideTimeout(o.Config),
+			DecideTimeout: o.Config.DecideTimeout(),
 		})
 		p, err := srv.Listen()
 		return p, srv.Serve, err
