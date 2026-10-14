@@ -294,27 +294,21 @@ func TestMalformedLineGetsErrorMessage(t *testing.T) {
 	}
 }
 
-func TestClientReconnectsAfterServerRestart(t *testing.T) {
-	path := sockPath(t)
-	s1, err := Listen(path, &fakeHandler{replies: 1})
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestUpdatesClosesAfterServerCloses(t *testing.T) {
+	s, path := startServer(t, &fakeHandler{replies: 1})
 	c := dial(t, path)
-	if got := next(t, c).Stats.Replies; got != 1 {
-		t.Fatalf("replies = %d, want 1", got)
-	}
-	_ = s1.Close()
-	s2, err := Listen(path, &fakeHandler{replies: 2})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = s2.Close() }()
-	if got := next(t, c).Stats.Replies; got != 2 {
-		t.Fatalf("replies after reconnect = %d, want 2", got)
-	}
-	if err := c.Send(route.Command{Op: route.OpPause}); err != nil {
-		t.Fatalf("Send after reconnect: %v", err)
+	next(t, c)
+	_ = s.Close()
+	deadline := time.After(3 * time.Second)
+	for {
+		select {
+		case _, ok := <-c.Updates():
+			if !ok {
+				return
+			}
+		case <-deadline:
+			t.Fatal("Updates not closed after the server closed")
+		}
 	}
 }
 
