@@ -45,6 +45,23 @@ func goTestFailed(id, wall, pkgTime string) responses.Item {
 		"exit_code=1")...)
 }
 
+// The live cells of a model that masks the test's status and prints the
+// whole nested result.
+const (
+	maskedTestCell = `const r = await tools.exec_command({cmd:"go test ./...; result=$?; printf 'exit code: %s\\n' \"$result\"; exit 0","yield_time_ms":1000}); text(JSON.stringify(r));`
+	pythonEditCell = `const r = await tools.exec_command({cmd:"python3 -c 'from pathlib import Path; p=Path(\"retry.go\"); p.write_text(\"// probe\\n\"+p.read_text())'"}); text(r.output);`
+)
+
+// stringified is a `text(JSON.stringify(r))` cell result; an empty pkgTime is
+// a command still running.
+func stringified(id, chunk, status, pkgTime string) responses.Item {
+	output := ""
+	if pkgTime != "" {
+		output = `--- FAIL: TestRouterProbe (0.00s)\n    retry_test.go:49: probe\nFAIL\nFAIL\texample.com/retry\t` + pkgTime + `\nFAIL\nexit code: 1\n`
+	}
+	return cellOut(id, scriptCompleted("1.3", `{"chunk_id":"`+chunk+`","wall_time_seconds":0.93,`+status+`"original_token_count":29,"output":"`+output+`"}`)...)
+}
+
 func TestExtractFailureCodeMode(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -62,6 +79,13 @@ func TestExtractFailureCodeMode(t *testing.T) {
 			cellOut("c2", scriptCompleted("0.1", "exit_code=0")...),
 			cell("c3", goTestCell), goTestFailed("c3", "0.7", "0.210s"),
 		}, 6},
+		{"stringified results around a writing command", []responses.Item{
+			user("fix it"), cell("c1", maskedTestCell), stringified("c1", "954962", `"exit_code":0,`, "0.709s"),
+			cell("c2", pythonEditCell), cellOut("c2", scriptCompleted("0.4")...),
+			cell("c3", maskedTestCell), stringified("c3", "f2161d", `"session_id":13430,`, ""),
+			cell("c4", "const r = await tools.write_stdin({session_id:13430,chars:\"\"}); text(JSON.stringify(r));"),
+			stringified("c4", "362e7c", `"exit_code":0,`, "0.931s"),
+		}, 8},
 		{"no edit between", []responses.Item{
 			user("fix it"), cell("c1", goTestCell), goTestFailed("c1", "1.3", "0.160s"),
 			cell("c2", goTestCell), goTestFailed("c2", "0.7", "0.160s"),
@@ -144,6 +168,10 @@ func TestExtractVerifiedCodeMode(t *testing.T) {
 		{"script failed", []responses.Item{cell("c1", goTestCell), cellOut("c1", "Script failed\nWall time 0.2 seconds\nOutput:\n", "boom")}, 0, false},
 		{"printed exit code with spaces", []responses.Item{cell("c1", goTestCell), cellOut("c1", scriptCompleted("1", "Exit_Code: 0")...)}, 0, true},
 		{"printed exit code in words", []responses.Item{cell("c1", goTestCell), cellOut("c1", scriptCompleted("1", "exit code: 0")...)}, 0, true},
+		{"stringified pass", []responses.Item{cell("c1", goTestCell), cellOut("c1", scriptCompleted("1", `{"exit_code":0,"output":"ok\texample.com/retry\t0.1s\n"}`)...)}, 0, true},
+		{"stringified failure", []responses.Item{cell("c1", goTestCell), cellOut("c1", scriptCompleted("1", `{"exit_code":1,"output":"FAIL\n"}`)...)}, 0, false},
+		{"stringified masked failure", []responses.Item{cell("c1", goTestCell), cellOut("c1", scriptCompleted("1", `{"exit_code":0,"output":"FAIL\nexit code: 1\n"}`)...)}, 0, false},
+		{"stringified still running", []responses.Item{cell("c1", goTestCell), cellOut("c1", scriptCompleted("1", `{"session_id":3,"output":""}`)...)}, 0, false},
 		{"single-quoted command", []responses.Item{cell("c1", "await tools.exec_command({cmd: 'make lint'})"), passed("c1")}, 0, true},
 		{"template command", []responses.Item{cell("c1", "await tools.exec_command({cmd: `go vet ./...`})"), passed("c1")}, 0, true},
 		{"shell_command", []responses.Item{cell("c1", `await tools.shell_command({command: "npm test"})`), passed("c1")}, 0, true},
