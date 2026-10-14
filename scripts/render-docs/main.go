@@ -120,7 +120,7 @@ func sampleSnapshot() route.Snapshot {
 		Alternates: []route.Share{{Activity: config.ActivityCode, P: 0.15}, {Activity: config.ActivityExplore, P: 0.06}},
 	}
 
-	// 142 routed replies, four per cell.
+	// 144 routed replies, four per cell.
 	strip := make([]config.Tier, 0, 36)
 	for _, t := range []struct {
 		tier config.Tier
@@ -140,8 +140,8 @@ func sampleSnapshot() route.Snapshot {
 		Preset:          cfg.Preset,
 		Pin:             &pin,
 		Baseline:        solMed,
-		Footer:          sol61,
-		FooterSynced:    true,
+		Footer:          solMed,
+		FooterSynced:    false,
 		Last:            &last,
 		Recent:          recent,
 		Classifier:      classifier.Health{Latency: 412 * time.Millisecond},
@@ -150,9 +150,9 @@ func sampleSnapshot() route.Snapshot {
 		Group:  catalog.Group{CompHash: "9f3c1a7e"},
 		Policy: cfg.Effective(),
 		Stats: route.Stats{
-			Since: at(18, 2), Replies: 142, Switches: 19,
-			ByTier:           map[config.Tier]int{config.TierHigh: 31, config.TierMedium: 74, config.TierLow: 29, config.TierMicro: 8},
-			ByActivity:       map[config.Activity]int{config.ActivityCode: 51, config.ActivityDebug: 38, config.ActivityExplore: 27, config.ActivityPlan: 9, config.ActivityReview: 7, config.ActivityOps: 6, config.ActivityDocs: 4},
+			Since: at(18, 2), Replies: 144, Switches: 19,
+			ByTier:           map[config.Tier]int{config.TierHigh: 24, config.TierMedium: 76, config.TierLow: 36, config.TierMicro: 8},
+			ByActivity:       map[config.Activity]int{config.ActivityCode: 53, config.ActivityDebug: 38, config.ActivityExplore: 27, config.ActivityPlan: 9, config.ActivityReview: 7, config.ActivityOps: 6, config.ActivityDocs: 4},
 			Strip:            strip,
 			RepliesPerCell:   4,
 			LastSwitch:       &route.Switch{At: at(18, 41), From: config.TierMedium, To: config.TierHigh, FromRoute: solHigh, ToRoute: sol61, Activity: config.ActivityDebug, MidTurn: true},

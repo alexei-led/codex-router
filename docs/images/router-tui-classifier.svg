@@ -7,7 +7,7 @@
   <text x="16.0" y="28.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
   <text x="78.4" y="28.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
   <text x="109.6" y="28.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
-  <text x="273.4" y="28.0" fill="#878787" xml:space="preserve"> · footer synced</text>
+  <text x="273.4" y="28.0" fill="#ffaf00" xml:space="preserve"> · footer not synced</text>
   <text x="16.0" y="66.0" fill="#878787" xml:space="preserve"> Now 1 </text>
   <text x="70.6" y="66.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
   <text x="148.6" y="66.0" fill="#878787" xml:space="preserve"> Policy 3 </text>

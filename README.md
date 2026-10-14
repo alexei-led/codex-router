@@ -10,7 +10,7 @@ Routes each step of a Codex CLI session to a model and reasoning effort picked b
 
 The router writes each decision into the session's private Codex app-server, so the footer repaints with the routed model in any terminal. A separate panel shows why:
 
-![Router panel, Now tab: next turn on gpt-6.1-sol high, activity debug 72%, pin buttons with classifier support, a strip of 142 routed replies by tier, findings, context and cache](docs/images/router-tui-now.svg)
+![Router panel, Now tab: next turn on gpt-6.1-sol high, activity debug 72%, pin buttons with classifier support, a strip of 144 routed replies by tier, findings, context and cache](docs/images/router-tui-now.svg)
 
 The pictures use made-up sample data. Regenerate them with `go run ./scripts/render-docs` (see [docs/images](docs/images)).
 
