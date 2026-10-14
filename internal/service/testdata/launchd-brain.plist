@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.github.alexei-led.codex-router.3fa9c0d1e2b4.brain</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/homebrew/bin/codex-router</string>
+		<string>--config</string>
+		<string>/Users/u/.config/codex-router/config.json</string>
+		<string>brain</string>
+		<string>--home</string>
+		<string>/Users/u/.codex-work</string>
+		<string>--state-dir</string>
+		<string>/Users/u/.local/state</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>/Users/u/.local/state/codex-router/homes/3fa9c0d1e2b4/logs/brain.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/u/.local/state/codex-router/homes/3fa9c0d1e2b4/logs/brain.log</string>
+</dict>
+</plist>

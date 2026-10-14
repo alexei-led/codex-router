@@ -1,0 +1,11 @@
+# >>> codex-router >>>
+model_provider = "router"
+# <<< codex-router <<<
+# >>> codex-router >>>
+[model_providers.router]
+name = "router"
+base_url = "http://127.0.0.1:53611/v1"
+wire_api = "responses"
+requires_openai_auth = true
+http_headers = { "X-Codex-Router-Token" = "test-token" }
+# <<< codex-router <<<

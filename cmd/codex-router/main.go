@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -35,6 +36,8 @@ import (
 	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/route"
+	"github.com/alexei-led/codex-router/internal/service"
+	"github.com/alexei-led/codex-router/internal/setup"
 	"github.com/alexei-led/codex-router/internal/tui"
 )
 
@@ -63,6 +66,10 @@ Usage:
                                                      serve a Codex home's provider port
   codex-router [--config PATH] brain [--home PATH] [--state-dir DIR]
                                                      route a Codex home's sessions
+  codex-router [--config PATH] setup [--home PATH] [--state-dir DIR] [--dry-run]
+               [--follow-symlink] [--undo [--purge]]
+                                                     run a Codex home through an edge and a brain
+  codex-router service ensure|status [--home PATH]   start or check a home's service units
   codex-router version                               print the version
 
 Global flags:
@@ -94,6 +101,20 @@ mirrors routes into their footers, and lists them in the session registry.
 The classifier key comes from the env var named by the classifier's keyEnv.
 When it is unset the classifier is off: requests keep their model unless a
 route is pinned from the panel.
+setup routes one Codex home (--home, else $CODEX_HOME, else ~/.codex)
+through an edge and a brain, run by launchd (macOS) or systemd user units
+(Linux). It prints the home, then the config.toml diff (token redacted):
+model_provider = "router" and a router provider with a token header, in
+marked blocks. It refuses a config.toml that sets model_provider, or that
+is a symlink (--follow-symlink edits the target; the token then lands
+there). It backs config.toml up, stores a free port and a new token in the
+home's state dir, and installs the units with the home, the state dir
+and the config path fixed. Running threads keep their provider until /new
+or a Codex restart. --dry-run prints the changes and writes nothing.
+--undo removes the blocks and the units; --purge also deletes the state.
+service ensure starts the units of a set-up home that are down, without
+waiting; for a home not set up it prints one hint line. service status
+prints each unit's state.
 
 Exit codes:
   run      codex's exit code; 128+N when signal N ended codex;
@@ -105,6 +126,8 @@ Exit codes:
   proxy    0 after SIGINT or SIGTERM, 1 on error
   edge     0 after SIGINT or SIGTERM, 1 on error or when the home is not set up
   brain    0 after SIGINT or SIGTERM, 1 on error
+  setup    0 on success, 1 on error or a refused edit
+  service  0, also when the home is not set up; 1 on error
   any      2 on a usage error
 `
 
@@ -172,6 +195,10 @@ func run(ctx context.Context, args, env []string, stdin io.Reader, stdout, stder
 			return c.edge(ctx, g.config, rest)
 		case "brain":
 			return c.brain(ctx, g.config, rest)
+		case "setup":
+			return c.setup(ctx, g.config, rest)
+		case "service":
+			return c.service(ctx, rest)
 		}
 	}
 	return c.launch(g.config, g.rest)
@@ -216,17 +243,19 @@ func parseGlobals(args []string) (globals, error) {
 	return g, nil
 }
 
-func (c cli) loadConfig(flagPath string) (config.Config, error) {
-	path := flagPath
-	if path == "" {
-		path = c.getenv(envConfig)
+// configPath is the config file: --config, else $CODEX_ROUTER_CONFIG, else
+// config.Path.
+func (c cli) configPath(flagPath string) (string, error) {
+	if path := cmp.Or(flagPath, c.getenv(envConfig)); path != "" {
+		return path, nil
 	}
-	if path == "" {
-		p, err := config.Path()
-		if err != nil {
-			return config.Config{}, err
-		}
-		path = p
+	return config.Path()
+}
+
+func (c cli) loadConfig(flagPath string) (config.Config, error) {
+	path, err := c.configPath(flagPath)
+	if err != nil {
+		return config.Config{}, err
 	}
 	return config.Load(path)
 }
@@ -507,29 +536,21 @@ func (c cli) proxy(ctx context.Context, configPath string, args []string) int {
 	return exitOK
 }
 
-// Stage 2 state of one home, brain.HomeDir: setup writes the port and
-// token; the edge reads them.
-const (
-	portFile  = "port"
-	tokenFile = "token"
-)
-
-// edgeSocketName names the edge's socket in the launchd Sockets dict and
-// the systemd FileDescriptorName.
-const edgeSocketName = "edge"
-
 // edgeUpstream is the edge's backend; empty is proxy.Upstream. Tests point
 // it at a fake.
 var edgeUpstream string
 
-// homeFlags parses the --home and --state-dir flags of edge and brain. A
-// set flag overrides CODEX_HOME or XDG_STATE_HOME in the returned cli's env.
-// On failure it returns the exit code and false.
-func (c cli) homeFlags(name string, args []string) (cli, home.Home, int, bool) {
-	fs := flag.NewFlagSet(name, flag.ContinueOnError)
+// homeFlags adds --home, and with withState --state-dir, to fs, then parses
+// args. A set flag overrides CODEX_HOME or XDG_STATE_HOME in the returned
+// cli's env. On failure it returns the exit code and false.
+func (c cli) homeFlags(fs *flag.FlagSet, args []string, withState bool) (cli, home.Home, int, bool) {
+	name := fs.Name()
 	fs.SetOutput(c.stderr)
 	homePath := fs.String("home", "", "Codex home `path` (default: $CODEX_HOME, else ~/.codex)")
-	stateDir := fs.String("state-dir", "", "state base `dir`, as $XDG_STATE_HOME (default: $XDG_STATE_HOME, else ~/.local/state)")
+	stateDir := new(string)
+	if withState {
+		stateDir = fs.String("state-dir", "", "state base `dir`, as $XDG_STATE_HOME (default: $XDG_STATE_HOME, else ~/.local/state)")
+	}
 	if err := fs.Parse(args); err != nil {
 		return c, home.Home{}, exitUsage, false
 	}
@@ -556,7 +577,7 @@ func (c cli) homeFlags(name string, args []string) (cli, home.Home, int, bool) {
 }
 
 func (c cli) edge(ctx context.Context, configPath string, args []string) int {
-	c, h, code, ok := c.homeFlags("edge", args)
+	c, h, code, ok := c.homeFlags(flag.NewFlagSet("edge", flag.ContinueOnError), args, true)
 	if !ok {
 		return code
 	}
@@ -572,7 +593,7 @@ func (c cli) edge(ctx context.Context, configPath string, args []string) int {
 		log.Warn("config-unreadable", "err", err)
 		cfg = config.Default()
 	}
-	ln, err := listen.Activated(edgeSocketName)
+	ln, err := listen.Activated(service.EdgeSocket)
 	var addr string
 	switch {
 	case errors.Is(err, listen.ErrNotActivated):
@@ -620,7 +641,7 @@ func (c cli) edge(ctx context.Context, configPath string, args []string) int {
 }
 
 func (c cli) brain(ctx context.Context, configPath string, args []string) int {
-	c, h, code, ok := c.homeFlags("brain", args)
+	c, h, code, ok := c.homeFlags(flag.NewFlagSet("brain", flag.ContinueOnError), args, true)
 	if !ok {
 		return code
 	}
@@ -652,19 +673,19 @@ func edgeState(getenv func(string) string, h home.Home) (dir, token string, err 
 			return "", "", fmt.Errorf("edge: home %s is not set up (run codex-router setup --home %s): %w", h.Name, h.Path, err)
 		}
 	}
-	b, err := os.ReadFile(filepath.Join(dir, tokenFile))
+	b, err := os.ReadFile(filepath.Join(dir, setup.TokenFile))
 	if err != nil {
 		return "", "", fmt.Errorf("edge: token: %w", err)
 	}
 	if token = strings.TrimSpace(string(b)); token == "" {
-		return "", "", fmt.Errorf("edge: token file %s is empty", filepath.Join(dir, tokenFile))
+		return "", "", fmt.Errorf("edge: token file %s is empty", filepath.Join(dir, setup.TokenFile))
 	}
 	return dir, token, nil
 }
 
 // readPort reads the provider port setup stored in dir.
 func readPort(dir string) (int, error) {
-	path := filepath.Join(dir, portFile)
+	path := filepath.Join(dir, setup.PortFile)
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return 0, fmt.Errorf("edge: port: %w", err)
@@ -674,4 +695,100 @@ func readPort(dir string) (int, error) {
 		return 0, fmt.Errorf("edge: %s does not hold a port", path)
 	}
 	return p, nil
+}
+
+// executable is the binary the service units run; tests replace it.
+var executable = os.Executable
+
+// serviceRunner runs launchctl and systemctl; tests replace it.
+var serviceRunner service.Runner = service.Exec
+
+// ensureTimeout bounds service ensure, which a Codex hook runs at session
+// start.
+const ensureTimeout = 2 * time.Second
+
+func (c cli) services() (*service.Manager, error) {
+	return service.New(service.Options{
+		GOOS: runtime.GOOS, Home: c.getenv("HOME"), ConfigHome: c.getenv("XDG_CONFIG_HOME"),
+		UID: os.Getuid(), Run: serviceRunner,
+	})
+}
+
+func (c cli) setup(ctx context.Context, configPath string, args []string) int {
+	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
+	dryRun := fs.Bool("dry-run", false, "print the changes and write nothing")
+	undo := fs.Bool("undo", false, "remove the config.toml blocks and the service units")
+	purge := fs.Bool("purge", false, "with --undo, also delete the home's state dir")
+	follow := fs.Bool("follow-symlink", false, "edit the target of a symlinked config.toml; the token lands there")
+	c, h, code, ok := c.homeFlags(fs, args, true)
+	if !ok {
+		return code
+	}
+	if *purge && !*undo {
+		return c.usageError(errors.New("setup: --purge needs --undo"))
+	}
+	app, err := registry.StateDir(c.getenv)
+	if err != nil {
+		return c.fail(err)
+	}
+	cfgPath, err := c.configPath(configPath)
+	if err == nil {
+		cfgPath, err = filepath.Abs(cfgPath)
+	}
+	if err != nil {
+		return c.fail(err)
+	}
+	bin, err := executable()
+	if err != nil {
+		return c.fail(err)
+	}
+	mgr, err := c.services()
+	if err != nil {
+		return c.fail(err)
+	}
+	err = setup.Run(ctx, setup.Options{
+		Home: h, StateDir: filepath.Dir(app), Config: cfgPath, Bin: bin,
+		DryRun: *dryRun, Undo: *undo, Purge: *purge, FollowSymlink: *follow,
+		Service: mgr, Out: c.stdout,
+	})
+	if err != nil {
+		return c.fail(err)
+	}
+	return exitOK
+}
+
+func (c cli) service(ctx context.Context, args []string) int {
+	if len(args) == 0 || (args[0] != "ensure" && args[0] != "status") {
+		return c.usageError(errors.New("service: want ensure or status"))
+	}
+	sub := args[0]
+	c, h, code, ok := c.homeFlags(flag.NewFlagSet("service "+sub, flag.ContinueOnError), args[1:], false)
+	if !ok {
+		return code
+	}
+	mgr, err := c.services()
+	if err != nil {
+		return c.fail(err)
+	}
+	if sub == "ensure" {
+		ctx, cancel := context.WithTimeout(ctx, ensureTimeout)
+		defer cancel()
+		got, err := mgr.Ensure(ctx, h.ID)
+		if err != nil {
+			return c.fail(err)
+		}
+		if got == service.NotSetUp {
+			_, _ = fmt.Fprintf(c.stdout, "codex-router: Codex home %s has no router service; run: codex-router setup --home %s\n", h.Name, h.Path)
+		}
+		return exitOK
+	}
+	_, _ = fmt.Fprintf(c.stdout, "Codex home %s: %s (id %s)\n", h.Name, h.Path, h.ID)
+	w := tabwriter.NewWriter(c.stdout, 0, 0, 2, ' ', 0)
+	for _, u := range mgr.Status(ctx, h.ID) {
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", u.Role, u.Name, u.State)
+	}
+	if err := w.Flush(); err != nil {
+		return c.fail(err)
+	}
+	return exitOK
 }
