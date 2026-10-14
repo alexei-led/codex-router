@@ -127,6 +127,9 @@ type Finding struct {
 
 // Snapshot is the full state the control socket publishes and the TUI renders.
 type Snapshot struct {
+	// Seq orders snapshots: they are taken under the engine lock but
+	// published after it, so a consumer drops one older than it holds.
+	Seq              uint64
 	At               time.Time
 	Mode             Mode
 	Preset           config.Preset

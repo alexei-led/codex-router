@@ -101,9 +101,13 @@ func removeStale(path string) error {
 
 // Publish records the latest snapshot and wakes every client. Bursts
 // coalesce: a client gets the newest snapshot at most once per PublishInterval.
+// A snapshot older than the one held lost a publish race and is dropped.
 func (s *Server) Publish(snap route.Snapshot) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.latest != nil && snap.Seq < s.latest.Seq {
+		return
+	}
 	s.latest = &snap
 	for c := range s.clients {
 		select {

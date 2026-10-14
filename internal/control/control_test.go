@@ -182,6 +182,27 @@ func TestPublishCoalescesBursts(t *testing.T) {
 	}
 }
 
+func TestPublishDropsAnOlderSnapshot(t *testing.T) {
+	s, path := startServer(t, &fakeHandler{})
+	c := dial(t, path)
+	next(t, c)
+	s.Publish(route.Snapshot{Seq: 2})
+	s.Publish(route.Snapshot{Seq: 1})
+
+	if snap := next(t, c); snap.Seq != 2 {
+		t.Fatalf("snapshot seq = %d, want 2", snap.Seq)
+	}
+	quiet := time.After(3 * PublishInterval)
+	for {
+		select {
+		case snap := <-c.Updates():
+			t.Fatalf("snapshot seq = %d after seq 2", snap.Seq)
+		case <-quiet:
+			return
+		}
+	}
+}
+
 func TestSendRoundTrip(t *testing.T) {
 	h := &fakeHandler{}
 	_, path := startServer(t, h)

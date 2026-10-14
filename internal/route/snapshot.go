@@ -109,7 +109,9 @@ func (e *Engine) lockedSnapshot() Snapshot {
 // the focus thread's first request, else the baseline tier's route.
 func (e *Engine) snapshot(now time.Time) Snapshot {
 	cfg := e.cfg
+	e.seq++
 	s := Snapshot{
+		Seq:              e.seq,
 		At:               now,
 		Mode:             ModeOn,
 		Preset:           cfg.Preset,
