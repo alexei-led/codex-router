@@ -68,13 +68,32 @@ func parseResult(out string) result {
 // only when the script printed it: the last `exit_code=N` or `exit code: N`
 // line, or a nested tool's exit line, in the body. Unlike plain output, a
 // cell body is what the script chose to print, and models print the status
-// after the output. A script that threw before printing one failed.
+// after the output. A script that threw before printing one failed. A body
+// that is the nested result itself, `text(JSON.stringify(r))`, gives its
+// `output` and `exit_code`; a printed line in that output still wins, since
+// models mask the command's status (`cmd; echo "exit code: $?"; exit 0`). A
+// result with a `session_id` and no `exit_code` is still running: it ends in
+// a later `write_stdin` cell.
 func parseCell(out, status string) result {
 	_, body, found := strings.Cut(out, "\nOutput:")
 	if !found {
 		_, body, _ = strings.Cut(out, "\n")
 	}
 	r := result{body: strings.TrimPrefix(body, "\n"), running: strings.HasPrefix(status, "Script running")}
+	var nested struct {
+		Output    *string `json:"output"`
+		ExitCode  *int    `json:"exit_code"`
+		SessionID *int    `json:"session_id"`
+	}
+	if t := strings.TrimSpace(r.body); strings.HasPrefix(t, "{") && json.Unmarshal([]byte(t), &nested) == nil && nested.Output != nil {
+		r.body = *nested.Output
+		switch {
+		case nested.ExitCode != nil:
+			r.exit, r.known = *nested.ExitCode, true
+		case nested.SessionID != nil:
+			r.running = true
+		}
+	}
 	for line := range strings.Lines(r.body) {
 		line = strings.TrimSpace(line)
 		m := printedExit.FindStringSubmatch(line)
