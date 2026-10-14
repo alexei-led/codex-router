@@ -57,10 +57,10 @@ func TestOptionsCoverEveryTierAndActivity(t *testing.T) {
 	for _, a := range config.Activities {
 		activities = append(activities, string(a))
 	}
-	if got, want := routeOptions.values(), append(tiers, string(ChoiceUncertain)); !slices.Equal(got, want) {
+	if got, want := routeOptions.values(), slices.Concat(tiers, []string{string(ChoiceUncertain)}); !slices.Equal(got, want) {
 		t.Errorf("route values = %v, want %v", got, want)
 	}
-	if got, want := activityOptions.values(), append(activities, string(config.ActivityUncertain)); !slices.Equal(got, want) {
+	if got, want := activityOptions.values(), slices.Concat(activities, []string{string(config.ActivityUncertain)}); !slices.Equal(got, want) {
 		t.Errorf("activity values = %v, want %v", got, want)
 	}
 	for _, opt := range activityOptions[:len(activityOptions)-1] {

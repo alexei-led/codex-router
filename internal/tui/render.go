@@ -6,6 +6,7 @@ import (
 	"math"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -526,7 +527,7 @@ func fmtTokens(n int) string {
 	case n >= 1000:
 		return fmt.Sprintf("%.1fK", float64(n)/1000)
 	}
-	return fmt.Sprint(n)
+	return strconv.Itoa(n)
 }
 
 func abs(f float64) float64 {
@@ -624,7 +625,7 @@ func (c *canvas) usage(s route.Snapshot) {
 	}
 	c.section("BY TIER")
 	for _, t := range tierOrder {
-		c.add(tierLabel(t), plain(fmt.Sprint(st.ByTier[t])))
+		c.add(tierLabel(t), plain(strconv.Itoa(st.ByTier[t])))
 	}
 	c.section("BY ACTIVITY")
 	acts := topActivities(st.ByActivity, 8)
@@ -632,6 +633,6 @@ func (c *canvas) usage(s route.Snapshot) {
 		c.add(dim("none"))
 	}
 	for _, a := range acts {
-		c.add(col(colorActivity, fmt.Sprintf("%-10s", a.name)), plain(fmt.Sprint(a.n)))
+		c.add(col(colorActivity, fmt.Sprintf("%-10s", a.name)), plain(strconv.Itoa(a.n)))
 	}
 }

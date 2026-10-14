@@ -438,7 +438,6 @@ func TestStaleHeartbeatAndErrorsAreIgnoredAfterReconnect(t *testing.T) {
 	if m.disconnected {
 		t.Error("stale error from old connection marked new one disconnected")
 	}
-
 }
 
 func TestAddNeverExceedsWidth(t *testing.T) {

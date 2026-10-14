@@ -72,7 +72,7 @@ func (c *Client) Send(cmd route.Command) error {
 	}
 	_ = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 	if _, err := conn.Write(append(b, '\n')); err != nil {
-		return fmt.Errorf("%w: %v", ErrDisconnected, err)
+		return fmt.Errorf("%w: %w", ErrDisconnected, err)
 	}
 	select {
 	case m := <-c.replies:
