@@ -29,11 +29,11 @@ const MessagePrefix = "router: "
 const Timeout = 200 * time.Millisecond
 
 // Run reads one hook input from stdin, asks the control socket named by
-// control.EnvSocket (read through getenv) for a snapshot and writes
-// {"systemMessage": ...} when the turn's route differs from the previous
-// turn's, else {}. A missing or unreachable socket, unreadable input or a slow
-// stdin or router all print {} within Timeout and return nil: a hook must
-// never block Codex.
+// control.EnvSocket (read through getenv) for its thread's snapshot and
+// writes {"systemMessage": ...} when the turn's route differs from the
+// previous turn's, else {}. A missing or unreachable socket, unreadable input
+// or a slow stdin or router all print {} within Timeout and return nil: a
+// hook must never block Codex.
 func Run(stdin io.Reader, stdout io.Writer, getenv func(string) string) error {
 	deadline := time.After(Timeout)
 	inCh := make(chan Input, 1)
@@ -44,12 +44,12 @@ func Run(stdin io.Reader, stdout io.Writer, getenv func(string) string) error {
 		}
 		inCh <- in
 	}()
-	snapCh := make(chan route.Snapshot, 1)
-	go func() { snapCh <- fetch(getenv(control.EnvSocket)) }()
 
 	var out Output
 	select {
 	case in := <-inCh:
+		snapCh := make(chan route.Snapshot, 1)
+		go func() { snapCh <- fetch(getenv(control.EnvSocket), in.SessionID) }()
 		select {
 		case snap := <-snapCh:
 			out.SystemMessage = Message(snap, in)
@@ -60,10 +60,11 @@ func Run(stdin io.Reader, stdout io.Writer, getenv func(string) string) error {
 	return json.NewEncoder(stdout).Encode(out)
 }
 
-// fetch returns the zero Snapshot when the socket is unset or unreachable.
-// The caller abandons it at the deadline; the process exits right after.
-func fetch(socket string) route.Snapshot {
-	if socket == "" {
+// fetch returns thread's snapshot, or the zero Snapshot when the socket is
+// unset or unreachable or the thread is unknown. The caller abandons it at
+// the deadline; the process exits right after.
+func fetch(socket, thread string) route.Snapshot {
+	if socket == "" || thread == "" {
 		return route.Snapshot{}
 	}
 	c, err := control.Dial(socket)
@@ -71,7 +72,10 @@ func fetch(socket string) route.Snapshot {
 		return route.Snapshot{}
 	}
 	defer func() { _ = c.Close() }()
-	return <-c.Updates()
+	if c.Subscribe(control.SessionID(c.Hello().Home.ID, thread)) != nil {
+		return route.Snapshot{}
+	}
+	return <-c.Snapshots()
 }
 
 // Message returns the switch line for the hook's turn, or "" when there is

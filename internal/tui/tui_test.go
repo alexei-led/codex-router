@@ -194,24 +194,50 @@ func TestPlainHasNoEscapesAndStyledDoes(t *testing.T) {
 	}
 }
 
+const testSession = "h1/th"
+
 type fakeConn struct {
-	updates chan route.Snapshot
-	sent    []route.Command
-	err     error
-	closed  bool
+	updates    chan route.Snapshot
+	sessions   chan []route.SessionInfo
+	sent       []route.Command
+	subscribed []string
+	err        error
+	closed     bool
 }
 
-func newFakeConn() *fakeConn { return &fakeConn{updates: make(chan route.Snapshot, 4)} }
+func newFakeConn() *fakeConn {
+	return &fakeConn{updates: make(chan route.Snapshot, 4), sessions: make(chan []route.SessionInfo, 1)}
+}
 
-func (f *fakeConn) Updates() <-chan route.Snapshot { return f.updates }
-func (f *fakeConn) Send(c route.Command) error     { f.sent = append(f.sent, c); return f.err }
-func (f *fakeConn) Close() error                   { f.closed = true; return nil }
+func (f *fakeConn) Snapshots() <-chan route.Snapshot     { return f.updates }
+func (f *fakeConn) Sessions() <-chan []route.SessionInfo { return f.sessions }
+func (f *fakeConn) Subscribe(s string) error             { f.subscribed = append(f.subscribed, s); return f.err }
+func (f *fakeConn) Send(c route.Command) error           { f.sent = append(f.sent, c); return f.err }
+func (f *fakeConn) Close() error                         { f.closed = true; return nil }
+
+// listed feeds a sessions list and runs the commands it starts.
+func listed(m *model, f *fakeConn, ids ...string) {
+	items := make([]route.SessionInfo, len(ids))
+	for i, id := range ids {
+		items[i] = route.SessionInfo{ID: id}
+	}
+	f.sessions <- nil // the next-list wait returns at once instead of blocking
+	_, cmd := m.Update(sessionsMsg{items, m.gen})
+	if batch, ok := cmd().(tea.BatchMsg); ok {
+		for _, c := range batch {
+			if msg, ok := c().(sentMsg); ok {
+				m.Update(msg)
+			}
+		}
+	}
+}
 
 func connected(t *testing.T, snap route.Snapshot) (*model, *fakeConn) {
 	t.Helper()
 	f := newFakeConn()
 	m := newModel("sock", func(string) (conn, error) { return f, nil })
 	m.Update(dialedMsg{c: f})
+	listed(m, f, testSession)
 	m.Update(snapMsg(snap))
 	return m, f
 }
@@ -248,9 +274,9 @@ func TestKeysSendCommands(t *testing.T) {
 		key   string
 		want  route.Command
 	}{
-		{"pin from none", func(*route.Snapshot) {}, TabNow, "p", route.Command{Op: route.OpPin, Session: "th", Tier: config.TierHigh}},
-		{"pin advances", func(s *route.Snapshot) { s.Pin = &low }, TabNow, "p", route.Command{Op: route.OpPin, Session: "th", Tier: config.TierMicro}},
-		{"pin wraps to unpin", func(s *route.Snapshot) { s.Pin = &micro }, TabNow, "p", route.Command{Op: route.OpUnpin, Session: "th"}},
+		{"pin from none", func(*route.Snapshot) {}, TabNow, "p", route.Command{Op: route.OpPin, Session: testSession, Tier: config.TierHigh}},
+		{"pin advances", func(s *route.Snapshot) { s.Pin = &low }, TabNow, "p", route.Command{Op: route.OpPin, Session: testSession, Tier: config.TierMicro}},
+		{"pin wraps to unpin", func(s *route.Snapshot) { s.Pin = &micro }, TabNow, "p", route.Command{Op: route.OpUnpin, Session: testSession}},
 		{"space pauses", func(*route.Snapshot) {}, TabNow, " ", route.Command{Op: route.OpPause}},
 		{"space resumes paused", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabNow, " ", route.Command{Op: route.OpResume}},
 		{"space resumes manual", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabNow, " ", route.Command{Op: route.OpResume}},
@@ -268,6 +294,19 @@ func TestKeysSendCommands(t *testing.T) {
 				t.Errorf("sent %+v, want [%+v]", f.sent, tt.want)
 			}
 		})
+	}
+}
+
+func TestFollowsTheMostRecentSession(t *testing.T) {
+	m, f := connected(t, fixture())
+	listed(m, f, testSession, "h1/older")
+	listed(m, f, "h1/newer", testSession)
+	if want := []string{testSession, "h1/newer"}; !slices.Equal(f.subscribed, want) {
+		t.Fatalf("subscribed %v, want %v", f.subscribed, want)
+	}
+	listed(m, f)
+	if len(f.subscribed) != 2 {
+		t.Errorf("an empty list changed the subscription: %v", f.subscribed)
 	}
 }
 

@@ -282,11 +282,13 @@ Depends on: Task 4
 - Modify: `internal/control/control.go`, `internal/control/server.go`, `internal/control/client.go`
 - Modify: `internal/control/*_test.go`
 
-- [ ] `Handler` becomes `Apply(Command) error`, `Sessions() []SessionInfo`, `SnapshotFor(string) Snapshot`, `Hello() Hello`
-- [ ] server: `hello` first (reject other first lines and unknown protocol versions with an error line); push the sessions list on change (coalesced, `PublishInterval`); per-connection subscription to one session's snapshots; ack/error carry the command id
-- [ ] client: `Dial(path)` does the handshake; channels for `Sessions` and `Snapshot`; `Subscribe(session)`; `Send(cmd)` waits for the ack with that id
-- [ ] tests: handshake, version mismatch, subscription switch, two clients on one session both receive snapshots, ack matched by id with two commands in flight, slow client does not block others
-- [ ] run `make fmt lint test build`
+- [x] `Handler` becomes `Apply(Command) error`, `Sessions() []SessionInfo`, `SnapshotFor(string) Snapshot`, `Hello() Hello`
+- [x] server: `hello` first (reject other first lines and unknown protocol versions with an error line); push the sessions list on change (coalesced, `PublishInterval`); per-connection subscription to one session's snapshots; ack/error carry the command id
+- [x] client: `Dial(path)` does the handshake; channels for `Sessions` and `Snapshot`; `Subscribe(session)`; `Send(cmd)` waits for the ack with that id
+- [x] tests: handshake, version mismatch, subscription switch, two clients on one session both receive snapshots, ack matched by id with two commands in flight, slow client does not block others
+- [x] ➕ wire details: `session` is `<home_id>/<thread_id>`; the server maps it to the thread id and rejects another home's. One publisher goroutine computes pushes, each client has its own writer. The sessions list is pushed only when it changed (`seq` moves). Any command refreshes every subscription (a home command changes all). The `snapshot` op stays: it re-sends the subscribed snapshot (TUI heartbeat). `Send` assigns the id. The client drops snapshots of another session or with an older `Seq`
+- [x] ➕ consumers changed only to keep the build green: the launcher passes `Deps.Home` and serves the engine with its hello (endpoint id = runtime id, kind `session`; Task 6 adds the registry entry); the one-session TUI panel subscribes to the most recently active session (Task 7 replaces it); the hook subscribes to its own thread (Task 10 adds the registry lookup); `Engine.Snapshot` moved into the route tests
+- [x] run `make fmt lint test build`
 
 ### Task 6: Launcher registers its endpoint
 

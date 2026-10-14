@@ -25,11 +25,13 @@ const (
 	modelsCache   = "models_cache.json"
 )
 
-// newRouter builds the engine over a catalog seeded read-only from
-// $CODEX_HOME/models_cache.json. sink may be nil.
-func newRouter(o Options, log *slog.Logger, sink route.Sink) (*route.Engine, *catalog.Store) {
+// newRouter builds the engine for the Codex home over a catalog seeded
+// read-only from $CODEX_HOME/models_cache.json. sink may be nil. An
+// unresolvable home is the zero Home.
+func newRouter(o Options, log *slog.Logger, sink route.Sink) (*route.Engine, *catalog.Store, home.Home) {
 	store := &catalog.Store{}
-	if h, err := home.Resolve(o.getenv); err != nil {
+	h, err := home.Resolve(o.getenv)
+	if err != nil {
 		log.Warn("catalog-cache-unreadable", "err", err)
 	} else if c, err := catalog.LoadCache(filepath.Join(h.Path, modelsCache)); err != nil {
 		log.Warn("catalog-cache-unreadable", "err", err)
@@ -41,8 +43,8 @@ func newRouter(o Options, log *slog.Logger, sink route.Sink) (*route.Engine, *ca
 	if asker == nil {
 		log.Warn("classifier-disabled", "reason", why)
 	}
-	eng := route.New(route.Deps{Config: o.Config, Catalog: store, Classifier: asker, Sink: sink, Logger: log})
-	return eng, store
+	eng := route.New(route.Deps{Config: o.Config, Catalog: store, Classifier: asker, Sink: sink, Logger: log, Home: h})
+	return eng, store, h
 }
 
 // newClassifier returns the configured classifier, or nil and the reason it
@@ -164,7 +166,7 @@ func Serve(ctx context.Context, o Options, ready func(port int)) error {
 	if log == nil {
 		log = slog.New(slog.NewJSONHandler(o.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	}
-	eng, store := newRouter(o, log, nil)
+	eng, store, _ := newRouter(o, log, nil)
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var wg sync.WaitGroup

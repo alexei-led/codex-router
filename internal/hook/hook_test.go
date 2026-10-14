@@ -12,6 +12,7 @@ import (
 
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
+	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/route"
 )
 
@@ -57,10 +58,20 @@ func TestMessage(t *testing.T) {
 	}
 }
 
+// handler serves snap as thread "th"'s snapshot only, so a hook that asks
+// for another thread gets nothing.
 type handler struct{ snap route.Snapshot }
 
-func (h handler) Apply(route.Command) error { return nil }
-func (h handler) Snapshot() route.Snapshot  { return h.snap }
+func (h handler) Apply(route.Command) error     { return nil }
+func (h handler) Sessions() []route.SessionInfo { return nil }
+func (h handler) Hello() control.Hello          { return control.Hello{Home: home.Home{ID: "h1"}} }
+
+func (h handler) SnapshotFor(thread string) route.Snapshot {
+	if thread != "th" {
+		return route.Snapshot{}
+	}
+	return h.snap
+}
 
 func serve(t *testing.T, snap route.Snapshot) string {
 	t.Helper()

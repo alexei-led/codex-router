@@ -220,7 +220,11 @@ func driveTurn(rt string) error {
 		return err
 	}
 	defer func() { _ = ctl.Close() }()
-	if err := ctl.Send(route.Command{Op: route.OpPin, Session: fakeThread, Tier: config.TierLow}); err != nil {
+	session := control.SessionID(ctl.Hello().Home.ID, fakeThread)
+	if err := ctl.Send(route.Command{Op: route.OpPin, Session: session, Tier: config.TierLow}); err != nil {
+		return err
+	}
+	if err := ctl.Subscribe(session); err != nil {
 		return err
 	}
 	port, err := os.ReadFile(filepath.Join(rt, PortFileName))
@@ -240,7 +244,7 @@ func driveTurn(rt string) error {
 	timeout := time.After(5 * time.Second)
 	for {
 		select {
-		case s := <-ctl.Updates():
+		case s := <-ctl.Snapshots():
 			if s.FooterSynced && s.Footer == pinnedRoute {
 				return nil
 			}
