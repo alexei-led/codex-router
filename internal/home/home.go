@@ -29,17 +29,10 @@ type Home struct {
 // two shells could give one home two IDs. The dir need not exist yet; then
 // the cleaned path is used as is.
 func Resolve(getenv func(string) string) (Home, error) {
-	p := getenv("CODEX_HOME")
-	if p == "" {
-		h := getenv("HOME")
-		if !filepath.IsAbs(h) {
-			return Home{}, errors.New("codex home: HOME is not an absolute path")
-		}
-		p = filepath.Join(h, defaultDir)
-	} else if !filepath.IsAbs(p) {
-		return Home{}, fmt.Errorf("codex home: CODEX_HOME %q is not an absolute path", p)
+	p, err := Given(getenv)
+	if err != nil {
+		return Home{}, err
 	}
-	p = filepath.Clean(p)
 	canon, err := filepath.EvalSymlinks(p)
 	switch {
 	case err == nil:
@@ -50,6 +43,23 @@ func Resolve(getenv func(string) string) (Home, error) {
 	}
 	sum := sha256.Sum256([]byte(canon))
 	return Home{ID: hex.EncodeToString(sum[:])[:idHexLen], Path: canon, Name: name(p)}, nil
+}
+
+// Given returns the home path as the user set it, $CODEX_HOME else
+// $HOME/.codex, cleaned with its symlinks kept. Name comes from it, so a
+// process handed this path resolves the same home under the same Name.
+func Given(getenv func(string) string) (string, error) {
+	p := getenv("CODEX_HOME")
+	if p == "" {
+		h := getenv("HOME")
+		if !filepath.IsAbs(h) {
+			return "", errors.New("codex home: HOME is not an absolute path")
+		}
+		p = filepath.Join(h, defaultDir)
+	} else if !filepath.IsAbs(p) {
+		return "", fmt.Errorf("codex home: CODEX_HOME %q is not an absolute path", p)
+	}
+	return filepath.Clean(p), nil
 }
 
 // name derives the display name from the path the user set, not the

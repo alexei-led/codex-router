@@ -92,6 +92,9 @@ func TestResolveSymlinkedHomeHasTheSameID(t *testing.T) {
 	if viaLink.Name != "work" {
 		t.Errorf("Name via link = %q, want work (from the path the user set)", viaLink.Name)
 	}
+	if given, err := Given(env(map[string]string{"CODEX_HOME": link + "/"})); err != nil || given != link {
+		t.Errorf("Given = %q, %v; want the link %s", given, err, link)
+	}
 }
 
 func TestResolveDistinctHomesHaveDistinctIDs(t *testing.T) {

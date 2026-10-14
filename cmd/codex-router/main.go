@@ -925,6 +925,10 @@ func (c cli) setup(ctx context.Context, configPath string, args []string) int {
 	if *purge && !*undo {
 		return c.usageError(errors.New("setup: --purge needs --undo"))
 	}
+	given, err := home.Given(c.getenv)
+	if err != nil {
+		return c.fail(err)
+	}
 	app, err := registry.StateDir(c.getenv)
 	if err != nil {
 		return c.fail(err)
@@ -945,7 +949,7 @@ func (c cli) setup(ctx context.Context, configPath string, args []string) int {
 		return c.fail(err)
 	}
 	err = setup.Run(ctx, setup.Options{
-		Home: h, StateDir: filepath.Dir(app), Config: cfgPath, Bin: bin,
+		Home: h, HomePath: given, StateDir: filepath.Dir(app), Config: cfgPath, Bin: bin,
 		DryRun: *dryRun, Undo: *undo, Purge: *purge, FollowSymlink: *follow,
 		Service: mgr, Out: c.stdout,
 	})

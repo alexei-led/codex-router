@@ -48,6 +48,9 @@ const (
 // Options configure Run.
 type Options struct {
 	Home home.Home
+	// HomePath is the home as the user gave it (home.Given), symlinks kept.
+	// The units get it as --home, so they resolve the same Home.Name.
+	HomePath string
 	// StateDir is the absolute state base, as $XDG_STATE_HOME; the units
 	// get it as --state-dir.
 	StateDir string
@@ -137,7 +140,7 @@ func (r runner) install(ctx context.Context) error {
 	}
 	r.printDiff(target, src, out)
 	spec := service.Spec{
-		HomeID: r.o.Home.ID, HomePath: r.o.Home.Path, StateDir: r.o.StateDir, Config: r.o.Config,
+		HomeID: r.o.Home.ID, HomePath: r.o.HomePath, StateDir: r.o.StateDir, Config: r.o.Config,
 		Bin: r.o.Bin, Port: port, LogDir: filepath.Join(r.dir, logsDir),
 	}
 	pluginEnv, err := r.pluginEnv()
