@@ -32,7 +32,7 @@ type (
 	}
 	redialMsg struct{}
 	snapMsg   route.Snapshot
-	closedMsg struct{}
+	closedMsg struct{ gen int }
 	beatMsg   struct{ gen int }
 	sentMsg   struct {
 		err error
@@ -66,11 +66,11 @@ func (m *model) dialCmd() tea.Cmd {
 	}
 }
 
-func waitCmd(c conn) tea.Cmd {
+func waitCmd(c conn, gen int) tea.Cmd {
 	return func() tea.Msg {
 		s, ok := <-c.Updates()
 		if !ok {
-			return closedMsg{}
+			return closedMsg{gen}
 		}
 		return snapMsg(s)
 	}
@@ -93,9 +93,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case redialMsg:
 		return m, m.dialCmd()
 	case snapMsg:
+		if m.c == nil {
+			return m, nil
+		}
 		m.snap, m.disconnected, m.notice = route.Snapshot(msg), false, ""
-		return m, waitCmd(m.c)
+		return m, waitCmd(m.c, m.gen)
 	case closedMsg:
+		if msg.gen != m.gen {
+			return m, nil
+		}
 		return m, m.lost()
 	case beatMsg:
 		if m.c == nil || msg.gen != m.gen {
@@ -119,11 +125,16 @@ func (m *model) dialed(msg dialedMsg) tea.Cmd {
 	}
 	m.c, m.backoff = msg.c, redialMin
 	m.gen++
-	return tea.Batch(waitCmd(m.c), beatCmd(m.gen), sendCmd(m.c, m.gen, route.Command{Op: route.OpSnapshot}))
+	return tea.Batch(waitCmd(m.c, m.gen), beatCmd(m.gen), sendCmd(m.c, m.gen, route.Command{Op: route.OpSnapshot}))
 }
 
+// lost drops the connection and redials through m.dial, which may locate a
+// different socket. The control client would only redial its own path.
 func (m *model) lost() tea.Cmd {
 	m.disconnected = true
+	if m.c != nil {
+		_ = m.c.Close()
+	}
 	m.c = nil
 	m.gen++
 	return tea.Tick(m.backoff, func(time.Time) tea.Msg { return redialMsg{} })
@@ -136,7 +147,7 @@ func (m *model) sent(msg sentMsg) tea.Cmd {
 	}
 	switch {
 	case errors.Is(err, control.ErrDisconnected):
-		m.disconnected = true
+		return m.lost()
 	case err != nil:
 		m.notice = "command failed: " + err.Error()
 	default:

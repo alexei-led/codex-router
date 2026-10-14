@@ -310,7 +310,7 @@ func TestDisconnectedHeaderAndRedial(t *testing.T) {
 	if strings.Contains(m.View(), "disconnected") {
 		t.Fatal("connected view says disconnected")
 	}
-	_, cmd := m.Update(closedMsg{})
+	_, cmd := m.Update(closedMsg{gen: m.gen})
 	if cmd == nil || !m.disconnected {
 		t.Fatal("loss not detected")
 	}
@@ -382,9 +382,27 @@ func TestHeartbeatDetectsLostSocket(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("no heartbeat command")
 	}
-	m.Update(sentMsg{f.Send(route.Command{Op: route.OpSnapshot}), m.gen})
-	if !m.disconnected {
-		t.Error("lost socket not shown")
+	_, cmd = m.Update(sentMsg{f.Send(route.Command{Op: route.OpSnapshot}), m.gen})
+	if !m.disconnected || !f.closed {
+		t.Fatalf("lost socket: disconnected %v, closed %v", m.disconnected, f.closed)
+	}
+	if cmd == nil {
+		t.Fatal("no redial scheduled")
+	}
+	if _, ok := cmd().(redialMsg); !ok {
+		t.Error("lost socket does not lead to a redial")
+	}
+}
+
+func TestStaleCloseKeepsNewConnection(t *testing.T) {
+	m, _ := connected(t, fixture())
+	oldGen := m.gen
+	m.Update(closedMsg{gen: oldGen})
+	g := newFakeConn()
+	m.Update(dialedMsg{c: g})
+	m.Update(closedMsg{gen: oldGen})
+	if m.c != conn(g) || g.closed {
+		t.Error("close of the old connection dropped the new one")
 	}
 }
 
@@ -408,7 +426,7 @@ func TestWindowSizeSetsWidth(t *testing.T) {
 func TestStaleHeartbeatAndErrorsAreIgnoredAfterReconnect(t *testing.T) {
 	m, _ := connected(t, fixture())
 	oldGen := m.gen
-	m.Update(closedMsg{})
+	m.Update(closedMsg{gen: oldGen})
 	g := newFakeConn()
 	m.Update(dialedMsg{c: g})
 
