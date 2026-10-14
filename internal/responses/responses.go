@@ -6,6 +6,9 @@ import "github.com/alexei-led/codex-router/internal/config"
 const (
 	HeaderTurnMetadata = "X-Codex-Turn-Metadata"
 	HeaderSubagent     = "X-Openai-Subagent"
+	// HeaderAccount is the ChatGPT account the request bills to. Only its
+	// hash (Meta.Account) leaves the proxy; the raw value goes upstream only.
+	HeaderAccount = "ChatGPT-Account-ID"
 )
 
 // Response headers the proxy strips: Codex reads them as the served model and
@@ -26,7 +29,8 @@ const (
 
 // Meta is the parsed x-codex-turn-metadata header plus the subagent
 // header. RequestKind is "turn" for a user step, "compaction" for a
-// compaction request. ThreadSource says who started the thread.
+// compaction request. ThreadSource says who started the thread. Account is
+// AccountHash of the ChatGPT-Account-ID header, empty when it is missing.
 type Meta struct {
 	SessionID    string
 	ThreadID     string
@@ -34,6 +38,7 @@ type Meta struct {
 	RequestKind  string
 	ThreadSource string
 	Subagent     string
+	Account      string
 }
 
 // Item is one input item, flattened. Fields not used by a type stay empty;

@@ -192,14 +192,19 @@ func (s *Server) greet(conn net.Conn, br *bufio.Reader, w *serverWriter) bool {
 
 // decide answers one decide with rewrite or none. The edge's remaining wait
 // bounds the Handler, as the proxy's deadline does in process. An unparseable
-// body or a panic is none.
+// body or a panic is none. Past the deadline nothing is sent: the edge is
+// timing out, and a late answer that beat its timer would hide the timeout
+// from its breaker.
 func (s *Server) decide(ctx context.Context, w *serverWriter, h Header, body []byte) {
 	reply := Header{Type: TypeNone, ID: h.ID}
+	late := false
 	defer func() {
 		if p := recover(); p != nil {
 			s.log.Error("link-decide-panic", "type", fmt.Sprintf("%T", p))
 		}
-		_ = w.write(reply)
+		if !late {
+			_ = w.write(reply)
+		}
 	}()
 	if h.Meta == nil {
 		return
@@ -214,7 +219,8 @@ func (s *Server) decide(ctx context.Context, w *serverWriter, h Header, body []b
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(h.TimeoutMs)*time.Millisecond)
 		defer cancel()
 	}
-	if rw, ok := s.h.Decide(ctx, req, *h.Meta); ok {
+	rw, ok := s.h.Decide(ctx, req, *h.Meta)
+	if late = ctx.Err() != nil; !late && ok {
 		reply = Header{Type: TypeRewrite, ID: h.ID, Rewrite: &rw}
 	}
 }

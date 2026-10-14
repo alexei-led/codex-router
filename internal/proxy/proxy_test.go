@@ -281,6 +281,9 @@ func TestRewriteForwardsHeadersAndStreams(t *testing.T) {
 	if decidedModel != "gpt-6-sol" || decided.ThreadID != "th-1" || decided.TurnID != "turn-1" {
 		t.Errorf("decider got model %q meta %+v", decidedModel, decided)
 	}
+	if decided.Account != responses.AccountHash(testAccount) {
+		t.Errorf("decider account = %q, want the hash of the account header", decided.Account)
+	}
 	if strings.Contains(fmt.Sprintf("%+v", decided), "secret") {
 		t.Errorf("decider meta carries a secret: %+v", decided)
 	}

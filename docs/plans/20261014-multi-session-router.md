@@ -597,9 +597,11 @@ Depends on: Task 18
 - Modify: `internal/proxy/proxy.go` (hash `ChatGPT-Account-ID` into `Meta.Account`), `internal/responses/` (the file that defines `Meta`), `internal/route/engine.go`
 - Modify: matching tests
 
-- [ ] M12 in the proxy (both edge and stage 1 launcher) and the engine
-- [ ] tests: thread keeps state with a stable account; a different account resets; a missing account changes nothing; raw header value never appears in Meta, logs or link frames
-- [ ] run `make fmt lint test build`
+- [x] M12 in the proxy (both edge and stage 1 launcher) and the engine
+- [x] tests: thread keeps state with a stable account; a different account resets; a missing account changes nothing; raw header value never appears in Meta, logs or link frames
+- [x] run `make fmt lint test build`
+- [x] ➕ the hash is taken in `responses.ParseMeta` (`responses.AccountHash`, `HeaderAccount`), which the proxy calls for both modes; the raw header still goes upstream only. The engine binds on a user step and on a reply. A new account drops the thread's cache ledger, votes, escalation, turn in progress, retries and review; intent (pause, manual, pin), footer, running tier and tallies stay. The binding is learned state, not saved in `intent.json`
+- [x] ➕ fixed a pre-existing flake in `TestBreakerSkipsSlowBrainUntilCooldown` (about 1 run in 8): the brain answered a decide that ended at its deadline, and the answer could beat the edge's timer, hiding the timeout from the breaker. `link.Server` now sends nothing for a decide whose deadline passed (regression test `TestLateDecideIsNotAnswered`)
 
 ### Task 20: `codex-router setup` and service units
 

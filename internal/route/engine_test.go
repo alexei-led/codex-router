@@ -1150,6 +1150,64 @@ func TestSwitchTaxCountsUncachedTokens(t *testing.T) {
 	}
 }
 
+func TestAccountBinding(t *testing.T) {
+	tests := []struct {
+		name     string
+		accounts [3]string // the account of turns t1, t2, t3
+		wantTax  int
+	}{
+		{"stable account keeps the cache", [3]string{"a", "a", "a"}, 50_000},
+		{"no account changes nothing", [3]string{"", "", ""}, 50_000},
+		{"missing account keeps the binding", [3]string{"a", "", ""}, 50_000},
+		{"first account binds without a reset", [3]string{"", "a", "a"}, 50_000},
+		{"new account at t2 forgets the cache", [3]string{"a", "b", "b"}, 0},
+		{"new account at t3 forgets the cache", [3]string{"a", "a", "b"}, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, testConfig())
+			h.asker.script(answer(tier("medium", 0.99)), answer(tier("high", 0.99)), answer(tier("high", 0.99)))
+			turn := func(i int) responses.Meta {
+				m := meta("th", fmt.Sprint("t", i+1))
+				m.Account = tt.accounts[i]
+				return m
+			}
+			items := []responses.Item{userMsg(secretPrompt)}
+			h.decide(req(medium, items...), turn(0))
+			h.reply(turn(0), medium.Model, 50_000, 0)
+			items = append(items, userMsg("big refactor"))
+			h.decide(req(medium, items...), turn(1))
+
+			rw, ok := h.decide(req(medium, append(items, userMsg("go on"))...), turn(2))
+
+			wantRoute(t, rw, ok, high)
+			if got := h.engine.Snapshot().Stats.UncachedSwitchTokens; got != tt.wantTax {
+				t.Fatalf("uncached switch tokens = %d, want %d", got, tt.wantTax)
+			}
+		})
+	}
+}
+
+func TestAccountChangeKeepsIntent(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("medium", 0.99)))
+	first := meta("th", "t1")
+	first.Account = "a"
+	h.decide(req(medium, userMsg(secretPrompt)), first)
+	if err := h.engine.Apply(Command{Op: OpPin, Session: "th", Tier: config.TierLow}); err != nil {
+		t.Fatal(err)
+	}
+	next := meta("th", "t2")
+	next.Account = "b"
+
+	rw, ok := h.decide(req(medium, userMsg(secretPrompt), userMsg("next")), next)
+
+	wantRoute(t, rw, ok, low)
+	if d := h.last(); d.Reason != policy.ReasonPinned {
+		t.Fatalf("decision = %+v, want the pin kept across the account change", d)
+	}
+}
+
 func TestFailedReviewKeepsTheRoute(t *testing.T) {
 	tests := []struct {
 		name   string
