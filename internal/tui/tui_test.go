@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -340,6 +341,35 @@ func TestDisconnectedHeaderAndRedial(t *testing.T) {
 	m.Update(snapMsg(fixture()))
 	if strings.Contains(m.View(), "disconnected") {
 		t.Error("still disconnected after snapshot")
+	}
+}
+
+func TestRedialFollowsLocatedSocket(t *testing.T) {
+	sessions := []string{"old/control.sock", "new/control.sock"}
+	var dialed []string
+	dial := dialer(func() (string, error) {
+		s := sessions[0]
+		sessions = sessions[1:]
+		return s, nil
+	}, func(path string) (conn, error) {
+		dialed = append(dialed, path)
+		return newFakeConn(), nil
+	})
+	for range 2 {
+		if _, err := dial("old/control.sock"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if want := []string{"old/control.sock", "new/control.sock"}; !slices.Equal(dialed, want) {
+		t.Errorf("dialed %v, want %v", dialed, want)
+	}
+}
+
+func TestRedialWithoutLiveSessionFails(t *testing.T) {
+	dial := dialer(func() (string, error) { return "", errors.New("no running session") },
+		func(string) (conn, error) { t.Fatal("dialed without a socket"); return nil, nil })
+	if _, err := dial("old/control.sock"); err == nil {
+		t.Error("want an error")
 	}
 }
 
