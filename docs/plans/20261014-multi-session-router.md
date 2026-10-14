@@ -521,12 +521,13 @@ Depends on: Task 14 (gate passed)
 
 - Create: `internal/link/link.go`, `internal/link/client.go`, `internal/link/server.go`, `internal/link/doc.go`, `internal/link/link_test.go`
 
-- [ ] frame format per M7 (4-byte length + JSON header + body); messages `hello{home_id}`, `decide`, `rewrite|none`, `observe`
-- [ ] client implements `proxy.Decider` and `proxy.Observer`: deadline per call, reconnect with backoff, breaker; every failure returns "no rewrite"; `observe` is fire-and-forget with a bounded queue (drop when full)
-- [ ] server wraps a `route.Engine`; checks `home_id` in `hello`; socket 0600 in a 0700 dir
-- [ ] the decide header carries `Meta`, which holds only the account hash once Task 19 lands (no raw headers in frames)
-- [ ] tests: round trip, brain down → pass-through within the deadline, brain slow → pass-through, brain restart → client reconnects, wrong home rejected, 32 MiB body, observe queue full does not block
-- [ ] run `make fmt lint test build`
+- [x] frame format per M7 (4-byte length + JSON header + body); messages `hello{home_id}`, `decide`, `rewrite|none`, `observe`
+- [x] client implements `proxy.Decider` and `proxy.Observer`: deadline per call, reconnect with backoff, breaker; every failure returns "no rewrite"; `observe` is fire-and-forget with a bounded queue (drop when full)
+- [x] server wraps a `route.Engine`; checks `home_id` in `hello`; socket 0600 in a 0700 dir
+- [x] the decide header carries `Meta`, which holds only the account hash once Task 19 lands (no raw headers in frames)
+- [x] tests: round trip, brain down → pass-through within the deadline, brain slow → pass-through, brain restart → client reconnects, wrong home rejected, 32 MiB body, observe queue full does not block
+- [x] run `make fmt lint test build`
+- [x] ➕ `responses.Request.Body()` returns the parsed raw body, so the client sends it without a re-encode (touches `internal/responses/request.go`). Frame: uint32 length, header JSON line, body; a decide carries `timeout_ms` (the edge's remaining wait) so the brain decides under the same deadline as in process. Client rules: dial + hello bounded by 200 ms, redial backoff 50 ms doubling to 2 s, breaker opens for 10 s after 3 decide timeouts in a row, observe queue 256. A `*route.Engine` satisfies `link.Handler` (compile check in the test)
 
 ### Task 16: Socket activation and `codex-router edge`
 
