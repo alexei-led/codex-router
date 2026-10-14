@@ -230,17 +230,6 @@ func (c *stuckConn) Close() error {
 	return nil
 }
 
-// signalingConn reports on writing each time a write begins.
-type signalingConn struct {
-	Conn
-	writing chan<- struct{}
-}
-
-func (c signalingConn) Write(ctx context.Context, msg []byte) error {
-	c.writing <- struct{}{}
-	return c.Conn.Write(ctx, msg)
-}
-
 type dialerFunc func(ctx context.Context, socketPath string) (Conn, error)
 
 func (f dialerFunc) Dial(ctx context.Context, socketPath string) (Conn, error) {
@@ -591,26 +580,59 @@ func TestServerDisconnectFailsPendingCalls(t *testing.T) {
 	})
 }
 
-func TestCancelDuringStuckWriteClosesConnection(t *testing.T) {
+func TestStuckWriteClosesConnectionAfterWriteTimeout(t *testing.T) {
 	each(t, func(t *testing.T, tr transport) {
-		writing := make(chan struct{}, 1)
-		d := dialerFunc(func(ctx context.Context, path string) (Conn, error) {
-			c, err := tr.dialer.Dial(ctx, path)
-			return signalingConn{Conn: c, writing: writing}, err
-		})
-		api := dial(t, startDeafServer(t, tr), d)
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		api := dial(t, startDeafServer(t, tr), tr.dialer)
+		api.(*Client).writeTimeout = 50 * time.Millisecond
 		beyondSocketBuffers := strings.Repeat("x", 4<<20)
 
-		errc := async(func() error { return api.UpdateSettings(ctx, beyondSocketBuffers, Settings{Model: "m"}) })
-		awaitWrite(t, writing)
-		cancel()
-		if err := await(t, errc); !errors.Is(err, context.Canceled) {
-			t.Fatalf("err = %v, want context.Canceled", err)
+		err := await(t, async(func() error {
+			return api.UpdateSettings(context.Background(), beyondSocketBuffers, Settings{Model: "m"})
+		}))
+		if err == nil || errors.Is(err, ErrClosed) {
+			t.Fatalf("err = %v, want a write error", err)
 		}
 		expectUpdatesClosed(t, api)
 	})
+}
+
+// recordingConn hands each write's context to the test.
+type recordingConn struct {
+	*stuckConn
+	ctxs chan context.Context
+}
+
+func (c recordingConn) Write(ctx context.Context, msg []byte) error {
+	c.ctxs <- ctx
+	return c.stuckConn.Write(ctx, msg)
+}
+
+// coder/websocket closes the connection when a write's context ends, even
+// after the message went out, so the caller's ctx must never reach the write.
+func TestCallerCancelDoesNotReachTheWrite(t *testing.T) {
+	conn := recordingConn{stuckConn: newStuckConn(), ctxs: make(chan context.Context, 1)}
+	api := dial(t, "unused", dialerFunc(func(context.Context, string) (Conn, error) { return conn, nil }))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errc := async(func() error { return api.UpdateSettings(ctx, "a", Settings{Model: "m"}) })
+	var wctx context.Context
+	select {
+	case wctx = <-conn.ctxs:
+	case <-time.After(waitFor):
+		t.Fatal("no write started")
+	}
+	cancel()
+	if err := wctx.Err(); err != nil {
+		t.Fatalf("write context ended with the caller's: %v", err)
+	}
+
+	if err := await(t, async(api.Close)); err != nil {
+		t.Errorf("Close: %v", err)
+	}
+	if err := await(t, errc); !errors.Is(err, ErrClosed) {
+		t.Errorf("call err = %v, want ErrClosed", err)
+	}
 }
 
 func TestCallWaitingBehindStuckWriteHonoursDeadline(t *testing.T) {

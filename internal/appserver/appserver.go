@@ -65,10 +65,13 @@ const (
 	// maxMessage bounds one inbound message; app-server item notifications
 	// can carry large tool output.
 	maxMessage = 64 << 20
-	// rejectTimeout bounds the reply to a server request: a server that reads
-	// nothing for this long is wedged, and the failed write closes the
-	// connection so the launcher sees Updates close.
-	rejectTimeout      = 5 * time.Second
+	// rejectTimeout bounds the reply to a server request, including the wait
+	// for the write slot.
+	rejectTimeout = 5 * time.Second
+	// writeTimeout bounds one message write: a server that reads nothing for
+	// this long is wedged, and the failed write closes the connection so the
+	// launcher sees Updates close.
+	writeTimeout       = 5 * time.Second
 	codeMethodNotFound = -32601
 )
 
@@ -110,16 +113,18 @@ type reply struct {
 }
 
 // Client is a JSON-RPC client over one Conn. A caller's ctx that ends while
-// its call waits for the write slot or the reply abandons only that call. One
-// that ends mid-write closes the connection, because a partly written message
-// leaves the stream unusable.
+// its call waits for the write slot or the reply abandons only that call; it
+// does not interrupt a write in progress. A write that does not finish within
+// writeTimeout closes the connection, because a partly written message leaves
+// the stream unusable.
 type Client struct {
-	conn     Conn
-	ctx      context.Context // lifetime: reads and server-request replies
-	cancel   context.CancelFunc
-	nextID   atomic.Int64
-	writeSem chan struct{} // one writer at a time; waiting honours ctx
-	rejects  sync.WaitGroup
+	conn         Conn
+	ctx          context.Context // lifetime: reads, writes and server-request replies
+	cancel       context.CancelFunc
+	nextID       atomic.Int64
+	writeSem     chan struct{} // one writer at a time; waiting honours ctx
+	writeTimeout time.Duration
+	rejects      sync.WaitGroup
 
 	mu      sync.Mutex
 	pending map[int64]chan reply
@@ -140,13 +145,14 @@ func Dial(ctx context.Context, socketPath string, d Dialer) (API, error) {
 	}
 	lifetime, cancel := context.WithCancel(context.Background())
 	c := &Client{
-		conn:     conn,
-		ctx:      lifetime,
-		cancel:   cancel,
-		writeSem: make(chan struct{}, 1),
-		pending:  make(map[int64]chan reply),
-		updates:  make(chan SettingsUpdated, updatesBuffer),
-		done:     make(chan struct{}),
+		conn:         conn,
+		ctx:          lifetime,
+		cancel:       cancel,
+		writeSem:     make(chan struct{}, 1),
+		writeTimeout: writeTimeout,
+		pending:      make(map[int64]chan reply),
+		updates:      make(chan SettingsUpdated, updatesBuffer),
+		done:         make(chan struct{}),
 	}
 	go c.readLoop()
 	return c, nil
@@ -271,15 +277,17 @@ func (c *Client) write(ctx context.Context, m message) error {
 		return ErrClosed
 	}
 	defer func() { <-c.writeSem }()
-	err = c.conn.Write(ctx, b)
+	// The write gets its own deadline instead of ctx: coder/websocket closes
+	// the connection when a write's context ends, even just after the message
+	// went out, so a caller's cancel would cost every later call.
+	wctx, cancel := context.WithTimeout(c.ctx, c.writeTimeout)
+	defer cancel()
+	err = c.conn.Write(wctx, b)
 	switch {
 	case err == nil:
 		return nil
 	case c.connClosed.Load():
 		return ErrClosed
-	case ctx.Err() != nil:
-		_ = c.closeConn()
-		return fmt.Errorf("appserver: write: %w", ctx.Err())
 	default:
 		_ = c.closeConn()
 		return fmt.Errorf("appserver: write: %w", err)
