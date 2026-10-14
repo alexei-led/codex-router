@@ -6,7 +6,7 @@ Terms such as tier, activity, route, pin and compatibility group are defined in 
 
 ## Overview
 
-One `codex-router` process runs for each Codex session. It holds the proxy and the routing engine, starts a private Codex app-server, and runs the normal Codex TUI against that app-server.
+One `codex-router` process runs for each Codex session. It holds the proxy and the routing engine, starts a private Codex app-server, and runs the normal Codex TUI against that app-server. Any number of them can run at once, in any repo and under any Codex home. Each lists itself in a shared registry, so one panel shows them all (see [Sessions and the registry](#sessions-and-the-registry)).
 
 ```mermaid
 flowchart LR
@@ -48,7 +48,69 @@ What crosses each boundary:
 - **Proxy to chatgpt.com.** The request with `model` and `reasoning.effort` possibly changed, and the SSE stream back.
 - **Engine to classifier.** The clipped prompt and recent dialogue. No headers and no Codex credentials.
 - **App-server client to app-server.** `thread/settings/update` writes (the footer value) and `thread/settings/updated` notifications (including `/model` picks).
-- **Control socket to panel and hook.** Snapshots out, and commands in (pin, pause, resume, preset).
+- **Control socket to panel and hook.** Session lists and the subscribed session's snapshots out, and commands in (pin, pause, resume, preset), each for one session or the whole home. See [Control protocol](#control-protocol).
+
+## Sessions and the registry
+
+```mermaid
+flowchart LR
+  subgraph personal["home default: ~/.codex"]
+    r1["codex-router<br/>api · main"]:::core
+    r2["codex-router<br/>api · feat/auth"]:::core
+  end
+  subgraph work["home work: ~/.codex-work"]
+    r3["codex-router<br/>infra · main"]:::core
+  end
+  reg[("registry<br/>one entry per router")]:::store
+  panel["codex-router tui"]:::tool
+  hook["codex-router hook"]:::tool
+
+  r1 -->|"entry"| reg
+  r2 -->|"entry"| reg
+  r3 -->|"entry"| reg
+  panel -->|"list every 1 s"| reg
+  panel <-->|"control socket<br/>of each router"| r1
+  panel <--> r2
+  panel <--> r3
+  hook -.->|"entries of its own home"| reg
+
+  classDef core fill:#ecfdf5,stroke:#059669,color:#064e3b
+  classDef tool fill:#fff7ed,stroke:#ea580c,color:#431407
+  classDef store fill:#f1f5f9,stroke:#64748b,color:#0f172a
+```
+
+- **Home.** A Codex home is the `CODEX_HOME` directory, default `~/.codex`. Its id is the first 12 hex characters of the sha256 of its canonical path (symlinks resolved), so it is stable with no setup. Its name is display only: `.codex` is `default`, `.codex-<x>` is `<x>`, any other home is its directory name.
+- **Session.** One Codex main thread. Its id is `<home id>/<thread id>`, because a thread id alone may repeat across homes. `/new` in Codex starts a new thread, so a new session. The label `home · repo · branch` comes from the `.git` of the router's working directory, read without running git. It is display only; colliding labels get four hex characters derived from the id.
+- **Sessions list.** An engine lists each thread that has had a user step, most recently active first. A thread with no user step or reply for 10 minutes leaves the list, unless it is the engine's most recent thread. Every number in a list entry comes from that thread's own tallies.
+- **Registry.** `$XDG_STATE_HOME/codex-router/registry`, else `~/.local/state/codex-router/registry`. One JSON file per endpoint: endpoint id, kind (`session` for a launcher), protocol version, pid, start time, home (id, path, name) and control socket path. The launcher writes its entry once its control socket is up, and removes it first on every exit path, so panels stop listing it before the socket closes. A registry that cannot be written does not stop the session: it routes and prints one line that the panel will not list it.
+- **Readers.** An entry is only a hint. A reader dials the socket and checks that the `hello` names the same endpoint id and home, else it ignores the endpoint. The panel removes an entry only after a failed dial, when the socket does not answer and the pid is gone. The hook never removes entries.
+
+The panel keeps one connection per live endpoint and merges their lists. Homes are sorted by name, sessions most recently active first. It subscribes only the focused session's endpoint to that session. Home commands (`P`, `c`) go to every endpoint of the focused home, and each endpoint applies them to its own threads. When an endpoint's connection drops, its sessions show `disconnected` for 10 s and are then dropped. The panel redials while the entry remains.
+
+The hook uses `CODEX_ROUTER_CONTROL` when the launcher set it. Otherwise it resolves its own home from `CODEX_HOME`, dials that home's entries in parallel, and takes the first endpoint whose `hello` matches its entry and whose first list has the hook's thread. The whole lookup fits in the hook's 200 ms budget.
+
+## Control protocol
+
+The control socket speaks JSON lines, protocol version 2. Panel, hook and `codex-router sessions` all use it.
+
+```mermaid
+sequenceDiagram
+  participant C as panel or hook
+  participant S as router control socket
+  C->>S: hello {protocol: 2}
+  S-->>C: hello {endpoint_id, kind, home}
+  S-->>C: sessions {seq, items}
+  C->>S: subscribe {session}
+  S-->>C: snapshot {session, snapshot}
+  C->>S: pause {session, scope, id}
+  S-->>C: ack {id}
+  S-->>C: snapshot, and sessions when the list changed
+```
+
+- **Handshake.** The client's first line must be `hello` with a known protocol version. Anything else gets an `error` line and the connection closes.
+- **Sessions.** The server pushes the list after the handshake and then whenever it changed, coalesced, with a `seq` that moves on each change.
+- **Subscribe.** Each connection follows at most one session; an empty `session` means the list only. A later `subscribe` replaces the earlier one. The `snapshot` op re-sends the current snapshot.
+- **Commands.** `pin`, `unpin`, `pause`, `resume` and `preset` carry the `session`, a `scope` (`session` or `home`) and a client-chosen `id`. The `ack` or `error` carries the same `id`, so a client can have several commands in flight. A session of another home is refused. The last write wins.
 
 ## One turn
 
@@ -166,18 +228,21 @@ Amber boxes move up, blue moves down, grey stays. The input is the classifier's 
 
 ### Modes
 
+Modes are per session (thread). A home pause covers every thread of the engine on top of each thread's own state.
+
 ```mermaid
 stateDiagram-v2
   [*] --> on
-  on --> paused: space in panel
-  paused --> on: space in panel
+  on --> paused: space or P in panel
+  paused --> on: space or P in panel
   on --> manual: /model pick in Codex
-  manual --> on: space in panel
+  manual --> on: space or P in panel
 ```
 
 - **on.** Routing is active.
-- **paused.** Every request goes out unchanged. The footer returns to the model Codex sent. Pause applies to every thread.
-- **manual.** A `/model` pick holds that thread on your model. Manual is per thread. Resume clears the hold on all threads.
+- **paused.** Every request of the thread goes out unchanged, and its footer returns to the model Codex sent. A session pause covers one thread. A home pause covers every thread of the engine, also threads that start later.
+- **manual.** A `/model` pick holds that thread on your model.
+- **Resume.** A session resume clears that thread's pause and manual hold. A home resume clears the home pause and every thread's manual hold, and keeps session pauses. A thread paused both ways routes again only when both are cleared.
 
 ## Why a private app-server
 
@@ -197,24 +262,26 @@ Costs of this design: a Codex build must support `--remote` and `thread/settings
 
 All packages are under `internal/`. The entry point is `cmd/codex-router`. Dependencies point down: `config` imports nothing in the module, and every package may import it.
 
-| Package      | Role                                                                                         | Imports                                                                   |
-| ------------ | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `config`     | Types, defaults, JSON load and validation.                                                   | none                                                                      |
-| `responses`  | Request model, turn metadata, request kind, SSE usage, rewrite. Unknown fields pass through. | `config`                                                                  |
-| `catalog`    | Model compatibility groups and context windows from `models_cache.json` and `/models`.       | `config`                                                                  |
-| `classifier` | Contract, `system-one` and `ollama` adapters, client with deadline, retry and breaker.       | `config`                                                                  |
-| `facts`      | Pure: request in, prompt, dialogue, tool failures, activity, size estimate out.              | `responses`                                                               |
-| `cost`       | Per-thread, per-model prompt-cache ledger. Prices a switch in uncached tokens.               | `config`, `responses`                                                     |
-| `policy`     | Pure: votes, bars, escalation, holds, context-fit tier search.                               | `classifier`, `config`                                                    |
-| `route`      | The engine: state, decisions, snapshot, commands.                                            | `catalog`, `classifier`, `config`, `cost`, `facts`, `policy`, `responses` |
-| `proxy`      | Loopback Responses proxy and SSE relay.                                                      | `catalog`, `responses`                                                    |
-| `appserver`  | JSON-RPC client of the private app-server.                                                   | `config`                                                                  |
-| `control`    | JSON-lines control socket: server and client.                                                | `route`                                                                   |
-| `tui`        | Bubble Tea panel. `Render` is pure.                                                          | `catalog`, `classifier`, `config`, `control`, `policy`, `route`           |
-| `hook`       | The optional Codex hook.                                                                     | `config`, `control`, `route`                                              |
-| `launcher`   | Wires everything for one session. Falls back to plain `codex`.                               | the runtime packages                   |
+| Package      | Role                                                                                         | Imports                                                                           |
+| ------------ | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `config`     | Types, defaults, JSON load and validation.                                                   | none                                                                              |
+| `home`       | Codex home id and name from `CODEX_HOME`. Session labels from `.git`.                        | none                                                                              |
+| `registry`   | Endpoint entries: root dir checks, atomic write, list, prune.                                | `home`                                                                            |
+| `responses`  | Request model, turn metadata, request kind, SSE usage, rewrite. Unknown fields pass through. | `config`                                                                          |
+| `catalog`    | Model compatibility groups and context windows from `models_cache.json` and `/models`.       | `config`                                                                          |
+| `classifier` | Contract, `system-one` and `ollama` adapters, client with deadline, retry and breaker.       | `config`                                                                          |
+| `facts`      | Pure: request in, prompt, dialogue, tool failures, activity, size estimate out.              | `responses`                                                                       |
+| `cost`       | Per-thread, per-model prompt-cache ledger. Prices a switch in uncached tokens.               | `config`, `responses`                                                             |
+| `policy`     | Pure: votes, bars, escalation, holds, context-fit tier search.                               | `classifier`, `config`                                                            |
+| `route`      | The engine: per-thread state, decisions, snapshots, sessions list, commands.                 | `catalog`, `classifier`, `config`, `cost`, `facts`, `home`, `policy`, `responses` |
+| `proxy`      | Loopback Responses proxy and SSE relay.                                                      | `catalog`, `responses`                                                            |
+| `appserver`  | JSON-RPC client of the private app-server.                                                   | `config`                                                                          |
+| `control`    | JSON-lines control socket, protocol v2: server and client.                                   | `home`, `route`                                                                   |
+| `tui`        | Bubble Tea panel over every registry endpoint. `Render` is pure.                             | `config`, `control`, `home`, `registry`, `route`                                  |
+| `hook`       | The optional Codex hook.                                                                     | `control`, `home`, `registry`, `route`                                            |
+| `launcher`   | Wires everything for one session. Falls back to plain `codex`.                               | the runtime packages                                                              |
 
-`route` implements `proxy.Decider`, `proxy.Observer` and `control.Handler` without importing `proxy` or `control`. The `launcher` is the only place that connects them. `tui` and `hook` import `route` for its snapshot and command types. At run time they reach the engine only through the control socket.
+`route` implements `proxy.Decider`, `proxy.Observer` and `control.Handler` without importing `proxy` or `control`. The `launcher` is the only place that connects them, and it writes the registry entry. `tui` and `hook` import `route` for its snapshot, sessions list and command types. At run time they find engines through the registry and reach them only through the control socket.
 
 ## State
 
@@ -224,7 +291,8 @@ State lives in the engine, in memory, per process.
 - **Turn.** A new `turn_id` starts a new turn. It resets the step count, the turn's advice and any running review.
 - **Request.** A fingerprint of the turn and the last input items identifies one request. A retry resends the same body, so it hits one of the thread's last 8 fingerprints.
 - **Cache ledger.** Per thread and per model, not per effort, because Codex's cache ignores effort.
-- **Pin and pause.** Engine-wide. A pin is used up by the next turn that starts. Pause applies to every thread. The manual hold is per thread.
+- **Tallies.** Replies, switches, the reply strip, the last switch and the recent decisions are per thread, so a busy thread never pushes another thread's turns out. Home totals in the panel are sums over the home's sessions.
+- **Pin and pause.** Per thread. A pin is used up by that thread's next turn, and never by another thread. A pin or pause sent before a thread's first step holds for it. The home pause and the preset are engine-wide. With one launcher per session, the panel sends them to every endpoint of the home. The manual hold is per thread.
 
 When history shrinks (compaction or a rewind), the engine drops the vote streak, the measured size and the ledger for that thread.
 
@@ -261,6 +329,7 @@ The one case where the router cannot fail open is the launcher process dying. Th
 - **Auth goes upstream only.** `Authorization` and `ChatGPT-Account-ID` are forwarded to the fixed upstream and nowhere else. The classifier input type has no header field. The classifier sends only its own `keyEnv` bearer key to its own endpoint. The control socket and the app-server connection carry no headers or request text.
 - **Hop-by-hop headers** are dropped both ways, and the served-model headers are stripped from responses.
 - **Control socket `0600`**, in a runtime directory that must be `0700`, owned by the user and not a symlink. The socket mode is set right after bind, and the private parent closes that window. A live socket or a non-socket file at the path is refused.
+- **Registry `0700`, entries `0600`.** Whoever can write the registry can point panels and hooks at their own socket. So the `codex-router` state dir and the registry dir must be real directories, owned by the user, with no group or other access, or the reader refuses them. Entries are written to a temp file and renamed. They hold ids, a pid, the home path and the socket path, no secrets. A reader trusts an endpoint only when its `hello` matches the entry.
 - **No body logging.** Logs hold ids, decisions, statuses, sizes and timings. The log file is `0600` in a `0700` directory. Request text kept in memory is the clipped dialogue for the classifier.
 - **No re-send.** After a request goes upstream it is never sent again, not even on a stale keep-alive connection. Codex retries by itself.
 - **No config edits.** The router never writes `~/.codex/config.toml`, the Codex home or the shared daemon. The hook's trust entry is the user's to add.

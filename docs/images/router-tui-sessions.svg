@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 968 351" width="968" height="351" role="img" aria-labelledby="title desc">
+  <title id="title">codex-router panel, Sessions tab</title>
+  <desc id="desc">codex-router tui with every running session. Top bar: the focused session first, then the others, each with its home's dot and a mark for sessions that need a look, and the focus position 1 of 5. Sessions tab: two Codex homes, default and work, each with its endpoints, replies, switches and saving, then one row per session with its state, route, routed replies by tier and last switch.</desc>
+  <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
+  <rect width="968" height="351" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="967" height="350" rx="8" fill="none" stroke="#2e3340"/>
+  <text x="16.0" y="28.0" fill="#878787" xml:space="preserve">◂ </text>
+  <text x="31.6" y="28.0" fill="#87afff" xml:space="preserve">● </text>
+  <text x="47.2" y="28.0" fill="#87afff" font-weight="700" xml:space="preserve">default · codex-router · main</text>
+  <text x="273.4" y="28.0" fill="#ffaf00" xml:space="preserve"> ↑</text>
+  <text x="304.6" y="28.0" fill="#87afff" xml:space="preserve">● </text>
+  <text x="320.2" y="28.0" fill="#d0d0d0" xml:space="preserve">default · codex-router · fix/hook</text>
+  <text x="593.2" y="28.0" fill="#87afff" xml:space="preserve">● </text>
+  <text x="608.8" y="28.0" fill="#d0d0d0" xml:space="preserve">default · notes</text>
+  <text x="725.8" y="28.0" fill="#ffaf00" xml:space="preserve"> ‖</text>
+  <text x="741.4" y="28.0" fill="#878787" xml:space="preserve"> …</text>
+  <text x="905.2" y="28.0" fill="#878787" xml:space="preserve"> ▸ 1/5</text>
+  <text x="16.0" y="47.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
+  <text x="78.4" y="47.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
+  <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
+  <text x="273.4" y="47.0" fill="#878787" xml:space="preserve"> · footer synced</text>
+  <rect x="16.0" y="71.0" width="93.6" height="19" fill="#87afff"/>
+  <text x="16.0" y="85.0" fill="#14171f" xml:space="preserve">[Sessions 0]</text>
+  <text x="109.6" y="85.0" fill="#878787" xml:space="preserve"> Now 1 </text>
+  <text x="164.2" y="85.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
+  <text x="242.2" y="85.0" fill="#878787" xml:space="preserve"> Policy 3 </text>
+  <text x="320.2" y="85.0" fill="#878787" xml:space="preserve"> Classifier 4 </text>
+  <text x="429.4" y="85.0" fill="#878787" xml:space="preserve"> Usage 5 </text>
+  <text x="16.0" y="123.0" fill="#878787" xml:space="preserve">SESSIONS</text>
+  <text x="78.4" y="123.0" fill="#878787" xml:space="preserve"> · 5 sessions in 2 homes</text>
+  <text x="31.6" y="142.0" fill="#878787" xml:space="preserve">SESSION                        </text>
+  <text x="289.0" y="142.0" fill="#878787" xml:space="preserve">STATE         </text>
+  <text x="413.8" y="142.0" fill="#878787" xml:space="preserve">ROUTE               </text>
+  <text x="585.4" y="142.0" fill="#878787" xml:space="preserve">REPLIES                     </text>
+  <text x="819.4" y="142.0" fill="#878787" xml:space="preserve">LAST SWITCH</text>
+  <text x="16.0" y="161.0" fill="#87afff" xml:space="preserve">● </text>
+  <text x="31.6" y="161.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">default</text>
+  <text x="86.2" y="161.0" fill="#878787" xml:space="preserve"> · 3 endpoints</text>
+  <text x="195.4" y="161.0" fill="#878787" xml:space="preserve"> · 181 replies · 23 switches</text>
+  <text x="413.8" y="161.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="437.2" y="161.0" fill="#5fd7af" xml:space="preserve">saved ≈ $1.64</text>
+  <text x="16.0" y="180.0" fill="#87afff" xml:space="preserve">▸ </text>
+  <text x="31.6" y="180.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">codex-router · main            </text>
+  <text x="289.0" y="180.0" fill="#d75f87" xml:space="preserve">↑ escalation  </text>
+  <text x="398.2" y="180.0" fill="#d0d0d0" xml:space="preserve">  gpt-6.1-sol · high    </text>
+  <text x="585.4" y="180.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="593.2" y="180.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="601.0" y="180.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="608.8" y="180.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="616.6" y="180.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="624.4" y="180.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="632.2" y="180.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="640.0" y="180.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="647.8" y="180.0" fill="#5fd7af" xml:space="preserve">█</text>
+  <text x="655.6" y="180.0" fill="#5fd7af" xml:space="preserve">█</text>
+  <text x="663.4" y="180.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="671.2" y="180.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="679.0" y="180.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="686.8" y="180.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="694.6" y="180.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="702.4" y="180.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="710.2" y="180.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="718.0" y="180.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="725.8" y="180.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="733.6" y="180.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="741.4" y="180.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="749.2" y="180.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="757.0" y="180.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="764.8" y="180.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="772.6" y="180.0" fill="#d0d0d0" xml:space="preserve"> 144  18:42 </text>
+  <text x="866.2" y="180.0" fill="#d7af5f" xml:space="preserve">medium</text>
+  <text x="913.0" y="180.0" fill="#d0d0d0" xml:space="preserve">→</text>
+  <text x="920.8" y="180.0" fill="#d75f87" xml:space="preserve">high</text>
+  <text x="16.0" y="199.0" fill="#d0d0d0" xml:space="preserve">  codex-router · fix/hook          </text>
+  <text x="289.0" y="199.0" fill="#5fd7af" xml:space="preserve">◉ on          </text>
+  <text x="398.2" y="199.0" fill="#d0d0d0" xml:space="preserve">  gpt-6-luna · medium   </text>
+  <text x="585.4" y="199.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="593.2" y="199.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="601.0" y="199.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="608.8" y="199.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="616.6" y="199.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="624.4" y="199.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="632.2" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="640.0" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="647.8" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="655.6" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="663.4" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="671.2" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="679.0" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="686.8" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="694.6" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="702.4" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="710.2" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="718.0" y="199.0" fill="#5fd7af" xml:space="preserve">█</text>
+  <text x="725.8" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="733.6" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="741.4" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="749.2" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="757.0" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="764.8" y="199.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="772.6" y="199.0" fill="#d0d0d0" xml:space="preserve">  31  18:29 </text>
+  <text x="866.2" y="199.0" fill="#d7af5f" xml:space="preserve">medium</text>
+  <text x="913.0" y="199.0" fill="#d0d0d0" xml:space="preserve">→</text>
+  <text x="920.8" y="199.0" fill="#5fafd7" xml:space="preserve">low</text>
+  <text x="16.0" y="218.0" fill="#d0d0d0" xml:space="preserve">  notes                            </text>
+  <text x="289.0" y="218.0" fill="#878787" xml:space="preserve">‖ paused      </text>
+  <text x="398.2" y="218.0" fill="#d0d0d0" xml:space="preserve">  gpt-6-luna · medium   </text>
+  <text x="585.4" y="218.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="593.2" y="218.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="601.0" y="218.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="608.8" y="218.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="616.6" y="218.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="624.4" y="218.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="632.2" y="218.0" fill="#d0d0d0" xml:space="preserve">                     6  </text>
+  <text x="819.4" y="218.0" fill="#878787" xml:space="preserve">-</text>
+  <text x="16.0" y="256.0" fill="#d787d7" xml:space="preserve">● </text>
+  <text x="31.6" y="256.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">work</text>
+  <text x="62.8" y="256.0" fill="#878787" xml:space="preserve"> · 2 endpoints</text>
+  <text x="172.0" y="256.0" fill="#878787" xml:space="preserve"> · 70 replies · 8 switches</text>
+  <text x="374.8" y="256.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="398.2" y="256.0" fill="#5fd7af" xml:space="preserve">saved ≈ $0.75</text>
+  <text x="16.0" y="275.0" fill="#d0d0d0" xml:space="preserve">  api · feat/auth                  </text>
+  <text x="289.0" y="275.0" fill="#ffaf00" xml:space="preserve">◐ manual      </text>
+  <text x="398.2" y="275.0" fill="#d0d0d0" xml:space="preserve">  gpt-6-sol · medium    </text>
+  <text x="585.4" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="593.2" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="601.0" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="608.8" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="616.6" y="275.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="624.4" y="275.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="632.2" y="275.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="640.0" y="275.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="647.8" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="655.6" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="663.4" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="671.2" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="679.0" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="686.8" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="694.6" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="702.4" y="275.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="710.2" y="275.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="718.0" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="725.8" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="733.6" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="741.4" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="749.2" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="757.0" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="764.8" y="275.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="772.6" y="275.0" fill="#d0d0d0" xml:space="preserve">  58  18:22 </text>
+  <text x="866.2" y="275.0" fill="#5fafd7" xml:space="preserve">low</text>
+  <text x="889.6" y="275.0" fill="#d0d0d0" xml:space="preserve">→</text>
+  <text x="897.4" y="275.0" fill="#d7af5f" xml:space="preserve">medium</text>
+  <text x="16.0" y="294.0" fill="#d0d0d0" xml:space="preserve">  infra · main                     </text>
+  <text x="289.0" y="294.0" fill="#5fd7af" xml:space="preserve">◉ on          </text>
+  <text x="398.2" y="294.0" fill="#d0d0d0" xml:space="preserve">  gpt-6-sol · medium    </text>
+  <text x="585.4" y="294.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="593.2" y="294.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="601.0" y="294.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="608.8" y="294.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="616.6" y="294.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="624.4" y="294.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="632.2" y="294.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="640.0" y="294.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="647.8" y="294.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="655.6" y="294.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="663.4" y="294.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="671.2" y="294.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="679.0" y="294.0" fill="#d0d0d0" xml:space="preserve">              12  18:35 </text>
+  <text x="866.2" y="294.0" fill="#5fafd7" xml:space="preserve">low</text>
+  <text x="889.6" y="294.0" fill="#d0d0d0" xml:space="preserve">→</text>
+  <text x="897.4" y="294.0" fill="#d7af5f" xml:space="preserve">medium</text>
+  <text x="16.0" y="332.0" fill="#878787" xml:space="preserve">↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause · P pause home · q quit</text>
+</svg>

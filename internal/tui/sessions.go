@@ -6,6 +6,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/home"
+	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/route"
 )
 
@@ -41,6 +43,25 @@ func attentionMark(a route.Attention) string {
 		return m
 	}
 	return "?"
+}
+
+// RenderFleet draws the all-sessions panel with ANSI colors, top bar
+// included, for the docs images. homes and sessions come in display order,
+// each session on its own endpoint as stage 1 launchers run them; s is the
+// focused session's snapshot. Output depends only on its arguments.
+func RenderFleet(homes []home.Home, sessions []route.SessionInfo, focus string, s route.Snapshot, tab Tab, width int) string {
+	st := fleetState{focus: focus, snap: &s}
+	for _, h := range homes {
+		g := fleetHome{home: h}
+		for _, x := range sessions {
+			if x.Home == h.ID {
+				g.endpoints = append(g.endpoints, fleetEndpointInfo{id: x.ID, kind: registry.KindSession})
+				g.sessions = append(g.sessions, fleetSession{SessionInfo: x, endpoint: x.ID})
+			}
+		}
+		st.homes = append(st.homes, g)
+	}
+	return render(view{snap: s, tab: tab, width: width, styled: true, fleet: &st})
 }
 
 // all lists every session, home by home, in display order.

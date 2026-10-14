@@ -4,9 +4,10 @@
 //
 //	go run ./scripts/render-docs
 //
-// It writes one SVG per TUI tab and for the Codex footer capture, and a PNG
-// beside each when rsvg-convert is on PATH. The data is made up; it matches
-// the debugging session described in docs/user-guide.md.
+// It writes one SVG per TUI tab, one for the all-sessions panel (top bar and
+// Sessions tab) and one for the Codex footer capture, and a PNG beside each
+// when rsvg-convert is on PATH. The data is made up; it matches the
+// debugging session described in docs/user-guide.md.
 package main
 
 import (
@@ -21,12 +22,18 @@ import (
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/control"
+	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/policy"
 	"github.com/alexei-led/codex-router/internal/route"
 	"github.com/alexei-led/codex-router/internal/tui"
 )
 
-const panelWidth = 100
+const (
+	panelWidth = 100
+	// sessionsWidth fits the top bar's first sessions and every Sessions column.
+	sessionsWidth = 120
+)
 
 var tabDescriptions = map[tui.Tab]string{
 	tui.TabNow:        "Now tab: the next turn's tier and model, the activity and why, the pin buttons with classifier support, the session strip of routed replies by tier, worth-a-look findings, the Codex footer sync, context and cache.",
@@ -58,6 +65,12 @@ func render(out, footerPath, sessionPath string) error {
 		if err := write(out, name, svg); err != nil {
 			return err
 		}
+	}
+	homes, sessions := sampleFleet(snap)
+	const sessionsDesc = "codex-router tui with every running session. Top bar: the focused session first, then the others, each with its home's dot and a mark for sessions that need a look, and the focus position 1 of 5. Sessions tab: two Codex homes, default and work, each with its endpoints, replies, switches and saving, then one row per session with its state, route, routed replies by tier and last switch."
+	svg := toSVG(parseANSI(tui.RenderFleet(homes, sessions, sessions[0].ID, snap, tui.TabSessions, sessionsWidth)), "codex-router panel, Sessions tab", sessionsDesc)
+	if err := write(out, "router-tui-sessions", svg); err != nil {
+		return err
 	}
 	text, err := os.ReadFile(footerPath)
 	if err != nil {
@@ -102,6 +115,62 @@ func write(dir, name, svg string) error {
 }
 
 func at(h, m int) time.Time { return time.Date(2026, 10, 13, h, m, 0, 0, time.UTC) }
+
+// sampleFleet is five sessions in two Codex homes, in panel order. The first
+// is the session of snap, the focus.
+func sampleFleet(snap route.Snapshot) ([]home.Home, []route.SessionInfo) {
+	personal := home.Home{ID: "3fa9c0d1e2b4", Path: "/Users/dev/.codex", Name: "default"}
+	work := home.Home{ID: "8c1f5e27a90b", Path: "/Users/dev/.codex-work", Name: "work"}
+	tiers := func(s string) []config.Tier {
+		names := map[rune]config.Tier{'u': config.TierMicro, 'l': config.TierLow, 'm': config.TierMedium, 'h': config.TierHigh}
+		out := make([]config.Tier, 0, len(s))
+		for _, r := range s {
+			out = append(out, names[r])
+		}
+		return out
+	}
+	usd := func(v float64) *float64 { return &v }
+	session := func(h home.Home, thread, label string, mod func(*route.SessionInfo)) route.SessionInfo {
+		s := route.SessionInfo{
+			ID: control.SessionID(h.ID, thread), Home: h.ID, ThreadID: thread, Label: h.Name + " · " + label,
+			Mode: route.ModeOn, Tier: config.TierMedium, Route: config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium},
+			FooterSynced: true,
+		}
+		mod(&s)
+		return s
+	}
+	st := snap.Stats
+	sessions := []route.SessionInfo{
+		session(personal, "019a3c1e-7b2f-7d10-9c4e-2f6b1a8d5e01", "codex-router · main", func(s *route.SessionInfo) {
+			s.Tier, s.Route, s.Attention = config.TierHigh, snap.Last.Route, route.AttentionEscalation
+			s.Replies, s.Switches, s.Strip, s.LastSwitch = st.Replies, st.Switches, st.Strip[len(st.Strip)-route.SessionStrip:], st.LastSwitch
+			s.LastActive, s.SavedUSD, s.SpentUSD = at(18, 43), usd(st.BaselineUSD-st.RoutedUSD), usd(st.RoutedUSD)
+		}),
+		session(personal, "019a3c52-0e4d-7a61-8b3f-91c2d7e4a6f3", "codex-router · fix/hook", func(s *route.SessionInfo) {
+			s.Tier, s.Route = config.TierLow, config.Route{Model: "gpt-6-luna", Effort: config.EffortMedium}
+			s.Replies, s.Switches, s.Strip = 31, 4, tiers("mmmmmmlllllllllllullllll")
+			s.LastSwitch = &route.Switch{At: at(18, 29), From: config.TierMedium, To: config.TierLow, Activity: config.ActivityExplore}
+			s.LastActive, s.SavedUSD, s.SpentUSD = at(18, 40), usd(0.41), usd(0.37)
+		}),
+		session(personal, "019a3b97-5c18-7f02-a6d9-3e0b8c2f7d14", "notes", func(s *route.SessionInfo) {
+			s.Mode, s.Attention, s.Tier, s.Route = route.ModePaused, route.AttentionPaused, config.TierLow, config.Route{Model: "gpt-6-luna", Effort: config.EffortMedium}
+			s.Replies, s.Strip = 6, tiers("llllll")
+			s.LastActive, s.SavedUSD, s.SpentUSD = at(18, 11), usd(0.05), usd(0.04)
+		}),
+		session(work, "019a3c3a-2f71-7b95-9d0e-6a4c1f8b3e27", "api · feat/auth", func(s *route.SessionInfo) {
+			s.Mode, s.Attention = route.ModeManual, route.AttentionManual
+			s.Replies, s.Switches, s.Strip = 58, 7, tiers("mmmmhhhhmmmmmmmllmmmmmmm")
+			s.LastSwitch = &route.Switch{At: at(18, 22), From: config.TierLow, To: config.TierMedium, Activity: config.ActivityCode}
+			s.LastActive, s.SavedUSD, s.SpentUSD = at(18, 42), usd(0.66), usd(2.31)
+		}),
+		session(work, "019a3c47-9a03-7c28-b1e5-0d7f2a6c9b48", "infra · main", func(s *route.SessionInfo) {
+			s.Replies, s.Switches, s.Strip = 12, 1, tiers("lllllmmmmmmm")
+			s.LastSwitch = &route.Switch{At: at(18, 35), From: config.TierLow, To: config.TierMedium, Activity: config.ActivityOps}
+			s.LastActive, s.SavedUSD, s.SpentUSD = at(18, 36), usd(0.09), usd(0.48)
+		}),
+	}
+	return []home.Home{personal, work}, sessions
+}
 
 func sampleSnapshot() route.Snapshot {
 	cfg := config.Default()
