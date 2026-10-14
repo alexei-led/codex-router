@@ -24,6 +24,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/alexei-led/codex-router/internal/brain"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
@@ -60,6 +61,8 @@ Usage:
   codex-router [--config PATH] proxy [--port N]      run the proxy alone (debugging, codex exec)
   codex-router [--config PATH] edge [--home PATH] [--state-dir DIR]
                                                      serve a Codex home's provider port
+  codex-router [--config PATH] brain [--home PATH] [--state-dir DIR]
+                                                     route a Codex home's sessions
   codex-router version                               print the version
 
 Global flags:
@@ -85,6 +88,9 @@ brain down it forwards requests unchanged. Its socket comes from launchd or
 systemd; without one it binds the port codex-router setup stored and warns.
 --state-dir is the base the service units pass, as $XDG_STATE_HOME (else
 ~/.local/state); the edge reads codex-router/homes/<home id>/ in it.
+brain routes for one Codex home (same --home and --state-dir): it answers
+that home's edge, follows the threads of the home's shared Codex daemon,
+mirrors routes into their footers, and lists them in the session registry.
 The classifier key comes from the env var named by the classifier's keyEnv.
 When it is unset the classifier is off: requests keep their model unless a
 route is pinned from the panel.
@@ -98,6 +104,7 @@ Exit codes:
   hook     0, also when the router is not running; 1 only when stdout fails
   proxy    0 after SIGINT or SIGTERM, 1 on error
   edge     0 after SIGINT or SIGTERM, 1 on error or when the home is not set up
+  brain    0 after SIGINT or SIGTERM, 1 on error
   any      2 on a usage error
 `
 
@@ -163,6 +170,8 @@ func run(ctx context.Context, args, env []string, stdin io.Reader, stdout, stder
 			return c.proxy(ctx, g.config, rest)
 		case "edge":
 			return c.edge(ctx, g.config, rest)
+		case "brain":
+			return c.brain(ctx, g.config, rest)
 		}
 	}
 	return c.launch(g.config, g.rest)
@@ -498,10 +507,9 @@ func (c cli) proxy(ctx context.Context, configPath string, args []string) int {
 	return exitOK
 }
 
-// Stage 2 state of one home, $STATE/codex-router/homes/<home_id>/: setup
-// writes the port and token; the edge reads them.
+// Stage 2 state of one home, brain.HomeDir: setup writes the port and
+// token; the edge reads them.
 const (
-	homesDir  = "homes"
 	portFile  = "port"
 	tokenFile = "token"
 )
@@ -514,16 +522,19 @@ const edgeSocketName = "edge"
 // it at a fake.
 var edgeUpstream string
 
-func (c cli) edge(ctx context.Context, configPath string, args []string) int {
-	fs := flag.NewFlagSet("edge", flag.ContinueOnError)
+// homeFlags parses the --home and --state-dir flags of edge and brain. A
+// set flag overrides CODEX_HOME or XDG_STATE_HOME in the returned cli's env.
+// On failure it returns the exit code and false.
+func (c cli) homeFlags(name string, args []string) (cli, home.Home, int, bool) {
+	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(c.stderr)
 	homePath := fs.String("home", "", "Codex home `path` (default: $CODEX_HOME, else ~/.codex)")
 	stateDir := fs.String("state-dir", "", "state base `dir`, as $XDG_STATE_HOME (default: $XDG_STATE_HOME, else ~/.local/state)")
 	if err := fs.Parse(args); err != nil {
-		return exitUsage
+		return c, home.Home{}, exitUsage, false
 	}
 	if fs.NArg() > 0 {
-		return c.usageError(fmt.Errorf("edge: unexpected argument %q", fs.Arg(0)))
+		return c, home.Home{}, c.usageError(fmt.Errorf("%s: unexpected argument %q", name, fs.Arg(0))), false
 	}
 	for _, f := range []struct{ name, value, env string }{
 		{"--home", *homePath, "CODEX_HOME"},
@@ -533,13 +544,21 @@ func (c cli) edge(ctx context.Context, configPath string, args []string) int {
 			continue
 		}
 		if !filepath.IsAbs(f.value) {
-			return c.usageError(fmt.Errorf("edge: %s %q is not an absolute path", f.name, f.value))
+			return c, home.Home{}, c.usageError(fmt.Errorf("%s: %s %q is not an absolute path", name, f.name, f.value)), false
 		}
 		c.env = append(slices.Clip(c.env), f.env+"="+f.value)
 	}
 	h, err := home.Resolve(c.getenv)
 	if err != nil {
-		return c.fail(err)
+		return c, home.Home{}, c.fail(err), false
+	}
+	return c, h, exitOK, true
+}
+
+func (c cli) edge(ctx context.Context, configPath string, args []string) int {
+	c, h, code, ok := c.homeFlags("edge", args)
+	if !ok {
+		return code
 	}
 	dir, token, err := edgeState(c.getenv, h)
 	if err != nil {
@@ -568,7 +587,7 @@ func (c cli) edge(ctx context.Context, configPath string, args []string) int {
 		return c.fail(err)
 	}
 	lc := link.NewClient(link.ClientOptions{
-		Path: filepath.Join(dir, link.SocketName), HomeID: h.ID, Timeout: cfg.DecideTimeout(), Logger: log,
+		Path: brain.LinkPath(dir), HomeID: h.ID, Timeout: cfg.DecideTimeout(), Logger: log,
 	})
 	defer func() { _ = lc.Close() }()
 	srv := proxy.New(proxy.Options{
@@ -600,6 +619,25 @@ func (c cli) edge(ctx context.Context, configPath string, args []string) int {
 	return exitOK
 }
 
+func (c cli) brain(ctx context.Context, configPath string, args []string) int {
+	c, h, code, ok := c.homeFlags("brain", args)
+	if !ok {
+		return code
+	}
+	cfg, err := c.loadConfig(configPath)
+	if err != nil {
+		return c.fail(err)
+	}
+	log := slog.New(slog.NewJSONHandler(c.stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	deps, _ := launcher.RouterDeps(launcher.Options{Config: cfg, Env: c.env, Stderr: c.stderr}, log)
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	if err := brain.Run(ctx, brain.Options{Home: h, Deps: deps, Getenv: c.getenv}); err != nil {
+		return c.fail(err)
+	}
+	return exitOK
+}
+
 // edgeState returns h's stage 2 state dir and the token in it. The dir and
 // its parents up to codex-router/ must be private to this user: whoever can
 // write there can swap the token.
@@ -608,7 +646,7 @@ func edgeState(getenv func(string) string, h home.Home) (dir, token string, err 
 	if err != nil {
 		return "", "", err
 	}
-	dir = filepath.Join(app, homesDir, h.ID)
+	dir = brain.HomeDir(app, h.ID)
 	for _, d := range []string{app, filepath.Dir(dir), dir} {
 		if err := registry.CheckPrivate(d); err != nil {
 			return "", "", fmt.Errorf("edge: home %s is not set up (run codex-router setup --home %s): %w", h.Name, h.Path, err)

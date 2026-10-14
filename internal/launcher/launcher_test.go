@@ -473,9 +473,9 @@ func (f *fakeAPI) record(c string) {
 }
 
 func (f *fakeAPI) Initialize(context.Context) error { return nil }
-func (f *fakeAPI) Resume(_ context.Context, thread string) error {
+func (f *fakeAPI) Resume(_ context.Context, thread string) (appserver.Resumed, error) {
 	f.record("resume " + thread)
-	return nil
+	return appserver.Resumed{}, nil
 }
 
 func (f *fakeAPI) UpdateSettings(_ context.Context, thread string, s appserver.Settings) error {
@@ -491,11 +491,11 @@ func TestSettingsWriterDedupesAndRewritesAfterManualPick(t *testing.T) {
 	luna := config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}
 	manual := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
 	api := &fakeAPI{written: make(chan struct{}, 8)}
-	w := newSettingsWriter(slog.New(slog.DiscardHandler))
+	w := NewSettingsWriter(slog.New(slog.DiscardHandler), true)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
-		w.run(ctx, api)
+		w.Run(ctx, api)
 		close(done)
 	}()
 	written := func() {
@@ -507,13 +507,13 @@ func TestSettingsWriterDedupesAndRewritesAfterManualPick(t *testing.T) {
 		}
 	}
 
-	w.enqueue("t", sol)
+	w.Enqueue("t", sol)
 	written()
-	w.enqueue("t", sol)
-	w.enqueue("t", luna)
+	w.Enqueue("t", sol)
+	w.Enqueue("t", luna)
 	written()
-	w.reported("t", manual)
-	w.enqueue("t", luna)
+	w.Reported("t", manual)
+	w.Enqueue("t", luna)
 	written()
 	cancel()
 	<-done
@@ -541,11 +541,11 @@ func TestSettingsWriterKeepsARouteQueuedDuringAWrite(t *testing.T) {
 	native := config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
 	routed := config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}
 	api := &gatedAPI{fakeAPI: &fakeAPI{written: make(chan struct{}, 8)}, started: make(chan struct{}), release: make(chan struct{})}
-	w := newSettingsWriter(slog.New(slog.DiscardHandler))
+	w := NewSettingsWriter(slog.New(slog.DiscardHandler), true)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
-		w.run(ctx, api)
+		w.Run(ctx, api)
 		close(done)
 	}()
 	wait := func(c chan struct{}, what string) {
@@ -563,11 +563,11 @@ func TestSettingsWriterKeepsARouteQueuedDuringAWrite(t *testing.T) {
 		wait(api.written, "settings write done")
 	}
 
-	w.enqueue("t", native)
+	w.Enqueue("t", native)
 	write()
-	w.enqueue("t", routed)
+	w.Enqueue("t", routed)
 	wait(api.started, "settings write")
-	w.enqueue("t", native)
+	w.Enqueue("t", native)
 	api.release <- struct{}{}
 	wait(api.written, "settings write done")
 	write()

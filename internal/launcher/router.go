@@ -26,10 +26,20 @@ const (
 	modelsCache   = "models_cache.json"
 )
 
-// newRouter builds the engine for the Codex home over a catalog seeded
-// read-only from $CODEX_HOME/models_cache.json. sink may be nil. An
-// unresolvable home is the zero Home.
+// newRouter builds the engine for the Codex home with the launcher's cwd for
+// every thread. sink may be nil.
 func newRouter(o Options, log *slog.Logger, sink route.Sink) (*route.Engine, *catalog.Store, home.Home) {
+	d, store := RouterDeps(o, log)
+	d.Sink, d.Cwd = sink, launcherCwd()
+	return route.New(d), store, d.Home
+}
+
+// RouterDeps returns the engine's config, classifier, logger and the Codex
+// home of o's env, with a catalog seeded read-only from
+// $CODEX_HOME/models_cache.json; the caller sets Sink and Cwd. An
+// unresolvable home is the zero Home.
+func RouterDeps(o Options, log *slog.Logger) (route.Deps, *catalog.Store) {
+	o = o.withDefaults()
 	store := &catalog.Store{}
 	h, err := home.Resolve(o.getenv)
 	if err != nil {
@@ -44,8 +54,7 @@ func newRouter(o Options, log *slog.Logger, sink route.Sink) (*route.Engine, *ca
 	if asker == nil {
 		log.Warn("classifier-disabled", "reason", why)
 	}
-	eng := route.New(route.Deps{Config: o.Config, Catalog: store, Classifier: asker, Sink: sink, Logger: log, Home: h, Cwd: launcherCwd()})
-	return eng, store, h
+	return route.Deps{Config: o.Config, Catalog: store, Classifier: asker, Logger: log, Home: h}, store
 }
 
 // launcherCwd gives every thread the launcher's cwd: the app-server and

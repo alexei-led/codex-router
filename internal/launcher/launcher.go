@@ -235,7 +235,7 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 
 	runCtx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	w := newSettingsWriter(s.log)
+	w := NewSettingsWriter(s.log, true)
 	snk := &sink{writer: w}
 	eng, store, h := newRouter(o, s.log, snk)
 
@@ -272,11 +272,11 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 	s.log.Info("appserver-ready", "port", port)
 
 	api := s.api
-	s.wg.Go(func() { w.run(runCtx, api) })
+	s.wg.Go(func() { w.Run(runCtx, api) })
 	s.wg.Go(func() {
 		for u := range api.Updates() {
 			r := config.Route{Model: u.Settings.Model, Effort: u.Settings.Effort}
-			w.reported(u.ThreadID, r)
+			w.Reported(u.ThreadID, r)
 			eng.SettingsUpdated(u.ThreadID, r)
 		}
 		s.log.Info("appserver-updates-closed")

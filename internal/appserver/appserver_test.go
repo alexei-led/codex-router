@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -398,7 +399,11 @@ func TestResume(t *testing.T) {
 		api, srv := connect(t, tr)
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				errc := async(func() error { return api.Resume(context.Background(), "t1") })
+				var got Resumed
+				errc := async(func() (err error) {
+					got, err = api.Resume(context.Background(), "t1")
+					return err
+				})
 				req := srv.expect(MethodResume)
 				if want := `{"threadId":"t1","excludeTurns":true}`; string(req.Params) != want {
 					t.Errorf("params = %s, want %s", req.Params, want)
@@ -406,7 +411,9 @@ func TestResume(t *testing.T) {
 				if tc.code != 0 {
 					srv.fail(req.ID, tc.code, "no rollout found")
 				} else {
-					srv.reply(req.ID, map[string]any{"thread": map[string]any{"id": "t1"}, "model": "gpt-6-sol"})
+					srv.reply(req.ID, map[string]any{
+						"thread": map[string]any{"id": "t1"}, "model": "gpt-6-sol", "reasoningEffort": "low", "cwd": "/w",
+					})
 				}
 
 				err := await(t, errc)
@@ -416,6 +423,13 @@ func TestResume(t *testing.T) {
 					t.Fatalf("Resume: %v", err)
 				case tc.code != 0 && (!errors.As(err, &rpcErr) || rpcErr.Code != tc.code):
 					t.Fatalf("err = %v, want RPCError %d", err, tc.code)
+				}
+				want := Resumed{Settings: Settings{Model: "gpt-6-sol", Effort: "low"}, Cwd: "/w"}
+				if tc.code != 0 {
+					want = Resumed{}
+				}
+				if got != want {
+					t.Errorf("Resume = %+v, want %+v", got, want)
 				}
 			})
 		}
@@ -680,6 +694,171 @@ func TestDialMissingSocketFails(t *testing.T) {
 		defer cancel()
 		if _, err := Dial(ctx, socketPath(t), tr.dialer); err == nil {
 			t.Fatal("Dial to a missing socket succeeded")
+		}
+	})
+}
+
+func connectDaemon(t *testing.T, tr transport) (*Client, *fakeServer) {
+	t.Helper()
+	srv := startServer(t, tr)
+	ctx, cancel := context.WithTimeout(context.Background(), waitFor)
+	defer cancel()
+	c, err := DialDaemon(ctx, srv.path, tr.dialer)
+	if err != nil {
+		t.Fatalf("DialDaemon: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+	srv.accept()
+	return c, srv
+}
+
+func TestDaemonSocket(t *testing.T) {
+	if got, want := DaemonSocket("/h/.codex"), "/h/.codex/app-server-control/app-server-control.sock"; got != want {
+		t.Errorf("DaemonSocket = %q, want %q", got, want)
+	}
+}
+
+func TestLoadedThreadsFollowsTheCursor(t *testing.T) {
+	each(t, func(t *testing.T, tr transport) {
+		c, srv := connectDaemon(t, tr)
+		var got []string
+		errc := async(func() (err error) {
+			got, err = c.LoadedThreads(context.Background())
+			return err
+		})
+		req := srv.expect(MethodLoadedList)
+		if string(req.Params) != `{}` {
+			t.Errorf("first page params = %s, want {}", req.Params)
+		}
+		srv.reply(req.ID, map[string]any{"data": []string{"a", "b"}, "nextCursor": "c1"})
+		req = srv.expect(MethodLoadedList)
+		if want := `{"cursor":"c1"}`; string(req.Params) != want {
+			t.Errorf("second page params = %s, want %s", req.Params, want)
+		}
+		srv.reply(req.ID, map[string]any{"data": []string{"c"}, "nextCursor": nil})
+		if err := await(t, errc); err != nil {
+			t.Fatalf("LoadedThreads: %v", err)
+		}
+		if want := []string{"a", "b", "c"}; !slices.Equal(got, want) {
+			t.Errorf("LoadedThreads = %q, want %q", got, want)
+		}
+	})
+}
+
+func TestReadThreadAndUnsubscribe(t *testing.T) {
+	each(t, func(t *testing.T, tr transport) {
+		c, srv := connectDaemon(t, tr)
+		var th Thread
+		errc := async(func() (err error) {
+			th, err = c.ReadThread(context.Background(), "t1")
+			return err
+		})
+		req := srv.expect(MethodRead)
+		if want := `{"threadId":"t1","includeTurns":false}`; string(req.Params) != want {
+			t.Errorf("read params = %s, want %s", req.Params, want)
+		}
+		srv.reply(req.ID, map[string]any{"thread": map[string]any{
+			"id": "t1", "cwd": "/w1", "ephemeral": false, "source": "cli", "threadSource": "user", "parentThreadId": nil,
+		}})
+		if err := await(t, errc); err != nil {
+			t.Fatalf("ReadThread: %v", err)
+		}
+		if th.ID != "t1" || th.Cwd != "/w1" || !th.Main() {
+			t.Errorf("ReadThread = %+v (main %t), want t1 in /w1, main", th, th.Main())
+		}
+
+		errc = async(func() error { return c.Unsubscribe(context.Background(), "t1") })
+		req = srv.expect(MethodUnsubscribe)
+		if want := `{"threadId":"t1"}`; string(req.Params) != want {
+			t.Errorf("unsubscribe params = %s, want %s", req.Params, want)
+		}
+		srv.reply(req.ID, map[string]any{"status": "unsubscribed"})
+		if err := await(t, errc); err != nil {
+			t.Fatalf("Unsubscribe: %v", err)
+		}
+	})
+}
+
+func TestThreadMain(t *testing.T) {
+	parent := "p1"
+	cases := []struct {
+		name   string
+		thread string
+		want   bool
+	}{
+		{"user thread", `{"id":"t","source":"vscode","threadSource":"user"}`, true},
+		{"no thread source", `{"id":"t","source":"cli","threadSource":null}`, true},
+		{"ephemeral title thread", `{"id":"t","ephemeral":true,"source":"vscode","threadSource":"thread_title"}`, false},
+		{"other thread source", `{"id":"t","source":"cli","threadSource":"guardian_review"}`, false},
+		{"subagent source", `{"id":"t","source":{"subAgent":"review"},"threadSource":"user"}`, false},
+		{"parent thread", `{"id":"t","source":"cli","parentThreadId":"` + parent + `"}`, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var th Thread
+			if err := json.Unmarshal([]byte(tc.thread), &th); err != nil {
+				t.Fatal(err)
+			}
+			if got := th.Main(); got != tc.want {
+				t.Errorf("Main = %t, want %t", got, tc.want)
+			}
+		})
+	}
+}
+
+func nextThreadEvent(t *testing.T, c *Client) ThreadEvent {
+	t.Helper()
+	select {
+	case ev, ok := <-c.Threads():
+		if !ok {
+			t.Fatal("Threads closed")
+		}
+		return ev
+	case <-time.After(waitFor):
+		t.Fatal("no thread event")
+	}
+	return ThreadEvent{}
+}
+
+func TestDaemonClientYieldsThreadEvents(t *testing.T) {
+	each(t, func(t *testing.T, tr transport) {
+		c, srv := connectDaemon(t, tr)
+		srv.send(map[string]any{"method": MethodThreadStarted, "params": map[string]any{"thread": map[string]any{}}})
+		srv.send(map[string]any{"method": MethodThreadStarted, "params": map[string]any{
+			"thread": map[string]any{"id": "t1", "cwd": "/w1", "source": "cli", "threadSource": "user"},
+		}})
+		srv.send(map[string]any{"method": "thread/name/updated", "params": map[string]any{"threadId": "t1"}})
+		srv.send(map[string]any{"method": MethodTurnStarted, "params": map[string]any{"threadId": "t1", "turn": map[string]any{}}})
+		srv.send(map[string]any{"method": MethodTurnCompleted, "params": map[string]any{"threadId": "t1", "turn": map[string]any{}}})
+		srv.send(map[string]any{"method": MethodThreadClosed, "params": map[string]any{"threadId": "t1"}})
+
+		ev := nextThreadEvent(t, c)
+		if ev.Method != MethodThreadStarted || ev.ThreadID != "t1" || ev.Thread == nil || ev.Thread.Cwd != "/w1" {
+			t.Errorf("first event = %+v, want thread/started t1 in /w1", ev)
+		}
+		for _, want := range []string{MethodTurnStarted, MethodTurnCompleted, MethodThreadClosed} {
+			if ev := nextThreadEvent(t, c); ev.Method != want || ev.ThreadID != "t1" || ev.Thread != nil {
+				t.Errorf("event = %+v, want %s t1", ev, want)
+			}
+		}
+
+		_ = srv.conn.Close()
+		select {
+		case _, ok := <-c.Threads():
+			if ok {
+				t.Error("unexpected thread event")
+			}
+		case <-time.After(waitFor):
+			t.Error("Threads not closed after disconnect")
+		}
+	})
+}
+
+func TestPlainClientHasNoThreadEvents(t *testing.T) {
+	each(t, func(t *testing.T, tr transport) {
+		api, _ := connect(t, tr)
+		if api.(*Client).Threads() != nil {
+			t.Error("Dial client yields thread events; only DialDaemon should")
 		}
 	})
 }
