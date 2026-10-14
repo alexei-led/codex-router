@@ -43,6 +43,8 @@ Codex looks and behaves as usual. The footer now shows the model that the router
 codex-router tui
 ```
 
+Run as many sessions as you like, in other repos, worktrees or Codex homes. One panel shows them all (see [Several sessions and homes](#several-sessions-and-homes)).
+
 If any startup step fails, the router prints one line, `codex-router: <reason>; running plain codex`, and starts plain `codex` with your arguments.
 
 ### Pass arguments to Codex
@@ -78,6 +80,8 @@ The router uses these words in the footer, the panel, the config and the docs.
 
 | Term                    | Meaning                                                                                                                                        |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Session**             | One Codex conversation (a main thread) routed by codex-router. `/new` in Codex starts a new session.                                           |
+| **Home**                | A Codex home (`CODEX_HOME`, default `~/.codex`) with its own login. `~/.codex` is named `default`, `~/.codex-work` is named `work`.            |
 | **Turn**                | One prompt from you. Codex can send several requests for it, called **steps**.                                                                 |
 | **Tier**                | The complexity level that the router gives a turn: `micro`, `low`, `medium` or `high`, weakest first.                                          |
 | **Route**               | A model and a reasoning effort. Each tier maps to one route (`routes` in the config).                                                          |
@@ -85,8 +89,8 @@ The router uses these words in the footer, the panel, the config and the docs.
 | **Activity**            | The kind of work: `code`, `debug`, `explore`, `plan`, `review`, `ops` or `docs`. An activity can give a tier a different route (`activities`). |
 | **Policy**              | The rules that decide when to switch tier. A switch needs enough repeated classifier answers (votes), and costly switches need more support.   |
 | **Compatibility group** | Models that Codex can switch between in one thread. The router never routes outside the group of the model that Codex sent.                    |
-| **Pin**                 | A tier that you choose in the panel for the next turn. The classifier is not asked for that turn.                                              |
-| **Pause**               | Routing off for the whole session. Requests go out unchanged.                                                                                  |
+| **Pin**                 | A tier that you choose in the panel for a session's next turn. The classifier is not asked for that turn.                                      |
+| **Pause**               | Routing off for one session, or for every session of a home. Requests go out unchanged.                                                        |
 | **Manual hold**         | What a `/model` pick in Codex causes. The router keeps your model for that thread until you resume.                                            |
 | **Preset**              | A named set of policy thresholds: `thrifty`, `balanced` or `quality`.                                                                          |
 
@@ -146,24 +150,73 @@ If `~/.codex/config.toml` sets `model_context_window`, Codex sizes its context f
 
 The footer shows the routed model and effort, for example `GPT-6-Sol medium`. It repaints when the route changes, also while a turn runs. The window and context figures follow the routed model.
 
+### Several sessions and homes
+
+Each `codex-router` run is one session. Start one per repo or worktree, and pick the Codex home with `CODEX_HOME` as you would for plain `codex`:
+
+```sh
+cd ~/src/api && codex-router
+cd ~/src/api-worktrees/feat-auth && CODEX_HOME=~/.codex-work codex-router
+```
+
+- **Home name.** `~/.codex` is `default`, `~/.codex-<x>` is `<x>`, any other home is its directory name.
+- **Session label.** `home · repo · branch`, read from the `.git` of the directory Codex started in. A linked worktree shows its main repo's name. A detached HEAD shows the short commit. Outside a repo, the label is `home · <directory>`. When two sessions get the same label, each gets four hex characters derived from its id appended, as in `default · notes · 9f3c`.
+- **Session id.** `<home id>/<thread id>`. The home id is derived from the home's path. The thread id is the one Codex shows.
+- **New and idle sessions.** `/new` in Codex starts a new session, which joins the list at its first prompt. A session with no prompt or reply for 10 minutes leaves the list, unless it is its router's most recent one.
+
+Each router lists itself in the session registry, `$XDG_STATE_HOME/codex-router/registry` (else `~/.local/state/codex-router/registry`), and removes its entry when it exits. Panels in any shell find sessions there. Use the same `XDG_STATE_HOME` (or none) in every shell.
+
+To list the running sessions:
+
+```sh
+codex-router sessions [--json]
+```
+
+It prints one line per session: id, home, label, mode and route, in the panel's order. With no session it prints nothing. `--json` prints the full list, each entry with its router's `endpoint_id`, for scripts.
+
 ### Panel
 
 ```sh
-codex-router tui [--socket PATH]
+codex-router tui [--session ID|LABEL] [--socket PATH]
 ```
 
-The panel attaches to the newest running session, or to `--socket`. If the session goes away, the panel shows `disconnected` and keeps redialing. Without `--socket`, it looks for the newest session again on each attempt, so it follows a restarted `codex-router`. Quitting the panel does not affect the session.
+Without flags, the panel shows every running session of every home. The top bar lists them, the focused session first, then the rest in list order, with the focus position on the right (`▸ 1/5`). Each session has its home's colored dot, and a mark when it needs a look: `◐` manual hold, `‖` paused, `↑` escalation, `?` any other flag. The panel first focuses the session whose directory is the panel's directory or the closest one above it, else the most recently active session. Tabs 1-5 show the focused session.
 
-| Key                | Action                                                 |
-| ------------------ | ------------------------------------------------------ |
-| `1`–`5`            | Now, Routes, Policy, Classifier, Usage                 |
-| `tab`, `shift+tab` | next, previous tab                                     |
-| `p`                | pin the next turn: none → high → medium → low → micro  |
-| `space`            | pause routing, or resume                               |
-| `c` (Policy tab)   | next preset: thrifty, balanced, quality (this session) |
-| `q`, `ctrl+c`      | quit the panel                                         |
+**Sessions** (`0`) lists every session, grouped by home:
 
-The header shows the mode (`on`, `manual`, `paused`), the classifier state, and whether the footer is synced.
+![Router panel, Sessions tab with the top bar](images/router-tui-sessions.svg)
+
+- **Home line**: the number of routers (endpoints) serving the home, how many are lost, and the totals of its sessions: replies, switches, and the saving when `prices` is set.
+- **Rows**: the label without the home, the state (`on`, `paused`, `manual`, `escalation`, `disconnected`), the route, the last 24 routed replies colored by tier with the reply count, and the last switch. Below 100 columns the panel drops the replies and last switch columns.
+- `↑` `↓` move the selection, and `enter` focuses that session and opens Now. A long list scrolls.
+
+`--session` locks the panel to one session: no top bar and no Sessions tab, only a header line `● home · repo · branch  <id>`. When that session ends, the panel shows `ended` and closes 3 s later. The value can be:
+
+1. the session id or the bare thread id, exact
+2. a unique prefix of either
+3. the exact label
+4. the end of a label that starts at a part boundary, for example `api · feat/auth` or just `feat/auth`, but not `auth`
+
+The first rule with any match decides. A label shared by several sessions matches all of them. When several sessions match, `tui` lists them and exits with 2. When none matches, it exits with 1. Use `codex-router sessions` to see the ids and labels.
+
+`--socket PATH` shows only the router at that control socket and skips the registry.
+
+When a router goes away, its sessions show `disconnected`, and leave the list 10 s later. If the router comes back, the panel dials it again. With no session at all, the header reads `no sessions` and the panel waits. Quitting the panel does not affect any session.
+
+| Key                | Action                                                                  |
+| ------------------ | ----------------------------------------------------------------------- |
+| `[`, `]`           | previous, next session (all sessions only)                              |
+| `0`                | Sessions tab (all sessions only)                                        |
+| `1`–`5`            | Now, Routes, Policy, Classifier, Usage                                  |
+| `tab`, `shift+tab` | next, previous tab                                                      |
+| `↑`, `↓`, `enter`  | on the Sessions tab: select a session, focus it                         |
+| `p`                | pin the focused session's next turn: none → high → medium → low → micro |
+| `space`            | pause the focused session, or resume it                                 |
+| `P`                | pause every session of the focused session's home, or resume them       |
+| `c` (Policy tab)   | next preset for the focused session's home: thrifty, balanced, quality  |
+| `q`, `ctrl+c`      | quit the panel                                                          |
+
+The header shows the focused session's mode (`on`, `manual`, `paused`), the classifier state, and whether the footer is synced.
 
 **Now** shows the current decision and the session so far:
 
@@ -185,14 +238,15 @@ The header shows the mode (`on`, `manual`, `paused`), the classifier state, and 
 
 ### Pin, pause, preset
 
-- **Pin** (`p`): the next turn runs on that tier for all its steps, and the classifier is not asked. The turn uses up the pin.
-- **Pause** (`space`): every request goes out on Codex's own model, unchanged, and the footer goes back to it.
-- **Resume** (`space` again): routing continues. Resume also clears a manual hold.
-- **Preset** (`c` on the Policy tab): applies at once, for this session only. The config file is not changed.
+- **Pin** (`p`): the focused session's next turn runs on that tier for all its steps, and the classifier is not asked. The turn uses up the pin. Other sessions are not affected.
+- **Pause** (`space`): every request of the focused session goes out on Codex's own model, unchanged, and its footer goes back to it.
+- **Resume** (`space` again): routing of that session continues. Resume also clears its manual hold.
+- **Pause home** (`P`): pauses every running session of the focused session's home, and no other home. When all of them are paused, `P` resumes the home: that clears the manual holds there, but keeps the sessions you paused with `space` paused. Resume those with `space`.
+- **Preset** (`c` on the Policy tab): applies at once to every running session of the focused session's home, until they exit. The config file is not changed.
 
 ### Pick a model yourself
 
-A `/model` pick in Codex starts a manual hold. The panel shows `◐ manual`, and requests keep your model until you press `space` in the panel. If you do not want Codex to save the model to its config, use the session-only choice in Codex's picker.
+A `/model` pick in Codex starts a manual hold for that session. The panel shows `◐ manual`, and requests keep your model until you focus the session and press `space` in the panel. If you do not want Codex to save the model to its config, use the session-only choice in Codex's picker.
 
 ### What the router leaves alone
 
@@ -226,7 +280,7 @@ A completed cell that prints no status counts neither as a failure nor as a pass
 router: high · debug → gpt-6.1-sol · high · escalate: same tool failure twice, edit in between
 ```
 
-The footer already shows the model. The hook adds the reason. It answers within 200 ms and exits 0 even when no router is running.
+The footer already shows the model. The hook adds the reason, for its own session only. Under `codex-router`, it reaches the router through `CODEX_ROUTER_CONTROL`, which the router sets. Otherwise it looks in the registry for a router of its Codex home that runs its thread. It answers within 200 ms and exits 0 even when no router is running.
 
 Codex runs a hook only after you trust it, and it reads trust only from your own `~/.codex/config.toml`. So the router cannot register the hook for you. To add it yourself:
 
@@ -262,8 +316,11 @@ This proxy checks no session token, so any local user can reach it. Use it for d
 | Panel says `Jev off`; the model never changes                        | The classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session.                                                                  |
 | Panel says `paused until …`                                          | The classifier failed 3 times in a row and pauses for 60 s. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                    |
 | `footer not synced`                                                  | Settings writes to the app-server are pending or failed. Routing still works. If it persists, your Codex version may not support the sync (see [Codex versions](#codex-versions)). |
-| `codex-router tui`: `no running codex-router session under …`        | No session is running for your user, or it uses another runtime base (`XDG_RUNTIME_DIR`, `TMPDIR`). Start a session first, or pass `--socket`.                                     |
-| Panel shows `disconnected`                                           | The session ended or restarted. The panel redials by itself. Routing is unaffected.                                                                                                |
+| Panel says `no sessions`; `codex-router sessions` prints nothing     | No session is registered for your user under this state dir. Start a session, or use the same `XDG_STATE_HOME` (or none) in the panel's shell as in the session's shell.           |
+| `codex-router: the panel will not list this session: …`              | The router could not write its registry entry, usually because the registry dir is not a private directory of yours (mode `0700`). The session routes as usual.                    |
+| `codex-router: tui: "x" matches N sessions:`                         | `--session` named several sessions. Pass one of the listed ids, or a longer label.                                                                                                 |
+| Panel shows `disconnected`                                           | The session's router ended or restarted. Its rows leave after 10 s. A restarted router shows up again by itself. Routing of other sessions is unaffected.                          |
+| Locked panel shows `ended` and closes                                | The session's router exited. Start the panel again with the new session's id or label.                                                                                             |
 | Second session fails to start                                        | `proxy.port` is fixed, so the port is taken. Use `0` (the default) for any free port.                                                                                              |
 | Model stays put after a `/model` pick                                | That is the manual hold. Press `space` in the panel to resume routing.                                                                                                             |
 | `Permission overrides are not supported when resuming a remote task` | Codex refuses `-s` and `-a` with `resume` in remote mode. Drop them.                                                                                                               |
@@ -298,7 +355,8 @@ The footer sync needs `codex --remote` and the app-server's `thread/settings/upd
 | Command                     | Code                                                                                     |
 | --------------------------- | ---------------------------------------------------------------------------------------- |
 | `codex-router [codex args]` | Codex's exit code, 128+N for signal N, 1 when neither routed nor plain Codex could start |
-| `tui`                       | 0 on quit, 1 on error                                                                    |
+| `tui`                       | 0 on quit, 1 on error or when no session matches `--session`, 2 when several match       |
+| `sessions`                  | 0, also when no session runs. 1 on error                                                 |
 | `hook`                      | 0, also when the router is not running. 1 only if writing stdout fails                   |
 | `proxy`                     | 0 after SIGINT or SIGTERM, 1 on error                                                    |
 | any                         | 2 on a usage error                                                                       |

@@ -385,10 +385,12 @@ Depends on: Tasks 9, 10
 - Modify: `docs/user-guide.md`, `docs/architecture.md`, `docs/configuration.md` (if any field changes), `README.md` (one line on multiple sessions)
 - Modify: `scripts/render-docs` and `docs/images/` (Sessions tab and top bar images)
 
-- [ ] user guide: running several sessions and homes, `tui --session`, all-sessions keys, `sessions`
-- [ ] architecture: registry, session identity, protocol v2, per-thread pause/pin (mermaid)
-- [ ] regenerate doc images with the render pipeline
-- [ ] run `make fmt lint test build`
+- [x] user guide: running several sessions and homes, `tui --session`, all-sessions keys, `sessions`
+- [x] architecture: registry, session identity, protocol v2, per-thread pause/pin (mermaid)
+- [x] regenerate doc images with the render pipeline
+- [x] ➕ `tui.RenderFleet` (`internal/tui/sessions.go`, outside the Files list): the render pipeline can only call exported code, so this draws the all-sessions panel from sample homes and sessions, one endpoint per session; a test checks it matches the panel's own render. New image `router-tui-sessions` (top bar + Sessions tab, 120 columns so the top bar shows several sessions); the per-tab images stay bare snapshots and are unchanged
+- [x] ➕ also fixed stale lines outside the new sections: troubleshooting (`no sessions`, registry write failure, ambiguous `--session`, `ended`), exit codes for `tui` and `sessions`, the hook's endpoint lookup, the packages table imports, `configuration.md` env rows and the preset scope line
+- [x] run `make fmt lint test build`
 
 ### Task 12: [live] Stage 1 in agterm with real Codex
 

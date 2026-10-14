@@ -56,7 +56,7 @@ cd your-repo
 codex-router                  # use it like `codex`; arguments pass through
 ```
 
-In a second pane, run `codex-router tui` for the panel. The [user guide](docs/user-guide.md) has the other install options, configuration and troubleshooting.
+In a second pane, run `codex-router tui` for the panel. Run as many sessions as you like, in any repo or worktree and under any Codex home (`CODEX_HOME`); one panel shows them all. The [user guide](docs/user-guide.md) has the other install options, configuration and troubleshooting.
 
 ## Status
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -548,6 +549,29 @@ func TestRenderFleetIsWidthAndHeightBound(t *testing.T) {
 			if c.height > 0 && len(lines) > c.height {
 				t.Errorf("%s/%d: %d lines, height %d", c.name, width, len(lines), c.height)
 			}
+		}
+	}
+}
+
+func TestRenderFleetMatchesThePanel(t *testing.T) {
+	st := fleetFixture()
+	var homes []home.Home
+	var sessions []route.SessionInfo
+	for i := range st.homes {
+		h := &st.homes[i]
+		homes = append(homes, h.home)
+		h.endpoints = nil
+		for _, s := range h.sessions {
+			sessions = append(sessions, s.SessionInfo)
+			h.endpoints = append(h.endpoints, fleetEndpointInfo{id: s.ID, kind: registry.KindSession})
+		}
+	}
+	sgr := regexp.MustCompile("\x1b\\[[0-9;]*m")
+	for _, tab := range []Tab{TabSessions, TabNow} {
+		got := sgr.ReplaceAllString(RenderFleet(homes, sessions, st.focus, fixture(), tab, 140), "")
+		want := render(view{snap: fixture(), tab: tab, width: 140, fleet: &st})
+		if got != want {
+			t.Errorf("%s: RenderFleet differs from the panel\n--- got\n%s--- want\n%s", tab, got, want)
 		}
 	}
 }
