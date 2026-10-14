@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -23,6 +24,10 @@ const (
 	PathModels    = "/v1/models"
 	PathHealth    = "/healthz"
 )
+
+// HeaderToken carries the per-session secret that Options.Token checks. It
+// never goes upstream.
+const HeaderToken = "X-Codex-Router-Token"
 
 // MaxBodyBytes caps a request body; larger bodies get 413.
 const MaxBodyBytes = 32 << 20
@@ -62,9 +67,13 @@ type Observer interface {
 // Addr must be on LoopbackHost; empty means DefaultAddr. Client's
 // CheckRedirect is always replaced with one that refuses redirects.
 // OnCatalog receives every /models 200 body that parses (launcher passes
-// catalog.Store.Set). DecideTimeout bounds each Decide call.
+// catalog.Store.Set). DecideTimeout bounds each Decide call. Token, when set,
+// must arrive in HeaderToken on /v1/responses and /v1/models, or the request
+// gets 401 unread: any local uid can reach the loopback port. Empty disables
+// the check.
 type Options struct {
 	Addr          string
+	Token         string
 	Upstream      string
 	Client        *http.Client
 	Decider       Decider
@@ -191,10 +200,27 @@ func (s *Server) Serve(ctx context.Context) error {
 
 func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc(http.MethodPost+" "+PathResponses, s.handleResponses)
-	mux.HandleFunc(http.MethodGet+" "+PathModels, s.handleModels)
+	mux.HandleFunc(http.MethodPost+" "+PathResponses, s.authorized(s.handleResponses))
+	mux.HandleFunc(http.MethodGet+" "+PathModels, s.authorized(s.handleModels))
 	mux.HandleFunc(http.MethodGet+" "+PathHealth, func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok\n"))
 	})
 	return mux
+}
+
+// authorized answers 401 before h reads anything when the token is set and
+// the request does not carry it.
+func (s *Server) authorized(h http.HandlerFunc) http.HandlerFunc {
+	if s.opts.Token == "" {
+		return h
+	}
+	want := []byte(s.opts.Token)
+	return func(w http.ResponseWriter, r *http.Request) {
+		if subtle.ConstantTimeCompare([]byte(r.Header.Get(HeaderToken)), want) != 1 {
+			s.log.Warn("unauthorized", "path", r.URL.Path)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		h(w, r)
+	}
 }

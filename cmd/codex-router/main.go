@@ -253,6 +253,7 @@ func (c cli) proxy(ctx context.Context, configPath string, args []string) int {
 		for _, v := range launcher.ProviderOverrides(p) {
 			_, _ = fmt.Fprintf(c.stdout, "  -c '%s'\n", v)
 		}
+		_, _ = fmt.Fprintln(c.stdout, "this proxy checks no token: any local user can reach it; use it for debugging only")
 	})
 	if err != nil {
 		return c.fail(err)

@@ -256,6 +256,7 @@ func (h *harness) assertStart(t *testing.T) {
 		Overrides []string `json:"overrides"`
 		Cwd       string   `json:"cwd"`
 		Control   string   `json:"control"`
+		Token     string   `json:"token"`
 	}
 	if err := json.Unmarshal(starts[0], &s); err != nil {
 		t.Fatal(err)
@@ -268,8 +269,18 @@ func (h *harness) assertStart(t *testing.T) {
 		t.Errorf("app-server %s = %q, want a control socket under %s", control.EnvSocket, s.Control, h.base)
 	}
 	if len(s.Overrides) != 2 || s.Overrides[0] != "model_provider=router" ||
-		!strings.Contains(s.Overrides[1], `base_url="http://127.0.0.1:`) || !strings.Contains(s.Overrides[1], "requires_openai_auth=true") {
+		!strings.Contains(s.Overrides[1], `base_url="http://127.0.0.1:`) || !strings.Contains(s.Overrides[1], "requires_openai_auth=true") ||
+		!strings.Contains(s.Overrides[1], `env_http_headers={"X-Codex-Router-Token"="CODEX_ROUTER_TOKEN"}`) {
 		t.Errorf("app-server overrides = %q", s.Overrides)
+	}
+	if len(s.Token) != 32 {
+		t.Errorf("app-server %s has %d chars, want 32 hex", EnvToken, len(s.Token))
+	}
+	if strings.Contains(strings.Join(s.Overrides, " "), s.Token) {
+		t.Error("app-server argv carries the proxy token")
+	}
+	if strings.Contains(h.logs.String(), s.Token) {
+		t.Error("log carries the proxy token")
 	}
 }
 
@@ -280,11 +291,15 @@ func (h *harness) assertRemoteArgs(t *testing.T) {
 		t.Fatalf("codex --remote runs = %d, want 1", len(remotes))
 	}
 	var r struct {
-		Args []string `json:"args"`
+		Args  []string `json:"args"`
+		Token string   `json:"token"`
 	}
 	_ = json.Unmarshal(remotes[0], &r)
 	if !slices.Equal(r.Args, h.opts.CodexArgs) {
 		t.Errorf("codex args = %q, want %q", r.Args, h.opts.CodexArgs)
+	}
+	if r.Token != "" {
+		t.Errorf("codex --remote got %s; only the app-server calls the proxy", EnvToken)
 	}
 }
 
@@ -602,7 +617,7 @@ func TestProviderOverrides(t *testing.T) {
 	got := ProviderOverrides(47911)
 	want := []string{
 		"model_provider=router",
-		`model_providers.router={name="router", base_url="http://127.0.0.1:47911/v1", wire_api="responses", requires_openai_auth=true}`,
+		`model_providers.router={name="router", base_url="http://127.0.0.1:47911/v1", wire_api="responses", requires_openai_auth=true, env_http_headers={"X-Codex-Router-Token"="CODEX_ROUTER_TOKEN"}}`,
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("ProviderOverrides = %q, want %q", got, want)

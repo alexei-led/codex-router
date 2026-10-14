@@ -19,6 +19,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/appserver"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
+	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
 )
@@ -120,6 +121,9 @@ type e2e struct {
 	cls *e2eClassifier
 	ctl *control.Client
 	url string
+	// token is what the app-server got in EnvToken; Codex sends it as
+	// proxy.HeaderToken.
+	token string
 }
 
 func newE2E(t *testing.T) *e2e {
@@ -148,11 +152,29 @@ func newE2E(t *testing.T) *e2e {
 		t.Fatal(err)
 	}
 	e.url = "http://127.0.0.1:" + strings.TrimSpace(string(port)) + "/v1/responses"
+	e.token = e.startToken(t)
 	if e.ctl, err = control.Dial(filepath.Join(s.dir, control.SocketName)); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = e.ctl.Close() })
 	return e
+}
+
+// startToken returns the token the fake app-server recorded at start; start
+// returns only after the app-server answered initialize, so it is there.
+func (e *e2e) startToken(t *testing.T) string {
+	t.Helper()
+	starts := e.h.recorded(t, "start")
+	if len(starts) != 1 {
+		t.Fatalf("app-server starts = %d, want 1", len(starts))
+	}
+	var s struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(starts[0], &s); err != nil {
+		t.Fatal(err)
+	}
+	return s.Token
 }
 
 type request struct {
@@ -179,6 +201,7 @@ func (e *e2e) post(t *testing.T, r request) (int, error) {
 		t.Fatal(err)
 	}
 	req.Header.Set("Authorization", fakeToken)
+	req.Header.Set(proxy.HeaderToken, e.token)
 	req.Header.Set(responses.HeaderTurnMetadata, r.metadata())
 	if r.subagent != "" {
 		req.Header.Set(responses.HeaderSubagent, r.subagent)
@@ -460,4 +483,22 @@ func TestE2EUpstreamCloseAfterFirstItemIsNotRetried(t *testing.T) {
 		t.Error("client saw a clean reply, want the cut stream to reach it")
 	}
 	e.wantRoutes(t, routedRoute)
+}
+
+func TestE2ERequestWithoutTheSessionTokenIsRejected(t *testing.T) {
+	e := newE2E(t)
+	for _, token := range []string{"", strings.Repeat("0", len(e.token))} {
+		e.token = token
+		if status, err := e.post(t, turnReq("turn-1", 1)); err != nil || status != http.StatusUnauthorized {
+			t.Errorf("token %q: status %d, err %v; want 401", token, status, err)
+		}
+	}
+
+	e.wantRoutes(t)
+	if n := e.cls.calls.Load(); n != 0 {
+		t.Errorf("classifier calls = %d, want 0", n)
+	}
+	if snap := e.snapshot(t); snap.Stats.Replies != 0 || snap.Stats.Switches != 0 {
+		t.Errorf("stats = %d replies, %d switches; want none", snap.Stats.Replies, snap.Stats.Switches)
+	}
 }

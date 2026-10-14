@@ -87,12 +87,13 @@ func decideTimeout(cfg config.Config) time.Duration {
 type serveFunc func(ctx context.Context) error
 
 // startProxy binds the proxy, serves it under runCtx with re-listen on the
-// same port, and probes it under ctx.
-func startProxy(ctx, runCtx context.Context, wg *sync.WaitGroup, o Options, eng *route.Engine, store *catalog.Store, log *slog.Logger) (int, error) {
+// same port, and probes it under ctx. An empty token leaves it open.
+func startProxy(ctx, runCtx context.Context, wg *sync.WaitGroup, o Options, token string, eng *route.Engine, store *catalog.Store, log *slog.Logger) (int, error) {
 	bind := func(port int) (int, serveFunc, error) {
 		srv := proxy.New(proxy.Options{
 			Addr:          net.JoinHostPort(proxy.LoopbackHost, strconv.Itoa(port)),
 			Upstream:      o.Upstream,
+			Token:         token,
 			Decider:       eng,
 			Observer:      eng,
 			OnCatalog:     store.Set,
@@ -168,7 +169,8 @@ func probeHealth(ctx context.Context, port int) error {
 // Serve runs the proxy and engine alone, without app-server or Codex, until
 // ctx ends: for debugging and `codex exec` runs pointed at it with
 // ProviderOverrides. ready gets the port once the health probe passes. The
-// port is Config.Proxy.Port (0 = ephemeral).
+// port is Config.Proxy.Port (0 = ephemeral). It has no token, so any local
+// uid can use it: a debugging tool, not for shared hosts.
 func Serve(ctx context.Context, o Options, ready func(port int)) error {
 	o = o.withDefaults()
 	log := o.Logger
@@ -180,7 +182,7 @@ func Serve(ctx context.Context, o Options, ready func(port int)) error {
 	defer cancel()
 	var wg sync.WaitGroup
 	defer wg.Wait()
-	port, err := startProxy(ctx, runCtx, &wg, o, eng, store, log)
+	port, err := startProxy(ctx, runCtx, &wg, o, "", eng, store, log)
 	if err != nil {
 		cancel()
 		return err

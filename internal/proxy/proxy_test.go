@@ -25,6 +25,7 @@ import (
 const (
 	testAuth    = "Bearer sk-test-secret-token-0123456789"
 	testAccount = "acct-secret-4567"
+	testToken   = "router-session-token-under-test"
 	promptText  = "PROMPT-TEXT-MARKER fix the flaky test"
 	turnMeta    = `{"session_id":"s-1","thread_id":"th-1","turn_id":"turn-1","agent_name":"main"}`
 	upstreamDir = "/backend-api/codex"
@@ -143,7 +144,7 @@ func startProxy(t *testing.T, upstreamURL string, opts ...func(*Options)) harnes
 			t.Errorf("Serve: %v", err)
 		}
 		out := logs.String()
-		for _, secret := range []string{testAuth, "sk-test-secret", testAccount, "PROMPT-TEXT-MARKER", "ANSWER-TEXT"} {
+		for _, secret := range []string{testAuth, "sk-test-secret", testAccount, testToken, "PROMPT-TEXT-MARKER", "ANSWER-TEXT"} {
 			if strings.Contains(out, secret) {
 				t.Errorf("log contains %q:\n%s", secret, out)
 			}
@@ -850,6 +851,76 @@ func TestAllowList(t *testing.T) {
 	}
 	if n := up.hits.Load(); n != 0 {
 		t.Errorf("upstream hits = %d, want 0", n)
+	}
+}
+
+func TestTokenGuardsResponsesAndModels(t *testing.T) {
+	tests := []struct {
+		name, method, path string
+		token              string
+		want               int
+	}{
+		{"responses without token", http.MethodPost, PathResponses, "", http.StatusUnauthorized},
+		{"responses with wrong token", http.MethodPost, PathResponses, testToken[1:] + "0", http.StatusUnauthorized},
+		{"responses with token prefix", http.MethodPost, PathResponses, testToken[:8], http.StatusUnauthorized},
+		{"models without token", http.MethodGet, PathModels, "", http.StatusUnauthorized},
+		{"models with wrong token", http.MethodGet, PathModels, "nope", http.StatusUnauthorized},
+		{"health without token", http.MethodGet, PathHealth, "", http.StatusOK},
+		{"responses with token", http.MethodPost, PathResponses, testToken, http.StatusOK},
+		{"models with token", http.MethodGet, PathModels, testToken, http.StatusOK},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			up := sseUpstream(t, evCompleted)
+			var decided atomic.Int32
+			h := startProxy(t, up.url(), func(o *Options) {
+				o.Token = testToken
+				o.Decider = deciderFunc(func(context.Context, *responses.Request, responses.Meta) (responses.Rewrite, bool) {
+					decided.Add(1)
+					return responses.Rewrite{}, false
+				})
+			})
+			req := newRequest(t, t.Context(), tt.method, h.base+tt.path, requestBody)
+			if tt.token != "" {
+				req.Header.Set(HeaderToken, tt.token)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = resp.Body.Close()
+
+			if resp.StatusCode != tt.want {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tt.want)
+			}
+			if tt.want == http.StatusUnauthorized && (up.hits.Load() != 0 || decided.Load() != 0) {
+				t.Errorf("rejected request reached upstream %d times, decider %d times", up.hits.Load(), decided.Load())
+			}
+			if tt.want == http.StatusOK && tt.path != PathHealth {
+				if v := up.last(t).header.Get(HeaderToken); v != "" {
+					t.Errorf("upstream got %s", HeaderToken)
+				}
+			}
+		})
+	}
+}
+
+func TestEmptyTokenDisablesCheckAndStripsHeader(t *testing.T) {
+	up := sseUpstream(t, evCompleted)
+	h := startProxy(t, up.url())
+	req := newRequest(t, t.Context(), http.MethodPost, h.base+PathResponses, requestBody)
+	req.Header.Set(HeaderToken, testToken)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	if v := up.last(t).header.Get(HeaderToken); v != "" {
+		t.Errorf("upstream got %s", HeaderToken)
 	}
 }
 

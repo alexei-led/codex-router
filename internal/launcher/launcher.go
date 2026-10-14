@@ -2,6 +2,8 @@ package launcher
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log/slog"
@@ -27,6 +29,10 @@ const (
 	PortFileName   = "proxy.port"
 	ProviderID     = "router"
 	ProviderName   = "router"
+	// EnvToken holds the proxy's per-session token in the app-server's env.
+	// Codex sends it as proxy.HeaderToken through env_http_headers, so the
+	// value never appears in argv, which other uids can read.
+	EnvToken = "CODEX_ROUTER_TOKEN"
 )
 
 const defaultCodexBin = "codex"
@@ -90,13 +96,21 @@ func (o Options) getenv(key string) string {
 
 // ProviderOverrides returns the -c values that point Codex at the proxy on
 // port. requires_openai_auth makes Codex send its own ChatGPT auth, which the
-// proxy forwards upstream only.
+// proxy forwards upstream only. env_http_headers sends $CODEX_ROUTER_TOKEN as
+// the proxy token; Codex leaves the header out when the variable is unset.
 func ProviderOverrides(port int) []string {
 	return []string{
 		"model_provider=" + ProviderID,
-		fmt.Sprintf(`model_providers.%s={name="%s", base_url="http://%s:%d/v1", wire_api="responses", requires_openai_auth=true}`,
-			ProviderID, ProviderName, proxy.LoopbackHost, port),
+		fmt.Sprintf(`model_providers.%s={name="%s", base_url="http://%s:%d/v1", wire_api="responses", requires_openai_auth=true, env_http_headers={"%s"="%s"}}`,
+			ProviderID, ProviderName, proxy.LoopbackHost, port, proxy.HeaderToken, EnvToken),
 	}
+}
+
+// newToken returns 128 random bits in hex. crypto/rand.Read does not fail.
+func newToken() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 // Run runs one routed Codex session and returns codex's exit code (128+N
@@ -218,7 +232,8 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 	snk.ctl.Store(s.ctl)
 	s.env = append(slices.Clone(o.Env), control.EnvSocket+"="+ctlPath)
 
-	port, err := startProxy(ctx, runCtx, &s.wg, o, eng, store, s.log)
+	token := newToken()
+	port, err := startProxy(ctx, runCtx, &s.wg, o, token, eng, store, s.log)
 	if err != nil {
 		return s, err
 	}
@@ -226,7 +241,10 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 		return s, err
 	}
 	sock := filepath.Join(dir, AppSocketName)
-	if s.app, err = startAppServer(o.CodexBin, sock, port, s.env); err != nil {
+	// Only the app-server calls the proxy; the TUI child talks to it over
+	// the socket and never gets the token.
+	appEnv := append(slices.Clone(s.env), EnvToken+"="+token)
+	if s.app, err = startAppServer(o.CodexBin, sock, port, appEnv); err != nil {
 		return s, err
 	}
 	if s.api, err = dialAppServer(ctx, sock, s.app.done); err != nil {

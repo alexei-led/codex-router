@@ -77,17 +77,20 @@ func TestProxyServesHealthAndPrintsProviderFlags(t *testing.T) {
 
 	lines := bufio.NewScanner(out)
 	var printed []string
-	for len(printed) < 3 && lines.Scan() {
+	for len(printed) < 4 && lines.Scan() {
 		printed = append(printed, lines.Text())
 	}
 	go func() { _, _ = io.Copy(io.Discard, out) }()
-	if len(printed) < 3 {
-		t.Fatalf("printed %q, want a listen line and two -c lines", printed)
+	if len(printed) < 4 {
+		t.Fatalf("printed %q, want a listen line, two -c lines and the no-token warning", printed)
 	}
 	addr := strings.TrimPrefix(strings.Split(printed[0], ";")[0], "proxy listening on ")
 	if !strings.Contains(printed[1], "-c 'model_provider=router'") ||
 		!strings.Contains(printed[2], `base_url="http://`+addr+`/v1"`) {
 		t.Errorf("provider flags = %q", printed[1:])
+	}
+	if !strings.Contains(printed[3], "no token") {
+		t.Errorf("warning = %q, want it to say the proxy checks no token", printed[3])
 	}
 
 	client := &http.Client{Timeout: 2 * time.Second}

@@ -178,6 +178,7 @@ func (s *Server) roundTrip(w http.ResponseWriter, r *http.Request, suffix string
 	out.ContentLength = int64(len(body))
 	out.Header = withoutHop(r.Header)
 	out.Header.Del("Content-Length")
+	out.Header.Del(HeaderToken)
 	// The tee and catalog parse need plain bytes; see upstreamClient.
 	out.Header.Del("Accept-Encoding")
 
