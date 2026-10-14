@@ -12,6 +12,17 @@ import (
 	"github.com/alexei-led/codex-router/internal/responses"
 )
 
+// Snapshot returns the most recently active thread's snapshot, for tests
+// that drive one thread.
+func (e *Engine) Snapshot() Snapshot {
+	s := func() Snapshot {
+		e.mu.Lock()
+		defer e.mu.Unlock()
+		return e.snapshot(e.latest(), e.now())
+	}()
+	return e.withHealth(s)
+}
+
 func scored(choice config.Tier, probs map[config.Tier]float64) classifier.Advice {
 	a := classifier.Advice{Choice: classifier.Choice(choice), Probabilities: map[classifier.Choice]float64{}}
 	for t, p := range probs {

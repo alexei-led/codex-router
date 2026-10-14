@@ -20,6 +20,8 @@ import (
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/proxy"
+	"github.com/alexei-led/codex-router/internal/registry"
+	"github.com/alexei-led/codex-router/internal/route"
 )
 
 // Names inside the runtime dir and the provider the app-server is started with.
@@ -189,6 +191,15 @@ func Fallback(o Options, reason error) error {
 	return nil
 }
 
+// endpoint is the engine as the control socket serves it. The runtime id
+// names the endpoint.
+type endpoint struct {
+	*route.Engine
+	hello control.Hello
+}
+
+func (e endpoint) Hello() control.Hello { return e.hello }
+
 // session is one started router: everything but the codex TUI child.
 type session struct {
 	o       Options
@@ -223,10 +234,11 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 	s.cancel = cancel
 	w := newSettingsWriter(s.log)
 	snk := &sink{writer: w}
-	eng, store := newRouter(o, s.log, snk)
+	eng, store, h := newRouter(o, s.log, snk)
 
 	ctlPath := filepath.Join(dir, control.SocketName)
-	if s.ctl, err = control.Listen(ctlPath, eng); err != nil {
+	hello := control.Hello{EndpointID: id, Kind: registry.KindSession, Home: h}
+	if s.ctl, err = control.Listen(ctlPath, endpoint{eng, hello}); err != nil {
 		return s, err
 	}
 	snk.ctl.Store(s.ctl)

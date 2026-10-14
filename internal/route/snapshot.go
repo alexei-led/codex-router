@@ -88,17 +88,6 @@ func (t *tally) push(tier config.Tier) {
 	t.RepliesPerCell *= 2
 }
 
-// Snapshot returns the most recently active thread's snapshot: control v1
-// shows one session at a time.
-func (e *Engine) Snapshot() Snapshot {
-	s := func() Snapshot {
-		e.mu.Lock()
-		defer e.mu.Unlock()
-		return e.snapshot(e.latest(), e.now())
-	}()
-	return e.withHealth(s)
-}
-
 // SnapshotFor returns one thread's snapshot; an unknown thread gets the
 // home's state with no thread data.
 func (e *Engine) SnapshotFor(threadID string) Snapshot {

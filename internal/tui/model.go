@@ -20,7 +20,9 @@ const (
 
 // conn is the part of control.Client the panel uses.
 type conn interface {
-	Updates() <-chan route.Snapshot
+	Snapshots() <-chan route.Snapshot
+	Sessions() <-chan []route.SessionInfo
+	Subscribe(session string) error
 	Send(route.Command) error
 	Close() error
 }
@@ -30,8 +32,12 @@ type (
 		c   conn
 		err error
 	}
-	redialMsg struct{}
-	snapMsg   route.Snapshot
+	redialMsg   struct{}
+	snapMsg     route.Snapshot
+	sessionsMsg struct {
+		items []route.SessionInfo
+		gen   int
+	}
 	closedMsg struct{ gen int }
 	beatMsg   struct{ gen int }
 	sentMsg   struct {
@@ -44,6 +50,7 @@ type model struct {
 	socket       string
 	dial         func(string) (conn, error)
 	c            conn
+	session      string // subscribed session id
 	snap         route.Snapshot
 	disconnected bool
 	tab          Tab
@@ -68,11 +75,21 @@ func (m *model) dialCmd() tea.Cmd {
 
 func waitCmd(c conn, gen int) tea.Cmd {
 	return func() tea.Msg {
-		s, ok := <-c.Updates()
+		s, ok := <-c.Snapshots()
 		if !ok {
 			return closedMsg{gen}
 		}
 		return snapMsg(s)
+	}
+}
+
+func waitSessionsCmd(c conn, gen int) tea.Cmd {
+	return func() tea.Msg {
+		items, ok := <-c.Sessions()
+		if !ok {
+			return closedMsg{gen}
+		}
+		return sessionsMsg{items, gen}
 	}
 }
 
@@ -98,6 +115,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.snap, m.disconnected, m.notice = route.Snapshot(msg), false, ""
 		return m, waitCmd(m.c, m.gen)
+	case sessionsMsg:
+		if m.c == nil || msg.gen != m.gen {
+			return m, nil
+		}
+		return m, tea.Batch(waitSessionsCmd(m.c, m.gen), m.follow(msg.items))
 	case closedMsg:
 		if msg.gen != m.gen {
 			return m, nil
@@ -123,9 +145,21 @@ func (m *model) dialed(msg dialedMsg) tea.Cmd {
 		m.backoff = min(m.backoff*2, redialMax)
 		return tea.Tick(wait, func(time.Time) tea.Msg { return redialMsg{} })
 	}
-	m.c, m.backoff = msg.c, redialMin
+	m.c, m.backoff, m.session = msg.c, redialMin, ""
 	m.gen++
-	return tea.Batch(waitCmd(m.c, m.gen), beatCmd(m.gen), sendCmd(m.c, m.gen, route.Command{Op: route.OpSnapshot}))
+	return tea.Batch(waitCmd(m.c, m.gen), waitSessionsCmd(m.c, m.gen), beatCmd(m.gen),
+		sendCmd(m.c, m.gen, route.Command{Op: route.OpSnapshot}))
+}
+
+// follow subscribes to the most recently active session, the first in the
+// list: the panel shows one session.
+func (m *model) follow(items []route.SessionInfo) tea.Cmd {
+	if len(items) == 0 || items[0].ID == m.session {
+		return nil
+	}
+	c, gen, session := m.c, m.gen, items[0].ID
+	m.session = session
+	return func() tea.Msg { return sentMsg{c.Subscribe(session), gen} }
 }
 
 // lost drops the connection and redials through m.dial, which may locate a
@@ -171,7 +205,7 @@ func (m *model) key(k tea.KeyMsg) tea.Cmd {
 	case "shift+tab":
 		m.tab = Tabs[(m.tabIndex()+len(Tabs)-1)%len(Tabs)]
 	case "p":
-		return m.command(pinCycle(m.snap.ThreadID, m.snap.Pin))
+		return m.command(pinCycle(m.session, m.snap.Pin))
 	case " ":
 		return m.command(toggleCommand(m.snap.Mode))
 	case "c":
@@ -199,17 +233,17 @@ func (m *model) command(cmd route.Command) tea.Cmd {
 	return sendCmd(m.c, m.gen, cmd)
 }
 
-// pinCycle walks thread's pin through none, high, medium, low, micro, none.
-func pinCycle(thread string, cur *config.Tier) route.Command {
+// pinCycle walks session's pin through none, high, medium, low, micro, none.
+func pinCycle(session string, cur *config.Tier) route.Command {
 	if cur == nil {
-		return route.Command{Op: route.OpPin, Session: thread, Tier: tierOrder[0]}
+		return route.Command{Op: route.OpPin, Session: session, Tier: tierOrder[0]}
 	}
 	for i, t := range tierOrder {
 		if t == *cur && i+1 < len(tierOrder) {
-			return route.Command{Op: route.OpPin, Session: thread, Tier: tierOrder[i+1]}
+			return route.Command{Op: route.OpPin, Session: session, Tier: tierOrder[i+1]}
 		}
 	}
-	return route.Command{Op: route.OpUnpin, Session: thread}
+	return route.Command{Op: route.OpUnpin, Session: session}
 }
 
 func toggleCommand(mode route.Mode) route.Command {

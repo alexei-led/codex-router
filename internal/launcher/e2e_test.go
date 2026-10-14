@@ -157,6 +157,9 @@ func newE2E(t *testing.T) *e2e {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = e.ctl.Close() })
+	if err := e.ctl.Subscribe(control.SessionID(e.ctl.Hello().Home.ID, fakeThread)); err != nil {
+		t.Fatal(err)
+	}
 	return e
 }
 
@@ -231,7 +234,7 @@ func (e *e2e) snapshot(t *testing.T) route.Snapshot {
 	var snap route.Snapshot
 	for {
 		select {
-		case snap = <-e.ctl.Updates():
+		case snap = <-e.ctl.Snapshots():
 		default:
 			return snap
 		}

@@ -2,6 +2,7 @@ package control
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,31 +15,50 @@ import (
 	"github.com/alexei-led/codex-router/internal/route"
 )
 
-var knownOps = map[route.Op]bool{
+var commandOps = map[route.Op]bool{
 	route.OpPin: true, route.OpUnpin: true, route.OpPause: true,
-	route.OpResume: true, route.OpPreset: true, route.OpSnapshot: true,
+	route.OpResume: true, route.OpPreset: true,
 }
 
-// Server is the control socket. It pushes snapshots to every client and
-// applies their commands through the Handler.
+// Server is the control socket. After a client's hello it pushes the
+// sessions list on change and the snapshots of the one session the client
+// subscribed to, and applies commands through the Handler. One publisher
+// goroutine computes pushes; each client has its own writer, so a slow
+// client delays only itself.
 type Server struct {
-	path string
-	h    Handler
-	ln   net.Listener
+	path  string
+	h     Handler
+	hello Hello
+	ln    net.Listener
+	wake  chan struct{}
+	done  chan struct{}
+	wg    sync.WaitGroup
 
 	mu      sync.Mutex
-	latest  *route.Snapshot
 	clients map[*serverConn]struct{}
+	pending map[string]route.Snapshot // published snapshots of subscribed threads
+	all     bool                      // every subscription needs a fresh snapshot
 	closed  bool
-	wg      sync.WaitGroup
+
+	// Owned by the publisher goroutine.
+	listSeq  uint64
+	listLast []byte
 }
 
+// serverConn is one client. Fields below once are guarded by Server.mu.
 type serverConn struct {
 	conn   net.Conn
 	wmu    sync.Mutex
 	notify chan struct{}
 	done   chan struct{}
 	once   sync.Once
+
+	ready   bool   // hello done
+	session string // subscribed session id, "" for none
+	thread  string // its thread id
+	listSeq uint64 // newest sessions list queued
+	outList *Message
+	outSnap *Message
 }
 
 // Listen binds the socket at path with mode 0600, removing a stale socket
@@ -64,9 +84,13 @@ func Listen(path string, h Handler) (*Server, error) {
 		_ = ln.Close()
 		return nil, fmt.Errorf("chmod control socket: %w", err)
 	}
-	s := &Server{path: path, h: h, ln: ln, clients: map[*serverConn]struct{}{}}
-	s.wg.Add(1)
-	go s.accept()
+	s := &Server{
+		path: path, h: h, hello: h.Hello(), ln: ln,
+		wake: make(chan struct{}, 1), done: make(chan struct{}),
+		clients: map[*serverConn]struct{}{}, pending: map[string]route.Snapshot{},
+	}
+	s.wg.Go(s.accept)
+	s.wg.Go(s.publish)
 	return s, nil
 }
 
@@ -99,21 +123,34 @@ func removeStale(path string) error {
 	return nil
 }
 
-// Publish records the latest snapshot and wakes every client. Bursts
-// coalesce: a client gets the newest snapshot at most once per PublishInterval.
-// A snapshot older than the one held lost a publish race and is dropped.
+// Publish records a changed thread's snapshot for its subscribers and
+// schedules a sessions list check. Bursts coalesce: a client gets the newest
+// state at most once per PublishInterval. A snapshot older than the one held
+// lost a publish race and is dropped.
 func (s *Server) Publish(snap route.Snapshot) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.latest != nil && snap.Seq < s.latest.Seq {
-		return
-	}
-	s.latest = &snap
-	for c := range s.clients {
-		select {
-		case c.notify <- struct{}{}:
-		default:
+	if snap.ThreadID != "" && s.subscribed(snap.ThreadID) {
+		if old, ok := s.pending[snap.ThreadID]; !ok || snap.Seq >= old.Seq {
+			s.pending[snap.ThreadID] = snap
 		}
+	}
+	s.mu.Unlock()
+	s.poke()
+}
+
+func (s *Server) subscribed(thread string) bool {
+	for c := range s.clients {
+		if c.thread == thread {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) poke() {
+	select {
+	case s.wake <- struct{}{}:
+	default:
 	}
 }
 
@@ -125,6 +162,7 @@ func (s *Server) Close() error {
 		return nil
 	}
 	s.closed = true
+	close(s.done)
 	clients := make([]*serverConn, 0, len(s.clients))
 	for c := range s.clients {
 		clients = append(clients, c)
@@ -140,7 +178,6 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) accept() {
-	defer s.wg.Done()
 	for {
 		conn, err := s.ln.Accept()
 		if err != nil {
@@ -168,21 +205,126 @@ func (s *Server) serve(c *serverConn) {
 		delete(s.clients, c)
 		s.mu.Unlock()
 	}()
-	snap := s.h.Snapshot()
-	if c.write(Message{Type: MessageSnapshot, Snapshot: &snap}) != nil {
+	sc := bufio.NewScanner(c.conn)
+	sc.Buffer(make([]byte, 0, 64<<10), maxLine)
+	_ = c.conn.SetReadDeadline(time.Now().Add(helloTimeout))
+	if !sc.Scan() {
+		return
+	}
+	if err := greet(sc.Bytes()); err != nil {
+		_ = c.write(Message{Type: MessageError, Error: err.Error()})
+		return
+	}
+	_ = c.conn.SetReadDeadline(time.Time{})
+	hello := s.hello
+	if c.write(Message{Type: MessageHello, Hello: &hello}) != nil {
 		return
 	}
 	go s.push(c)
+	s.mu.Lock()
+	c.ready = true
+	s.mu.Unlock()
+	s.poke() // the first sessions list
 
-	sc := bufio.NewScanner(c.conn)
-	sc.Buffer(make([]byte, 0, 64<<10), maxLine)
 	for sc.Scan() {
-		if c.write(s.handle(sc.Bytes())...) != nil {
+		if c.write(s.handle(c, sc.Bytes())...) != nil {
 			return
 		}
 	}
 }
 
+// greet checks a connection's first line: a hello naming this Protocol.
+func greet(line []byte) error {
+	var r Request
+	if json.Unmarshal(line, &r) != nil || r.Op != OpHello {
+		return errors.New("expected hello")
+	}
+	if r.Protocol != Protocol {
+		return fmt.Errorf("unsupported protocol %d, want %d", r.Protocol, Protocol)
+	}
+	return nil
+}
+
+// publish runs flush on every wake, at most once per PublishInterval.
+func (s *Server) publish() {
+	for {
+		select {
+		case <-s.wake:
+		case <-s.done:
+			return
+		}
+		s.flush()
+		select {
+		case <-time.After(PublishInterval):
+		case <-s.done:
+			return
+		}
+	}
+}
+
+// flush queues on every ready client the sessions list when it changed
+// since the client's last one, and its session's snapshot when that thread
+// changed. A queued message replaces an unsent one of the same kind.
+func (s *Server) flush() {
+	s.mu.Lock()
+	snaps, all := s.pending, s.all
+	s.pending, s.all = map[string]route.Snapshot{}, false
+	var threads []string
+	ready := false
+	for c := range s.clients {
+		ready = ready || c.ready
+		if all && c.ready && c.thread != "" {
+			threads = append(threads, c.thread)
+		}
+	}
+	s.mu.Unlock()
+	if !ready {
+		return
+	}
+	fresh := map[string]bool{}
+	for _, th := range threads {
+		if !fresh[th] {
+			fresh[th] = true
+			snaps[th] = s.h.SnapshotFor(th)
+		}
+	}
+	list := s.list()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for c := range s.clients {
+		if !c.ready {
+			continue
+		}
+		queued := false
+		if c.listSeq < list.Seq {
+			m := list
+			c.outList, c.listSeq, queued = &m, list.Seq, true
+		}
+		if snap, ok := snaps[c.thread]; ok && c.thread != "" {
+			c.outSnap, queued = &Message{Type: MessageSnapshot, Session: c.session, Snapshot: &snap}, true
+		}
+		if queued {
+			select {
+			case c.notify <- struct{}{}:
+			default:
+			}
+		}
+	}
+}
+
+// list returns the sessions list; Seq moves only when the list changed.
+func (s *Server) list() Message {
+	items := s.h.Sessions()
+	b, err := json.Marshal(items)
+	if err != nil || !bytes.Equal(b, s.listLast) {
+		s.listSeq++
+		s.listLast = b
+	}
+	return Message{Type: MessageSessions, Seq: s.listSeq, Items: items}
+}
+
+// push writes c's queued messages. A failed write drops the client.
 func (s *Server) push(c *serverConn) {
 	for {
 		select {
@@ -191,37 +333,89 @@ func (s *Server) push(c *serverConn) {
 			return
 		}
 		s.mu.Lock()
-		snap := *s.latest
-		s.mu.Unlock()
-		if c.write(Message{Type: MessageSnapshot, Snapshot: &snap}) != nil {
-			c.close()
-			return
+		var msgs []Message
+		if c.outList != nil {
+			msgs = append(msgs, *c.outList)
 		}
-		select {
-		case <-time.After(PublishInterval):
-		case <-c.done:
+		if c.outSnap != nil {
+			msgs = append(msgs, *c.outSnap)
+		}
+		c.outList, c.outSnap = nil, nil
+		s.mu.Unlock()
+		if c.write(msgs...) != nil {
+			c.close()
 			return
 		}
 	}
 }
 
-func (s *Server) handle(line []byte) []Message {
-	var cmd route.Command
-	if err := json.Unmarshal(line, &cmd); err != nil {
+func (s *Server) handle(c *serverConn, line []byte) []Message {
+	var r Request
+	if err := json.Unmarshal(line, &r); err != nil {
 		return []Message{{Type: MessageError, Error: "malformed command"}}
 	}
-	if !knownOps[cmd.Op] {
-		return []Message{{Type: MessageError, Error: fmt.Sprintf("unknown op %q", cmd.Op)}}
+	switch {
+	case r.Op == OpSubscribe:
+		return s.subscribe(c, r)
+	case r.Op == route.OpSnapshot:
+		s.mu.Lock()
+		session, thread := c.session, c.thread
+		s.mu.Unlock()
+		if thread == "" {
+			return []Message{ack(r.ID)}
+		}
+		return []Message{s.snapshot(session, thread), ack(r.ID)}
+	case !commandOps[r.Op]:
+		return []Message{fail(r.ID, fmt.Sprintf("unknown op %q", r.Op))}
 	}
-	if cmd.Op == route.OpSnapshot {
-		snap := s.h.Snapshot()
-		return []Message{{Type: MessageSnapshot, Snapshot: &snap}, {Type: MessageAck}}
+	cmd := r.Command
+	if cmd.Session != "" {
+		thread, ok := splitSession(s.hello.Home.ID, cmd.Session)
+		if !ok {
+			return []Message{fail(r.ID, fmt.Sprintf("unknown session %q", cmd.Session))}
+		}
+		cmd.Session = thread
 	}
 	if err := s.h.Apply(cmd); err != nil {
-		return []Message{{Type: MessageError, Error: err.Error()}}
+		return []Message{fail(r.ID, err.Error())}
 	}
-	return []Message{{Type: MessageAck}}
+	// A home-scoped command changes every session; commands are rare, so
+	// refresh every subscription after any.
+	s.mu.Lock()
+	s.all = true
+	s.mu.Unlock()
+	s.poke()
+	return []Message{ack(r.ID)}
 }
+
+// subscribe switches c to one session ("" for none) and answers with that
+// session's snapshot before the ack. A snapshot of the old session still
+// queued may follow; it carries the old session id.
+func (s *Server) subscribe(c *serverConn, r Request) []Message {
+	var thread string
+	if r.Session != "" {
+		var ok bool
+		if thread, ok = splitSession(s.hello.Home.ID, r.Session); !ok {
+			return []Message{fail(r.ID, fmt.Sprintf("unknown session %q", r.Session))}
+		}
+	}
+	s.mu.Lock()
+	c.session, c.thread, c.outSnap = r.Session, thread, nil
+	s.mu.Unlock()
+	if thread == "" {
+		return []Message{ack(r.ID)}
+	}
+	return []Message{s.snapshot(r.Session, thread), ack(r.ID)}
+}
+
+func (s *Server) snapshot(session, thread string) Message {
+	snap := s.h.SnapshotFor(thread)
+	return Message{Type: MessageSnapshot, Session: session, Snapshot: &snap}
+}
+
+func ack(id string) Message { return Message{Type: MessageAck, ID: id} }
+
+func fail(id, err string) Message { return Message{Type: MessageError, ID: id, Error: err} }
 
 func (c *serverConn) write(msgs ...Message) error {
 	c.wmu.Lock()
