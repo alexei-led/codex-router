@@ -779,22 +779,30 @@ func (e *Engine) thread(key string) *thread {
 	return e.add(key)
 }
 
-// add creates the thread for key under e.mu.
+// add creates the thread for key under e.mu. Past MaxThreads it evicts the
+// least recently used thread that carries no intent: a pause, pin or manual
+// hold is the user's word and outlives the bound, so the count can exceed
+// MaxThreads by the threads with intent.
 func (e *Engine) add(key string) *thread {
 	th := &thread{id: key, stats: newTally()}
 	e.threads[key] = e.lru.PushFront(th)
-	for e.lru.Len() > MaxThreads {
-		el := e.lru.Back()
-		old := el.Value.(*thread)
-		e.lru.Remove(el)
-		delete(e.threads, old.id)
-		e.ledger.Forget(old.id)
-		if old.review != nil {
-			old.review.cancel()
+	for el := e.lru.Back(); el != nil && e.lru.Len() > MaxThreads; {
+		prev := el.Prev()
+		if old := el.Value.(*thread); old != th && !old.hasIntent() {
+			e.lru.Remove(el)
+			delete(e.threads, old.id)
+			e.ledger.Forget(old.id)
+			if old.review != nil {
+				old.review.cancel()
+			}
 		}
+		el = prev
 	}
 	return th
 }
+
+// hasIntent says the thread holds a pause, a pin or a manual hold.
+func (th *thread) hasIntent() bool { return th.paused || th.manual || th.pin != nil }
 
 func (e *Engine) lookup(key string) *thread {
 	if el, ok := e.threads[key]; ok {

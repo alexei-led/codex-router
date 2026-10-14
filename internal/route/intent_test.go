@@ -1,6 +1,7 @@
 package route
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 	"testing"
@@ -399,5 +400,68 @@ func TestPinEndsASeededHold(t *testing.T) {
 	wantRoute(t, rw, ok, high)
 	if s := h.session("a"); s.Attention != "" {
 		t.Fatalf("attention = %q after a pinned turn", s.Attention)
+	}
+}
+
+func TestEvictionKeepsThreadIntent(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(h *harness)
+		want  ThreadIntent
+	}{
+		{"pause", func(h *harness) { h.apply(Command{Op: OpPause, Session: "a"}) }, ThreadIntent{Paused: true}},
+		{"pin", func(h *harness) { h.apply(Command{Op: OpPin, Session: "a", Tier: config.TierHigh}) }, ThreadIntent{Pin: tierPtr(config.TierHigh)}},
+		{"manual hold", func(h *harness) {
+			h.asker.script(answer(tier("low", 0.97)))
+			h.firstStep("a", "a1")
+			h.engine.SettingsUpdated("a", config.Route{Model: "gpt-6-sol", Effort: config.EffortLow})
+		}, ThreadIntent{Manual: true}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t, testConfig())
+			tc.setup(h)
+			for i := range MaxThreads {
+				h.asker.script(answer(tier("low", 0.97)))
+				h.firstStep(fmt.Sprint("other", i), "turn")
+			}
+
+			if got := h.engine.Intent().Threads["a"]; !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("intent of a after %d other threads = %+v, want %+v", MaxThreads, got, tc.want)
+			}
+			if tc.name == "pause" {
+				rw, ok := h.firstStep("a", "a2")
+				wantUnchanged(t, rw, ok)
+			}
+		})
+	}
+}
+
+func TestEvictionDropsTheOldestThreadWithoutIntent(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.apply(Command{Op: OpPause, Session: "a"})
+	for i := range MaxThreads + 1 {
+		h.asker.script(answer(tier("low", 0.97)))
+		h.firstStep(fmt.Sprint("other", i), "turn")
+	}
+
+	if h.engine.SnapshotFor("other0").Last != nil {
+		t.Error("the oldest thread without intent was kept")
+	}
+	if _, ok := h.engine.Intent().Threads["a"]; !ok {
+		t.Error("a paused thread was evicted")
+	}
+}
+
+func TestRestoreKeepsEveryIntentThread(t *testing.T) {
+	in := Intent{Threads: map[string]ThreadIntent{}}
+	for i := range MaxThreads + 10 {
+		in.Threads[fmt.Sprint("t", i)] = ThreadIntent{Paused: true}
+	}
+
+	h := newHarness(t, testConfig(), func(d *Deps) { d.Intent = in })
+
+	if got := len(h.engine.Intent().Threads); got != len(in.Threads) {
+		t.Fatalf("restored %d intent threads, want %d", got, len(in.Threads))
 	}
 }

@@ -43,7 +43,7 @@ func (e *Engine) intent() Intent {
 	e.intentRev++
 	in := Intent{Rev: e.intentRev, Paused: e.paused, Preset: e.cfg.Preset}
 	for _, th := range e.all() {
-		if !th.paused && !th.manual && th.pin == nil {
+		if !th.hasIntent() {
 			continue
 		}
 		ti := ThreadIntent{Paused: th.paused, Manual: th.manual}
