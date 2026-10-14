@@ -64,7 +64,7 @@ func TestDecisionCarriesTheClassifierReading(t *testing.T) {
 func TestReadingWithoutAnAnswer(t *testing.T) {
 	t.Run("pinned turn", func(t *testing.T) {
 		h := newHarness(t, testConfig())
-		if err := h.engine.Apply(Command{Op: OpPin, Tier: config.TierHigh}); err != nil {
+		if err := h.engine.Apply(Command{Op: OpPin, Session: "th", Tier: config.TierHigh}); err != nil {
 			t.Fatal(err)
 		}
 		h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))

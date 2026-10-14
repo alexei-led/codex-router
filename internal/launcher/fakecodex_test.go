@@ -220,7 +220,7 @@ func driveTurn(rt string) error {
 		return err
 	}
 	defer func() { _ = ctl.Close() }()
-	if err := ctl.Send(route.Command{Op: route.OpPin, Tier: config.TierLow}); err != nil {
+	if err := ctl.Send(route.Command{Op: route.OpPin, Session: fakeThread, Tier: config.TierLow}); err != nil {
 		return err
 	}
 	port, err := os.ReadFile(filepath.Join(rt, PortFileName))

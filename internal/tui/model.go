@@ -171,7 +171,7 @@ func (m *model) key(k tea.KeyMsg) tea.Cmd {
 	case "shift+tab":
 		m.tab = Tabs[(m.tabIndex()+len(Tabs)-1)%len(Tabs)]
 	case "p":
-		return m.command(pinCycle(m.snap.Pin))
+		return m.command(pinCycle(m.snap.ThreadID, m.snap.Pin))
 	case " ":
 		return m.command(toggleCommand(m.snap.Mode))
 	case "c":
@@ -199,17 +199,17 @@ func (m *model) command(cmd route.Command) tea.Cmd {
 	return sendCmd(m.c, m.gen, cmd)
 }
 
-// pinCycle walks none, high, medium, low, micro, none.
-func pinCycle(cur *config.Tier) route.Command {
+// pinCycle walks thread's pin through none, high, medium, low, micro, none.
+func pinCycle(thread string, cur *config.Tier) route.Command {
 	if cur == nil {
-		return route.Command{Op: route.OpPin, Tier: tierOrder[0]}
+		return route.Command{Op: route.OpPin, Session: thread, Tier: tierOrder[0]}
 	}
 	for i, t := range tierOrder {
 		if t == *cur && i+1 < len(tierOrder) {
-			return route.Command{Op: route.OpPin, Tier: tierOrder[i+1]}
+			return route.Command{Op: route.OpPin, Session: thread, Tier: tierOrder[i+1]}
 		}
 	}
-	return route.Command{Op: route.OpUnpin}
+	return route.Command{Op: route.OpUnpin, Session: thread}
 }
 
 func toggleCommand(mode route.Mode) route.Command {

@@ -7,6 +7,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/policy"
 )
 
@@ -31,11 +32,31 @@ const (
 	OpSnapshot Op = "snapshot"
 )
 
-// Command is what the TUI or hook asks the engine to do.
+// Scope says what a command acts on: one session (thread) or the whole home
+// (every thread of this engine).
+type Scope string
+
+const (
+	ScopeSession Scope = "session"
+	ScopeHome    Scope = "home"
+)
+
+// Command is what the TUI or hook asks the engine to do. Session is a thread
+// id. Pin and unpin act on a session; preset on the home; pause and resume on
+// either. An empty Scope means the session when Session is set, else the
+// home. ID is the caller's, for matching the reply.
 type Command struct {
-	Op     Op            `json:"op"`
-	Tier   config.Tier   `json:"tier,omitempty"`
-	Preset config.Preset `json:"preset,omitempty"`
+	Op      Op            `json:"op"`
+	Session string        `json:"session,omitempty"`
+	Scope   Scope         `json:"scope,omitempty"`
+	ID      string        `json:"id,omitempty"`
+	Tier    config.Tier   `json:"tier,omitempty"`
+	Preset  config.Preset `json:"preset,omitempty"`
+}
+
+// home reports whether c acts on the whole home.
+func (c Command) home() bool {
+	return c.Scope == ScopeHome || c.Scope == "" && c.Session == ""
 }
 
 // Decision is one per-request outcome.
@@ -121,11 +142,13 @@ type Finding struct {
 	Text string
 }
 
-// Snapshot is the full state the control socket publishes and the TUI renders.
+// Snapshot is one thread's full state, as the control socket publishes it
+// and the TUI renders it. ThreadID is empty when no thread is known.
 type Snapshot struct {
 	// Seq orders snapshots: they are taken under the engine lock but
 	// published after it, so a consumer drops one older than it holds.
 	Seq              uint64
+	ThreadID         string
 	At               time.Time
 	Mode             Mode
 	Preset           config.Preset
@@ -159,7 +182,8 @@ type Sink interface {
 	OnSnapshot(s Snapshot)
 }
 
-// Deps are the engine's boundaries.
+// Deps are the engine's boundaries. Home names the Codex home the engine
+// routes for; Cwd gives a thread's working directory (nil: unknown).
 type Deps struct {
 	Config     config.Config
 	Catalog    catalog.Source
@@ -167,11 +191,15 @@ type Deps struct {
 	Now        func() time.Time
 	Sink       Sink
 	Logger     *slog.Logger
+	Home       home.Home
+	Cwd        func(threadID string) string
 }
 
-// Bounds on remembered state.
+// Bounds on remembered state. RecentKept and StripCells are per thread.
 const (
 	MaxThreads = 256
 	RecentKept = 64
 	StripCells = 48
+	// SessionStrip is how many recent reply tiers a SessionInfo carries.
+	SessionStrip = 24
 )

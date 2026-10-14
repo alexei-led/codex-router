@@ -160,7 +160,7 @@ type harness struct {
 
 func testConfig() config.Config { return config.Default() }
 
-func newHarness(t *testing.T, cfg config.Config) *harness {
+func newHarness(t *testing.T, cfg config.Config, opts ...func(*Deps)) *harness {
 	t.Helper()
 	cat, err := catalog.Parse([]byte(testCatalog))
 	if err != nil {
@@ -172,10 +172,14 @@ func newHarness(t *testing.T, cfg config.Config) *harness {
 		t: t, asker: &fakeAsker{}, sink: &recordingSink{}, logs: &bytes.Buffer{}, cat: store,
 		clock: &clock{t: time.Date(2026, 10, 13, 18, 0, 0, 0, time.UTC)},
 	}
-	h.engine = New(Deps{
+	d := Deps{
 		Config: cfg, Catalog: store, Classifier: h.asker, Now: h.clock.Now, Sink: h.sink,
 		Logger: slog.New(slog.NewTextHandler(h.logs, nil)),
-	})
+	}
+	for _, o := range opts {
+		o(&d)
+	}
+	h.engine = New(d)
 	h.sink.engine = h.engine
 	t.Cleanup(func() {
 		h.engine.reviews.Wait()
@@ -526,7 +530,7 @@ func TestPauseForwardsUnchangedAndRestoresTheFooter(t *testing.T) {
 func TestPinNextTurnIsConsumedOnce(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("medium", 0.99)))
-	if err := h.engine.Apply(Command{Op: OpPin, Tier: config.TierHigh}); err != nil {
+	if err := h.engine.Apply(Command{Op: OpPin, Session: "th", Tier: config.TierHigh}); err != nil {
 		t.Fatal(err)
 	}
 	m := meta("th", "t1")
@@ -553,8 +557,8 @@ func TestPinNextTurnIsConsumedOnce(t *testing.T) {
 func TestUnpinClearsThePin(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("medium", 0.99)))
-	_ = h.engine.Apply(Command{Op: OpPin, Tier: config.TierHigh})
-	_ = h.engine.Apply(Command{Op: OpUnpin})
+	_ = h.engine.Apply(Command{Op: OpPin, Session: "th", Tier: config.TierHigh})
+	_ = h.engine.Apply(Command{Op: OpUnpin, Session: "th"})
 
 	rw, ok := h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
 
@@ -619,7 +623,7 @@ func TestEscalationOnRepeatedFailureInsideATurn(t *testing.T) {
 func TestFixedFailureFromAPinnedTurnDoesNotEscalateTheNextTurn(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("low", 0.99)))
-	if err := h.engine.Apply(Command{Op: OpPin, Tier: config.TierLow}); err != nil {
+	if err := h.engine.Apply(Command{Op: OpPin, Session: "th", Tier: config.TierLow}); err != nil {
 		t.Fatal(err)
 	}
 	m := meta("th", "t1")
@@ -1020,8 +1024,16 @@ func TestConcurrentThreads(t *testing.T) {
 		})
 	}
 	wg.Wait()
-	if got := h.engine.Snapshot().Stats.Replies; got != 16 {
-		t.Fatalf("replies = %d, want 16", got)
+	sessions := h.engine.Sessions()
+	total := 0
+	for _, s := range sessions {
+		if s.Replies != 1 {
+			t.Errorf("%s replies = %d, want 1", s.ThreadID, s.Replies)
+		}
+		total += s.Replies
+	}
+	if len(sessions) != 16 || total != 16 {
+		t.Fatalf("sessions = %d, replies = %d; want 16 and 16", len(sessions), total)
 	}
 }
 
@@ -1102,7 +1114,7 @@ func TestControlPathPanicsFailOpen(t *testing.T) {
 	h.decide(req(medium, userMsg(secretPrompt)), m)
 
 	h.clock.Break(true)
-	if err := h.engine.Apply(Command{Op: OpUnpin}); err == nil {
+	if err := h.engine.Apply(Command{Op: OpUnpin, Session: "th"}); err == nil {
 		t.Fatal("Apply hid a panic")
 	}
 	h.engine.SettingsUpdated("th", config.Route{Model: "gpt-6-sol", Effort: config.EffortLow})

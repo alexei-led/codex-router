@@ -17,6 +17,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/cost"
 	"github.com/alexei-led/codex-router/internal/facts"
+	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/policy"
 	"github.com/alexei-led/codex-router/internal/responses"
 )
@@ -45,7 +46,9 @@ var (
 )
 
 // Engine routes user steps. All state lives under mu; step serializes the
-// requests of one thread so a classifier call never runs under mu.
+// requests of one thread so a classifier call never runs under mu. Routing
+// state, tallies and decisions are per thread; paused and the preset (in
+// cfg) are the home's.
 type Engine struct {
 	cat    catalog.Source
 	ask    classifier.Asker
@@ -53,6 +56,8 @@ type Engine struct {
 	sink   Sink
 	log    *slog.Logger
 	ledger *cost.Ledger
+	home   home.Home
+	cwd    func(threadID string) string
 	// reviews counts background classifier reviews in flight.
 	reviews sync.WaitGroup
 
@@ -60,12 +65,7 @@ type Engine struct {
 	cfg     config.Config
 	threads map[string]*list.Element
 	lru     *list.List
-	focus   *thread
-	paused  bool
-	pin     *config.Tier
-	last    *Decision
-	recent  []Decision
-	stats   tally
+	paused  bool // the whole home
 	// latencies are the recent classifier answers' latencies.
 	latencies []time.Duration
 	seq       uint64 // the last snapshot's Seq
@@ -108,6 +108,13 @@ type thread struct {
 	lastWritten config.Route
 	pending     []config.Route // writes not echoed yet
 	footer      config.Route
+
+	paused     bool         // routing paused for this thread alone
+	pin        *config.Tier // the next turn's tier; its first step consumes it
+	lastActive time.Time    // the last user step or reply; zero until the first step
+	stats      tally
+	recent     []Decision
+	last       *Decision
 }
 
 // mark is where the running route started: the request count and the item
@@ -147,10 +154,11 @@ func New(d Deps) *Engine {
 		sink:    d.Sink,
 		log:     d.Logger,
 		ledger:  cost.NewLedger(cost.Cache{TTL: ms(d.Config.Cache.TTLMs), WarmMargin: ms(d.Config.Cache.WarmMarginMs)}),
+		home:    d.Home,
+		cwd:     d.Cwd,
 		cfg:     d.Config,
 		threads: map[string]*list.Element{},
 		lru:     list.New(),
-		stats:   newTally(),
 	}
 }
 
@@ -234,14 +242,14 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	cfg := e.cfg
+	now := e.now()
 	original := config.Route{Model: req.Model, Effort: req.Effort}
 	if th.native.Model == "" {
 		th.native, th.lastWritten, th.footer = original, original, original
 		th.tier, th.activity = cellForModel(cfg, original)
 	}
-	th.model = req.Model
-	e.focus = th
-	if e.paused || th.manual {
+	th.model, th.lastActive = req.Model, now
+	if e.paused || th.paused || th.manual {
 		th.awaiting = nil
 		return nil, nil, nil
 	}
@@ -280,7 +288,7 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 		return nil, nil, old
 	}
 	st := &step{
-		th: th, meta: m, req: req, fp: fp, cfg: cfg, policy: cfg.Effective(), cat: cat, now: e.now(),
+		th: th, meta: m, req: req, fp: fp, cfg: cfg, policy: cfg.Effective(), cat: cat, now: now,
 		first: first, original: original, tokens: th.lastTotal,
 		opts: facts.Options{
 			RecentTurns:  cfg.Context.RecentTurns,
@@ -289,9 +297,9 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 			VerifiedFrom: th.switchedAt.items,
 		},
 	}
-	if first && e.pin != nil {
-		p := *e.pin
-		st.pin = &p
+	if first {
+		// Consumed here, under the lock, so exactly one turn takes it.
+		st.pin, th.pin = th.pin, nil
 	}
 	return st, nil, old
 }
@@ -336,7 +344,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		d.Tier, d.Route, d.Reason = th.tier, st.original, policy.ReasonError
 		d.Why = whyText(d, st.cfg, st.tokens)
 		th.retries = appendCapped(th.retries, retry{st.fp, d}, retriesKept)
-		e.remember(d)
+		th.remember(d)
 		return d
 	}
 	var c cell
@@ -345,9 +353,6 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		state.Turn++
 		c = cell{tier: *st.pin, reason: policy.ReasonPinned, state: state}
 		th.turnPinned = true
-		if e.pin != nil && *e.pin == *st.pin {
-			e.pin = nil
-		}
 	} else {
 		c = e.choose(st, e.incumbent(st), advice, false)
 	}
@@ -473,7 +478,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	}
 	d.Rewritten = d.Route != st.original
 	if d.Reason == policy.ReasonFit {
-		e.stats.FitHeld++
+		th.stats.FitHeld++
 	}
 
 	prevTier, prev := th.tier, st.original
@@ -486,7 +491,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	if d.Route != prev {
 		tax = e.ledger.SwitchTax(th.id, d.Route.Model, st.tokens, st.now)
 		th.switchedAt = mark{requests: th.requests, items: len(st.req.Input)}
-		e.stats.switched(Switch{
+		th.stats.switched(Switch{
 			At: st.now, From: prevTier, To: d.Tier,
 			Activity: d.Activity, MidTurn: d.MidTurn,
 		}, tax)
@@ -504,7 +509,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 		th.pending = appendCapped(th.pending, d.Route, pendingWrites)
 		th.lastWritten, th.wrote = d.Route, true
 	}
-	e.remember(d)
+	th.remember(d)
 	e.log.Info("route decision", "thread", d.ThreadID, "turn", d.TurnID, "step", d.Step, "tier", d.Tier,
 		"activity", d.Activity, "reason", d.Reason, "model", d.Route.Model, "effort", d.Route.Effort, "rewritten", d.Rewritten)
 	return d
@@ -562,9 +567,9 @@ func (e *Engine) noteLatency(a *classifier.Advice) {
 	}
 }
 
-func (e *Engine) remember(d Decision) {
-	e.last = &d
-	e.recent = appendCapped(e.recent, d, RecentKept)
+func (th *thread) remember(d Decision) {
+	th.last = &d
+	th.recent = appendCapped(th.recent, d, RecentKept)
 }
 
 // thread returns the thread for key, creating it and evicting the least
@@ -576,7 +581,12 @@ func (e *Engine) thread(key string) *thread {
 		e.lru.MoveToFront(el)
 		return el.Value.(*thread)
 	}
-	th := &thread{id: key}
+	return e.add(key)
+}
+
+// add creates the thread for key under e.mu.
+func (e *Engine) add(key string) *thread {
+	th := &thread{id: key, stats: newTally()}
 	e.threads[key] = e.lru.PushFront(th)
 	for e.lru.Len() > MaxThreads {
 		el := e.lru.Back()
@@ -630,6 +640,7 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 	model := served
 	var d *Decision
 	if th != nil {
+		th.lastActive = now
 		d, th.awaiting = th.awaiting, nil
 		if d != nil && d.TurnID != m.TurnID {
 			d = nil
@@ -646,9 +657,9 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 		e.ledger.Observe(key, model, u, now)
 	}
 	if d != nil {
-		e.stats.reply(*d, u, now, e.cfg.Prices, th.native.Model)
+		th.stats.reply(*d, u, now, e.cfg.Prices, th.native.Model)
 	}
-	return e.snapshot(now)
+	return e.snapshot(th, now)
 }
 
 func (e *Engine) publish(d Decision) {
@@ -657,7 +668,7 @@ func (e *Engine) publish(d Decision) {
 			e.sink.OnDecision(d)
 		}
 	})
-	e.emitSnapshot(e.Snapshot())
+	e.emitSnapshot(e.lockedSnapshot(d.ThreadID))
 }
 
 func (e *Engine) emitSnapshot(s Snapshot) {

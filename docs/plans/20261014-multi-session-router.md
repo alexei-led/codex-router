@@ -261,13 +261,17 @@ Units: launchd `com.github.alexei-led.codex-router.<home_id>.{edge,brain}`; syst
 - Create: `internal/route/sessions.go`, `internal/route/sessions_test.go`
 - Modify: `internal/route/*_test.go` affected by `Command`/`Snapshot` changes
 
-- [ ] move the engine-wide tallies into `thread`: `stats`, `recent` decisions (bounded per thread), `last` decision; drop the global `focus` as the snapshot source (today `route/engine.go:58-68`); engine-wide totals become sums over threads
-- [ ] `Command` gains `Session` (thread id), `Scope` (`session|home`), `ID`; pause/resume with `Scope=home` keep today's engine-wide behavior; pin requires a thread; preset is home-scoped
-- [ ] thread state gains `paused` and `pin`; `Decide` honors thread pause and consumes the thread pin under the engine lock (exactly once)
-- [ ] `SnapshotFor(threadID)` returns today's snapshot for that thread; `Sessions()` returns `[]SessionInfo` (Technical Details) for main threads seen, with `last_active` and attention flags
-- [ ] `Deps.Cwd func(threadID string) string` feeds `SessionInfo.cwd` (stage 1: the launcher's cwd for all threads)
-- [ ] tests: interleaved requests from 3 threads keep separate replies, strip, last switch and recent lists (a busy thread never pushes another thread's turns out); thread pause leaves other threads routed; home pause covers all; two pins on one thread → last wins, consumed once by the next turn; pin on thread A never used by thread B; `Sessions()` order and attention flags; existing engine tests updated
-- [ ] run `make fmt lint test build`
+- [x] move the engine-wide tallies into `thread`: `stats`, `recent` decisions (bounded per thread), `last` decision; drop the global `focus` as the snapshot source (today `route/engine.go:58-68`); engine-wide totals become sums over threads
+- [x] `Command` gains `Session` (thread id), `Scope` (`session|home`), `ID`; pause/resume with `Scope=home` keep today's engine-wide behavior; pin requires a thread; preset is home-scoped
+- [x] thread state gains `paused` and `pin`; `Decide` honors thread pause and consumes the thread pin under the engine lock (exactly once)
+- [x] `SnapshotFor(threadID)` returns today's snapshot for that thread; `Sessions()` returns `[]SessionInfo` (Technical Details) for main threads seen, with `last_active` and attention flags
+- [x] `Deps.Cwd func(threadID string) string` feeds `SessionInfo.cwd` (stage 1: the launcher's cwd for all threads)
+- [x] tests: interleaved requests from 3 threads keep separate replies, strip, last switch and recent lists (a busy thread never pushes another thread's turns out); thread pause leaves other threads routed; home pause covers all; two pins on one thread → last wins, consumed once by the next turn; pin on thread A never used by thread B; `Sessions()` order and attention flags; existing engine tests updated
+- [x] ➕ `Deps.Home`: `Sessions()` fills `id` (`<home_id>/<thread_id>`), `home` and `label` (`home.Label`, outside the engine lock) itself; `Snapshot` gains `ThreadID`
+- [x] ➕ no engine-wide tally is left; home totals are sums over `Sessions()`. `Snapshot()` stays for control v1 as the most recently active thread's snapshot, until Task 5 replaces the `Handler`
+- [x] ➕ an empty `Scope` means `session` when `Session` is set, else `home`. A session command on an unseen thread creates its state, so a pin or pause set before its first step holds; `Sessions()` lists only threads with a user step. Home resume clears manual everywhere and keeps session pauses. Attention covers `paused`, `manual`, `escalation`; `unknown` and `state-lost` come with Task 18
+- [x] ➕ the v1 TUI's pin/unpin and `launcher/fakecodex_test.go` send the snapshot's thread, since the engine now rejects a pin without a session
+- [x] run `make fmt lint test build`
 
 ### Task 5: Control protocol v2
 
