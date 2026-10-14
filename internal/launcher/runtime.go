@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/alexei-led/codex-router/internal/registry"
+	"github.com/alexei-led/codex-router/internal/statedir"
 )
 
 const (
@@ -41,7 +41,7 @@ func makeRuntimeDir(base string, getenv func(string) string) (dir, id string, er
 	if err := os.MkdirAll(base, 0o700); err != nil {
 		return "", "", fmt.Errorf("runtime dir: %w", err)
 	}
-	if err := registry.CheckPrivate(base); err != nil {
+	if err := statedir.CheckPrivate(base); err != nil {
 		return "", "", fmt.Errorf("runtime dir: %w", err)
 	}
 	for range 8 {
@@ -51,7 +51,7 @@ func makeRuntimeDir(base string, getenv func(string) string) (dir, id string, er
 		dir = filepath.Join(base, id)
 		err = os.Mkdir(dir, 0o700)
 		if err == nil {
-			return dir, id, registry.CheckPrivate(dir)
+			return dir, id, statedir.CheckPrivate(dir)
 		}
 		if !errors.Is(err, fs.ErrExist) {
 			break

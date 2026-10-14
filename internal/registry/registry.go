@@ -14,13 +14,13 @@ import (
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/home"
+	"github.com/alexei-led/codex-router/internal/statedir"
 )
 
 const (
-	appDirName = "codex-router"
-	dirName    = "registry"
-	fileExt    = ".json"
-	dialWait   = 200 * time.Millisecond
+	dirName  = "registry"
+	fileExt  = ".json"
+	dialWait = 200 * time.Millisecond
 )
 
 // Endpoint kinds: a stage 1 launcher session or a stage 2 per-home brain.
@@ -52,7 +52,7 @@ type Skipped struct {
 // private to this user: whoever can write there can point clients at their
 // own socket.
 func Root(getenv func(string) string) (string, error) {
-	app, err := StateDir(getenv)
+	app, err := statedir.Dir(getenv)
 	if err != nil {
 		return "", err
 	}
@@ -61,50 +61,16 @@ func Root(getenv func(string) string) (string, error) {
 		return "", fmt.Errorf("registry: %w", err)
 	}
 	for _, dir := range []string{app, root} {
-		if err := CheckPrivate(dir); err != nil {
+		if err := statedir.CheckPrivate(dir); err != nil {
 			return "", fmt.Errorf("registry: %w", err)
 		}
 	}
 	return root, nil
 }
 
-// StateDir returns codex-router's state dir, $XDG_STATE_HOME/codex-router,
-// else ~/.local/state/codex-router. Relative values are ignored. It creates
-// nothing.
-func StateDir(getenv func(string) string) (string, error) {
-	state := getenv("XDG_STATE_HOME")
-	if !filepath.IsAbs(state) {
-		h := getenv("HOME")
-		if !filepath.IsAbs(h) {
-			return "", errors.New("registry: no XDG_STATE_HOME or HOME")
-		}
-		state = filepath.Join(h, ".local", "state")
-	}
-	return filepath.Join(state, appDirName), nil
-}
-
-// CheckPrivate accepts a real directory (not a symlink) owned by this user
-// with no group or other access.
-func CheckPrivate(dir string) error {
-	fi, err := os.Lstat(dir)
-	if err != nil {
-		return err
-	}
-	if !fi.IsDir() {
-		return fmt.Errorf("%s is not a directory", dir)
-	}
-	if fi.Mode().Perm()&0o077 != 0 {
-		return fmt.Errorf("%s must not be accessible to group or others", dir)
-	}
-	if st, ok := fi.Sys().(*syscall.Stat_t); ok && int(st.Uid) != os.Getuid() {
-		return fmt.Errorf("%s is not owned by the current user", dir)
-	}
-	return nil
-}
-
-// Write stores ep as root/<ID>.json (0600). It writes a temp file and
-// renames it over the entry, so readers see the old or the new entry, never
-// a partial one.
+// Write stores ep as root/<ID>.json (0600) atomically, so readers see the
+// old or the new entry, never a partial one. The temp file's leading dot
+// keeps it out of List.
 func Write(root string, ep Endpoint) error {
 	if !validID(ep.ID) {
 		return fmt.Errorf("registry: bad endpoint id %q", ep.ID)
@@ -113,21 +79,7 @@ func Write(root string, ep Endpoint) error {
 	if err != nil {
 		return fmt.Errorf("registry: %w", err)
 	}
-	// The leading dot keeps temp files out of List.
-	f, err := os.CreateTemp(root, "."+ep.ID+".*")
-	if err != nil {
-		return fmt.Errorf("registry: %w", err)
-	}
-	tmp := f.Name()
-	_, err = f.Write(b)
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil {
-		err = os.Rename(tmp, entryPath(root, ep.ID))
-	}
-	if err != nil {
-		_ = os.Remove(tmp)
+	if err := statedir.WriteAtomic(root, ep.ID+fileExt, b); err != nil {
 		return fmt.Errorf("registry: write %s: %w", ep.ID, err)
 	}
 	return nil

@@ -23,6 +23,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
+	"github.com/alexei-led/codex-router/internal/statedir"
 )
 
 // IdleAfter is how long a followed thread may go without a turn, a settings
@@ -37,17 +38,10 @@ const (
 	redialMin  = 250 * time.Millisecond
 	redialMax  = 8 * time.Second
 
-	homesDir = "homes"
 	// pathFile records the link socket when it lives outside the home's
 	// state dir; the edge reads it through LinkPath.
 	pathFile = "brain.path"
 )
-
-// HomeDir is the stage 2 state dir of a home, <state>/homes/<home id>/,
-// where state is codex-router's state dir (registry.StateDir).
-func HomeDir(state, homeID string) string {
-	return filepath.Join(state, homesDir, homeID)
-}
 
 // LinkPath is the link socket of the brain whose home state dir is dir:
 // brain.sock in dir, or the path the brain recorded there because that one
@@ -213,18 +207,16 @@ func (b *Brain) Close() {
 // parents up to codex-router/ are private: whoever can write there can
 // take the link socket.
 func (b *Brain) stateDir() (string, error) {
-	app, err := registry.StateDir(b.o.Getenv)
+	app, err := statedir.Dir(b.o.Getenv)
 	if err != nil {
 		return "", err
 	}
-	dir := HomeDir(app, b.o.Home.ID)
+	dir := statedir.HomeDir(app, b.o.Home.ID)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("brain: %w", err)
 	}
-	for _, d := range []string{app, filepath.Dir(dir), dir} {
-		if err := registry.CheckPrivate(d); err != nil {
-			return "", fmt.Errorf("brain: %w", err)
-		}
+	if err := statedir.CheckHome(app, dir); err != nil {
+		return "", fmt.Errorf("brain: %w", err)
 	}
 	return dir, nil
 }
@@ -252,7 +244,7 @@ func (b *Brain) socketPath(dir, name, short string) (string, error) {
 	if err := os.MkdirAll(alt, 0o700); err != nil {
 		return "", fmt.Errorf("brain: %w", err)
 	}
-	if err := registry.CheckPrivate(alt); err != nil {
+	if err := statedir.CheckPrivate(alt); err != nil {
 		return "", fmt.Errorf("brain: %w", err)
 	}
 	if p = filepath.Join(alt, short); len(p) >= sunPathLen() {
@@ -271,7 +263,7 @@ func recordLinkPath(dir, linkPath string) error {
 		}
 		return nil
 	}
-	if err := writeAtomic(dir, pathFile, []byte(linkPath+"\n")); err != nil {
+	if err := statedir.WriteAtomic(dir, pathFile, []byte(linkPath+"\n")); err != nil {
 		return fmt.Errorf("brain: record link path: %w", err)
 	}
 	return nil

@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/alexei-led/codex-router/internal/route"
+	"github.com/alexei-led/codex-router/internal/statedir"
 )
 
 const (
@@ -70,29 +71,9 @@ func (s *intentStore) save(in route.Intent) {
 	s.rev = in.Rev
 	b, err := json.Marshal(intentRecord{Version: intentVersion, Intent: in})
 	if err == nil {
-		err = writeAtomic(filepath.Dir(s.path), filepath.Base(s.path), append(b, '\n'))
+		err = statedir.WriteAtomic(filepath.Dir(s.path), filepath.Base(s.path), append(b, '\n'))
 	}
 	if err != nil {
 		s.log.Warn("intent-write-failed", "err", err)
 	}
-}
-
-// writeAtomic replaces dir/name with data through a temp file (0600) and a
-// rename, so a reader sees the old file or the new one, never a part.
-func writeAtomic(dir, name string, data []byte) error {
-	f, err := os.CreateTemp(dir, "."+name+".*")
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(data)
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil {
-		err = os.Rename(f.Name(), filepath.Join(dir, name))
-	}
-	if err != nil {
-		_ = os.Remove(f.Name())
-	}
-	return err
 }
