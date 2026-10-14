@@ -1400,3 +1400,32 @@ func TestDecideWhoseClassifierAnswersAtTheDeadlineCommitsNothing(t *testing.T) {
 		t.Fatalf("classifier calls %d, decisions %d; want the rest of the turn unrouted", h.asker.Calls(), len(h.sink.Decisions()))
 	}
 }
+
+func TestFirstStepPausedOrPickedWhileClassifyingCommitsNothing(t *testing.T) {
+	cases := []struct {
+		name string
+		stop func(h *harness)
+	}{
+		{"session pause", func(h *harness) { h.apply(Command{Op: OpPause, Session: "th"}) }},
+		{"home pause", func(h *harness) { h.apply(Command{Op: OpPause}) }},
+		{"model pick", func(h *harness) {
+			h.engine.SettingsUpdated("th", config.Route{Model: "gpt-6-sol", Effort: config.EffortLow})
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t, testConfig())
+			h.asker.script(func() (classifier.Advice, error) {
+				tc.stop(h)
+				return tier("low", 0.97), nil
+			})
+
+			rw, ok := h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+
+			wantUnchanged(t, rw, ok)
+			if ds := h.sink.Decisions(); len(ds) != 0 {
+				t.Fatalf("decisions = %+v, want none: the footer must keep what the pause or pick set", ds)
+			}
+		})
+	}
+}

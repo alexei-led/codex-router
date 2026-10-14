@@ -324,7 +324,13 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 
 	var d Decision
 	if st.first {
-		d = e.decideFirst(st, advice, askErr)
+		var ok bool
+		if d, ok = e.decideFirst(st, advice, askErr); !ok {
+			if st.pin != nil {
+				e.persist() // the pin was given back
+			}
+			return responses.Rewrite{}, false
+		}
 	} else {
 		var job *review
 		d, job = e.decideLater(st)
@@ -439,6 +445,11 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 func (e *Engine) abandon(st *step) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	e.abandonLocked(st)
+}
+
+// abandonLocked is abandon under e.mu.
+func (e *Engine) abandonLocked(st *step) {
 	if !st.first {
 		return
 	}
@@ -497,16 +508,22 @@ func (e *Engine) classify(ctx context.Context, st *step) (advice *classifier.Adv
 
 // decideFirst decides a turn's first step. A classifier failure leaves the
 // whole turn unrouted, unless the request's model cannot hold the thread and
-// the baseline can (plan D6).
-func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) Decision {
+// the baseline can (plan D6). It returns false, committing nothing, when a
+// pause or a /model pick arrived while the classifier ran: the step was
+// begun before them, and its decision would overwrite the footer they set.
+func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) (Decision, bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	th := st.th
 	e.noteLatency(advice)
+	if e.paused || th.paused || th.manual {
+		e.abandonLocked(st)
+		return Decision{}, false
+	}
 	if askErr != nil {
 		if _, fix := e.upward(st); fix {
 			th.reviewedAt = th.requests
-			return e.finish(st, cell{tier: st.cfg.Baseline, reason: policy.ReasonFit, state: th.state})
+			return e.finish(st, cell{tier: st.cfg.Baseline, reason: policy.ReasonFit, state: th.state}), true
 		}
 		th.turnOff = true
 		d := e.base(st)
@@ -514,7 +531,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		d.Why = whyText(d, st.cfg, st.tokens)
 		th.retries = appendCapped(th.retries, retry{st.fp, d}, retriesKept)
 		th.remember(d)
-		return d
+		return d, true
 	}
 	var c cell
 	if st.pin != nil {
@@ -528,7 +545,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 	th.advice = advice
 	th.state = c.state
 	th.reviewedAt = th.requests
-	return e.finish(st, c)
+	return e.finish(st, c), true
 }
 
 // decideLater decides a later step of the turn: an arrived review answer, an
