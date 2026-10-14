@@ -45,6 +45,8 @@ type e2eUpstream struct {
 	mu     sync.Mutex
 	routes []config.Route
 	authOK []bool
+	bodies [][]byte
+	meta   []string
 }
 
 func newE2EUpstream(t *testing.T) *e2eUpstream {
@@ -57,8 +59,11 @@ func newE2EUpstream(t *testing.T) *e2eUpstream {
 				Effort config.Effort `json:"effort"`
 			} `json:"reasoning"`
 		}
-		_ = json.NewDecoder(r.Body).Decode(&body)
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
 		u.mu.Lock()
+		u.bodies = append(u.bodies, raw)
+		u.meta = append(u.meta, r.Header.Get(responses.HeaderTurnMetadata))
 		u.routes = append(u.routes, config.Route{Model: body.Model, Effort: body.Reasoning.Effort})
 		u.authOK = append(u.authOK, r.Header.Get("Authorization") == fakeToken)
 		u.mu.Unlock()
@@ -161,6 +166,11 @@ func turnReq(turn string, step int) request {
 	return request{turn: turn, kind: responses.RequestKindTurn, step: step}
 }
 
+func (r request) metadata() string {
+	return fmt.Sprintf(`{"session_id":"s1","thread_id":%q,"turn_id":%q,"request_kind":%q,"agent_name":"/root"}`,
+		fakeThread, r.turn, r.kind)
+}
+
 // post sends one request through the proxy and drains the reply.
 func (e *e2e) post(t *testing.T, r request) (int, error) {
 	t.Helper()
@@ -169,9 +179,7 @@ func (e *e2e) post(t *testing.T, r request) (int, error) {
 		t.Fatal(err)
 	}
 	req.Header.Set("Authorization", fakeToken)
-	req.Header.Set(responses.HeaderTurnMetadata, fmt.Sprintf(
-		`{"session_id":"s1","thread_id":%q,"turn_id":%q,"request_kind":%q,"agent_name":"/root"}`,
-		fakeThread, r.turn, r.kind))
+	req.Header.Set(responses.HeaderTurnMetadata, r.metadata())
 	if r.subagent != "" {
 		req.Header.Set(responses.HeaderSubagent, r.subagent)
 	}
@@ -266,6 +274,23 @@ func (e *e2e) wantRoutes(t *testing.T, want ...config.Route) {
 	}
 }
 
+// wantForwardedVerbatim checks upstream request i carries exactly the bytes
+// and turn metadata the client sent.
+func (e *e2e) wantForwardedVerbatim(t *testing.T, i int, r request) {
+	t.Helper()
+	e.up.mu.Lock()
+	defer e.up.mu.Unlock()
+	if i >= len(e.up.bodies) {
+		t.Fatalf("upstream saw %d requests, want request %d", len(e.up.bodies), i+1)
+	}
+	if !bytes.Equal(e.up.bodies[i], stepBody(r.step)) {
+		t.Errorf("upstream body %d differs from the client's bytes:\n%s", i+1, e.up.bodies[i])
+	}
+	if want := r.metadata(); e.up.meta[i] != want {
+		t.Errorf("upstream turn metadata %d = %q, want %q", i+1, e.up.meta[i], want)
+	}
+}
+
 func repeat(r config.Route, n int) []config.Route {
 	out := make([]config.Route, n)
 	for i := range out {
@@ -296,38 +321,31 @@ func TestE2EThreeToolTurnClassifiesOnceAndPinsEveryStep(t *testing.T) {
 	})
 }
 
-func TestE2EPassThroughRequestsAreForwardedUnchanged(t *testing.T) {
-	cases := []struct {
-		name string
-		req  request
-	}{
-		{"compaction mid-turn", request{turn: "turn-1", kind: "compaction", step: 3}},
-		{"subagent", request{turn: "turn-1", kind: responses.RequestKindTurn, subagent: "review", step: 1}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			e := newE2E(t)
-			e.mustPost(t, tc.req)
+func TestE2ESubagentRequestIsForwardedUnchanged(t *testing.T) {
+	e := newE2E(t)
+	r := request{turn: "turn-1", kind: responses.RequestKindTurn, subagent: "review", step: 1}
+	e.mustPost(t, r)
 
-			e.wantRoutes(t, nativeRoute)
-			if n := e.cls.calls.Load(); n != 0 {
-				t.Errorf("classifier calls = %d, want 0", n)
-			}
-			if snap := e.snapshot(t); snap.Stats.Switches != 0 {
-				t.Errorf("switches = %d, want 0", snap.Stats.Switches)
-			}
-			e.writes(t, 0)
-		})
+	e.wantRoutes(t, nativeRoute)
+	e.wantForwardedVerbatim(t, 0, r)
+	if n := e.cls.calls.Load(); n != 0 {
+		t.Errorf("classifier calls = %d, want 0", n)
 	}
+	if snap := e.snapshot(t); snap.Stats.Switches != 0 {
+		t.Errorf("switches = %d, want 0", snap.Stats.Switches)
+	}
+	e.writes(t, 0)
 }
 
 func TestE2ECompactionMidTurnKeepsTheTurnsRoute(t *testing.T) {
 	e := newE2E(t)
+	compaction := request{turn: "turn-1", kind: "compaction", step: 2}
 	e.mustPost(t, turnReq("turn-1", 1))
-	e.mustPost(t, request{turn: "turn-1", kind: "compaction", step: 2})
+	e.mustPost(t, compaction)
 	e.mustPost(t, turnReq("turn-1", 3))
 
 	e.wantRoutes(t, routedRoute, nativeRoute, routedRoute)
+	e.wantForwardedVerbatim(t, 1, compaction)
 	if n := e.cls.calls.Load(); n != 1 {
 		t.Errorf("classifier calls = %d, want 1", n)
 	}
@@ -341,6 +359,9 @@ func TestE2EManualModelPickStopsRoutingUntilResume(t *testing.T) {
 	e.eventually(t, "footer synced", func(s route.Snapshot) bool { return s.FooterSynced && s.Footer == routedRoute })
 
 	// What Codex's /model does: a settings write the router did not make.
+	// The fake app-server has one connection, so the write goes through the
+	// router's own client; the engine still sees an unexpected settings
+	// update, which is what marks it foreign.
 	ctx, cancel := context.WithTimeout(context.Background(), e2eWait)
 	defer cancel()
 	pick := appserver.Settings{Model: manualRoute.Model, Effort: manualRoute.Effort}
@@ -354,6 +375,8 @@ func TestE2EManualModelPickStopsRoutingUntilResume(t *testing.T) {
 
 	e.mustPost(t, turnReq("turn-2", 1))
 	e.wantRoutes(t, routedRoute, nativeRoute)
+	e.wantForwardedVerbatim(t, 1, turnReq("turn-2", 1))
+	e.writes(t, 2) // the router's first route plus the manual pick, nothing since
 	if n := e.cls.calls.Load(); n != 1 {
 		t.Errorf("classifier calls while manual = %d, want 1", n)
 	}
