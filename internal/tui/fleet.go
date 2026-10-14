@@ -37,11 +37,13 @@ type fleetSession struct {
 	disconnected bool
 }
 
-// fleetEndpointInfo is one endpoint of a home as the panel shows it.
+// fleetEndpointInfo is one endpoint of a home as the panel shows it. Up is
+// how long a live endpoint has run, 0 when its start is unknown.
 type fleetEndpointInfo struct {
 	id   string
 	kind string
 	lost bool
+	up   time.Duration
 }
 
 // fleetHome is one Codex home: its endpoints and its sessions, most
@@ -122,6 +124,7 @@ type fleet struct {
 	// sessions yet, so a more recent session may still show up.
 	provisional bool
 	seen        bool // locked mode: the locked session was listed once
+	seenBrain   bool // locked mode: a brain listed it last
 	snap        *route.Snapshot
 	gen         int
 }
@@ -174,9 +177,10 @@ func (f *fleet) run(ctx context.Context) {
 }
 
 // poll dials every listed endpoint without a live connection, in parallel,
-// and drops lost endpoints past lostGrace. A lost endpoint whose entry left
-// the registry is marked gone. An unreadable registry keeps the current
-// connections.
+// and drops lost endpoints past lostGrace. A lost brain stays, without its
+// sessions, so its home reads brain down until it returns: a brain is a
+// service, not a session. A lost endpoint whose entry left the registry is
+// marked gone. An unreadable registry keeps the current connections.
 func (f *fleet) poll() {
 	eps, err := f.list()
 	if err == nil {
@@ -196,7 +200,11 @@ func (f *fleet) poll() {
 	f.mu.Lock()
 	for id, e := range f.eps {
 		if e.c == nil && now.Sub(e.lostAt) >= lostGrace {
-			delete(f.eps, id)
+			if e.hello.Kind == registry.KindBrain {
+				e.items = nil
+			} else {
+				delete(f.eps, id)
+			}
 			continue
 		}
 		if e.c == nil && err == nil {
@@ -289,7 +297,9 @@ func (f *fleet) refocus() {
 	sessions := f.sessions()
 	if f.locked != "" {
 		f.focus = f.locked
-		f.seen = f.seen || len(sessions) > 0
+		if len(sessions) > 0 {
+			f.seen, f.seenBrain = true, f.eps[sessions[0].endpoint].hello.Kind == registry.KindBrain
+		}
 		return
 	}
 	listed := slices.ContainsFunc(sessions, func(s fleetSession) bool { return s.ID == f.focus })
@@ -487,14 +497,22 @@ func (f *fleet) state() fleetState {
 		return g
 	}
 	sessions := f.sessions()
-	st.ended = f.seen && !slices.ContainsFunc(sessions, func(s fleetSession) bool { return !f.eps[s.endpoint].gone })
+	// A brain's thread outlives the brain: a restarted brain lists it again at
+	// its next user step, and an idle thread leaves the list after 10 min.
+	// Neither ends the session, so a brain session never shows ended.
+	st.ended = f.seen && !f.seenBrain && !slices.ContainsFunc(sessions, func(s fleetSession) bool { return !f.eps[s.endpoint].gone })
 	for _, s := range sessions {
 		g := group(f.eps[s.endpoint].hello.Home)
 		g.sessions = append(g.sessions, s)
 	}
+	now := f.now()
 	for id, e := range f.eps {
 		g := group(e.hello.Home)
-		g.endpoints = append(g.endpoints, fleetEndpointInfo{id: id, kind: e.hello.Kind, lost: e.c == nil})
+		info := fleetEndpointInfo{id: id, kind: e.hello.Kind, lost: e.c == nil}
+		if !info.lost && !e.ep.Started.IsZero() {
+			info.up = max(now.Sub(e.ep.Started), 0)
+		}
+		g.endpoints = append(g.endpoints, info)
 	}
 	for _, id := range order {
 		g := byHome[id]

@@ -651,10 +651,12 @@ Depends on: Task 21 (sequential; needs brain from 17 and intent from 18)
 
 - Modify: `internal/tui/render.go`, `internal/tui/sessions.go`, `internal/tui/fleet.go`, `internal/tui/tui_test.go`, golden files
 
-- [ ] home header shows brain state (`brain up 2h`, `brain down: default model`); `state lost` and `unknown` attention marks
-- [ ] mixed fleet: stage 1 sessions and a brain in the same home render in one group
-- [ ] golden tests: brain up, brain down, mixed, `state lost`
-- [ ] run `make fmt lint test build`
+- [x] home header shows brain state (`brain up 2h`, `brain down: default model`); `state lost` and `unknown` attention marks
+- [x] mixed fleet: stage 1 sessions and a brain in the same home render in one group
+- [x] golden tests: brain up, brain down, mixed, `state lost`
+- [x] run `make fmt lint test build`
+- [x] ➕ brain state details: uptime comes from the brain's registry `started` (largest whole unit: `45s`, `12m`, `2h`, `3d`; plain `brain up` when unknown, e.g. `--socket`). A lost brain is not in the home line's `N lost` count. A lost brain stays in the fleet past the 10 s grace (its sessions leave as before), so the home line keeps `brain down: default model` until it returns; a brain that was already down when the panel started is not shown (limit: the panel knows homes only from live registry entries). The Sessions tab lists homes that have endpoints but no sessions (a brain before any user step). Marks: `?` unknown, `!` state lost (top bar), `? unknown` / `! state lost` (STATE column); the Now header reads `! state lost · paused`, and the `state` finding hints `P resumes the home`. The mixed golden is rendered from a real `fleet` merge (launcher + brain in one home)
+- [x] ➕ locked mode: a session last listed by a brain never shows `ended` (a restarted brain lists a thread only after its next user step, and an idle thread leaves the list after 10 min); the panel shows `disconnected` until it is listed again. Stage 1 sessions keep the `ended` rule. `docs/user-guide.md` lines on marks, the home line and `ended` updated (the stage 2 sections stay for Task 25)
 
 ### Task 23: [live] Stage 2 in agterm with real Codex
 
