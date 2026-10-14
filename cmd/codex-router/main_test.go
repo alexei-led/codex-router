@@ -697,6 +697,43 @@ func TestEdgeForwardsWithBrainDownAndRoutesWithBrainUp(t *testing.T) {
 	}
 }
 
+func TestEdgeForwardsWithAnUnreadableConfig(t *testing.T) {
+	backend := &fakeBackend{}
+	up := httptest.NewServer(backend)
+	defer up.Close()
+	edgeUpstream = up.URL + "/backend-api/codex"
+	t.Cleanup(func() { edgeUpstream = "" })
+	bad := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(bad, []byte(`{"bogus": 1}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	args, _, _, port := edgeSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var stderr syncBuffer
+	done := make(chan int, 1)
+	go func() {
+		done <- run(ctx, append([]string{"--config", bad}, args...), testEnv(t), nil, io.Discard, &stderr)
+	}()
+	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	waitFor(t, "edge up", func() bool { return healthz(base) != "" })
+
+	if code := edgePost(t, base, edgeToken); code != http.StatusOK {
+		t.Fatalf("status %d, want 200 forwarded upstream", code)
+	}
+	if bodies, _ := backend.seen(); len(bodies) != 1 || bodies[0] != edgeBody {
+		t.Errorf("upstream got %q, want the original body", bodies)
+	}
+	if !strings.Contains(stderr.String(), "config-unreadable") {
+		t.Errorf("stderr %q, want the config-unreadable warning", stderr.String())
+	}
+	cancel()
+	if code := <-done; code != exitOK {
+		t.Errorf("exit %d, stderr %q", code, stderr.String())
+	}
+}
+
 func TestEdgeRefusesToStart(t *testing.T) {
 	cases := []struct {
 		name     string
