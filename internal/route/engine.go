@@ -39,13 +39,6 @@ const (
 	latenciesKept = 32
 )
 
-// Classifier deadline: the configured timeout plus the margin the proxy adds
-// to its decision deadline; the fallback is the default classifier's timeout.
-const (
-	askMarginMs   = 200
-	fallbackAskMs = 1500
-)
-
 var (
 	errNoClassifier    = errors.New("no classifier")
 	errClassifierPanic = errors.New("classifier panic")
@@ -315,7 +308,7 @@ func (e *Engine) classify(ctx context.Context, st *step) (advice *classifier.Adv
 			advice, err = nil, errClassifierPanic
 		}
 	}()
-	ctx, cancel := context.WithTimeout(ctx, askTimeout(st.cfg))
+	ctx, cancel := context.WithTimeout(ctx, st.cfg.DecideTimeout())
 	defer cancel()
 	a, err := e.ask.Ask(ctx, classifierInput(st.facts, st.cfg))
 	if err != nil {
@@ -323,17 +316,6 @@ func (e *Engine) classify(ctx context.Context, st *step) (advice *classifier.Adv
 		return nil, err
 	}
 	return &a, nil
-}
-
-// askTimeout bounds a classifier call on the engine's side as well, so a
-// caller without a deadline cannot hold a step past the classifier's own
-// timeout plus the proxy's margin (plan Data flow step 2).
-func askTimeout(cfg config.Config) time.Duration {
-	ms := cfg.Classifiers[cfg.Classifier].TimeoutMs
-	if ms <= 0 {
-		ms = fallbackAskMs
-	}
-	return time.Duration(ms+askMarginMs) * time.Millisecond
 }
 
 // decideFirst decides a turn's first step. A classifier failure leaves the
@@ -404,7 +386,7 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 	var job *review
 	every := st.policy.ReviewEveryRequests
 	if every > 0 && e.ask != nil && !th.turnPinned && th.review == nil && th.requests-th.reviewedAt >= every {
-		ctx, cancel := context.WithTimeout(context.Background(), askTimeout(st.cfg))
+		ctx, cancel := context.WithTimeout(context.Background(), st.cfg.DecideTimeout())
 		job = &review{ctx: ctx, cancel: cancel, done: make(chan struct{}), upTo: st.facts.Items}
 		th.review, th.reviewedAt = job, th.requests
 	}
