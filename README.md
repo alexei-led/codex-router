@@ -68,7 +68,7 @@ In a second pane, run `codex-router tui` for the panel. The [user guide](docs/us
 
 ## Status
 
-Early. It was tested live against Codex 0.162.1 on macOS: one session ([live test report](docs/archive/evidence/2026-10-14/live-test-report.md)), then five sessions in two homes, with and without setup ([evidence](docs/archive/evidence/2026-10-14-multi-session/)). On Linux, the systemd units are covered by unit tests only. The footer sync uses Codex's experimental `--remote` mode and `thread/settings/update`, so a Codex update can break it. Routing keeps working when sync fails.
+Early. It was tested live against Codex 0.162.1 on macOS: one session ([live test report](docs/archive/evidence/2026-10-14/live-test-report.md)), then five sessions in two homes, with and without setup ([stage 1](docs/archive/evidence/2026-10-14-multi-session/stage1/report.md), [stage 2](docs/archive/evidence/2026-10-14-multi-session/stage2/report.md)). On Linux, the systemd units are covered by unit tests only. The footer sync uses Codex's experimental `--remote` mode and `thread/settings/update`, so a Codex update can break it. Routing keeps working when sync fails.
 
 ## Docs
 
