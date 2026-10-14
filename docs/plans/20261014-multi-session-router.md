@@ -230,11 +230,11 @@ Units: launchd `com.github.alexei-led.codex-router.<home_id>.{edge,brain}`; syst
 
 - Create: `internal/home/label.go`, `internal/home/label_test.go`
 
-- [ ] `RepoBranch(cwd)` reads `.git` without running git: walk up to `.git` dir or file; worktree `.git` file → `gitdir:` → `commondir` gives the main repo name; branch from `HEAD` (`ref: refs/heads/x` → `x`, detached → short sha)
-- [ ] `Label(homeName, cwd)` → `home · repo · branch`; non-repo cwd → `home · <dir basename>`
-- [ ] `Disambiguate([]labels, ids)` appends ` · <4-hex>` to colliding labels
-- [ ] tests with temp dirs: plain repo, linked worktree, detached HEAD, nested subdir, no repo, unreadable `.git`, collisions
-- [ ] run `make fmt lint test build`
+- [x] `RepoBranch(cwd)` reads `.git` without running git: walk up to `.git` dir or file; worktree `.git` file → `gitdir:` → `commondir` gives the main repo name; branch from `HEAD` (`ref: refs/heads/x` → `x`, detached → short sha)
+- [x] `Label(homeName, cwd)` → `home · repo · branch`; non-repo cwd → `home · <dir basename>`
+- [x] `Disambiguate([]labels, ids)` appends ` · <4-hex>` to colliding labels
+- [x] tests with temp dirs: plain repo, linked worktree, detached HEAD, nested subdir, no repo, unreadable `.git`, collisions
+- [x] run `make fmt lint test build`
 
 ### Task 3: Registry package
 
