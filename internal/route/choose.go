@@ -150,7 +150,7 @@ func (e *Engine) lateral(st *step, from, to config.Route, mass float64, hold boo
 		}
 		return true, ReasonActivityDown, est
 	}
-	est.Threshold = p.UpgradeBase + p.UpgradeSlope*share(tax, p.UpgradePivotTokens)
+	est.Threshold = policy.UpgradeBar(p, tax)
 	if mass < est.Threshold {
 		return false, ReasonActivityPending, est
 	}
@@ -168,13 +168,13 @@ func chooseActivity(cfg config.Config, p config.Policy, a *classifier.Advice, in
 	}
 	label := a.Activity.Choice
 	if !slices.Contains(config.Activities, label) {
-		if sameTask(p, a, midTurn) {
+		if policy.SameTask(p, a, midTurn) {
 			return inc.activity
 		}
 		return ""
 	}
 	mass := a.Activity.Probabilities[label]
-	if !sameTask(p, a, midTurn) {
+	if !policy.SameTask(p, a, midTurn) {
 		if mass >= p.ActivityMass {
 			return label
 		}
@@ -188,10 +188,6 @@ func chooseActivity(cfg config.Config, p config.Policy, a *classifier.Advice, in
 		return label
 	}
 	return inc.activity
-}
-
-func sameTask(p config.Policy, a *classifier.Advice, midTurn bool) bool {
-	return midTurn || (a.Continuation != nil && *a.Continuation >= p.ContinuationMass)
 }
 
 // compareRoutes orders two resolved routes: 1 when a is stronger, -1 when
@@ -290,12 +286,4 @@ func label(applied config.Activity, a *classifier.Advice) config.Activity {
 		return a.Activity.Choice
 	}
 	return ""
-}
-
-// share is tax/(tax+pivot): 0 for no tax, one half at the pivot.
-func share(tax, pivot int) float64 {
-	if tax <= 0 {
-		return 0
-	}
-	return float64(tax) / float64(tax+max(0, pivot))
 }
