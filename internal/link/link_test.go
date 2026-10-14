@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -878,5 +879,90 @@ func TestSilentClientIsDroppedAfterHelloTimeout(t *testing.T) {
 	c := newClient(t, path, homeA, time.Second)
 	if rw, ok := c.Decide(context.Background(), parse(t, smallBody), stepMeta); !ok || rw != toLow {
 		t.Fatalf("a real client after the drop got %+v, %v", rw, ok)
+	}
+}
+
+// frameLog is a brain that says hello, answers every decide with none and
+// records each frame's type and turn in arrival order.
+type frameLog struct {
+	mu     sync.Mutex
+	frames []string
+}
+
+func (l *frameLog) got() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.frames)
+}
+
+func startFrameLog(t *testing.T, path string) *frameLog {
+	t.Helper()
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	l := &frameLog{}
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		if _, _, err := ReadFrame(conn); err != nil {
+			return
+		}
+		if WriteFrame(conn, Header{Type: TypeHello, HomeID: homeA}, nil) != nil {
+			return
+		}
+		for {
+			h, _, err := ReadFrame(conn)
+			if err != nil {
+				return
+			}
+			l.mu.Lock()
+			l.frames = append(l.frames, h.Type+" "+h.Meta.TurnID)
+			l.mu.Unlock()
+			if h.Type == TypeDecide {
+				_ = WriteFrame(conn, Header{Type: TypeNone, ID: h.ID}, nil)
+			}
+		}
+	}()
+	return l
+}
+
+func TestDecideIsWrittenAfterTheObservesQueuedBeforeIt(t *testing.T) {
+	path := sockPath(t)
+	brain := startFrameLog(t, path)
+	c := newClient(t, path, homeA, time.Second)
+	if !c.Up(t.Context()) {
+		t.Fatal("link not up")
+	}
+	c.mu.Lock()
+	cc := c.conn
+	c.mu.Unlock()
+	cc.wsem <- struct{}{} // the conn is busy: observes queue up behind it
+	meta := func(turn string) responses.Meta {
+		m := stepMeta
+		m.TurnID = turn
+		return m
+	}
+	c.Observe(meta("tu-1"), "m", responses.Usage{InputTokens: 1}, 200)
+	eventually(t, "the writer to take the first observe", func() bool { return len(c.observes) == 0 })
+	c.Observe(meta("tu-2"), "m", responses.Usage{InputTokens: 1}, 200)
+
+	decided := make(chan struct{})
+	go func() {
+		defer close(decided)
+		c.Decide(context.Background(), parse(t, smallBody), meta("tu-3"))
+	}()
+	time.Sleep(50 * time.Millisecond) // let the decide reach the conn
+	<-cc.wsem
+	<-decided
+
+	want := []string{"observe tu-1", "observe tu-2", "decide tu-3"}
+	eventually(t, "three frames", func() bool { return len(brain.got()) == len(want) })
+	if got := brain.got(); !slices.Equal(got, want) {
+		t.Fatalf("frames = %q, want %q", got, want)
 	}
 }
