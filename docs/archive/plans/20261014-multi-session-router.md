@@ -715,11 +715,14 @@ Depends on: Task 23 (or Task 12 when the gate stopped stage 2)
 
 Depends on: Task 24
 
-- [ ] README: one picture and three lines for multi-session and setup
-- [ ] user guide: setup per home, plugin install, undo, service status, troubleshooting for brain down / edge down / state lost
-- [ ] configuration reference: any new fields; architecture: stage 2 diagrams (edge, brain, daemon, units), failure table rows, security (token, account hash, socket activation)
-- [ ] evidence reports linked from the architecture doc's further reading
-- [ ] move this plan to `docs/archive/plans/`
+- [x] README: one picture and three lines for multi-session and setup
+- [x] user guide: setup per home, plugin install, undo, service status, troubleshooting for brain down / edge down / state lost
+- [x] configuration reference: any new fields; architecture: stage 2 diagrams (edge, brain, daemon, units), failure table rows, security (token, account hash, socket activation)
+- [x] evidence reports linked from the architecture doc's further reading
+- [x] move this plan to `docs/archive/plans/`
+- [x] ➕ README: the Sessions panel image (`docs/images/router-tui-sessions.svg`, no new image) under "Many sessions, one panel"; the "left alone" line now says only `setup` edits `config.toml`; Status names both live runs and that Linux units are unit-tested only. User guide: new "Route a whole home (setup)" (before you start, set up with a table of every file it writes, plugin install and trust, check and restart the services, undo), "If a home's service is down", troubleshooting rows (brain down, `state lost`, `unknown`, missing sessions, refused `config.toml`, sandboxed skill), stage 2 logs, exit codes of `edge`, `brain`, `setup`, `service`, `ctl`; the hook section points at the plugin. Configuration: `envFile` was already documented (Task 23); added how config edits and `proxy.port` apply to a set-up home and the env rows `CODEX_ROUTER_BIN`, `CODEX_THREAD_ID`, `LISTEN_*`. Architecture: "A whole home: edge and brain" (component and step diagrams, units table, setup, plugin), package rows `link`, `listen`, `brain`, `service`, `setup`, nine failure rows, security bullets (home token, socket activation, link socket, account hash, services as the user, config edits only by setup), the known exposure narrowed for set-up homes
+- [x] ➕ the plan keeps its file name in the archive (as the 2026-10-13 plan did). Further reading links the stage 1, gate and stage 2 findings to their sections in this plan and to the evidence dirs, since the `report.md` files are still missing (⚠️ in Tasks 12, 14, 23)
+- ⚠️ not documented as verified: the plugin from GitHub (`codex plugin marketplace add alexei-led/codex-router`; tested from a local checkout only), Linux `systemctl --user restart` of the units, and threads started with `-c`, `--profile` or `--no-daemon` in a set-up home (the docs say each is untested)
 
 ## Post-Completion
 

@@ -9,7 +9,7 @@ How the file is read:
 - A map entry you name (a tier, an activity, a classifier, a price) replaces the default entry whole.
 - Unknown keys, trailing data and invalid values are errors. The router then runs plain `codex` with one line that says why.
 - `$XDG_CONFIG_HOME` is used only when it is an absolute path.
-- Edits apply to the next session. The panel changes only the preset, and only for the running sessions of one Codex home.
+- Edits apply to the next session. In a home set up with `codex-router setup`, they apply when its brain and edge restart (see [Check and restart the services](user-guide.md#check-and-restart-the-services)). The panel changes only the preset, and only for the running sessions of one Codex home.
 
 ## Example
 
@@ -167,20 +167,23 @@ Codex's prompt cache is per model and ignores effort. A model counts as warm fro
 
 ### proxy
 
-`port`: 0 binds any free port once per session and keeps it for the session. A fixed port stops a second session from starting. The listener is always `127.0.0.1`. `codex-router proxy --port N` overrides it.
+`port`: 0 binds any free port once per session and keeps it for the session. A fixed port stops a second session from starting. The listener is always `127.0.0.1`. `codex-router proxy --port N` overrides it. A set-up home ignores it: `codex-router setup` picks the home's port once and stores it in the home's state dir.
 
 ## model_context_window
 
-Advice only; the router never edits `~/.codex/config.toml`.
+Advice only. The router never edits this key: `codex-router setup` changes `config.toml` only inside its own marked blocks.
 
 If you set `model_context_window` in `~/.codex/config.toml`, Codex sizes its context from that number whatever model the router picks. After a switch to a model with a smaller window, Codex would then send a thread that is too large for it. The router's fit guard avoids routes that do not fit, but the cleanest setup is to remove `model_context_window` and let Codex take the window from the routed model's catalog entry. If you keep it, set it no larger than the smallest window among your routes.
 
 ## Environment
 
-| Variable                                                         | Used for                                                                                                      |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `CODEX_ROUTER_CONFIG`                                            | Config path.                                                                                                  |
-| the classifier's `keyEnv` (`TYPESAFE_API_KEY`)                   | Classifier bearer key.                                                                                        |
-| `CODEX_HOME`                                                     | Where `models_cache.json` is read from, read-only (default `~/.codex`). Also the session's home in the panel. |
-| `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_RUNTIME_DIR`, `TMPDIR` | Config, logs, session registry and runtime dir locations.                                                     |
-| `CODEX_ROUTER_CONTROL`                                           | Set by the launcher for Codex and the hook: the session's control socket.                                     |
+| Variable                                                         | Used for                                                                                                                                                                |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CODEX_ROUTER_CONFIG`                                            | Config path.                                                                                                                                                            |
+| the classifier's `keyEnv` (`TYPESAFE_API_KEY`)                   | Classifier bearer key.                                                                                                                                                  |
+| `CODEX_HOME`                                                     | Where `models_cache.json` is read from, read-only (default `~/.codex`). Also the session's home in the panel, and the default `--home` of `setup`, `service` and `ctl`. |
+| `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_RUNTIME_DIR`, `TMPDIR` | Config, logs, session registry and runtime dir locations. Services do not see them, so `codex-router setup` writes the config path and the state dir into the units.    |
+| `CODEX_ROUTER_CONTROL`                                           | Set by the launcher for Codex and the hook: the session's control socket.                                                                                               |
+| `CODEX_ROUTER_BIN`                                               | The binary the Codex plugin runs, before the one `codex-router setup` recorded in `<home>/codex-router.env` and before `PATH`.                                          |
+| `CODEX_THREAD_ID`                                                | Set by Codex for its shell commands. `codex-router ctl` acts on that thread's session.                                                                                  |
+| `LISTEN_PID`, `LISTEN_FDS`, `LISTEN_FDNAMES`                     | Set by systemd for the edge: the provider port's socket.                                                                                                                |

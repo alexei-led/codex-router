@@ -21,7 +21,7 @@ codex-router does the switching for you:
 - **Per turn, automatically.** A small classifier reads your prompt and recent dialogue and rates how hard the turn is. A policy switches only when the evidence repeats, and asks for more when a switch would lose the prompt cache.
 - **Visible where you work.** The Codex footer shows the routed model in any terminal. An optional panel shows why, lets you pin a model or pause, and estimates what routing saved.
 - **You stay in charge.** A `/model` pick holds your model. On any router error the request goes out unchanged. If the router cannot start, you get plain `codex`.
-- **Your setup is left alone.** The router never edits `~/.codex/config.toml`. Your ChatGPT login goes only to `chatgpt.com`. It is never logged and never sent to the classifier.
+- **Your setup is left alone.** `codex-router` never edits `~/.codex/config.toml`. Only the optional `codex-router setup` does, in marked blocks with a backup, and `--undo` takes them out. Your ChatGPT login goes only to `chatgpt.com`. It is never logged and never sent to the classifier.
 
 It is for people who use the Codex CLI with a ChatGPT sign-in and run long sessions that mix easy and hard work.
 
@@ -56,11 +56,19 @@ cd your-repo
 codex-router                  # use it like `codex`; arguments pass through
 ```
 
-In a second pane, run `codex-router tui` for the panel. Run as many sessions as you like, in any repo or worktree and under any Codex home (`CODEX_HOME`); one panel shows them all. The [user guide](docs/user-guide.md) has the other install options, configuration and troubleshooting.
+In a second pane, run `codex-router tui` for the panel. The [user guide](docs/user-guide.md) has the other install options, configuration and troubleshooting.
+
+## Many sessions, one panel
+
+![Router panel, Sessions tab: five sessions in two Codex homes, each row with its state, route and recent replies](docs/images/router-tui-sessions.svg)
+
+- Run as many sessions as you like, in any repo or worktree and under any Codex home (`CODEX_HOME`). `codex-router tui` shows them all; `--session` locks it to one.
+- `codex-router setup --home ~/.codex-work` routes every plain `codex` session of that home, through a small service that launchd or systemd keeps running. Add the Codex plugin for the transcript line and the `router` skill.
+- `codex-router setup --undo` puts `config.toml` back and removes the services. See [Route a whole home](docs/user-guide.md#route-a-whole-home-setup).
 
 ## Status
 
-Early. It was tested live against Codex 0.162.1 on macOS ([live test report](docs/archive/evidence/2026-10-14/live-test-report.md)). The footer sync uses Codex's experimental `--remote` mode and `thread/settings/update`, so a Codex update can break it. Routing keeps working when sync fails.
+Early. It was tested live against Codex 0.162.1 on macOS: one session ([live test report](docs/archive/evidence/2026-10-14/live-test-report.md)), then five sessions in two homes, with and without setup ([evidence](docs/archive/evidence/2026-10-14-multi-session/)). On Linux, the systemd units are covered by unit tests only. The footer sync uses Codex's experimental `--remote` mode and `thread/settings/update`, so a Codex update can break it. Routing keeps working when sync fails.
 
 ## Docs
 
