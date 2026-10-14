@@ -144,11 +144,7 @@ func TestLoadCacheMissingFile(t *testing.T) {
 	}
 }
 
-func TestLoadCacheMetadataAndErrors(t *testing.T) {
-	c := loadFixture(t)
-	if c.ETag != `W/"fixture-etag"` || c.FetchedAt.IsZero() {
-		t.Errorf("etag %q fetchedAt %v", c.ETag, c.FetchedAt)
-	}
+func TestLoadCacheErrors(t *testing.T) {
 	bad := filepath.Join(t.TempDir(), "bad.json")
 	if err := os.WriteFile(bad, []byte("not json"), 0o600); err != nil {
 		t.Fatal(err)

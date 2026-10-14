@@ -288,7 +288,7 @@ func TestDecide(t *testing.T) {
 func TestDecideEscalationState(t *testing.T) {
 	in := Input{
 		Policy: testPolicy, Baseline: "low", Incumbent: "low", FailureSignature: "sig",
-		State: State{Turn: 4, Votes: []Vote{{Tier: "micro", Turn: 4}}},
+		State: State{Turn: 4, Votes: []Vote{{Tier: "micro"}}},
 	}
 	r := Decide(in)
 	want := State{Turn: 5, HoldUntilTurn: 7, EscalatedSignature: "sig"}
@@ -308,18 +308,18 @@ func TestDecideKeepsAFailureNoTierHelps(t *testing.T) {
 }
 
 func TestDecideKeepsTheLastVotesWithoutTouchingInput(t *testing.T) {
-	old := []Vote{{"low", 1}, {"low", 2}, {"micro", 3}}
+	old := []Vote{{"low"}, {"low"}, {"micro"}}
 	in := input("medium")
 	in.State = State{Turn: 3, Votes: old}
 	in.Advice = advice("high", probs{"high": 0.5})
 
 	r := Decide(in)
 
-	want := []Vote{{"low", 2}, {"micro", 3}, {"high", 4}}
+	want := []Vote{{"low"}, {"micro"}, {"high"}}
 	if !slices.Equal(r.State.Votes, want) {
 		t.Fatalf("votes = %v, want %v", r.State.Votes, want)
 	}
-	if !slices.Equal(old, []Vote{{"low", 1}, {"low", 2}, {"micro", 3}}) {
+	if !slices.Equal(old, []Vote{{"low"}, {"low"}, {"micro"}}) {
 		t.Fatalf("input votes changed: %v", old)
 	}
 }
@@ -374,7 +374,7 @@ func TestDecideEstimate(t *testing.T) {
 func TestDecideAsksTaxPerCandidateTier(t *testing.T) {
 	in := input("high")
 	in.Advice = advice("micro", probs{"micro": 0.63, "low": 0.3, "high": 0.07})
-	in.State = State{Votes: []Vote{{"micro", 0}}}
+	in.State = State{Votes: []Vote{{"micro"}}}
 	in.TaxTokens = func(t config.Tier) int {
 		if t == config.TierLow {
 			return 1_000_000

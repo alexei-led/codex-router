@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/alexei-led/codex-router/internal/config"
 )
@@ -55,11 +54,9 @@ type Group struct {
 	ToolMode string
 }
 
-// Catalog is a parsed /models body with the ETag it came with.
+// Catalog is a parsed /models body.
 type Catalog struct {
-	Models    map[string]Model
-	ETag      string
-	FetchedAt time.Time
+	Models map[string]Model
 }
 
 // Source is what consumers read the current catalog through.
@@ -74,12 +71,6 @@ type modelsBody struct {
 	Models []Model `json:"models"`
 }
 
-type cacheFile struct {
-	modelsBody
-	FetchedAt time.Time `json:"fetched_at"`
-	ETag      string    `json:"etag"`
-}
-
 func newCatalog(models []Model) Catalog {
 	c := Catalog{Models: make(map[string]Model, len(models))}
 	for _, m := range models {
@@ -91,7 +82,7 @@ func newCatalog(models []Model) Catalog {
 	return c
 }
 
-// Parse decodes a /models response body. ETag and FetchedAt are the caller's.
+// Parse decodes a /models response body.
 func Parse(body []byte) (Catalog, error) {
 	var b modelsBody
 	if err := json.Unmarshal(body, &b); err != nil {
@@ -110,14 +101,11 @@ func LoadCache(path string) (Catalog, error) {
 	if err != nil {
 		return Catalog{}, fmt.Errorf("read models cache: %w", err)
 	}
-	var f cacheFile
+	var f modelsBody
 	if err := json.Unmarshal(data, &f); err != nil {
 		return Catalog{}, fmt.Errorf("parse models cache: %w", err)
 	}
-	c := newCatalog(f.Models)
-	c.ETag = f.ETag
-	c.FetchedAt = f.FetchedAt
-	return c, nil
+	return newCatalog(f.Models), nil
 }
 
 // GroupOf returns the compatibility group of slug.

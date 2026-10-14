@@ -8,7 +8,6 @@ import (
 	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/policy"
-	"github.com/alexei-led/codex-router/internal/responses"
 )
 
 // Mode is the routing mode of a thread.
@@ -44,7 +43,6 @@ type Decision struct {
 	ThreadID  string
 	TurnID    string
 	Step      int
-	Kind      responses.Kind
 	Tier      config.Tier
 	Activity  config.Activity
 	Route     config.Route
@@ -77,13 +75,11 @@ type Share struct {
 
 // Switch is the last route change.
 type Switch struct {
-	At        time.Time
-	From      config.Tier
-	To        config.Tier
-	FromRoute config.Route
-	ToRoute   config.Route
-	Activity  config.Activity
-	MidTurn   bool
+	At       time.Time
+	From     config.Tier
+	To       config.Tier
+	Activity config.Activity
+	MidTurn  bool
 }
 
 // Stats sums the session since its first routed reply. LastInputTokens and

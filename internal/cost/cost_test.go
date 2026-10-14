@@ -144,7 +144,7 @@ func TestUSD(t *testing.T) {
 		{
 			"cached and uncached input with output",
 			priced,
-			responses.Usage{InputTokens: 1_000_000, CachedInputTokens: 600_000, OutputTokens: 100_000, ReasoningTokens: 50_000},
+			responses.Usage{InputTokens: 1_000_000, CachedInputTokens: 600_000, OutputTokens: 100_000},
 			0.8 + 0.3 + 1,
 		},
 		{"cached above input is capped", priced, responses.Usage{InputTokens: 1_000, CachedInputTokens: 5_000}, 0.0005},

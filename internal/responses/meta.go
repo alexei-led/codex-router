@@ -9,10 +9,10 @@ import (
 // Compaction (local and remote v2) sends "compaction" (research §9, spike 1c).
 const RequestKindTurn = "turn"
 
-// ParseMeta reads the turn metadata, subagent and window headers. A missing
+// ParseMeta reads the turn metadata, and subagent headers. A missing
 // or unparseable turn metadata header leaves the metadata fields empty.
 func ParseMeta(h http.Header) Meta {
-	m := Meta{Subagent: h.Get(HeaderSubagent), WindowID: h.Get(HeaderWindowID)}
+	m := Meta{Subagent: h.Get(HeaderSubagent)}
 	raw := h.Get(HeaderTurnMetadata)
 	if raw == "" {
 		return m
@@ -22,13 +22,12 @@ func ParseMeta(h http.Header) Meta {
 		ThreadID    string `json:"thread_id"`
 		TurnID      string `json:"turn_id"`
 		RequestKind string `json:"request_kind"`
-		AgentName   string `json:"agent_name"`
 	}
 	if json.Unmarshal([]byte(raw), &tm) != nil {
 		return m
 	}
 	m.SessionID, m.ThreadID, m.TurnID = tm.SessionID, tm.ThreadID, tm.TurnID
-	m.RequestKind, m.AgentName = tm.RequestKind, tm.AgentName
+	m.RequestKind = tm.RequestKind
 	return m
 }
 

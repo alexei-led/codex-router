@@ -10,7 +10,6 @@ import (
 // Vote is one classifier answer counted toward a streak.
 type Vote struct {
 	Tier config.Tier
-	Turn int
 }
 
 // State is carried from one decision to the next for one thread.
@@ -129,7 +128,7 @@ func Decide(in Input) Result {
 		return stay(ReasonUncertain, nil)
 	}
 
-	next.Votes = append(next.Votes, Vote{Tier: choice, Turn: next.Turn})
+	next.Votes = append(next.Votes, Vote{Tier: choice})
 	if len(next.Votes) > VotesKept {
 		next.Votes = next.Votes[len(next.Votes)-VotesKept:]
 	}

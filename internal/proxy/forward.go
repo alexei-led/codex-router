@@ -92,7 +92,7 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(head) <= maxCatalogBytes {
-			s.setCatalog(head, resp.Header.Get("ETag"))
+			s.setCatalog(head)
 		}
 		body = io.MultiReader(bytes.NewReader(head), resp.Body)
 	}
@@ -304,13 +304,12 @@ func (s *Server) observe(meta responses.Meta, served string, u responses.Usage, 
 	s.opts.Observer.Observe(meta, served, u, status)
 }
 
-func (s *Server) setCatalog(body []byte, etag string) {
+func (s *Server) setCatalog(body []byte) {
 	c, err := catalog.Parse(body)
 	if err != nil {
 		s.log.Warn("catalog-parse-error", "bytes", len(body))
 		return
 	}
-	c.ETag, c.FetchedAt = etag, time.Now()
 	defer func() {
 		if p := recover(); p != nil {
 			s.log.Error("catalog-panic", "type", fmt.Sprintf("%T", p))

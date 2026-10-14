@@ -487,7 +487,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 		tax = e.ledger.SwitchTax(th.id, d.Route.Model, st.tokens, st.now)
 		th.switchedAt = mark{requests: th.requests, items: len(st.req.Input)}
 		e.stats.switched(Switch{
-			At: st.now, From: prevTier, To: d.Tier, FromRoute: prev, ToRoute: d.Route,
+			At: st.now, From: prevTier, To: d.Tier,
 			Activity: d.Activity, MidTurn: d.MidTurn,
 		}, tax)
 	} else if !th.hasSent {
@@ -524,7 +524,7 @@ func (e *Engine) window(st *step, routeFor func(config.Tier) config.Route) func(
 
 func (e *Engine) base(st *step) Decision {
 	return Decision{
-		ThreadID: st.th.id, TurnID: st.meta.TurnID, Step: st.th.stepIndex, Kind: responses.KindUserStep,
+		ThreadID: st.th.id, TurnID: st.meta.TurnID, Step: st.th.stepIndex,
 		Original: st.original, MidTurn: st.th.stepIndex > 0, At: st.now,
 	}
 }
