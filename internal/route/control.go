@@ -11,10 +11,104 @@ import (
 
 var errCommandPanic = errors.New("command failed")
 
+// Intent is the user's routing intent, which a restarted brain restores
+// (plan M11): the home's pause and preset, and per thread its pause, a
+// manual hold (a /model pick) and a pending pin. Learned state (tiers,
+// votes, escalations, the cache ledger) is not intent. Rev orders exports:
+// a later state has a higher Rev.
+type Intent struct {
+	Rev     uint64                  `json:"-"`
+	Paused  bool                    `json:"paused,omitempty"`
+	Preset  config.Preset           `json:"preset,omitempty"`
+	Threads map[string]ThreadIntent `json:"threads,omitempty"`
+}
+
+// ThreadIntent is one thread's part of the intent.
+type ThreadIntent struct {
+	Paused bool         `json:"paused,omitempty"`
+	Manual bool         `json:"manual,omitempty"`
+	Pin    *config.Tier `json:"pin,omitempty"`
+}
+
+// Intent exports the engine's current intent.
+func (e *Engine) Intent() Intent {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.intent()
+}
+
+// intent exports the intent under e.mu; only threads with some intent are
+// listed.
+func (e *Engine) intent() Intent {
+	e.intentRev++
+	in := Intent{Rev: e.intentRev, Paused: e.paused, Preset: e.cfg.Preset}
+	for _, th := range e.all() {
+		if !th.paused && !th.manual && th.pin == nil {
+			continue
+		}
+		ti := ThreadIntent{Paused: th.paused, Manual: th.manual}
+		if th.pin != nil {
+			p := *th.pin
+			ti.Pin = &p
+		}
+		if in.Threads == nil {
+			in.Threads = map[string]ThreadIntent{}
+		}
+		in.Threads[th.id] = ti
+	}
+	return in
+}
+
+// restore starts the engine from a saved intent. A lost intent pauses the
+// home, so nothing is routed against a pause the user may have set, and
+// flags every session until a home resume. Invalid pins and presets are
+// dropped.
+func (e *Engine) restore(in Intent, lost bool) {
+	if lost {
+		e.paused, e.lost = true, true
+		return
+	}
+	e.paused = in.Paused
+	if validPreset(in.Preset) {
+		e.cfg.Preset = in.Preset
+	}
+	for id, ti := range in.Threads {
+		if id == "" {
+			continue
+		}
+		th := e.add(id)
+		th.paused, th.manual = ti.Paused, ti.Manual
+		if ti.Pin != nil && e.validTier(*ti.Pin) {
+			t := *ti.Pin
+			th.pin = &t
+		}
+	}
+}
+
+// persist hands the intent to Deps.SaveIntent after a change, outside the
+// engine lock. Exports may reach it out of order; Rev tells the newest.
+func (e *Engine) persist() {
+	if e.saveIntent == nil {
+		return
+	}
+	in := e.Intent()
+	e.emit(func() { e.saveIntent(in) })
+}
+
+func (e *Engine) validTier(t config.Tier) bool {
+	_, ok := e.cfg.Routes[t]
+	return ok && slices.Contains(config.Tiers, t)
+}
+
+func validPreset(p config.Preset) bool {
+	return slices.Contains([]config.Preset{config.PresetThrifty, config.PresetBalanced, config.PresetQuality}, p)
+}
+
 // Apply runs a control command: pin or unpin a session's next turn, pause
 // or resume a session or the whole home, or pick the home's policy preset.
 // Pause writes each affected routed thread's own route back to its settings;
-// resume also ends manual mode. A home resume keeps session pauses. A panic
+// resume also ends manual mode. A home resume keeps session pauses and
+// clears a lost intent. Every command but snapshot saves the intent. A panic
 // is logged and returned as an error.
 func (e *Engine) Apply(c Command) (err error) {
 	defer func() {
@@ -28,6 +122,9 @@ func (e *Engine) Apply(c Command) (err error) {
 		return err
 	}
 	e.log.Info("route command", "op", c.Op, "scope", scopeOf(c), "thread", c.Session, "tier", c.Tier, "preset", c.Preset)
+	if c.Op != OpSnapshot {
+		e.persist()
+	}
 	for _, d := range writes {
 		e.emit(func() {
 			if e.sink != nil {
@@ -48,7 +145,7 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 	var writes []Decision
 	switch c.Op {
 	case OpPin:
-		if _, ok := e.cfg.Routes[c.Tier]; !ok || !slices.Contains(config.Tiers, c.Tier) {
+		if !e.validTier(c.Tier) {
 			return nil, Snapshot{}, fmt.Errorf("pin: unknown tier %q", c.Tier)
 		}
 		th, err := e.session(c)
@@ -81,7 +178,7 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 		}
 	case OpResume:
 		if c.home() {
-			e.paused = false
+			e.paused, e.lost = false, false
 			for _, th := range e.all() {
 				th.manual = false
 			}
@@ -96,7 +193,7 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 		if !c.home() {
 			return nil, Snapshot{}, errors.New("preset: home scope only")
 		}
-		if !slices.Contains([]config.Preset{config.PresetThrifty, config.PresetBalanced, config.PresetQuality}, c.Preset) {
+		if !validPreset(c.Preset) {
 			return nil, Snapshot{}, fmt.Errorf("preset: unknown preset %q", c.Preset)
 		}
 		e.cfg.Preset = c.Preset
@@ -160,24 +257,31 @@ func (e *Engine) restoreNative(ths ...*thread) []Decision {
 
 // SettingsUpdated takes a thread/settings/updated notification. A value the
 // router wrote is its echo; any other value is the user's own pick (plan
-// D12): the thread goes manual until resume. A panic is logged and dropped.
+// D12): the thread goes manual until resume, and the intent is saved. A
+// panic is logged and dropped.
 func (e *Engine) SettingsUpdated(threadID string, r config.Route) {
 	defer func() {
 		if p := recover(); p != nil {
 			e.log.Error("route settings update failed", "thread", threadID, "panic", panicText(p))
 		}
 	}()
-	if s, ok := e.settingsUpdated(threadID, r); ok {
+	s, ok, manual := e.settingsUpdated(threadID, r)
+	if manual {
+		e.persist()
+	}
+	if ok {
 		e.emitSnapshot(s)
 	}
 }
 
-func (e *Engine) settingsUpdated(threadID string, r config.Route) (Snapshot, bool) {
+// settingsUpdated applies the update under the lock; manual reports that
+// the thread just went manual.
+func (e *Engine) settingsUpdated(threadID string, r config.Route) (s Snapshot, ok, manual bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	th := e.lookup(threadID)
 	if th == nil {
-		return Snapshot{}, false
+		return Snapshot{}, false, false
 	}
 	th.footer = r
 	switch i := slices.Index(th.pending, r); {
@@ -192,7 +296,8 @@ func (e *Engine) settingsUpdated(threadID string, r config.Route) (Snapshot, boo
 		// The pick is now what Codex would use without the router, so pause
 		// restores it rather than the route the session started on.
 		th.manual, th.pending, th.lastWritten, th.native = true, nil, r, r
+		manual = true
 		e.log.Info("route manual", "thread", th.id, "model", r.Model, "effort", r.Effort)
 	}
-	return e.snapshot(th, e.now()), true
+	return e.snapshot(th, e.now()), true, manual
 }

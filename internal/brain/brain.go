@@ -159,6 +159,9 @@ func Start(o Options) (b *Brain, err error) {
 
 	d := o.Deps
 	d.Home, d.Sink, d.Cwd = o.Home, b, b.threads.cwd
+	store := newIntentStore(dir, b.log)
+	d.Intent, d.IntentLost = store.load()
+	d.SaveIntent = store.save
 	b.eng = route.New(d)
 	id := EndpointID(o.Home.ID)
 	hello := control.Hello{EndpointID: id, Kind: registry.KindBrain, Home: o.Home}
@@ -264,19 +267,7 @@ func recordLinkPath(dir, linkPath string) error {
 		}
 		return nil
 	}
-	f, err := os.CreateTemp(dir, "."+pathFile+".*")
-	if err != nil {
-		return fmt.Errorf("brain: %w", err)
-	}
-	_, err = f.WriteString(linkPath + "\n")
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil {
-		err = os.Rename(f.Name(), rec)
-	}
-	if err != nil {
-		_ = os.Remove(f.Name())
+	if err := writeAtomic(dir, pathFile, []byte(linkPath+"\n")); err != nil {
 		return fmt.Errorf("brain: record link path: %w", err)
 	}
 	return nil
@@ -512,7 +503,9 @@ func (b *Brain) work(ctx context.Context, c *appserver.Client) {
 
 // resume subscribes to a thread and resyncs its footer: the route it reports
 // is the footer's, and the last route the engine wanted is written again
-// when they differ (a restarted daemon).
+// when they differ (a restarted daemon). A thread the engine has no request
+// on yet (a brain start) is seeded with that route and held there until a
+// reply measures its cache.
 func (b *Brain) resume(ctx context.Context, c *appserver.Client, id string) {
 	rctx, cancel := context.WithTimeout(ctx, rpcTimeout)
 	r, err := c.Resume(rctx, id)
@@ -520,8 +513,10 @@ func (b *Brain) resume(ctx context.Context, c *appserver.Client, id string) {
 	var rpcErr *appserver.RPCError
 	switch {
 	case err == nil:
+		reported := config.Route{Model: r.Settings.Model, Effort: r.Settings.Effort}
 		b.threads.subscribed(id, r.Cwd)
-		b.w.Resync(id, config.Route{Model: r.Settings.Model, Effort: r.Settings.Effort})
+		b.eng.Seed(id, reported)
+		b.w.Resync(id, reported)
 		b.log.Info("thread-subscribed", "thread", id)
 	case errors.As(err, &rpcErr):
 		// A thread has no rollout until its first turn; its next routed

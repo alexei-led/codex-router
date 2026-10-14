@@ -16,6 +16,8 @@ const (
 	AttentionPaused     Attention = "paused"     // this session or its home is paused
 	AttentionManual     Attention = "manual"     // the footer model was picked with /model
 	AttentionEscalation Attention = "escalation" // a repeated failure holds a higher tier
+	AttentionUnknown    Attention = "unknown"    // seeded after a restart: held until a reply measures the cache
+	AttentionStateLost  Attention = "state-lost" // the saved intent was unreadable: the home is paused
 )
 
 // SessionInfo is one session's summary for the sessions list: a Codex main
@@ -104,14 +106,18 @@ func (e *Engine) sessions() []SessionInfo {
 	return out
 }
 
-// attention is th's most pressing flag: paused, then manual, then a running
-// escalation hold.
+// attention is th's most pressing flag: a lost intent, paused, manual, a
+// seeded hold, then a running escalation hold.
 func (e *Engine) attention(th *thread) Attention {
 	switch {
+	case e.lost:
+		return AttentionStateLost
 	case e.paused || th.paused:
 		return AttentionPaused
 	case th.manual:
 		return AttentionManual
+	case th.held:
+		return AttentionUnknown
 	case th.state.EscalatedSignature != "" && th.state.Turn <= th.state.HoldUntilTurn:
 		return AttentionEscalation
 	}

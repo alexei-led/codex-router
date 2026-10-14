@@ -134,6 +134,7 @@ const (
 	FindingContext    FindingKind = "context"    // the context guard kept larger windows
 	FindingBlocked    FindingKind = "blocked"    // configured routes outside the group
 	FindingCache      FindingKind = "cache"      // low cache reuse after switches
+	FindingState      FindingKind = "state"      // the saved intent was unreadable
 )
 
 // Finding is one WORTH A LOOK line derived from the session's facts.
@@ -151,6 +152,7 @@ type Snapshot struct {
 	ThreadID         string
 	At               time.Time
 	Mode             Mode
+	StateLost        bool // the saved intent was unreadable; the home is paused until resume
 	Preset           config.Preset
 	Pin              *config.Tier
 	Baseline         config.Route
@@ -184,6 +186,9 @@ type Sink interface {
 
 // Deps are the engine's boundaries. Home names the Codex home the engine
 // routes for; Cwd gives a thread's working directory (nil: unknown).
+// Intent is the saved intent to start from; IntentLost says it could not be
+// read. SaveIntent (nil: not kept) gets the intent after every change,
+// outside engine locks and possibly concurrently: it keeps the highest Rev.
 type Deps struct {
 	Config     config.Config
 	Catalog    catalog.Source
@@ -193,6 +198,9 @@ type Deps struct {
 	Logger     *slog.Logger
 	Home       home.Home
 	Cwd        func(threadID string) string
+	Intent     Intent
+	IntentLost bool
+	SaveIntent func(Intent)
 }
 
 // Bounds on remembered state. RecentKept and StripCells are per thread.
