@@ -34,7 +34,6 @@ type transport struct {
 
 var transports = []transport{
 	{name: "websocket", dialer: WebSocket(), serve: serveWebSocket},
-	{name: "json-lines", dialer: JSONLines(), serve: serveLines},
 }
 
 func serveWebSocket(ln net.Listener, accept func(Conn)) func() {
@@ -47,19 +46,6 @@ func serveWebSocket(ln net.Listener, accept func(Conn)) func() {
 	})}
 	go func() { _ = srv.Serve(ln) }()
 	return func() { _ = srv.Close() }
-}
-
-func serveLines(ln net.Listener, accept func(Conn)) func() {
-	go func() {
-		for {
-			nc, err := ln.Accept()
-			if err != nil {
-				return
-			}
-			go accept(newLinesConn(nc))
-		}
-	}()
-	return func() { _ = ln.Close() }
 }
 
 // fakeServer scripts the app-server side from the test goroutine: inbound

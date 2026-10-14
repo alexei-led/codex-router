@@ -1,13 +1,9 @@
 package appserver
 
 import (
-	"bufio"
 	"context"
-	"io"
 	"net"
 	"net/http"
-	"sync"
-	"time"
 
 	"github.com/coder/websocket"
 )
@@ -15,10 +11,6 @@ import (
 // WebSocket returns the Dialer for Codex's app-server unix socket transport:
 // a WebSocket handshake over the socket, one JSON-RPC message per text frame.
 func WebSocket() Dialer { return wsDialer{} }
-
-// JSONLines returns the fallback Dialer: newline-delimited JSON-RPC over the
-// raw unix socket, as `codex app-server --listen stdio://` speaks.
-func JSONLines() Dialer { return linesDialer{} }
 
 type wsDialer struct{}
 
@@ -62,57 +54,3 @@ func (c wsConn) Write(ctx context.Context, msg []byte) error {
 // failed write, and the handshake would wait up to 10 s on a server that has
 // stopped reading.
 func (c wsConn) Close() error { return c.ws.CloseNow() }
-
-type linesDialer struct{}
-
-func (linesDialer) Dial(ctx context.Context, socketPath string) (Conn, error) {
-	var d net.Dialer
-	nc, err := d.DialContext(ctx, "unix", socketPath)
-	if err != nil {
-		return nil, err
-	}
-	return newLinesConn(nc), nil
-}
-
-type linesConn struct {
-	nc      net.Conn
-	scanner *bufio.Scanner
-	writeMu sync.Mutex
-}
-
-func newLinesConn(nc net.Conn) *linesConn {
-	s := bufio.NewScanner(nc)
-	s.Buffer(make([]byte, 0, 64<<10), maxMessage)
-	return &linesConn{nc: nc, scanner: s}
-}
-
-// Read returns the next non-empty line. Cancelling ctx unblocks it by
-// expiring the read deadline, which leaves the connection unusable, matching
-// the WebSocket Conn's close-on-cancel behaviour.
-func (c *linesConn) Read(ctx context.Context) ([]byte, error) {
-	stop := context.AfterFunc(ctx, func() { _ = c.nc.SetReadDeadline(time.Now()) })
-	defer stop()
-	for c.scanner.Scan() {
-		if line := c.scanner.Bytes(); len(line) > 0 {
-			return append([]byte(nil), line...), nil
-		}
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	if err := c.scanner.Err(); err != nil {
-		return nil, err
-	}
-	return nil, io.EOF
-}
-
-func (c *linesConn) Write(ctx context.Context, msg []byte) error {
-	c.writeMu.Lock()
-	defer c.writeMu.Unlock()
-	stop := context.AfterFunc(ctx, func() { _ = c.nc.SetWriteDeadline(time.Now()) })
-	defer stop()
-	_, err := c.nc.Write(append(msg[:len(msg):len(msg)], '\n'))
-	return err
-}
-
-func (c *linesConn) Close() error { return c.nc.Close() }
