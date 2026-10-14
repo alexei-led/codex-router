@@ -13,6 +13,8 @@ Run every command through the plugin's wrapper. It finds the codex-router binary
 sh <plugin root>/scripts/codex-router.sh ctl status
 ```
 
+The commands talk to the router over a local unix socket, which Codex's sandbox blocks. Run each one outside the sandbox: request escalated permissions, with a justification such as "talk to the local codex-router control socket". Inside the sandbox they fail with `cannot reach the router`.
+
 ## Commands
 
 | Ask                               | Command                                   |
@@ -29,6 +31,6 @@ Change routing only when the user asks for it. `status` is read-only.
 ## Results
 
 - exit 0: done; show the output to the user.
-- exit 1: no running router lists this session, or the command failed. Say so and quote the error. For a home set up with `codex-router setup`, `codex-router service status` shows whether its services run. Without setup, sessions are routed only when Codex was started as `codex-router`.
+- exit 1: no running router lists this session, or the command failed. Say so and quote the error. `cannot reach the router` means the command ran inside the sandbox: run it again outside it. For a home set up with `codex-router setup`, `codex-router service status` shows whether its services run. Without setup, sessions are routed only when Codex was started as `codex-router`.
 - exit 2: several sessions match, or a usage error. The candidates are listed; ask the user which one, and suggest `codex-router tui --session ID` to control it from the panel.
 - exit 127: the codex-router binary was not found; the user must install it.
