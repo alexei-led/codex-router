@@ -251,20 +251,27 @@ func (e *Engine) all() []*thread {
 }
 
 // restoreNative returns a settings write per thread whose footer shows a
-// route the router chose, back to the route Codex itself sent.
+// route the router chose, back to the route Codex itself sent. An empty
+// native effort (the model's default, as thread/resume reports it) is sent
+// as the catalog's default: the app-server keeps the current effort when a
+// write omits it, so the router's effort would stay.
 func (e *Engine) restoreNative(ths ...*thread) []Decision {
 	var out []Decision
 	now := e.now()
 	for _, th := range ths {
-		if th.manual || !th.wrote || th.lastWritten == th.native {
+		if th.manual || !th.wrote || e.sameSetting(th.lastWritten, th.native) {
 			continue
 		}
+		r := th.native
+		if r.Effort == "" {
+			r.Effort = e.cat.Current().Models[r.Model].DefaultEffort
+		}
 		out = append(out, Decision{
-			ThreadID: th.id, TurnID: th.turn, Tier: th.tier, Route: th.native, Original: th.lastWritten,
+			ThreadID: th.id, TurnID: th.turn, Tier: th.tier, Route: r, Original: th.lastWritten,
 			Reason: policy.ReasonPaused, Why: "routing paused", At: now,
 		})
-		th.pending = appendCapped(th.pending, th.native, pendingWrites)
-		th.lastWritten = th.native
+		th.pending = appendCapped(th.pending, r, pendingWrites)
+		th.lastWritten = r
 	}
 	return out
 }

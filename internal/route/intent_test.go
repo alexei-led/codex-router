@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/policy"
 	"github.com/alexei-led/codex-router/internal/responses"
 )
 
@@ -567,5 +568,27 @@ func TestLostIntentSurvivesASaveAndRestart(t *testing.T) {
 	got := saved.last(t)
 	if got.Paused || got.Preset != config.PresetQuality || !got.Threads["a"].Paused {
 		t.Fatalf("intent saved at the home resume = %+v, want the commands made while lost", got)
+	}
+}
+
+func TestPauseRestoresASeededDefaultEffortExplicitly(t *testing.T) {
+	h := newHarness(t, testConfig(), func(d *Deps) { d.HoldUnseeded = true })
+	h.engine.Resumed("a", config.Route{Model: medium.Model})
+	h.apply(Command{Op: OpPin, Session: "a", Tier: config.TierHigh})
+	history := []responses.Item{userMsg(secretPrompt), {Type: responses.TypeMessage, Role: "assistant", Text: "done"}}
+	if _, ok := h.decide(req(medium, append(history, userMsg("next"))...), meta("a", "a1")); !ok {
+		t.Fatal("the pinned turn was not routed")
+	}
+
+	h.apply(Command{Op: OpPause, Session: "a"})
+
+	ds := h.sink.Decisions()
+	restore := ds[len(ds)-1]
+	if restore.Reason != policy.ReasonPaused || restore.Route != medium {
+		t.Fatalf("pause wrote %+v (%s), want %+v: an omitted effort keeps the router's", restore.Route, restore.Reason, medium)
+	}
+	h.engine.SettingsUpdated("a", restore.Route)
+	if h.session("a").Mode == ModeManual {
+		t.Fatal("the pause restore's own echo was taken for a /model pick")
 	}
 }
