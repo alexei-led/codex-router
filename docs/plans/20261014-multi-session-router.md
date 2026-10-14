@@ -315,12 +315,15 @@ Depends on: Tasks 2, 3, 5, 6
 - Create: `internal/tui/fleet.go`, `internal/tui/fleet_test.go`
 - Modify: `internal/tui/tui.go`, `internal/tui/model.go`
 
-- [ ] fleet watches the registry (poll 1 s), dials each endpoint, prunes dead entries, merges `SessionInfo` from all endpoints, groups by home, applies `Disambiguate`
-- [ ] focus model per Technical Details: locked (`--session`) vs all; initial focus by panel cwd, else most recent; focus survives list reorders by session id
-- [ ] lost endpoint → its sessions show `disconnected`, then are removed after 10 s; redial when the entry reappears
-- [ ] `P` and `c` (preset) send one `scope=home` command to every endpoint of the focused home (M5); no branch on endpoint kind
-- [ ] tests with fake endpoints: merge and grouping, focus by cwd (deepest match), locked mode ignores other sessions, endpoint loss and return, home-scoped pause and preset reach every endpoint of the focused home and none of the other home
-- [ ] run `make fmt lint test build`
+- [x] fleet watches the registry (poll 1 s), dials each endpoint, prunes dead entries, merges `SessionInfo` from all endpoints, groups by home, applies `Disambiguate`
+- [x] focus model per Technical Details: locked (`--session`) vs all; initial focus by panel cwd, else most recent; focus survives list reorders by session id
+- [x] lost endpoint → its sessions show `disconnected`, then are removed after 10 s; redial when the entry reappears
+- [x] `P` and `c` (preset) send one `scope=home` command to every endpoint of the focused home (M5); no branch on endpoint kind
+- [x] tests with fake endpoints: merge and grouping, focus by cwd (deepest match), locked mode ignores other sessions, endpoint loss and return, home-scoped pause and preset reach every endpoint of the focused home and none of the other home
+- [x] ➕ dead entries are pruned only after a failed dial (`registry.Alive` then `Remove`), so the 1 s poll does not dial every live socket twice. A hello whose endpoint or home differs from the entry is dropped. An initial pick of the most recent session stays provisional until every connected endpoint has sent its first list, and a later cwd match replaces a most-recent pick (never a cwd pick)
+- [x] ➕ `space` now pauses/resumes the focused session (it sent a home pause to one endpoint, against M5); `P` is new. `Options` is `{Socket, Registry, Session}`: `Session` locks the panel (Task 9 adds the flag), `--socket` bypasses the registry
+- [x] ➕ `cmd/codex-router/main.go` (outside the Files list): `tui` passes the registry root and no longer fails when no session runs; `newestSession` and its test are gone. `docs/user-guide.md` lines on the newest-session panel and home-wide `space` stay stale until Task 11
+- [x] run `make fmt lint test build`
 
 ### Task 8: TUI views: top bar, Sessions tab, locked header
 
