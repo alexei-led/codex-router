@@ -376,7 +376,7 @@ All packages are under `internal/`. The entry point is `cmd/codex-router`. Depen
 
 State lives in the engine, in memory, per process. A brain also saves the user's intent to disk (see [A whole home](#a-whole-home-edge-and-brain)).
 
-- **Thread.** Keyed by `thread_id` from `x-codex-turn-metadata`, else the session id. At most 256 threads, least recently used dropped. A thread holds the native route Codex sent, the running tier and activity, the policy state (votes, hold), the footer value, the manual hold and pending settings writes.
+- **Thread.** Keyed by `thread_id` from `x-codex-turn-metadata`, else the session id. At most 256 threads, least recently used dropped; a thread with intent (pause, pin or manual hold) is never dropped, so the count can pass 256 by those. A thread holds the native route Codex sent, the running tier and activity, the policy state (votes, hold), the footer value, the manual hold and pending settings writes.
 - **Turn.** A new `turn_id` starts a new turn. It resets the step count, the turn's advice and any running review.
 - **Request.** A fingerprint of the turn and the last input items identifies one request. A retry resends the same body, so it hits one of the thread's last 8 fingerprints.
 - **Cache ledger.** Per thread and per model, not per effort, because Codex's cache ignores effort.
