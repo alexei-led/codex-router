@@ -173,6 +173,7 @@ func (f *fakeRunner) count() int {
 
 type fixture struct {
 	h      home.Home
+	given  string // the home path as the user gave it
 	state  string
 	runner *fakeRunner
 	mgr    *service.Manager
@@ -191,6 +192,12 @@ func newFixture(t *testing.T, config string) *fixture {
 			t.Fatal(err)
 		}
 	}
+	return fixtureFor(t, base, codexHome)
+}
+
+// fixtureFor sets up the home the user names codexHome, under base.
+func fixtureFor(t *testing.T, base, codexHome string) *fixture {
+	t.Helper()
 	h, err := home.Resolve(func(k string) string {
 		if k == "CODEX_HOME" {
 			return codexHome
@@ -200,7 +207,7 @@ func newFixture(t *testing.T, config string) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &fixture{h: h, state: filepath.Join(base, "state"), runner: &fakeRunner{}, out: &bytes.Buffer{}}
+	f := &fixture{h: h, given: codexHome, state: filepath.Join(base, "state"), runner: &fakeRunner{}, out: &bytes.Buffer{}}
 	f.mgr, err = service.New(service.Options{GOOS: "darwin", Home: filepath.Join(base, "user"), UID: 501, Run: f.runner.run})
 	if err != nil {
 		t.Fatal(err)
@@ -210,7 +217,7 @@ func newFixture(t *testing.T, config string) *fixture {
 
 func (f *fixture) options() Options {
 	return Options{
-		Home: f.h, StateDir: f.state, Bin: "/usr/local/bin/codex-router", Service: f.mgr, Out: f.out,
+		Home: f.h, HomePath: f.given, StateDir: f.state, Bin: "/usr/local/bin/codex-router", Service: f.mgr, Out: f.out,
 		Now: func() time.Time { return time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC) },
 	}
 }
@@ -302,7 +309,7 @@ func TestSetupAndUndoRoundTrip(t *testing.T) {
 		t.Errorf("installed units = %d, want 2", got)
 	}
 	unit := readFile(t, f.mgr.Units(f.h.ID)[0].Path)
-	for _, want := range []string{"<string>--home</string>\n\t\t<string>" + f.h.Path + "</string>", "<string>--state-dir</string>\n\t\t<string>" + f.state + "</string>", "<string>" + port + "</string>"} {
+	for _, want := range []string{"<string>--home</string>\n\t\t<string>" + f.given + "</string>", "<string>--state-dir</string>\n\t\t<string>" + f.state + "</string>", "<string>" + port + "</string>"} {
 		if !strings.Contains(unit, want) {
 			t.Errorf("edge unit lacks %q:\n%s", want, unit)
 		}
@@ -344,6 +351,36 @@ func TestSetupAndUndoRoundTrip(t *testing.T) {
 	}
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
 		t.Errorf("state dir after --purge: %v, want gone", err)
+	}
+}
+
+func TestSetupUnitsGetTheHomePathTheUserGave(t *testing.T) {
+	base := t.TempDir()
+	target := filepath.Join(base, "dotfiles", "codex")
+	if err := os.MkdirAll(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(base, ".codex-work")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	f := fixtureFor(t, base, link)
+	if err := f.run(t, f.options()); err != nil {
+		t.Fatal(err)
+	}
+
+	const flag = "<string>--home</string>\n\t\t<string>"
+	for _, u := range f.mgr.Units(f.h.ID) {
+		unit := readFile(t, u.Path)
+		_, rest, ok := strings.Cut(unit, flag)
+		arg, _, _ := strings.Cut(rest, "</string>")
+		if !ok || arg != link {
+			t.Fatalf("%s: --home %q, want the link %s", u.Path, arg, link)
+		}
+		h, err := home.Resolve(func(k string) string { return map[string]string{"CODEX_HOME": arg}[k] })
+		if err != nil || h != f.h || h.Name != "work" {
+			t.Fatalf("a unit resolves home %+v (%v), want %+v named work", h, err, f.h)
+		}
 	}
 }
 
