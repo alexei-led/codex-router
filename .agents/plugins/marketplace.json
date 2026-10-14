@@ -1,0 +1,11 @@
+{
+  "name": "codex-router",
+  "interface": { "displayName": "codex-router" },
+  "plugins": [
+    {
+      "name": "codex-router",
+      "source": { "source": "local", "path": "./plugins/codex-router" },
+      "category": "Productivity"
+    }
+  ]
+}

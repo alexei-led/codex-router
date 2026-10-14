@@ -275,7 +275,11 @@ func TestSetupAndUndoRoundTrip(t *testing.T) {
 			t.Errorf("config.toml lacks %q:\n%s", want, cfg)
 		}
 	}
-	for _, p := range []string{f.configPath(), filepath.Join(dir, TokenFile), filepath.Join(dir, PortFile)} {
+	pluginEnv := filepath.Join(f.h.Path, PluginEnvFile)
+	if got, want := readFile(t, pluginEnv), "CODEX_ROUTER_BIN=/usr/local/bin/codex-router\nXDG_STATE_HOME="+f.state+"\n"; !strings.HasSuffix(got, want) {
+		t.Errorf("%s =\n%s\nwant it to end with\n%s", PluginEnvFile, got, want)
+	}
+	for _, p := range []string{f.configPath(), filepath.Join(dir, TokenFile), filepath.Join(dir, PortFile), pluginEnv} {
 		if m := mode(t, p); m != 0o600 {
 			t.Errorf("%s mode = %v, want 0600", p, m)
 		}
@@ -307,6 +311,9 @@ func TestSetupAndUndoRoundTrip(t *testing.T) {
 	}
 	if got := f.mgr.Installed(f.h.ID); len(got) != 0 {
 		t.Errorf("units left after undo: %v", got)
+	}
+	if _, err := os.Stat(pluginEnv); !os.IsNotExist(err) {
+		t.Errorf("%s after undo: %v, want gone", PluginEnvFile, err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, TokenFile)); err != nil {
 		t.Errorf("undo without --purge removed state: %v", err)
@@ -378,6 +385,7 @@ func TestSetupDryRunWritesNothing(t *testing.T) {
 				}
 			}
 			before := readFile(t, f.configPath())
+			homeBefore, _ := os.ReadDir(f.h.Path)
 			stateBefore, _ := os.ReadDir(f.stateDir())
 			unitsBefore, calls := len(f.mgr.Installed(f.h.ID)), f.runner.count()
 			bakBefore := backups(t, f.h.Path)
@@ -389,6 +397,9 @@ func TestSetupDryRunWritesNothing(t *testing.T) {
 			}
 			if readFile(t, f.configPath()) != before {
 				t.Error("dry run changed config.toml")
+			}
+			if homeAfter, _ := os.ReadDir(f.h.Path); len(homeAfter) != len(homeBefore) {
+				t.Errorf("dry run changed the Codex home: %v -> %v", homeBefore, homeAfter)
 			}
 			if stateAfter, _ := os.ReadDir(f.stateDir()); len(stateAfter) != len(stateBefore) {
 				t.Errorf("dry run changed the state dir: %v -> %v", stateBefore, stateAfter)

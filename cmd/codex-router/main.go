@@ -70,6 +70,8 @@ Usage:
                [--follow-symlink] [--undo [--purge]]
                                                      run a Codex home through an edge and a brain
   codex-router service ensure|status [--home PATH]   start or check a home's service units
+  codex-router ctl status|pause|resume|pin [--home PATH] [--cwd DIR] [--tier TIER]
+                                                     show or change one session's routing
   codex-router version                               print the version
 
 Global flags:
@@ -115,6 +117,12 @@ or a Codex restart. --dry-run prints the changes and writes nothing.
 service ensure starts the units of a set-up home that are down, without
 waiting; for a home not set up it prints one hint line. service status
 prints each unit's state.
+ctl acts on one running session of a Codex home (--home, else $CODEX_HOME,
+else ~/.codex), for the Codex plugin's skill: the session of
+$CODEX_THREAD_ID, which Codex sets for its shell commands, else the one
+whose cwd is the deepest equal to or containing --cwd (default: the current
+dir). status prints the session's mode, tier and route; pause and resume
+act on that session only; pin --tier T routes its next turn to tier T.
 
 Exit codes:
   run      codex's exit code; 128+N when signal N ended codex;
@@ -128,6 +136,8 @@ Exit codes:
   brain    0 after SIGINT or SIGTERM, 1 on error
   setup    0 on success, 1 on error or a refused edit
   service  0, also when the home is not set up; 1 on error
+  ctl      0 on success, 1 on error or when no session matches,
+           2 when several sessions match (they are listed)
   any      2 on a usage error
 `
 
@@ -199,6 +209,8 @@ func run(ctx context.Context, args, env []string, stdin io.Reader, stdout, stder
 			return c.setup(ctx, g.config, rest)
 		case "service":
 			return c.service(ctx, rest)
+		case "ctl":
+			return c.ctl(rest)
 		}
 	}
 	return c.launch(g.config, g.rest)
@@ -375,6 +387,7 @@ type listedSession struct {
 	Endpoint string `json:"endpoint_id"`
 	homeName string
 	base     string // the label before Disambiguate, shared by colliding sessions
+	socket   string // the endpoint's control socket
 }
 
 // findSessions lists the sessions of the endpoint at socket, or, when socket
@@ -416,7 +429,7 @@ func collectSessions(eps []registry.Endpoint, prune func(registry.Endpoint)) []l
 				if old, ok := byID[it.ID]; ok && !it.LastActive.After(old.LastActive) {
 					continue
 				}
-				byID[it.ID] = listedSession{SessionInfo: it, Endpoint: h.EndpointID, homeName: h.Home.Name}
+				byID[it.ID] = listedSession{SessionInfo: it, Endpoint: h.EndpointID, homeName: h.Home.Name, socket: ep.Socket}
 			}
 		})
 	}
@@ -501,6 +514,157 @@ func routeText(r config.Route) string {
 		return r.Model
 	}
 	return r.Model + " · " + string(r.Effort)
+}
+
+// envThread is the thread id Codex sets in the env of its shell commands.
+const envThread = "CODEX_THREAD_ID"
+
+// ctlOps maps ctl's subcommands to commands; status sends none.
+var ctlOps = map[string]route.Op{"status": "", "pause": route.OpPause, "resume": route.OpResume, "pin": route.OpPin}
+
+// ctl shows or changes the routing of one session of a Codex home, for the
+// plugin's skill, which runs it from a Codex shell command: the session of
+// $CODEX_THREAD_ID when a router of the home lists it, else the one whose
+// cwd is the deepest equal to or containing --cwd.
+func (c cli) ctl(args []string) int {
+	var sub string
+	if len(args) > 0 {
+		sub = args[0]
+	}
+	op, known := ctlOps[sub]
+	if !known {
+		return c.usageError(errors.New("ctl: want status, pause, resume or pin"))
+	}
+	fs := flag.NewFlagSet("ctl "+sub, flag.ContinueOnError)
+	cwd := fs.String("cwd", "", "the session's working `dir` (default: the current dir)")
+	tier := new(string)
+	if op == route.OpPin {
+		tier = fs.String("tier", "", "`tier` of the next turn: micro, low, medium or high")
+	}
+	c, h, code, ok := c.homeFlags(fs, args[1:], false)
+	if !ok {
+		return code
+	}
+	if op == route.OpPin && !slices.Contains(config.Tiers, config.Tier(*tier)) {
+		return c.usageError(fmt.Errorf("ctl pin: --tier %q is not micro, low, medium or high", *tier))
+	}
+	dir := *cwd
+	if dir == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return c.fail(err)
+		}
+		dir = wd
+	}
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return c.fail(err)
+	}
+	root, err := registry.Root(c.getenv)
+	if err != nil {
+		return c.fail(err)
+	}
+	all, err := findSessions("", root)
+	if err != nil {
+		return c.fail(err)
+	}
+	all = slices.DeleteFunc(all, func(s listedSession) bool { return s.Home != h.ID })
+	matches := shellSessions(all, c.getenv(envThread), dir)
+	switch len(matches) {
+	case 0:
+		return c.fail(fmt.Errorf("ctl: no running session of Codex home %s works in %s; see codex-router sessions", h.Name, dir))
+	case 1:
+	default:
+		_, _ = fmt.Fprintf(c.stderr, "codex-router: ctl: %d sessions of Codex home %s work in %s:\n", len(matches), h.Name, dir)
+		for _, s := range matches {
+			_, _ = fmt.Fprintf(c.stderr, "  %s  %s\n", s.ID, s.Label)
+		}
+		return exitUsage
+	}
+	s := matches[0]
+	if op == "" {
+		return c.printSession(s)
+	}
+	cmd := route.Command{Op: op, Session: s.ID, Scope: route.ScopeSession, Tier: config.Tier(*tier)}
+	if err := sendCommand(s, cmd); err != nil {
+		return c.fail(fmt.Errorf("ctl %s: %w", sub, err))
+	}
+	switch op {
+	case route.OpPause:
+		_, _ = fmt.Fprintf(c.stdout, "paused routing of %s: requests keep the model in Codex's footer\n", s.Label)
+	case route.OpResume:
+		_, _ = fmt.Fprintf(c.stdout, "resumed routing of %s\n", s.Label)
+	default:
+		_, _ = fmt.Fprintf(c.stdout, "pinned the next turn of %s to %s\n", s.Label, *tier)
+	}
+	return exitOK
+}
+
+// shellSessions returns the session of thread when one is listed, else the
+// sessions whose cwd is the deepest one equal to or containing dir. Paths
+// are compared with symlinks resolved: a shell may see /tmp where Codex
+// reports /private/tmp.
+func shellSessions(sessions []listedSession, thread, dir string) []listedSession {
+	if thread != "" {
+		if i := slices.IndexFunc(sessions, func(s listedSession) bool { return s.ThreadID == thread }); i >= 0 {
+			return sessions[i : i+1]
+		}
+	}
+	dir = canonicalPath(dir)
+	var best []listedSession
+	depth := -1
+	for _, s := range sessions {
+		cwd := canonicalPath(s.Cwd)
+		if !filepath.IsAbs(cwd) {
+			continue
+		}
+		rel, err := filepath.Rel(cwd, dir)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, "../") {
+			continue
+		}
+		switch {
+		case len(cwd) > depth:
+			best, depth = []listedSession{s}, len(cwd)
+		case len(cwd) == depth:
+			best = append(best, s)
+		}
+	}
+	return best
+}
+
+// canonicalPath resolves symlinks in p, or cleans p when it does not exist.
+func canonicalPath(p string) string {
+	if r, err := filepath.EvalSymlinks(p); err == nil {
+		return r
+	}
+	return filepath.Clean(p)
+}
+
+// printSession prints s for ctl status, one field per line.
+func (c cli) printSession(s listedSession) int {
+	w := tabwriter.NewWriter(c.stdout, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintf(w, "session\t%s\nlabel\t%s\nmode\t%s\ntier\t%s\nroute\t%s\nreplies\t%d\n",
+		s.ID, s.Label, s.Mode, cmp.Or(string(s.Tier), "-"), routeText(s.Route), s.Replies)
+	if s.Attention != "" {
+		_, _ = fmt.Fprintf(w, "attention\t%s\n", s.Attention)
+	}
+	if err := w.Flush(); err != nil {
+		return c.fail(err)
+	}
+	return exitOK
+}
+
+// sendCommand sends cmd to the endpoint that listed s.
+func sendCommand(s listedSession, cmd route.Command) error {
+	cl, err := control.Dial(s.socket)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = cl.Close() }()
+	if cl.Hello().EndpointID != s.Endpoint {
+		return errors.New("the session's router changed; try again")
+	}
+	return cl.Send(cmd)
 }
 
 func (c cli) proxy(ctx context.Context, configPath string, args []string) int {

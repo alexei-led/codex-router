@@ -33,6 +33,12 @@ const (
 // ConfigFile is Codex's config in a home.
 const ConfigFile = "config.toml"
 
+// PluginEnvFile, in a Codex home, tells the codex-router plugin's scripts
+// the binary and the state base setup used, as KEY=value lines. Codex runs
+// plugin hooks with the env of whichever shell started the home's daemon,
+// which may have neither on PATH or in XDG_STATE_HOME.
+const PluginEnvFile = "codex-router.env"
+
 const (
 	logsDir     = "logs"
 	portTries   = 20
@@ -134,11 +140,16 @@ func (r runner) install(ctx context.Context) error {
 		HomeID: r.o.Home.ID, HomePath: r.o.Home.Path, StateDir: r.o.StateDir, Config: r.o.Config,
 		Bin: r.o.Bin, Port: port, LogDir: filepath.Join(r.dir, logsDir),
 	}
+	pluginEnv, err := r.pluginEnv()
+	if err != nil {
+		return err
+	}
 	if r.o.DryRun {
 		r.printf("dry run: would store port %d and a token in %s\n", port, r.dir)
 		for _, u := range r.o.Service.Units(r.o.Home.ID) {
 			r.printf("dry run: would install %s\n", u.Path)
 		}
+		r.printf("dry run: would write %s\n", r.pluginEnvPath())
 		return nil
 	}
 	if err := r.writeState(port, token); err != nil {
@@ -151,6 +162,10 @@ func (r runner) install(ctx context.Context) error {
 	for _, u := range r.o.Service.Units(r.o.Home.ID) {
 		r.printf("installed %s\n", u.Path)
 	}
+	if err := writeAtomic(r.o.Home.Path, PluginEnvFile, pluginEnv); err != nil {
+		return fmt.Errorf("setup: write %s: %w", r.pluginEnvPath(), err)
+	}
+	r.printf("wrote %s\n", r.pluginEnvPath())
 	if !bytes.Equal(src, out) {
 		if err := r.writeConfig(target, src, existed, out); err != nil {
 			return err
@@ -197,6 +212,9 @@ func (r runner) undo(ctx context.Context) error {
 			return err
 		}
 	}
+	if err := r.removePluginEnv(); err != nil {
+		return err
+	}
 	if _, err := os.Lstat(r.dir); err != nil {
 		return nil
 	}
@@ -211,6 +229,35 @@ func (r runner) undo(ctx context.Context) error {
 		}
 		r.printf("deleted %s\n", r.dir)
 	}
+	return nil
+}
+
+func (r runner) pluginEnvPath() string { return filepath.Join(r.o.Home.Path, PluginEnvFile) }
+
+// pluginEnv renders PluginEnvFile. The plugin reads it line by line, so a
+// value must not hold a line break.
+func (r runner) pluginEnv() ([]byte, error) {
+	if strings.ContainsAny(r.o.Bin+r.o.StateDir, "\r\n") {
+		return nil, errors.New("setup: the binary or state dir path holds a line break")
+	}
+	return fmt.Appendf(nil, "# codex-router setup wrote this for the codex-router plugin; setup --undo removes it.\n"+
+		"CODEX_ROUTER_BIN=%s\nXDG_STATE_HOME=%s\n", r.o.Bin, r.o.StateDir), nil
+}
+
+// removePluginEnv deletes PluginEnvFile, if any.
+func (r runner) removePluginEnv() error {
+	p := r.pluginEnvPath()
+	if _, err := os.Lstat(p); err != nil {
+		return nil
+	}
+	if r.o.DryRun {
+		r.printf("dry run: would remove %s\n", p)
+		return nil
+	}
+	if err := os.Remove(p); err != nil {
+		return fmt.Errorf("setup: %w", err)
+	}
+	r.printf("removed %s\n", p)
 	return nil
 }
 
