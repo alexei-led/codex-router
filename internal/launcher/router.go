@@ -23,7 +23,6 @@ import (
 const (
 	probeTimeout  = 2 * time.Second
 	relistenDelay = 200 * time.Millisecond
-	modelsCache   = "models_cache.json"
 )
 
 // newRouter builds the engine for the Codex home with the launcher's cwd for
@@ -44,7 +43,7 @@ func RouterDeps(o Options, log *slog.Logger) (route.Deps, *catalog.Store) {
 	h, err := home.Resolve(o.getenv)
 	if err != nil {
 		log.Warn("catalog-cache-unreadable", "err", err)
-	} else if c, err := catalog.LoadCache(filepath.Join(h.Path, modelsCache)); err != nil {
+	} else if c, err := catalog.LoadCache(filepath.Join(h.Path, catalog.CacheFile)); err != nil {
 		log.Warn("catalog-cache-unreadable", "err", err)
 	} else {
 		store.Set(c)

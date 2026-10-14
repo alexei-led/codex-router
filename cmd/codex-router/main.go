@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/brain"
+	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
@@ -846,10 +847,11 @@ func (c cli) brain(ctx context.Context, configPath string, args []string) int {
 		return c.fail(err)
 	}
 	log := slog.New(slog.NewJSONHandler(c.stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	deps, _ := launcher.RouterDeps(launcher.Options{Config: cfg, Env: c.env, Stderr: c.stderr}, log)
+	deps, store := launcher.RouterDeps(launcher.Options{Config: cfg, Env: c.env, Stderr: c.stderr}, log)
+	models := catalog.NewCacheWatch(filepath.Join(h.Path, catalog.CacheFile), store, nil)
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := brain.Run(ctx, brain.Options{Home: h, Deps: deps, Getenv: c.getenv}); err != nil {
+	if err := brain.Run(ctx, brain.Options{Home: h, Deps: deps, Getenv: c.getenv, Models: models}); err != nil {
 		return c.fail(err)
 	}
 	return exitOK

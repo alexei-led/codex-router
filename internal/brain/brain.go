@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/appserver"
+	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
@@ -78,6 +79,9 @@ type Options struct {
 	Daemon string
 	// Dialer reaches the daemon; nil means appserver.WebSocket.
 	Dialer appserver.Dialer
+	// Models reloads the catalog Deps.Catalog reads when Codex rewrites the
+	// home's models cache; each decide checks it. Nil never reloads.
+	Models *catalog.CacheWatch
 	// Idle and Sweep override IdleAfter and the idle check's period; tests
 	// only.
 	Idle, Sweep time.Duration
@@ -330,6 +334,7 @@ func (e endpoint) Hello() control.Hello { return e.hello }
 type linkHandler struct{ b *Brain }
 
 func (h linkHandler) Decide(ctx context.Context, req *responses.Request, m responses.Meta) (responses.Rewrite, bool) {
+	h.b.reloadModels()
 	if m.ThreadID != "" {
 		h.b.touch(m.ThreadID, responses.Classify(m) == responses.KindUserStep)
 	}
@@ -341,6 +346,19 @@ func (h linkHandler) Observe(m responses.Meta, served string, u responses.Usage,
 		h.b.touch(m.ThreadID, false)
 	}
 	h.b.eng.Observe(m, served, u, status)
+}
+
+// reloadModels loads the home's models cache again when Codex rewrote it.
+func (b *Brain) reloadModels() {
+	if b.o.Models == nil {
+		return
+	}
+	switch reloaded, err := b.o.Models.Check(); {
+	case err != nil:
+		b.log.Warn("catalog-cache-unreadable", "err", err)
+	case reloaded:
+		b.log.Info("catalog-reloaded")
+	}
 }
 
 // followDaemon keeps a connection to the home's daemon until ctx ends,
