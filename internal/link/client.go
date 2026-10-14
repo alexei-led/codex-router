@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/proxy"
@@ -43,7 +44,9 @@ type ClientOptions struct {
 // the brain down (redial after a backoff), slow (the call's deadline, and a
 // breaker that skips the brain for BreakerCooldown after FailuresToOpen
 // timeouts in a row) or gone mid-call. Observe never blocks: it queues and
-// drops when ObserveQueue is full.
+// drops when ObserveQueue is full. A decide is written after the
+// observations queued before it, so the brain applies a reply's usage before
+// the next step's decide.
 type Client struct {
 	path    func() string
 	homeID  string
@@ -51,9 +54,11 @@ type Client struct {
 	log     *slog.Logger
 	now     func() time.Time // breaker and backoff clock; tests replace it
 
-	observes chan Header
-	done     chan struct{}
-	wg       sync.WaitGroup
+	observes chan queued
+	// unwritten counts the observations queued or being written.
+	unwritten atomic.Int64
+	done      chan struct{}
+	wg        sync.WaitGroup
 
 	mu        sync.Mutex
 	conn      *clientConn // nil while down
@@ -71,6 +76,13 @@ var (
 	_ proxy.Observer = (*Client)(nil)
 )
 
+// queued is an observation for the writer, or a decide's marker: flushed is
+// closed once every observation queued before it is written.
+type queued struct {
+	h       Header
+	flushed chan struct{}
+}
+
 // NewClient returns a Client and starts its observe writer. It dials on the
 // first call, not here, so an edge starts while its brain is down.
 func NewClient(o ClientOptions) *Client {
@@ -84,7 +96,7 @@ func NewClient(o ClientOptions) *Client {
 	}
 	c := &Client{
 		path: o.Path, homeID: o.HomeID, timeout: timeout, log: log, now: time.Now,
-		observes: make(chan Header, ObserveQueue), done: make(chan struct{}),
+		observes: make(chan queued, ObserveQueue), done: make(chan struct{}),
 	}
 	c.wg.Go(c.writeObserves)
 	return c
@@ -97,6 +109,10 @@ func (c *Client) Decide(ctx context.Context, req *responses.Request, meta respon
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
+	if !c.flush(ctx) {
+		c.timedOut(ctx)
+		return responses.Rewrite{}, false
+	}
 	cc := c.connect(ctx)
 	if cc == nil {
 		return responses.Rewrite{}, false
@@ -130,10 +146,36 @@ func (c *Client) Decide(ctx context.Context, req *responses.Request, meta respon
 // is full.
 func (c *Client) Observe(meta responses.Meta, served string, usage responses.Usage, status int) {
 	h := Header{Type: TypeObserve, Meta: &meta, Served: served, Usage: &usage, Status: status}
+	c.unwritten.Add(1)
 	select {
-	case c.observes <- h:
+	case c.observes <- queued{h: h}:
 	default:
+		c.unwritten.Add(-1)
 		c.log.Warn("link-observe-dropped", "thread", meta.ThreadID, "turn", meta.TurnID)
+	}
+}
+
+// flush waits, under ctx, until the observations queued before it are
+// written or dropped.
+func (c *Client) flush(ctx context.Context) bool {
+	if c.unwritten.Load() == 0 {
+		return true
+	}
+	flushed := make(chan struct{})
+	select {
+	case c.observes <- queued{flushed: flushed}:
+	case <-ctx.Done():
+		return false
+	case <-c.done:
+		return false
+	}
+	select {
+	case <-flushed:
+		return true
+	case <-ctx.Done():
+		return false
+	case <-c.done:
+		return false
 	}
 }
 
@@ -168,12 +210,17 @@ func (c *Client) writeObserves() {
 		select {
 		case <-c.done:
 			return
-		case h := <-c.observes:
+		case q := <-c.observes:
+			if q.flushed != nil {
+				close(q.flushed)
+				continue
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), observeTimeout)
 			if cc := c.connect(ctx); cc != nil {
-				_ = cc.write(ctx, h, nil)
+				_ = cc.write(ctx, q.h, nil)
 			}
 			cancel()
+			c.unwritten.Add(-1)
 		}
 	}
 }
