@@ -1,0 +1,30 @@
+{"time":"2026-10-14T16:10:18.200867+03:00","level":"INFO","msg":"session-start","runtime":"4dec93ef","codex_args":0}
+{"time":"2026-10-14T16:10:18.203077+03:00","level":"INFO","msg":"catalog-seeded","models":10}
+{"time":"2026-10-14T16:10:18.203096+03:00","level":"WARN","msg":"classifier-disabled","reason":"TYPESAFE_API_KEY is not set"}
+{"time":"2026-10-14T16:10:18.205141+03:00","level":"INFO","msg":"proxy-ready","port":52187}
+{"time":"2026-10-14T16:10:18.362871+03:00","level":"INFO","msg":"appserver-ready","port":52187}
+{"time":"2026-10-14T16:10:18.365708+03:00","level":"INFO","msg":"codex-started","pid":6156}
+{"time":"2026-10-14T16:10:18.944081+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:10:18.944356+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:10:19.474348+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:10:19.474909+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:10:24.198313+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13a89-005a-75d2-bee8-49fabdd3c5c4","model":"gpt-6-luna","effort":"high"}
+{"time":"2026-10-14T16:10:24.838975+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:10:24.83927+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:10:25.961739+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13a89-005a-75d2-bee8-49fabdd3c5c4","turn":"01a13a89-0543-7f32-bf07-d8cef143b17c","path":"/v1/responses"}
+{"time":"2026-10-14T16:10:25.961862+03:00","level":"DEBUG","msg":"responses","thread":"01a13a89-005a-75d2-bee8-49fabdd3c5c4","turn":"01a13a89-0543-7f32-bf07-d8cef143b17c","status":200,"bytes":89738,"ms":1768}
+{"time":"2026-10-14T16:10:27.852094+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13a89-12cb-7d41-a7df-eba758cb7ee2","turn":"01a13a89-1567-7d91-b2bb-60f3655b88db","path":"/v1/responses"}
+{"time":"2026-10-14T16:10:27.852138+03:00","level":"DEBUG","msg":"responses","thread":"01a13a89-12cb-7d41-a7df-eba758cb7ee2","turn":"01a13a89-1567-7d91-b2bb-60f3655b88db","status":200,"bytes":50522,"ms":2672}
+{"time":"2026-10-14T16:13:18.544442+03:00","level":"INFO","msg":"route command","op":"pause","scope":"home","thread":"","tier":"","preset":""}
+{"time":"2026-10-14T16:13:26.345999+03:00","level":"INFO","msg":"route command","op":"resume","scope":"home","thread":"","tier":"","preset":""}
+{"time":"2026-10-14T16:14:21.861761+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:14:21.862162+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:14:29.220036+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13a8c-afbc-7190-9bd0-e5016e812765","model":"gpt-6-luna","effort":"high"}
+{"time":"2026-10-14T16:14:31.566701+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13a8c-afbc-7190-9bd0-e5016e812765","turn":"01a13a8c-ccff-7781-b4cb-aaffc60df39b","path":"/v1/responses"}
+{"time":"2026-10-14T16:14:31.566728+03:00","level":"DEBUG","msg":"responses","thread":"01a13a8c-afbc-7190-9bd0-e5016e812765","turn":"01a13a8c-ccff-7781-b4cb-aaffc60df39b","status":200,"bytes":89739,"ms":2350}
+{"time":"2026-10-14T16:14:32.813118+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13a8c-cfe6-7560-964a-21f042ef27d5","turn":"01a13a8c-d007-7e52-b240-41514c0b09f0","path":"/v1/responses"}
+{"time":"2026-10-14T16:14:32.813188+03:00","level":"DEBUG","msg":"responses","thread":"01a13a8c-cfe6-7560-964a-21f042ef27d5","turn":"01a13a8c-d007-7e52-b240-41514c0b09f0","status":200,"bytes":49745,"ms":3200}
+{"time":"2026-10-14T16:14:49.519132+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:14:49.519511+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:19:20.113323+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:19:20.113701+03:00","level":"DEBUG","msg":"models","status":200}

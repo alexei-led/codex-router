@@ -1,0 +1,19 @@
+{"time":"2026-10-14T16:06:47.143155+03:00","level":"INFO","msg":"session-start","runtime":"0a3e9619","codex_args":0}
+{"time":"2026-10-14T16:06:47.144211+03:00","level":"INFO","msg":"catalog-seeded","models":10}
+{"time":"2026-10-14T16:06:47.144237+03:00","level":"WARN","msg":"classifier-disabled","reason":"TYPESAFE_API_KEY is not set"}
+{"time":"2026-10-14T16:06:47.145176+03:00","level":"INFO","msg":"proxy-ready","port":51806}
+{"time":"2026-10-14T16:06:47.303067+03:00","level":"INFO","msg":"appserver-ready","port":51806}
+{"time":"2026-10-14T16:06:47.305191+03:00","level":"INFO","msg":"codex-started","pid":98431}
+{"time":"2026-10-14T16:06:48.031665+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:06:48.031994+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:06:48.607263+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:06:48.607789+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:06:52.337884+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13a85-c8a6-72a1-b422-fd1b402bbb0f","model":"gpt-6-luna","effort":"high"}
+{"time":"2026-10-14T16:06:53.112611+03:00","level":"DEBUG","msg":"catalog","models":10}
+{"time":"2026-10-14T16:06:53.112926+03:00","level":"DEBUG","msg":"models","status":200}
+{"time":"2026-10-14T16:06:53.590892+03:00","level":"INFO","msg":"appserver-resume-skipped","thread":"01a13a85-d733-7c90-94be-3333343f1edf","code":-32600}
+{"time":"2026-10-14T16:06:53.591321+03:00","level":"INFO","msg":"appserver-settings","thread":"01a13a85-d733-7c90-94be-3333343f1edf","model":"gpt-6-luna","effort":"high"}
+{"time":"2026-10-14T16:06:54.691849+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13a85-c8a6-72a1-b422-fd1b402bbb0f","turn":"01a13a85-d01a-72b3-88a0-1197077889a1","path":"/v1/responses"}
+{"time":"2026-10-14T16:06:54.691881+03:00","level":"DEBUG","msg":"responses","thread":"01a13a85-c8a6-72a1-b422-fd1b402bbb0f","turn":"01a13a85-d01a-72b3-88a0-1197077889a1","status":200,"bytes":90194,"ms":2357}
+{"time":"2026-10-14T16:06:55.893706+03:00","level":"DEBUG","msg":"stream-closed-after-completed","thread":"01a13a85-d733-7c90-94be-3333343f1edf","turn":"01a13a85-da7b-7cb0-a6ea-58120110edc9","path":"/v1/responses"}
+{"time":"2026-10-14T16:06:55.893751+03:00","level":"DEBUG","msg":"responses","thread":"01a13a85-d733-7c90-94be-3333343f1edf","turn":"01a13a85-da7b-7cb0-a6ea-58120110edc9","status":200,"bytes":50522,"ms":2371}
