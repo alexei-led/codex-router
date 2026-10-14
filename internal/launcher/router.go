@@ -14,6 +14,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/route"
 )
@@ -28,7 +29,9 @@ const (
 // $CODEX_HOME/models_cache.json. sink may be nil.
 func newRouter(o Options, log *slog.Logger, sink route.Sink) (*route.Engine, *catalog.Store) {
 	store := &catalog.Store{}
-	if c, err := catalog.LoadCache(filepath.Join(codexHome(o.getenv), modelsCache)); err != nil {
+	if h, err := home.Resolve(o.getenv); err != nil {
+		log.Warn("catalog-cache-unreadable", "err", err)
+	} else if c, err := catalog.LoadCache(filepath.Join(h.Path, modelsCache)); err != nil {
 		log.Warn("catalog-cache-unreadable", "err", err)
 	} else {
 		store.Set(c)
@@ -40,13 +43,6 @@ func newRouter(o Options, log *slog.Logger, sink route.Sink) (*route.Engine, *ca
 	}
 	eng := route.New(route.Deps{Config: o.Config, Catalog: store, Classifier: asker, Sink: sink, Logger: log})
 	return eng, store
-}
-
-func codexHome(getenv func(string) string) string {
-	if h := getenv("CODEX_HOME"); filepath.IsAbs(h) {
-		return h
-	}
-	return filepath.Join(getenv("HOME"), ".codex")
 }
 
 // newClassifier returns the configured classifier, or nil and the reason it

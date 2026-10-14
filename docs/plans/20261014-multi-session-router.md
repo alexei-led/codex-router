@@ -217,10 +217,10 @@ Units: launchd `com.github.alexei-led.codex-router.<home_id>.{edge,brain}`; syst
 - Create: `internal/home/home.go`, `internal/home/doc.go`, `internal/home/home_test.go`
 - Modify: `internal/launcher/router.go` (use `home.Resolve` instead of `codexHome`)
 
-- [ ] `home.Resolve(getenv)` → `Home{ID, Path, Name}` per M2; canonical path via `filepath.EvalSymlinks` with fallback to the cleaned absolute path when the dir does not exist yet
-- [ ] replace `codexHome` in the launcher; `models_cache.json` path from `Home.Path`
-- [ ] tests: table for name derivation (`.codex`, `.codex-work`, `codex-x`, trailing slash, relative `CODEX_HOME` rejected), symlinked home gives the same ID, unset `CODEX_HOME` → `~/.codex`
-- [ ] run `make fmt lint test build`
+- [x] `home.Resolve(getenv)` → `Home{ID, Path, Name}` per M2; canonical path via `filepath.EvalSymlinks` with fallback to the cleaned absolute path when the dir does not exist yet
+- [x] replace `codexHome` in the launcher; `models_cache.json` path from `Home.Path`
+- [x] tests: table for name derivation (`.codex`, `.codex-work`, `codex-x`, trailing slash, relative `CODEX_HOME` rejected), symlinked home gives the same ID, unset `CODEX_HOME` → `~/.codex`
+- [x] run `make fmt lint test build`
 
 ### Task 2: Session label from cwd
 
