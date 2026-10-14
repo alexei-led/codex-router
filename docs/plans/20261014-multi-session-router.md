@@ -244,11 +244,12 @@ Units: launchd `com.github.alexei-led.codex-router.<home_id>.{edge,brain}`; syst
 
 - Create: `internal/registry/registry.go`, `internal/registry/doc.go`, `internal/registry/registry_test.go`
 
-- [ ] `Root(getenv)` per M3; create with 0700, refuse a non-dir, a symlink, or a dir not owned by the user (copy the rules of `checkPrivate` from `launcher/runtime.go`; Task 6 switches the launcher to the registry's exported `CheckPrivate` and deletes its copy, so this task does not touch `internal/launcher`)
-- [ ] `Endpoint` type (Technical Details); `Write` (temp file + rename, 0600), `Remove`, `List` (skip unparseable files, report them as skipped)
-- [ ] `Prune(isLive func(Endpoint) bool)` removes entries whose socket does not answer and whose pid is gone
-- [ ] tests: write/list round trip, atomic replace under concurrent writers, bad perms refused, unparseable entry skipped, prune keeps live and drops dead
-- [ ] run `make fmt lint test build`
+- [x] `Root(getenv)` per M3; create with 0700, refuse a non-dir, a symlink, or a dir not owned by the user (copy the rules of `checkPrivate` from `launcher/runtime.go`; Task 6 switches the launcher to the registry's exported `CheckPrivate` and deletes its copy, so this task does not touch `internal/launcher`)
+- [x] `Endpoint` type (Technical Details); `Write` (temp file + rename, 0600), `Remove`, `List` (skip unparseable files, report them as skipped)
+- [x] `Prune(isLive func(Endpoint) bool)` removes entries whose socket does not answer and whose pid is gone
+- [x] tests: write/list round trip, atomic replace under concurrent writers, bad perms refused, unparseable entry skipped, prune keeps live and drops dead
+- [x] ➕ `Alive(Endpoint)`: the default `isLive` for `Prune` (socket answers or pid exists); `Root` also checks the parent `codex-router` dir is private. The not-owned-by-user case is not unit-tested (needs a second uid)
+- [x] run `make fmt lint test build`
 
 ### Task 4: Engine: per-thread state, pause, pin and snapshots
 
