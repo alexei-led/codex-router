@@ -616,6 +616,34 @@ func TestEscalationOnRepeatedFailureInsideATurn(t *testing.T) {
 	}
 }
 
+func TestFixedFailureFromAPinnedTurnDoesNotEscalateTheNextTurn(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("low", 0.99)))
+	if err := h.engine.Apply(Command{Op: OpPin, Tier: config.TierLow}); err != nil {
+		t.Fatal(err)
+	}
+	m := meta("th", "t1")
+	failing := func(id string) []responses.Item {
+		return []responses.Item{call(id, "go test ./pkg/queue"), result(id, 1, "--- FAIL: TestRetry\nretry_test.go:48: attempts = 2, want 3")}
+	}
+	items := []responses.Item{userMsg(secretPrompt)}
+	h.decide(req(medium, items...), m)
+	items = append(append(append(items, failing("c1")...), editGo("c2"), edited("c2")), failing("c3")...)
+	h.decide(req(medium, items...), m)
+	items = append(items, editGo("c4"), edited("c4"), call("c5", "go test ./pkg/queue"), result("c5", 0, "ok"))
+	h.decide(req(medium, items...), m)
+	if d := h.last(); d.Reason != policy.ReasonPinned && d.Reason != ReasonContinue {
+		t.Fatalf("pinned turn decision = %+v", d)
+	}
+
+	rw, ok := h.decide(req(medium, append(items, userMsg("next"))...), meta("th", "t2"))
+
+	wantRoute(t, rw, ok, low)
+	if d := h.last(); d.Reason == policy.ReasonEscalation {
+		t.Fatalf("decision = %+v, want no escalation on a fixed failure", d)
+	}
+}
+
 func TestReviewEveryFourRequestsAppliesAtTheNextStep(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("medium", 0.99)), answer(tier("high", 0.99)))

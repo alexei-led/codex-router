@@ -94,7 +94,7 @@ Counts are integers, masses and fills are in (0, 1], slopes are not negative.
 | `activityMass`          | 0.6     | Activity probability needed to apply an activity route on a new task.                                                                                         |
 | `contextFill`           | 0.8     | A route is used only if the thread's estimated size is at most this fraction of its window.                                                                   |
 
-Escalation: the same tool failure twice with an edit in between moves up one tier without asking the classifier.
+Escalation: the same tool failure twice with an edit in between moves up one tier without asking the classifier. Only a pair whose second failure is in the current turn counts, and not once a later check passed.
 
 Code mode (`tool_mode: code_mode_only` models) runs commands inside JavaScript cells, and Codex reports only how the script ended. The router reads a command's exit status from the cell output only when the script printed it on its own line (`exit_code=1` or `exit code: 1`, as models usually do), when the script printed the nested result as JSON (`text(JSON.stringify(r))`, read for its `exit_code`), or when the script failed. A completed cell that prints no status counts toward neither escalation nor the passed check that `minDwellRequests` needs.
 
