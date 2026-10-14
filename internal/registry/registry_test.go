@@ -300,6 +300,33 @@ func TestPruneKeepsLiveDropsDead(t *testing.T) {
 	}
 }
 
+func TestPruneKeepsAnEntryRewrittenAfterList(t *testing.T) {
+	root := newRoot(t)
+	t0 := time.Now()
+	if err := Write(root, endpoint("a", t0)); err != nil {
+		t.Fatal(err)
+	}
+	fresh := endpoint("a", t0.Add(time.Minute))
+	fresh.PID++
+
+	removed, err := Prune(root, func(ep Endpoint) bool {
+		if err := Write(root, fresh); err != nil {
+			t.Error(err)
+		}
+		return false
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(removed) != 0 {
+		t.Errorf("removed = %q, want the rewritten entry kept", ids(removed))
+	}
+	eps, _, _ := List(root)
+	if len(eps) != 1 || eps[0].PID != fresh.PID || !eps[0].Started.Equal(fresh.Started) {
+		t.Errorf("left = %+v, want the rewritten entry", eps)
+	}
+}
+
 func TestAlive(t *testing.T) {
 	dir, err := os.MkdirTemp("", "reg") // short path: macOS caps unix sockets at 104 bytes
 	if err != nil {
