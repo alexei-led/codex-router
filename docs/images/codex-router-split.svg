@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 522" width="1155" height="522" role="img" aria-labelledby="title desc">
+  <title id="title">Codex and the codex-router panel side by side</title>
+  <desc id="desc">A terminal split. Left: Codex runs a Go test that fails twice with an edit in between, and its footer shows GPT-6.1-Sol high. Right: the codex-router panel says this turn moved from gpt-6-sol medium to gpt-6.1-sol high because the same tool failure repeated, shows the classifier's tier and activity reading, the session's routed replies by tier, the estimated saving, and that the footer is synced.</desc>
+  <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
+  <rect width="1155" height="522" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="1154" height="521" rx="8" fill="none" stroke="#2e3340"/>
+  <text x="468.4" y="28.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="28.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
+  <text x="554.2" y="28.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
+  <text x="585.4" y="28.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
+  <text x="749.2" y="28.0" fill="#878787" xml:space="preserve"> · footer synced</text>
+  <text x="468.4" y="47.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="468.4" y="66.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <rect x="491.8" y="52.0" width="54.6" height="19" fill="#87afff"/>
+  <text x="491.8" y="66.0" fill="#14171f" xml:space="preserve">[Now 1]</text>
+  <text x="546.4" y="66.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
+  <text x="624.4" y="66.0" fill="#878787" xml:space="preserve"> Policy 3 </text>
+  <text x="702.4" y="66.0" fill="#878787" xml:space="preserve"> Classifier 4 </text>
+  <text x="811.6" y="66.0" fill="#878787" xml:space="preserve"> Usage 5 </text>
+  <text x="468.4" y="85.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="468.4" y="104.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="104.0" fill="#d0d0d0" xml:space="preserve">This turn  </text>
+  <text x="577.6" y="104.0" fill="#d75f87" xml:space="preserve">▌high</text>
+  <text x="632.2" y="104.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="772.6" y="104.0" fill="#878787" xml:space="preserve">  base gpt-6-sol · medium</text>
+  <text x="16.0" y="123.0" fill="#11a8cd" xml:space="preserve">›</text>
+  <text x="23.8" y="123.0" fill="#d0d0d0" xml:space="preserve"> the retry test is flaky; find out why and fix it</text>
+  <text x="468.4" y="123.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="123.0" fill="#d0d0d0" xml:space="preserve">Activity   </text>
+  <text x="577.6" y="123.0" fill="#d7875f" xml:space="preserve">debug</text>
+  <text x="616.6" y="123.0" fill="#d0d0d0" xml:space="preserve"> 72%</text>
+  <text x="647.8" y="123.0" fill="#878787" xml:space="preserve">   code 15% · explore 6%</text>
+  <text x="835.0" y="123.0" fill="#878787" xml:space="preserve">   applies at 60%+</text>
+  <text x="468.4" y="142.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="142.0" fill="#d0d0d0" xml:space="preserve">Why        escalate: same tool failure twice, edit in between</text>
+  <text x="16.0" y="161.0" fill="#0dbc79" xml:space="preserve">•</text>
+  <text x="31.6" y="161.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">Ran</text>
+  <text x="55.0" y="161.0" fill="#d0d0d0" xml:space="preserve"> go test ./internal/retry -run TestBackoff</text>
+  <text x="468.4" y="161.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="577.6" y="161.0" fill="#878787" xml:space="preserve">no classifier needed · switch ≈ 38k uncached tokens</text>
+  <text x="31.6" y="180.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">└</text>
+  <text x="47.2" y="180.0" fill="#cd3131" xml:space="preserve">--- FAIL: TestBackoff (0.00s)</text>
+  <text x="468.4" y="180.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="180.0" fill="#d0d0d0" xml:space="preserve">Pin next   </text>
+  <text x="577.6" y="180.0" fill="#d75f87" xml:space="preserve"> ▶ high 18% </text>
+  <text x="671.2" y="180.0" fill="#d7af5f" xml:space="preserve"> medium 71% </text>
+  <text x="764.8" y="180.0" fill="#5fafd7" xml:space="preserve"> low 9% </text>
+  <text x="827.2" y="180.0" fill="#5fd7af" xml:space="preserve"> micro 2% </text>
+  <text x="905.2" y="180.0" fill="#878787" xml:space="preserve"> next turn only · p cycles</text>
+  <text x="16.0" y="199.0" fill="#d0d0d0" xml:space="preserve">      backoff_test.go:31: attempt 3: got 400ms, want 800ms</text>
+  <text x="468.4" y="199.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="16.0" y="218.0" fill="#d0d0d0" xml:space="preserve">    exit code: 1</text>
+  <text x="468.4" y="218.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="218.0" fill="#878787" xml:space="preserve">SESSION</text>
+  <text x="546.4" y="218.0" fill="#d0d0d0" xml:space="preserve"> · since 18:02 · 144 routed replies · 19 route switches</text>
+  <text x="468.4" y="237.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="507.4" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="515.2" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="523.0" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="530.8" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="538.6" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="546.4" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="554.2" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="562.0" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="569.8" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="577.6" y="237.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="585.4" y="237.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="593.2" y="237.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="601.0" y="237.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="608.8" y="237.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="616.6" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="624.4" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="632.2" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="640.0" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="647.8" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="655.6" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="663.4" y="237.0" fill="#5fd7af" xml:space="preserve">█</text>
+  <text x="671.2" y="237.0" fill="#5fd7af" xml:space="preserve">█</text>
+  <text x="679.0" y="237.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="686.8" y="237.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="694.6" y="237.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="702.4" y="237.0" fill="#5fafd7" xml:space="preserve">█</text>
+  <text x="710.2" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="718.0" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="725.8" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="733.6" y="237.0" fill="#d7af5f" xml:space="preserve">█</text>
+  <text x="741.4" y="237.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="749.2" y="237.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="757.0" y="237.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="764.8" y="237.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="772.6" y="237.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="780.4" y="237.0" fill="#d75f87" xml:space="preserve">█</text>
+  <text x="788.2" y="237.0" fill="#878787" xml:space="preserve">  4 replies per cell</text>
+  <text x="16.0" y="256.0" fill="#0dbc79" xml:space="preserve">•</text>
+  <text x="31.6" y="256.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">Edited</text>
+  <text x="78.4" y="256.0" fill="#d0d0d0" xml:space="preserve"> internal/retry/backoff.go </text>
+  <text x="289.0" y="256.0" fill="#0dbc79" xml:space="preserve">(+1</text>
+  <text x="320.2" y="256.0" fill="#cd3131" xml:space="preserve">-1)</text>
+  <text x="468.4" y="256.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="507.4" y="256.0" fill="#d75f87" xml:space="preserve">■</text>
+  <text x="515.2" y="256.0" fill="#d0d0d0" xml:space="preserve"> high 24   </text>
+  <text x="601.0" y="256.0" fill="#d7af5f" xml:space="preserve">■</text>
+  <text x="608.8" y="256.0" fill="#d0d0d0" xml:space="preserve"> medium 76   </text>
+  <text x="710.2" y="256.0" fill="#5fafd7" xml:space="preserve">■</text>
+  <text x="718.0" y="256.0" fill="#d0d0d0" xml:space="preserve"> low 36   </text>
+  <text x="796.0" y="256.0" fill="#5fd7af" xml:space="preserve">■</text>
+  <text x="803.8" y="256.0" fill="#d0d0d0" xml:space="preserve"> micro 8   </text>
+  <text x="468.4" y="275.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="507.4" y="275.0" fill="#d7875f" xml:space="preserve">code</text>
+  <text x="538.6" y="275.0" fill="#d0d0d0" xml:space="preserve"> 53 · </text>
+  <text x="585.4" y="275.0" fill="#d7875f" xml:space="preserve">debug</text>
+  <text x="624.4" y="275.0" fill="#d0d0d0" xml:space="preserve"> 38 · </text>
+  <text x="671.2" y="275.0" fill="#d7875f" xml:space="preserve">explore</text>
+  <text x="725.8" y="275.0" fill="#d0d0d0" xml:space="preserve"> 27</text>
+  <text x="16.0" y="294.0" fill="#0dbc79" xml:space="preserve">•</text>
+  <text x="31.6" y="294.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">Ran</text>
+  <text x="55.0" y="294.0" fill="#d0d0d0" xml:space="preserve"> go test ./internal/retry -run TestBackoff</text>
+  <text x="468.4" y="294.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="294.0" fill="#d0d0d0" xml:space="preserve">  last switch 18:42  medium → high · debug</text>
+  <text x="819.4" y="294.0" fill="#878787" xml:space="preserve"> (inside a turn)</text>
+  <text x="31.6" y="313.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">└</text>
+  <text x="47.2" y="313.0" fill="#cd3131" xml:space="preserve">--- FAIL: TestBackoff (0.00s)</text>
+  <text x="468.4" y="313.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="313.0" fill="#d0d0d0" xml:space="preserve">  Routing saved </text>
+  <text x="616.6" y="313.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
+  <text x="718.0" y="313.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6-sol · medium</text>
+  <text x="889.6" y="313.0" fill="#878787" xml:space="preserve"> · switch writes 612K tokens</text>
+  <text x="16.0" y="332.0" fill="#d0d0d0" xml:space="preserve">      backoff_test.go:31: attempt 3: got 400ms, want 800ms</text>
+  <text x="468.4" y="332.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="16.0" y="351.0" fill="#d0d0d0" xml:space="preserve">    exit code: 1</text>
+  <text x="468.4" y="351.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="351.0" fill="#878787" xml:space="preserve">WORTH A LOOK</text>
+  <text x="585.4" y="351.0" fill="#878787" xml:space="preserve"> · this session</text>
+  <text x="468.4" y="370.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="370.0" fill="#d0d0d0" xml:space="preserve">  cache reuse 64% after 19 switches; switches wrote 612K uncached tokens · Policy 3</text>
+  <text x="16.0" y="389.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">•</text>
+  <text x="23.8" y="389.0" fill="#d0d0d0" xml:space="preserve"> Working </text>
+  <text x="94.0" y="389.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">(14s • esc to interrupt)</text>
+  <text x="468.4" y="389.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="389.0" fill="#d0d0d0" xml:space="preserve">  context guard kept 3 steps on a larger window than the policy chose · Routes 2</text>
+  <text x="468.4" y="408.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="468.4" y="427.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="427.0" fill="#d0d0d0" xml:space="preserve">Codex      footer shows </text>
+  <text x="679.0" y="427.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="819.4" y="427.0" fill="#878787" xml:space="preserve"> · synced via thread/settings/update</text>
+  <text x="16.0" y="446.0" fill="#11a8cd" xml:space="preserve">›</text>
+  <text x="31.6" y="446.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">Ask Codex to do anything</text>
+  <text x="468.4" y="446.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="446.0" fill="#d0d0d0" xml:space="preserve">Context    ██░░░░░░░░░░░░░░░░░░ 10%  </text>
+  <text x="780.4" y="446.0" fill="#878787" xml:space="preserve">~91K / 828K · fit guard: smallest window</text>
+  <text x="468.4" y="465.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="465.0" fill="#d0d0d0" xml:space="preserve">Cache      97% reused on the last reply</text>
+  <text x="796.0" y="465.0" fill="#878787" xml:space="preserve"> · 64% this session · $ at list price</text>
+  <text x="31.6" y="484.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">GPT-6.1-Sol high · main · 828K window · Context 89% left</text>
+  <text x="468.4" y="484.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="31.6" y="503.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">? for shortcuts</text>
+  <text x="468.4" y="503.0" fill="#2e3340" xml:space="preserve"> │ </text>
+  <text x="491.8" y="503.0" fill="#878787" xml:space="preserve">1-5 tabs · tab next · p pin next · space pause/resume · q quit</text>
+</svg>

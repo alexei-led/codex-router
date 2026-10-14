@@ -73,3 +73,22 @@ func TestToSVGSizeFollowsGrid(t *testing.T) {
 		t.Errorf("svg lacks %s\n%s", want, svg)
 	}
 }
+
+func TestSideBySide(t *testing.T) {
+	left := [][]run{{{"ab", style{}}}, {{"c", style{}}}}
+	right := [][]run{{{"1", style{}}}, {{"2", style{}}}, {{"3", style{}}}}
+	got := sideBySide(left, right)
+	want := []string{"   │ 1", "ab │ 2", "c  │ 3"}
+	if len(got) != len(want) {
+		t.Fatalf("rows = %d, want %d", len(got), len(want))
+	}
+	for i, l := range got {
+		var b strings.Builder
+		for _, r := range l {
+			b.WriteString(r.text)
+		}
+		if b.String() != want[i] {
+			t.Errorf("row %d = %q, want %q", i, b.String(), want[i])
+		}
+	}
+}
