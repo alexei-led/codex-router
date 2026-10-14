@@ -1,0 +1,17 @@
+◂ ● default · alpha · feat-b  ● default · beta · main ◐  ● work · beta · feat-c  ● work · beta · feat-d  ● default · alpha · feat-a                                                              ▸ 2/5
+ROUTING ◉ on · Jev off · footer synced
+
+[Sessions 0] Now 1  Routes 2  Policy 3  Classifier 4  Usage 5 
+
+SESSIONS · 5 sessions in 2 homes
+  SESSION                                   STATE           ROUTE                 REPLIES                       LAST SWITCH
+● default · 3 endpoints · 1 reply · 1 switch
+  alpha · feat-a                            ◉ on            gpt-6-sol · medium    █                          1  16:11 micro→medium
+▸ alpha · feat-b                            ◉ on            gpt-6-luna · high                                0  -
+  beta · main                               ◐ manual        gpt-6-sol · medium                               0  -
+
+● work · 2 endpoints · 0 replies · 0 switches
+  beta · feat-c                             ◉ on            gpt-6-luna · high                                0  -
+  beta · feat-d                             ◉ on            gpt-6-luna · high                                0  -
+
+↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause · P pause home · q quit

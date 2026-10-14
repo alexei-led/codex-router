@@ -1,0 +1,11 @@
+SESSIONS · 5 sessions in 2 homes
+  SESSION                                   STATE           ROUTE                 REPLIES                       LAST SWITCH
+● default · 2 endpoints · 1 reply · 1 switch
+  alpha · feat-a                            ◉ on            gpt-6-sol · medium    █                          1  16:11 micro→medium
+  beta · main                               ◐ manual        gpt-6-sol · medium                               0  -
+
+● work · 2 endpoints · 0 replies · 0 switches
+▸ beta · feat-c · 2f44                      ◉ on            gpt-6-luna · high                                0  -
+  beta · feat-c · 0da6                      ◉ on            gpt-6-luna · high                                0  -
+  beta · feat-d                             ◉ on            gpt-6-luna · high                                0  -
+

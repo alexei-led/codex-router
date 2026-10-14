@@ -1,0 +1,97 @@
+[
+  {
+    "id": "68a7f56701a9/01a13a89-02f9-7d62-8fc7-d2663a5f3934",
+    "home": "68a7f56701a9",
+    "thread_id": "01a13a89-02f9-7d62-8fc7-d2663a5f3934",
+    "label": "default · alpha · feat-b",
+    "cwd": "$RUN/alpha-feat-b",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:10:25.768197+03:00",
+    "footer_synced": true,
+    "endpoint_id": "c94971a4"
+  },
+  {
+    "id": "68a7f56701a9/01a13a89-02f1-7c10-af82-2ad890a095bc",
+    "home": "68a7f56701a9",
+    "thread_id": "01a13a89-02f1-7c10-af82-2ad890a095bc",
+    "label": "default · beta · main",
+    "cwd": "$RUN/beta",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:10:25.747463+03:00",
+    "footer_synced": true,
+    "endpoint_id": "3b437cb7"
+  },
+  {
+    "id": "68a7f56701a9/01a13a89-0279-7242-b266-750cff2aacc3",
+    "home": "68a7f56701a9",
+    "thread_id": "01a13a89-0279-7242-b266-750cff2aacc3",
+    "label": "default · alpha · feat-a",
+    "cwd": "$RUN/alpha-feat-a",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:10:25.433423+03:00",
+    "footer_synced": true,
+    "endpoint_id": "bc0497de"
+  },
+  {
+    "id": "367e0181334d/01a13a89-005a-75d2-bee8-49fabdd3c5c4",
+    "home": "367e0181334d",
+    "thread_id": "01a13a89-005a-75d2-bee8-49fabdd3c5c4",
+    "label": "work · beta · feat-c",
+    "cwd": "$RUN/beta-feat-c",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:10:25.961219+03:00",
+    "footer_synced": true,
+    "endpoint_id": "4dec93ef"
+  },
+  {
+    "id": "367e0181334d/01a13a89-00f1-7d81-bf4e-1204f816a60e",
+    "home": "367e0181334d",
+    "thread_id": "01a13a89-00f1-7d81-bf4e-1204f816a60e",
+    "label": "work · beta · feat-d",
+    "cwd": "$RUN/beta-feat-d",
+    "mode": "on",
+    "tier": "micro",
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "2026-10-14T16:10:25.531264+03:00",
+    "footer_synced": true,
+    "endpoint_id": "432959eb"
+  }
+]

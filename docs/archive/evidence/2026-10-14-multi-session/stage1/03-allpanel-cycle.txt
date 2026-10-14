@@ -1,0 +1,6 @@
+after ]: ◂ ● work · beta · feat-c  ● work · beta · feat-d  ● default · alpha · feat-b  ● default · beta · main  ● default · alpha · feat-a                                                                ▸ 4/5
+after ]: ◂ ● work · beta · feat-d  ● default · alpha · feat-b  ● default · beta · main  ● default · alpha · feat-a  ● work · beta · feat-c                                                                ▸ 5/5
+after ]: ◂ ● default · alpha · feat-b  ● default · beta · main  ● default · alpha · feat-a  ● work · beta · feat-c  ● work · beta · feat-d                                                                ▸ 1/5
+after ]: ◂ ● default · beta · main  ● default · alpha · feat-a  ● work · beta · feat-c  ● work · beta · feat-d  ● default · alpha · feat-b                                                                ▸ 2/5
+after ]: ◂ ● default · alpha · feat-a  ● work · beta · feat-c  ● work · beta · feat-d  ● default · alpha · feat-b  ● default · beta · main                                                                ▸ 3/5
+after [: ◂ ● default · beta · main  ● default · alpha · feat-a  ● work · beta · feat-c  ● work · beta · feat-d  ● default · alpha · feat-b                                                                ▸ 2/5

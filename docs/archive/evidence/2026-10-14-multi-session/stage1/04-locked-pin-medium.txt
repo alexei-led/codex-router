@@ -1,0 +1,17 @@
+● default · alpha · feat-a  68a7f56701a9/01a13a89-0279-7242-b266-750cff2aacc3
+ROUTING ◉ on · Jev off · footer synced
+
+[Now 1] Routes 2  Policy 3  Classifier 4  Usage 5 
+
+Next turn  ▌medium  gpt-6-sol · medium  pinned
+Activity   none
+Why        classifier failed; this turn is not routed
+Pin next    high [medium] low  micro  next turn only · p cycles
+
+SESSION · no routed replies yet
+
+Codex      footer shows gpt-6-luna · high · synced via thread/settings/update
+Context    ░░░░░░░░░░░░░░░░░░░░ 0%  ~0 / 258.4K · fit guard: smallest window
+Cache      no replies yet
+
+1-5 tabs · p pin next · space pause · P pause home · q quit
