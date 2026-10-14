@@ -61,18 +61,22 @@ func TestInterleavedThreadsKeepTheirOwnTallies(t *testing.T) {
 	tests := []struct {
 		thread     string
 		replies    int
+		switches   int
 		strip      []config.Tier
 		lastSwitch *Switch
 	}{
-		{"a", 2, []config.Tier{config.TierLow, config.TierLow}, &Switch{From: config.TierMedium, To: config.TierLow}},
-		{"b", 1, []config.Tier{config.TierHigh}, &Switch{From: config.TierMedium, To: config.TierHigh}},
-		{"c", 1, []config.Tier{config.TierMedium}, nil},
+		{"a", 2, 1, []config.Tier{config.TierLow, config.TierLow}, &Switch{From: config.TierMedium, To: config.TierLow}},
+		{"b", 1, 1, []config.Tier{config.TierHigh}, &Switch{From: config.TierMedium, To: config.TierHigh}},
+		{"c", 1, 0, []config.Tier{config.TierMedium}, nil},
 	}
 	for _, tt := range tests {
 		s := h.engine.SnapshotFor(tt.thread)
 		info := h.session(tt.thread)
 		if s.ThreadID != tt.thread || s.Stats.Replies != tt.replies || info.Replies != tt.replies {
 			t.Errorf("%s: snapshot thread %q replies %d, info replies %d; want %d", tt.thread, s.ThreadID, s.Stats.Replies, info.Replies, tt.replies)
+		}
+		if info.Switches != tt.switches || s.Stats.Switches != tt.switches {
+			t.Errorf("%s: switches %d / %d, want %d", tt.thread, s.Stats.Switches, info.Switches, tt.switches)
 		}
 		if !slices.Equal(s.Stats.Strip, tt.strip) || !slices.Equal(info.Strip, tt.strip) {
 			t.Errorf("%s: strip %v / %v, want %v", tt.thread, s.Stats.Strip, info.Strip, tt.strip)

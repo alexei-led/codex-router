@@ -624,3 +624,107 @@ func TestSocketSourceSkipsTheHelloCheck(t *testing.T) {
 	c.sessions <- []route.SessionInfo{session(homeWork, "t1", "/r", at(18, 1))}
 	tf.settleCount(1)
 }
+
+func TestFleetFocusOn(t *testing.T) {
+	tf := newTestFleet(t)
+	tf.cwd = "/r"
+	e := tf.add("e1", registry.KindSession, homeWork)
+	tf.poll()
+	match := session(homeWork, "t1", "/r", at(18, 1))
+	other := session(homeWork, "t2", "/q", at(18, 30))
+	e.sessions <- []route.SessionInfo{other, match}
+	tf.settle(func(st fleetState) bool { return st.focus == match.ID })
+
+	tf.focusOn("h9/unknown")
+	if st := tf.state(); st.focus != match.ID {
+		t.Fatalf("unlisted session took the focus: %s", st.focus)
+	}
+	tf.focusOn(other.ID)
+	tf.settle(func(fleetState) bool { return slices.Equal(e.subs(), []string{match.ID, other.ID}) })
+
+	match.LastActive = at(18, 40)
+	e.sessions <- []route.SessionInfo{match, other}
+	tf.settle(func(st fleetState) bool { return flat(st)[0].ID == match.ID })
+	if st := tf.state(); st.focus != other.ID {
+		t.Errorf("a cwd match replaced the chosen focus: %s", st.focus)
+	}
+}
+
+func TestFleetFocusOnKeepsTheLockedFocus(t *testing.T) {
+	tf := newTestFleet(t)
+	locked := session(homeWork, "t1", "/r", at(18, 1))
+	tf.locked = locked.ID
+	e := tf.add("e1", registry.KindSession, homeWork)
+	tf.poll()
+	e.sessions <- []route.SessionInfo{locked, session(homeWork, "t2", "/q", at(18, 30))}
+	tf.settleCount(1)
+	tf.focusOn(control.SessionID(homeWork.ID, "t2"))
+	if st := tf.state(); st.focus != locked.ID {
+		t.Errorf("focus = %s", st.focus)
+	}
+}
+
+func TestFleetLockedSessionEnds(t *testing.T) {
+	tests := []struct {
+		name string
+		end  func(tf *testFleet, e *fakeConn)
+	}{
+		{"endpoint exits and leaves the registry", func(tf *testFleet, e *fakeConn) {
+			e.lose()
+			tf.settle(func(st fleetState) bool { return st.disconnected })
+			tf.remove("e1")
+			tf.poll()
+		}},
+		{"endpoint stops listing it", func(_ *testFleet, e *fakeConn) { e.sessions <- nil }},
+		{"lost endpoint past the grace period", func(tf *testFleet, e *fakeConn) {
+			e.lose()
+			tf.settle(func(st fleetState) bool { return st.disconnected })
+			tf.advance(lostGrace)
+			tf.poll()
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tf := newTestFleet(t)
+			locked := session(homeWork, "t1", "/r", at(18, 1))
+			tf.locked = locked.ID
+			e := tf.add("e1", registry.KindSession, homeWork)
+			tf.poll()
+			if tf.state().ended {
+				t.Fatal("ended before the session was listed")
+			}
+			e.sessions <- []route.SessionInfo{locked}
+			tf.settleCount(1)
+			tt.end(tf, e)
+			tf.settle(func(st fleetState) bool { return st.ended })
+		})
+	}
+}
+
+func TestFleetLostButRegisteredSessionHasNotEnded(t *testing.T) {
+	tf := newTestFleet(t)
+	locked := session(homeWork, "t1", "/r", at(18, 1))
+	tf.locked = locked.ID
+	e := tf.add("e1", registry.KindSession, homeWork)
+	tf.poll()
+	e.sessions <- []route.SessionInfo{locked}
+	tf.settleCount(1)
+	e.lose()
+	tf.settle(func(st fleetState) bool { return st.disconnected })
+	tf.poll()
+	if st := tf.state(); st.ended {
+		t.Error("a lost endpoint still in the registry ended the session")
+	}
+}
+
+func TestFleetAllModeNeverEnds(t *testing.T) {
+	tf := newTestFleet(t)
+	e := tf.add("e1", registry.KindSession, homeWork)
+	tf.poll()
+	e.sessions <- []route.SessionInfo{session(homeWork, "t1", "/r", at(18, 1))}
+	tf.settleCount(1)
+	e.sessions <- nil
+	if st := tf.settleCount(0); st.ended {
+		t.Error("all mode ended")
+	}
+}

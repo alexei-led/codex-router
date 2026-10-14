@@ -32,6 +32,7 @@ type SessionInfo struct {
 	Tier         config.Tier   `json:"tier"`
 	Route        config.Route  `json:"route"`
 	Replies      int           `json:"replies"`
+	Switches     int           `json:"switches"`
 	Strip        []config.Tier `json:"strip"`
 	LastSwitch   *Switch       `json:"last_switch,omitempty"`
 	LastActive   time.Time     `json:"last_active"`
@@ -72,7 +73,7 @@ func (e *Engine) sessions() []SessionInfo {
 		s := SessionInfo{
 			ID: e.home.ID + "/" + th.id, Home: e.home.ID, ThreadID: th.id,
 			Mode: mode, Tier: th.tier, Route: rt,
-			Replies: th.stats.Replies, Strip: slices.Clone(th.stats.tail),
+			Replies: th.stats.Replies, Switches: th.stats.Switches, Strip: slices.Clone(th.stats.tail),
 			LastActive: th.lastActive, Attention: e.attention(th), FooterSynced: len(th.pending) == 0,
 		}
 		if ls := th.stats.LastSwitch; ls != nil {

@@ -62,14 +62,20 @@ func button(label string, on bool) seg {
 	return seg{text: " " + label + " ", color: colorAccent}
 }
 
-// view is everything render needs; render is pure over it.
+// view is everything render needs; render is pure over it. Fleet is nil
+// for a bare snapshot (Render): no top bar, no session line, no Sessions
+// tab. Height 0 means unknown: the Sessions tab does not scroll.
 type view struct {
 	snap         route.Snapshot
 	tab          Tab
 	width        int
+	height       int
 	disconnected bool
 	notice       string
 	styled       bool
+	fleet        *fleetState
+	locked       bool
+	cursor       string // Sessions tab selection, "" for the focus
 }
 
 // Render draws the panel for a snapshot with ANSI colors. Output depends only
@@ -96,34 +102,89 @@ func render(v view) string {
 		c.r = lipgloss.NewRenderer(io.Discard)
 		c.r.SetColorProfile(termenv.ANSI256)
 	}
+	all := v.fleet != nil && !v.locked
+	switch {
+	case all:
+		c.topBar(*v.fleet)
+	case v.fleet != nil:
+		c.lockedHeader(*v.fleet)
+	}
 	c.header(v)
-	c.tabs(v.tab)
-	switch v.tab {
-	case TabRoutes:
+	c.tabs(v.tab, all)
+	hints := packHints(keyHints(v), c.width)
+	footer := 1 + len(hints)
+	if v.notice != "" {
+		footer++
+	}
+	switch {
+	case v.tab == TabSessions && all:
+		room := 0
+		if v.height > 0 {
+			room = max(v.height-len(c.out)-footer, 1)
+		}
+		c.sessionsTab(*v.fleet, v.cursor, room)
+	case v.fleet != nil && v.fleet.focus == "":
+		c.add(dim("no Codex session yet · run codex-router in a project to start one"))
+	case v.tab == TabRoutes:
 		c.routes(v.snap)
-	case TabPolicy:
+	case v.tab == TabPolicy:
 		c.policy(v.snap)
-	case TabClassifier:
+	case v.tab == TabClassifier:
 		c.classifier(v.snap)
-	case TabUsage:
+	case v.tab == TabUsage:
 		c.usage(v.snap)
 	default:
 		c.now(v.snap)
 	}
 	c.blank()
-	c.add(dim(keyHint(v.tab)))
+	for _, h := range hints {
+		c.add(dim(h))
+	}
 	if v.notice != "" {
 		c.add(col(colorWarn, v.notice))
 	}
 	return strings.Join(c.out, "\n") + "\n"
 }
 
-func keyHint(tab Tab) string {
-	h := "1-5 tabs · tab next · p pin next · space pause/resume · q quit"
-	if tab == TabPolicy {
-		h += " · c preset"
+// keyHints lists the keys the view takes, most useful first.
+func keyHints(v view) []string {
+	var h []string
+	switch {
+	case v.fleet == nil:
+		h = []string{"1-5 tabs", "tab next", "p pin next", "space pause/resume"}
+	case v.locked:
+		h = []string{"1-5 tabs", "p pin next", "space pause", "P pause home"}
+	case v.tab == TabSessions:
+		h = []string{"↑↓ select", "enter focus", "[ ] session", "1-5 tabs", "space pause", "P pause home"}
+	default:
+		h = []string{"[ ] session", "0 list", "1-5 tabs", "p pin", "space pause", "P pause home"}
+	}
+	h = append(h, "q quit")
+	if v.tab == TabPolicy {
+		h = append(h, "c preset")
 	}
 	return h
+}
+
+// packHints joins hints with " · " into as few lines of width as fit.
+func packHints(hints []string, width int) []string {
+	var out []string
+	line := ""
+	for _, h := range hints {
+		switch {
+		case line == "":
+			line = h
+		case runes(line)+runes(" · ")+runes(h) <= width:
+			line += " · " + h
+		default:
+			out = append(out, line)
+			line = h
+		}
+	}
+	if line != "" {
+		out = append(out, line)
+	}
+	return out
 }
 
 func (c *canvas) paint(s seg) string {
@@ -195,6 +256,14 @@ func (c *canvas) wrapped(lead string, text string, style seg) {
 func (c *canvas) header(v view) {
 	s := v.snap
 	segs := []seg{bold("ROUTING"), plain(" ")}
+	switch {
+	case v.fleet != nil && v.fleet.ended:
+		c.add(append(segs, col(colorWarn, "■ ended"), dim(" · the session's router exited · closing"))...)
+		return
+	case v.fleet != nil && v.fleet.focus == "":
+		c.add(append(segs, dim("○ no sessions"), dim(" · watching the registry"))...)
+		return
+	}
 	if v.disconnected {
 		segs = append(segs, col(colorWarn, "✕ disconnected"), dim(" · retrying"))
 		if !s.At.IsZero() {
@@ -220,11 +289,15 @@ func (c *canvas) header(v view) {
 	c.add(segs...)
 }
 
-func (c *canvas) tabs(active Tab) {
-	names := map[Tab]string{TabNow: "Now", TabRoutes: "Routes", TabPolicy: "Policy", TabClassifier: "Classifier", TabUsage: "Usage"}
+// tabs draws the tab row; withSessions adds the Sessions tab 0 in front.
+func (c *canvas) tabs(active Tab, withSessions bool) {
+	names := map[Tab]string{TabSessions: "Sessions", TabNow: "Now", TabRoutes: "Routes", TabPolicy: "Policy", TabClassifier: "Classifier", TabUsage: "Usage"}
 	var segs []seg
-	for i, t := range Tabs {
-		label := fmt.Sprintf("%s %d", names[t], i+1)
+	for i, t := range tabsFor(withSessions) {
+		if !withSessions {
+			i++
+		}
+		label := fmt.Sprintf("%s %d", names[t], i)
 		if t == active || (active == "" && t == TabNow) {
 			segs = append(segs, seg{text: "[" + label + "]", color: colorAccent, reverse: true})
 		} else {

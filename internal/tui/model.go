@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,6 +15,8 @@ import (
 const (
 	heartbeat    = 2 * time.Second
 	defaultWidth = 80
+	// endedExit is how long a locked panel shows `ended` before it quits.
+	endedExit = 3 * time.Second
 )
 
 // conn is the part of control.Client the panel uses.
@@ -29,6 +32,7 @@ type conn interface {
 type (
 	fleetMsg struct{}
 	beatMsg  struct{}
+	endedMsg struct{}
 	sentMsg  struct{ err error }
 )
 
@@ -37,6 +41,9 @@ type model struct {
 	st     fleetState
 	tab    Tab
 	width  int
+	height int
+	cursor string // Sessions tab selection
+	ending bool   // the ended exit is scheduled
 	notice string
 }
 
@@ -60,10 +67,22 @@ func beatCmd() tea.Cmd {
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
+		m.width, m.height = msg.Width, msg.Height
 	case fleetMsg:
 		m.st = m.f.state()
+		if _, ok := m.listed(m.cursor); !ok {
+			m.cursor = m.st.focus
+		}
+		if m.st.ended && !m.ending {
+			m.ending = true
+			return m, tea.Batch(waitFleetCmd(m.f), tea.Tick(endedExit, func(time.Time) tea.Msg { return endedMsg{} }))
+		}
 		return m, waitFleetCmd(m.f)
+	case endedMsg:
+		m.ending = false
+		if m.st.ended {
+			return m, tea.Quit
+		}
 	case beatMsg:
 		f := m.f
 		return m, tea.Batch(func() tea.Msg { f.heartbeat(); return nil }, beatCmd())
@@ -82,15 +101,42 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) key(k tea.KeyMsg) tea.Cmd {
+	all := m.f.locked == ""
+	tabs := tabsFor(all)
 	switch s := k.String(); s {
 	case "q", "ctrl+c":
 		return tea.Quit
 	case "1", "2", "3", "4", "5":
 		m.tab = Tabs[s[0]-'1']
+	case "0":
+		if all {
+			m.tab, m.cursor = TabSessions, m.st.focus
+		}
 	case "tab":
-		m.tab = Tabs[(m.tabIndex()+1)%len(Tabs)]
+		m.tab = tabs[(m.tabIndex(tabs)+1)%len(tabs)]
 	case "shift+tab":
-		m.tab = Tabs[(m.tabIndex()+len(Tabs)-1)%len(Tabs)]
+		m.tab = tabs[(m.tabIndex(tabs)+len(tabs)-1)%len(tabs)]
+	case "[":
+		if all {
+			return m.step(-1)
+		}
+	case "]":
+		if all {
+			return m.step(1)
+		}
+	case "up":
+		if m.tab == TabSessions {
+			m.moveCursor(-1)
+		}
+	case "down":
+		if m.tab == TabSessions {
+			m.moveCursor(1)
+		}
+	case "enter":
+		if m.tab == TabSessions && m.cursor != "" {
+			m.tab = TabNow
+			return m.focusOn(m.cursor)
+		}
 	case "p":
 		return m.command(pinCycle(m.st.focus, m.snap().Pin))
 	case " ":
@@ -105,13 +151,53 @@ func (m *model) key(k tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
-func (m *model) tabIndex() int {
-	for i, t := range Tabs {
+func (m *model) tabIndex(tabs []Tab) int {
+	for i, t := range tabs {
 		if t == m.tab {
 			return i
 		}
 	}
-	return 0
+	return slices.Index(tabs, TabNow)
+}
+
+// listed returns the index of session id in the sessions list.
+func (m *model) listed(id string) (int, bool) {
+	i := slices.IndexFunc(m.st.all(), func(s fleetSession) bool { return s.ID == id })
+	return i, i >= 0
+}
+
+// step moves the focus d sessions along the list, wrapping around.
+func (m *model) step(d int) tea.Cmd {
+	all := m.st.all()
+	if len(all) == 0 {
+		return nil
+	}
+	i, _ := m.listed(m.st.focus)
+	return m.focusOn(all[((i+d)%len(all)+len(all))%len(all)].ID)
+}
+
+// moveCursor moves the Sessions tab selection d rows, stopping at the ends.
+func (m *model) moveCursor(d int) {
+	all := m.st.all()
+	if len(all) == 0 {
+		return
+	}
+	i, ok := m.listed(m.cursor)
+	if !ok {
+		i, _ = m.listed(m.st.focus)
+	}
+	m.cursor = all[min(max(i+d, 0), len(all)-1)].ID
+}
+
+// focusOn focuses session id. The panel shows it at once; the fleet
+// resubscribes in the background and confirms with its next state.
+func (m *model) focusOn(id string) tea.Cmd {
+	if id == m.st.focus {
+		return nil
+	}
+	m.st.focus, m.st.snap, m.cursor = id, nil, id
+	f := m.f
+	return func() tea.Msg { f.focusOn(id); return nil }
 }
 
 // snap is the focused session's snapshot, empty until one arrives.
@@ -188,6 +274,11 @@ func nextPreset(cur config.Preset) config.Preset {
 	return Presets[0]
 }
 
-func (m *model) View() string {
-	return render(view{snap: m.snap(), tab: m.tab, width: m.width, disconnected: m.st.disconnected, notice: m.notice, styled: true})
+func (m *model) View() string { return render(m.view()) }
+
+func (m *model) view() view {
+	return view{
+		snap: m.snap(), tab: m.tab, width: m.width, height: m.height, disconnected: m.st.disconnected,
+		notice: m.notice, styled: true, fleet: &m.st, locked: m.f.locked != "", cursor: m.cursor,
+	}
 }

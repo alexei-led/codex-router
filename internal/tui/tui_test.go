@@ -17,6 +17,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/policy"
 	"github.com/alexei-led/codex-router/internal/registry"
@@ -238,13 +239,17 @@ func run(m *model, cmd tea.Cmd) {
 	}
 }
 
+var namedKeys = map[string]tea.KeyType{
+	"tab": tea.KeyTab, "shift+tab": tea.KeyShiftTab, "up": tea.KeyUp, "down": tea.KeyDown, "enter": tea.KeyEnter,
+}
+
 func key(m *model, s string) tea.Cmd {
 	k := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
 	if s == " " {
 		k = tea.KeyMsg{Type: tea.KeySpace, Runes: []rune(" ")}
 	}
-	if s == "tab" {
-		k = tea.KeyMsg{Type: tea.KeyTab}
+	if t, ok := namedKeys[s]; ok {
+		k = tea.KeyMsg{Type: t}
 	}
 	_, cmd := m.Update(k)
 	return cmd
@@ -294,18 +299,33 @@ func TestPresetKeyIgnoredOutsidePolicy(t *testing.T) {
 }
 
 func TestTabKeys(t *testing.T) {
-	m, _ := connected(t, fixture())
-	key(m, "4")
-	if m.tab != TabClassifier {
-		t.Errorf("tab = %s", m.tab)
+	tests := []struct {
+		name   string
+		locked bool
+		keys   []string
+		want   Tab
+	}{
+		{"digit", false, []string{"4"}, TabClassifier},
+		{"tab moves on", false, []string{"4", "tab"}, TabUsage},
+		{"tab wraps to sessions", false, []string{"5", "tab"}, TabSessions},
+		{"zero opens sessions", false, []string{"0"}, TabSessions},
+		{"shift+tab from sessions", false, []string{"0", "shift+tab"}, TabUsage},
+		{"locked tab wraps to now", true, []string{"5", "tab"}, TabNow},
+		{"locked has no sessions tab", true, []string{"2", "0"}, TabRoutes},
 	}
-	key(m, "tab")
-	if m.tab != TabUsage {
-		t.Errorf("tab = %s", m.tab)
-	}
-	key(m, "tab")
-	if m.tab != TabNow {
-		t.Errorf("tab = %s", m.tab)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, _ := connected(t, fixture())
+			if tt.locked {
+				m.f.locked = testSession
+			}
+			for _, k := range tt.keys {
+				key(m, k)
+			}
+			if m.tab != tt.want {
+				t.Errorf("tab = %s, want %s", m.tab, tt.want)
+			}
+		})
 	}
 }
 
@@ -338,11 +358,11 @@ func TestDisconnectedHeaderBlocksCommands(t *testing.T) {
 	}
 }
 
-func TestPanelWithoutEndpointsIsDisconnected(t *testing.T) {
+func TestPanelWithoutSessionsWaits(t *testing.T) {
 	m := newModel(newTestFleet(t).fleet)
 	m.Update(fleetMsg{})
-	if !strings.Contains(m.View(), "✕ disconnected") {
-		t.Errorf("view:\n%s", m.View())
+	if v := m.View(); !strings.Contains(v, "no sessions") || strings.Contains(v, "disconnected") {
+		t.Errorf("view:\n%s", v)
 	}
 	if k := key(m, "P"); k != nil || !strings.Contains(m.View(), "command not sent") {
 		t.Error("home command without a focus")
@@ -373,5 +393,370 @@ func TestAddNeverExceedsWidth(t *testing.T) {
 		if got := utf8.RuneCountInString(c.out[0]); got > w {
 			t.Errorf("width %d: line has %d runes", w, got)
 		}
+	}
+}
+
+func usd(v float64) *float64 { return &v }
+
+func info(h home.Home, thread, label string, mod func(*route.SessionInfo)) fleetSession {
+	s := route.SessionInfo{
+		ID: control.SessionID(h.ID, thread), Home: h.ID, ThreadID: thread, Label: h.Name + " · " + label,
+		Cwd: "/src/" + thread, Mode: route.ModeOn, FooterSynced: true,
+		Route: config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}, LastActive: at(18, 0),
+	}
+	if mod != nil {
+		mod(&s)
+	}
+	return fleetSession{SessionInfo: s, endpoint: "ep-" + h.Name}
+}
+
+// fleetFixture is five sessions in two homes, focused on the work home's
+// manual session.
+func fleetFixture() fleetState {
+	sw := &route.Switch{At: at(18, 41), From: config.TierMedium, To: config.TierHigh, Activity: config.ActivityDebug}
+	return fleetState{
+		focus: control.SessionID(homeWork.ID, "t3"),
+		homes: []fleetHome{
+			{
+				home:      homeDefault,
+				endpoints: []fleetEndpointInfo{{id: "d1", kind: registry.KindSession}},
+				sessions: []fleetSession{
+					info(homeDefault, "t1", "codex-router · main", func(s *route.SessionInfo) {
+						s.Replies, s.Switches, s.Strip, s.LastSwitch = 48, 9, strip("lllllmmmmmlllmmmmmmmmhhh"), sw
+						s.Tier, s.SavedUSD, s.SpentUSD = config.TierHigh, usd(0.84), usd(1.87)
+					}),
+					info(homeDefault, "t2", "notes", func(s *route.SessionInfo) {
+						s.Replies, s.Strip, s.Mode, s.Attention = 3, strip("lll"), route.ModePaused, route.AttentionPaused
+						s.SavedUSD, s.SpentUSD = usd(-0.02), usd(0.10)
+					}),
+				},
+			},
+			{
+				home:      homeWork,
+				endpoints: []fleetEndpointInfo{{id: "w1", kind: registry.KindSession}, {id: "w2", kind: registry.KindBrain}},
+				sessions: []fleetSession{
+					info(homeWork, "t3", "api · feat/auth", func(s *route.SessionInfo) {
+						s.Replies, s.Switches, s.Strip, s.Mode, s.Attention = 12, 2, strip("mmmmllllmmmm"), route.ModeManual, route.AttentionManual
+					}),
+					info(homeWork, "t4", "api · fix/retry", func(s *route.SessionInfo) {
+						s.Replies, s.Switches, s.Strip, s.LastSwitch, s.Attention = 7, 1, strip("mmmmhhh"), sw, route.AttentionEscalation
+						s.Route = config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+					}),
+					info(homeWork, "t5", "infra · main", nil),
+				},
+			},
+		},
+	}
+}
+
+func lockedFixture() fleetState {
+	st := fleetFixture()
+	h := st.homes[1]
+	h.endpoints, h.sessions = h.endpoints[:1], h.sessions[:1]
+	st.homes = []fleetHome{h}
+	return st
+}
+
+// manyFixture is twenty sessions in two homes, focused on the fifteenth.
+func manyFixture() fleetState {
+	st := fleetState{}
+	for i, h := range []home.Home{homeDefault, homeWork} {
+		g := fleetHome{home: h, endpoints: []fleetEndpointInfo{{id: h.Name, kind: registry.KindSession}}}
+		for j := range 10 {
+			n := i*10 + j + 1
+			g.sessions = append(g.sessions, info(h, fmt.Sprintf("t%02d", n), fmt.Sprintf("repo-%02d · main", n), func(s *route.SessionInfo) {
+				s.Replies, s.Strip = n, strip(strings.Repeat("m", n))
+			}))
+		}
+		st.homes = append(st.homes, g)
+	}
+	st.focus = st.homes[1].sessions[4].ID
+	return st
+}
+
+func disconnectedFixture() fleetState {
+	st := fleetFixture()
+	st.disconnected = true
+	work := &st.homes[1]
+	work.endpoints[0].lost = true
+	for i := range work.sessions[:2] {
+		work.sessions[i].disconnected = true
+	}
+	return st
+}
+
+type fleetCase struct {
+	name   string
+	st     fleetState
+	tab    Tab
+	locked bool
+	height int
+}
+
+func fleetCases() []fleetCase {
+	ended := lockedFixture()
+	ended.ended = true
+	return []fleetCase{
+		{"all-now", fleetFixture(), TabNow, false, 0},
+		{"all-sessions", fleetFixture(), TabSessions, false, 0},
+		{"locked", lockedFixture(), TabNow, true, 0},
+		{"ended", ended, TabNow, true, 0},
+		{"disconnected", disconnectedFixture(), TabSessions, false, 0},
+		{"empty", fleetState{disconnected: true}, TabNow, false, 0},
+		{"scroll", manyFixture(), TabSessions, false, 24},
+	}
+}
+
+func renderCase(c fleetCase, width int) string {
+	st := c.st
+	return render(view{snap: fixture(), tab: c.tab, width: width, height: c.height, disconnected: st.disconnected, fleet: &st, locked: c.locked})
+}
+
+func TestRenderFleetGolden(t *testing.T) {
+	for _, c := range fleetCases() {
+		for _, width := range []int{80, 140} {
+			t.Run(fmt.Sprintf("%s-%d", c.name, width), func(t *testing.T) {
+				got := renderCase(c, width)
+				path := filepath.Join("testdata", fmt.Sprintf("fleet-%s-%d.golden", c.name, width))
+				if *update {
+					if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				want, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got != string(want) {
+					t.Errorf("render differs from %s\n--- got\n%s--- want\n%s", path, got, want)
+				}
+			})
+		}
+	}
+}
+
+func TestRenderFleetIsWidthAndHeightBound(t *testing.T) {
+	for _, c := range fleetCases() {
+		for _, width := range []int{40, 80, 99, 100, 140} {
+			got := renderCase(c, width)
+			lines := strings.Split(strings.TrimSuffix(got, "\n"), "\n")
+			for _, line := range lines {
+				if n := utf8.RuneCountInString(line); n > width {
+					t.Errorf("%s/%d: line of %d runes: %q", c.name, width, n, line)
+				}
+			}
+			if c.height > 0 && len(lines) > c.height {
+				t.Errorf("%s/%d: %d lines, height %d", c.name, width, len(lines), c.height)
+			}
+		}
+	}
+}
+
+func topBar(st fleetState, width int) string {
+	c := &canvas{width: width}
+	c.topBar(st)
+	return c.out[0]
+}
+
+func TestTopBarMarksAttention(t *testing.T) {
+	tests := []struct {
+		attention route.Attention
+		mark      string
+	}{
+		{route.AttentionManual, " ◐"},
+		{route.AttentionPaused, " ‖"},
+		{route.AttentionEscalation, " ↑"},
+		{"unknown", " ?"},
+		{"", ""},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.attention), func(t *testing.T) {
+			st := lockedFixture()
+			st.homes[0].sessions[0].Attention = tt.attention
+			want := "◂ ● work · api · feat/auth" + tt.mark + " "
+			if got := topBar(st, 80); !strings.HasPrefix(got, want) || !strings.HasSuffix(got, "▸ 1/1") {
+				t.Errorf("bar %q, want prefix %q", got, want)
+			}
+		})
+	}
+}
+
+func TestTopBarStartsAtTheFocusAndFitsTheWidth(t *testing.T) {
+	st := fleetFixture()
+	wide := topBar(st, 200)
+	if want := "◂ ● work · api · feat/auth ◐  ● work · api · fix/retry ↑  ● work · infra · main  ● default · codex-router · main  ● default · notes ‖"; !strings.HasPrefix(wide, want) || strings.Contains(wide, "…") {
+		t.Errorf("wide bar %q", wide)
+	}
+	for _, width := range []int{40, 60, 80} {
+		got := topBar(st, width)
+		if utf8.RuneCountInString(got) != width || !strings.HasSuffix(got, "▸ 3/5") || !strings.Contains(got, "…") {
+			t.Errorf("width %d: %q", width, got)
+		}
+	}
+	st.homes[1].sessions[0].Label = "work · " + strings.Repeat("x", 100)
+	if got := topBar(st, 40); utf8.RuneCountInString(got) != 40 || !strings.Contains(got, "x…") {
+		t.Errorf("long focus label: %q", got)
+	}
+}
+
+func TestSessionsTabColumnsByWidth(t *testing.T) {
+	st := fleetFixture()
+	for _, tt := range []struct {
+		width int
+		wide  bool
+	}{{80, false}, {99, false}, {100, true}, {140, true}} {
+		got := render(view{tab: TabSessions, width: tt.width, fleet: &st})
+		if wide := strings.Contains(got, "REPLIES") && strings.Contains(got, "LAST SWITCH"); wide != tt.wide {
+			t.Errorf("width %d: replies and last switch shown %v\n%s", tt.width, wide, got)
+		}
+	}
+}
+
+func TestSessionsTabHomeTotals(t *testing.T) {
+	st := fleetFixture()
+	got := render(view{tab: TabSessions, width: 140, fleet: &st})
+	for _, want := range []string{
+		"● default · 1 endpoint · 51 replies · 9 switches · saved ≈ $0.82",
+		"● work · 2 endpoints · 19 replies · 3 switches\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in\n%s", want, got)
+		}
+	}
+	st.homes[0].sessions[0].SavedUSD = usd(-1)
+	if got := render(view{tab: TabSessions, width: 140, fleet: &st}); !strings.Contains(got, "cost ≈ $1.02") {
+		t.Errorf("negative savings not shown as cost:\n%s", got)
+	}
+}
+
+func TestSessionsTabScrollKeepsTheCursorInView(t *testing.T) {
+	st := manyFixture()
+	for _, s := range st.all() {
+		got := render(view{tab: TabSessions, width: 80, height: 24, fleet: &st, cursor: s.ID})
+		label := strings.TrimPrefix(s.Label, homeDefault.Name+" · ")
+		label = strings.TrimPrefix(label, homeWork.Name+" · ")
+		if !strings.Contains(got, "▸ "+label) {
+			t.Errorf("cursor %s not in view:\n%s", s.ID, got)
+		}
+		if n := strings.Count(got, "\n"); n > 24 {
+			t.Errorf("cursor %s: %d lines", s.ID, n)
+		}
+	}
+}
+
+// fleetPanel is a panel over three sessions of one endpoint, listed t1, t2,
+// t3 and focused on t1.
+func fleetPanel(t *testing.T) (*model, *fakeConn, []route.SessionInfo) {
+	t.Helper()
+	tf := newTestFleet(t)
+	e := tf.add("e1", registry.KindSession, homeWork)
+	tf.poll()
+	ss := []route.SessionInfo{
+		session(homeWork, "t1", "/a", at(18, 30)),
+		session(homeWork, "t2", "/b", at(18, 20)),
+		session(homeWork, "t3", "/c", at(18, 10)),
+	}
+	e.sessions <- ss
+	tf.settle(func(st fleetState) bool { return len(flat(st)) == 3 && st.focus == ss[0].ID })
+	m := newModel(tf.fleet)
+	m.Update(fleetMsg{})
+	return m, e, ss
+}
+
+func TestBracketKeysMoveTheFocus(t *testing.T) {
+	tests := []struct {
+		keys []string
+		want int
+	}{
+		{[]string{"]"}, 1},
+		{[]string{"]", "]"}, 2},
+		{[]string{"]", "]", "]"}, 0},
+		{[]string{"["}, 2},
+		{[]string{"[", "]"}, 0},
+	}
+	for _, tt := range tests {
+		t.Run(strings.Join(tt.keys, ""), func(t *testing.T) {
+			m, e, ss := fleetPanel(t)
+			for _, k := range tt.keys {
+				run(m, key(m, k))
+			}
+			want := ss[tt.want].ID
+			refresh(t, m, func(st fleetState) bool { return st.focus == want })
+			if subs := e.subs(); subs[len(subs)-1] != want {
+				t.Errorf("subscribed %v, want last %s", subs, want)
+			}
+		})
+	}
+}
+
+func TestSessionsTabSelectsTheFocus(t *testing.T) {
+	m, _, ss := fleetPanel(t)
+	key(m, "0")
+	key(m, "up")
+	key(m, "down")
+	key(m, "down")
+	key(m, "down")
+	if m.cursor != ss[2].ID {
+		t.Fatalf("cursor %s, want %s", m.cursor, ss[2].ID)
+	}
+	v := m.view()
+	v.styled = false
+	if got := render(v); !strings.Contains(got, "▸ c ") {
+		t.Errorf("cursor row not marked:\n%s", got)
+	}
+	run(m, key(m, "enter"))
+	if m.tab != TabNow {
+		t.Errorf("tab = %s", m.tab)
+	}
+	refresh(t, m, func(st fleetState) bool { return st.focus == ss[2].ID })
+}
+
+func TestLockedPanelIgnoresSessionKeys(t *testing.T) {
+	m, e, ss := fleetPanel(t)
+	m.f.locked = ss[0].ID
+	for _, k := range []string{"]", "[", "0", "down", "enter"} {
+		run(m, key(m, k))
+	}
+	if m.tab != TabNow || m.st.focus != ss[0].ID || len(e.subs()) != 1 {
+		t.Errorf("tab %s, focus %s, subscribed %v", m.tab, m.st.focus, e.subs())
+	}
+	if v := m.View(); strings.Contains(v, "◂") || strings.Contains(v, "Sessions 0") {
+		t.Errorf("locked view shows the session bar:\n%s", v)
+	}
+}
+
+func TestEndedPanelQuits(t *testing.T) {
+	tf := newTestFleet(t)
+	locked := session(homeWork, "t1", "/r", at(18, 1))
+	tf.locked = locked.ID
+	e := tf.add("e1", registry.KindSession, homeWork)
+	tf.poll()
+	e.sessions <- []route.SessionInfo{locked}
+	tf.settleCount(1)
+	m := newModel(tf.fleet)
+	m.Update(fleetMsg{})
+	if m.ending {
+		t.Fatal("live session scheduled to end")
+	}
+
+	e.sessions <- nil
+	refresh(t, m, func(st fleetState) bool { return st.ended })
+	if !m.ending || !strings.Contains(m.View(), "■ ended") {
+		t.Fatalf("ending %v, view:\n%s", m.ending, m.View())
+	}
+	_, cmd := m.Update(endedMsg{})
+	if cmd == nil {
+		t.Fatal("no quit after ended")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Error("ended panel does not quit")
+	}
+}
+
+func TestEndedExitCancelsWhenTheSessionReturns(t *testing.T) {
+	m, _ := connected(t, fixture())
+	m.st.ended, m.ending = false, true
+	if _, cmd := m.Update(endedMsg{}); cmd != nil {
+		t.Error("quit although the session is back")
 	}
 }

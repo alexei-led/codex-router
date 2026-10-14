@@ -1,0 +1,23 @@
+◂ ● work · repo-15 · main  ● work · repo-16 · main …                     ▸ 15/20
+ROUTING ◉ on · Jev ready · 412 ms · footer synced
+
+[Sessions 0] Now 1  Routes 2  Policy 3  Classifier 4  Usage 5 
+
+SESSIONS · 20 sessions in 2 homes
+  SESSION                                   STATE           ROUTE
+  ↑ 10 more
+
+● work · 1 endpoint · 155 replies · 0 switches
+  repo-11 · main                            ◉ on            gpt-6-sol · medium
+  repo-12 · main                            ◉ on            gpt-6-sol · medium
+  repo-13 · main                            ◉ on            gpt-6-sol · medium
+  repo-14 · main                            ◉ on            gpt-6-sol · medium
+▸ repo-15 · main                            ◉ on            gpt-6-sol · medium
+  repo-16 · main                            ◉ on            gpt-6-sol · medium
+  repo-17 · main                            ◉ on            gpt-6-sol · medium
+  repo-18 · main                            ◉ on            gpt-6-sol · medium
+  repo-19 · main                            ◉ on            gpt-6-sol · medium
+  repo-20 · main                            ◉ on            gpt-6-sol · medium
+
+↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause · P pause home
+q quit
