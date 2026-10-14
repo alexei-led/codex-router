@@ -129,6 +129,7 @@ Each entry:
 | `endpoint`  | string | URL the request is posted to. Required.                                                                |
 | `model`     | string | Model name sent to the endpoint. Required.                                                             |
 | `keyEnv`    | string | Name of the env var holding the bearer key. Empty means no key. The key itself is never in the config. |
+| `envFile`   | string | Dotenv file read for the `keyEnv` key when the env var is unset. Absolute or `~/` path. Default empty. |
 | `timeoutMs` | int    | Total deadline for one ask, with up to two attempts inside it (min 1).                                 |
 
 Defaults:
@@ -139,6 +140,13 @@ Defaults:
 | `ollama` | `ollama`     | `http://127.0.0.1:11434/api/chat`      | `qwen3.5:9b` | none               | 5000 ms |
 
 To use another service that speaks one of the two protocols, add an entry and set `classifier` to its name. When `keyEnv` names a variable that is unset, the classifier is off for the session (logged), the router still runs, and pins work.
+
+The brain (`codex-router setup`) runs under launchd or systemd and does not see your shell's env. Point `envFile` at a file that holds the key, for example `"envFile": "~/.config/codex-router/.env"` with the line `TYPESAFE_API_KEY=...`. Rules:
+
+- The env var wins over the file. The file is read only when the variable is unset.
+- Lines are `KEY=value` or `export KEY=value`; quotes (`'…'`, `"…"`, no escapes) and `#` comments are allowed. Only the `keyEnv` key is read, and nothing from the file goes into the process env.
+- The file must be private: one that group or others can read is refused with a log line naming it (`chmod 600` it). A missing file or key turns the classifier off, logged as above.
+- The key is never logged or printed.
 
 Only the active classifier is called. It receives the clipped prompt and recent dialogue (`context`), never headers or your Codex credentials, and only the `keyEnv` key as its bearer token. With `jev` that text goes to `api.typesafe.ai`. With `ollama` it stays on your machine.
 

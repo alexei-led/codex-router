@@ -100,9 +100,10 @@ systemd; without one it binds the port codex-router setup stored and warns.
 brain routes for one Codex home (same --home and --state-dir): it answers
 that home's edge, follows the threads of the home's shared Codex daemon,
 mirrors routes into their footers, and lists them in the session registry.
-The classifier key comes from the env var named by the classifier's keyEnv.
-When it is unset the classifier is off: requests keep their model unless a
-route is pinned from the panel.
+The classifier key comes from the env var named by the classifier's keyEnv,
+else from the classifier's envFile (a private dotenv file; units do not see
+the shell's env). Without a key the classifier is off: requests keep their
+model unless a route is pinned from the panel.
 setup routes one Codex home (--home, else $CODEX_HOME, else ~/.codex)
 through an edge and a brain, run by launchd (macOS) or systemd user units
 (Linux). It prints the home, then the config.toml diff (token redacted):
