@@ -644,6 +644,49 @@ func TestFixedFailureFromAPinnedTurnDoesNotEscalateTheNextTurn(t *testing.T) {
 	}
 }
 
+func TestEscalationHoldCountsTurnsNotReviews(t *testing.T) {
+	cfg := testConfig()
+	cfg.Policy.ReviewEveryRequests = 1
+	h := newHarness(t, cfg)
+	h.asker.script(answer(tier("low", 0.99)), fail(classifier.ErrTimeout))
+	for range 12 {
+		h.asker.script(answer(tier("high", 0.99)))
+	}
+	m := meta("th", "t1")
+	failing := func(id string) []responses.Item {
+		return []responses.Item{call(id, "go test ./pkg/queue"), result(id, 1, "--- FAIL: TestRetry\nretry_test.go:48: attempts = 2, want 3")}
+	}
+	items := []responses.Item{userMsg(secretPrompt)}
+	h.decide(req(medium, items...), m)
+	items = append(items, failing("c1")...)
+	h.decide(req(medium, items...), m)
+	h.engine.reviews.Wait()
+	items = append(append(items, editGo("c2"), edited("c2")), failing("c3")...)
+	rw, ok := h.decide(req(medium, items...), m)
+	wantUnchanged(t, rw, ok)
+	if d := h.last(); d.Reason != policy.ReasonEscalation {
+		t.Fatalf("decision = %+v, want an escalation", d)
+	}
+	for i := range 8 {
+		h.engine.reviews.Wait()
+		items = append(items, call(fmt.Sprint("r", i), "ls"), result(fmt.Sprint("r", i), 0, ""))
+		rw, ok = h.decide(req(medium, items...), m)
+		wantUnchanged(t, rw, ok)
+	}
+	h.engine.reviews.Wait()
+
+	for _, turn := range []string{"t2", "t3"} {
+		items = append(items, userMsg("next"))
+		rw, ok = h.decide(req(medium, items...), meta("th", turn))
+		wantUnchanged(t, rw, ok)
+		if d := h.last(); d.Reason != policy.ReasonHold {
+			t.Fatalf("%s: decision = %+v, want the hold", turn, d)
+		}
+	}
+	rw, ok = h.decide(req(medium, append(items, userMsg("last"))...), meta("th", "t4"))
+	wantRoute(t, rw, ok, high)
+}
+
 func TestReviewEveryFourRequestsAppliesAtTheNextStep(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("medium", 0.99)), answer(tier("high", 0.99)))
