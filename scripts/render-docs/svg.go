@@ -230,3 +230,30 @@ func toSVG(lines [][]run, title, desc string) string {
 	b.WriteString("</svg>\n")
 	return b.String()
 }
+
+// sideBySide joins two panes like a terminal split: left padded to its widest
+// line, a divider, then right. The shorter pane gets blank lines on top so
+// both end on the same row, as a prompt and a status line do.
+func sideBySide(left, right [][]run) [][]run {
+	width := 0
+	for _, l := range left {
+		width = max(width, runWidth(l))
+	}
+	rows := max(len(left), len(right))
+	left = padTop(left, rows)
+	right = padTop(right, rows)
+	divider := run{" │ ", style{fg: frameLine}}
+	out := make([][]run, rows)
+	for i := range rows {
+		line := append([]run{}, left[i]...)
+		if pad := width - runWidth(left[i]); pad > 0 {
+			line = append(line, run{strings.Repeat(" ", pad), style{}})
+		}
+		out[i] = append(append(line, divider), right[i]...)
+	}
+	return out
+}
+
+func padTop(lines [][]run, rows int) [][]run {
+	return append(make([][]run, rows-len(lines)), lines...)
+}

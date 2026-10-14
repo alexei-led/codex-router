@@ -1,0 +1,21 @@
+[36m›[0m the retry test is flaky; find out why and fix it
+
+[32m•[0m [1mRan[0m go test ./internal/retry -run TestBackoff
+  [2m└[0m [31m--- FAIL: TestBackoff (0.00s)[0m
+      backoff_test.go:31: attempt 3: got 400ms, want 800ms
+    exit code: 1
+
+[32m•[0m [1mEdited[0m internal/retry/backoff.go [32m(+1[0m [31m-1)[0m
+
+[32m•[0m [1mRan[0m go test ./internal/retry -run TestBackoff
+  [2m└[0m [31m--- FAIL: TestBackoff (0.00s)[0m
+      backoff_test.go:31: attempt 3: got 400ms, want 800ms
+    exit code: 1
+
+[1m•[0m Working [2m(14s • esc to interrupt)[0m
+
+
+[36m›[0m [2mAsk Codex to do anything[0m
+
+  [2mGPT-6.1-Sol high · main · 828K window · Context 89% left[0m
+  [2m? for shortcuts[0m

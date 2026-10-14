@@ -1,5 +1,5 @@
 // Command codex-router routes Codex CLI requests to a model and reasoning
-// effort per step. See docs/research.md and docs/architecture-options.html.
+// effort per step. See docs/architecture.md and docs/user-guide.md.
 package main
 
 import (
