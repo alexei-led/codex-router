@@ -3,21 +3,30 @@
 package main
 
 import (
+	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/signal"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
+	"text/tabwriter"
+	"time"
 
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/control"
+	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/hook"
 	"github.com/alexei-led/codex-router/internal/launcher"
 	"github.com/alexei-led/codex-router/internal/registry"
+	"github.com/alexei-led/codex-router/internal/route"
 	"github.com/alexei-led/codex-router/internal/tui"
 )
 
@@ -37,7 +46,9 @@ reasoning effort for every step, and mirrors the choice into Codex's footer.
 
 Usage:
   codex-router [--config PATH] [--] [codex args...]  run codex through the router
-  codex-router tui [--socket PATH]                   show the router panel
+  codex-router tui [--session ID|LABEL] [--socket PATH]
+                                                     show the router panel
+  codex-router sessions [--json]                     list running sessions
   codex-router hook                                  Codex hook: print a line when the route switched
   codex-router [--config PATH] proxy [--port N]      run the proxy alone (debugging, codex exec)
   codex-router version                               print the version
@@ -52,6 +63,11 @@ Arguments after the router flags (or after --) go to codex unchanged. If the
 router cannot start, it prints one line why and runs plain codex.
 tui shows every running session of every Codex home, found in the session
 registry; --socket shows only the endpoint at that control socket.
+--session locks the panel to one session: an exact session or thread id,
+else a unique prefix of one, else an exact label, else a label suffix that
+starts at a " · " (for example "repo · branch" or a branch name).
+sessions prints one line per session: id, home, label, mode, route; --json
+prints the full session list with each session's endpoint_id.
 proxy --port defaults to the config's proxy.port (0 = any free port) and
 prints the codex -c flags that point at it.
 The classifier key comes from the env var named by the classifier's keyEnv.
@@ -61,7 +77,9 @@ route is pinned from the panel.
 Exit codes:
   run      codex's exit code; 128+N when signal N ended codex;
            1 when neither routed nor plain codex could start
-  tui      0 on quit, 1 on error
+  tui      0 on quit, 1 on error or when no session matches --session,
+           2 when several sessions match --session (they are listed)
+  sessions 0, also when no session runs; 1 on error
   hook     0, also when the router is not running; 1 only when stdout fails
   proxy    0 after SIGINT or SIGTERM, 1 on error
   any      2 on a usage error
@@ -123,6 +141,8 @@ func run(ctx context.Context, args, env []string, stdin io.Reader, stdout, stder
 			return exitOK
 		case "tui":
 			return c.tui(ctx, rest)
+		case "sessions":
+			return c.sessions(rest)
 		case "proxy":
 			return c.proxy(ctx, g.config, rest)
 		}
@@ -201,10 +221,15 @@ func (c cli) launch(configPath string, codexArgs []string) int {
 	return code
 }
 
+// runPanel shows the panel; tests replace it, since the panel needs a
+// terminal.
+var runPanel = tui.Run
+
 func (c cli) tui(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("tui", flag.ContinueOnError)
 	fs.SetOutput(c.stderr)
 	socket := fs.String("socket", "", "control socket `path` (default: every running session in the registry)")
+	session := fs.String("session", "", "lock the panel to one session: its `id` or label (see codex-router sessions)")
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
 	}
@@ -219,12 +244,202 @@ func (c cli) tui(ctx context.Context, args []string) int {
 		}
 		o.Registry = root
 	}
+	if *session != "" {
+		all, err := findSessions(o.Socket, o.Registry)
+		if err != nil {
+			return c.fail(err)
+		}
+		switch matches := resolveSession(all, *session); len(matches) {
+		case 0:
+			return c.fail(fmt.Errorf("tui: no running session matches %q; see codex-router sessions", *session))
+		case 1:
+			o.Session = matches[0].ID
+		default:
+			_, _ = fmt.Fprintf(c.stderr, "codex-router: tui: %q matches %d sessions:\n", *session, len(matches))
+			for _, s := range matches {
+				_, _ = fmt.Fprintf(c.stderr, "  %s  %s\n", s.ID, s.Label)
+			}
+			return exitUsage
+		}
+	}
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := tui.Run(ctx, o); err != nil {
+	if err := runPanel(ctx, o); err != nil {
 		return c.fail(err)
 	}
 	return exitOK
+}
+
+func (c cli) sessions(args []string) int {
+	fs := flag.NewFlagSet("sessions", flag.ContinueOnError)
+	fs.SetOutput(c.stderr)
+	asJSON := fs.Bool("json", false, "print the session list as JSON")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	if fs.NArg() > 0 {
+		return c.usageError(fmt.Errorf("sessions: unexpected argument %q", fs.Arg(0)))
+	}
+	root, err := registry.Root(c.getenv)
+	if err != nil {
+		return c.fail(err)
+	}
+	all, err := findSessions("", root)
+	if err != nil {
+		return c.fail(err)
+	}
+	if *asJSON {
+		enc := json.NewEncoder(c.stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(all); err != nil {
+			return c.fail(err)
+		}
+		return exitOK
+	}
+	w := tabwriter.NewWriter(c.stdout, 0, 0, 2, ' ', 0)
+	for _, s := range all {
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", s.ID, s.homeName, s.Label, s.Mode, routeText(s.Route))
+	}
+	if err := w.Flush(); err != nil {
+		return c.fail(err)
+	}
+	return exitOK
+}
+
+// labelSep separates the parts of a session label (home.Label).
+const labelSep = " · "
+
+// listTimeout bounds the wait for an endpoint's first sessions list.
+const listTimeout = 2 * time.Second
+
+// listedSession is one running session with the endpoint serving it, as
+// sessions --json prints it.
+type listedSession struct {
+	route.SessionInfo
+	Endpoint string `json:"endpoint_id"`
+	homeName string
+}
+
+// findSessions lists the sessions of the endpoint at socket, or, when socket
+// is "", of every endpoint in the registry at root.
+func findSessions(socket, root string) ([]listedSession, error) {
+	if socket != "" {
+		return collectSessions([]registry.Endpoint{{Socket: socket}}, func(registry.Endpoint) {}), nil
+	}
+	eps, _, err := registry.List(root)
+	if err != nil {
+		return nil, err
+	}
+	return collectSessions(eps, func(ep registry.Endpoint) {
+		if !registry.Alive(ep) {
+			_ = registry.Remove(root, ep.ID)
+		}
+	}), nil
+}
+
+// collectSessions asks every endpoint for its sessions, in parallel, and
+// returns them in panel order (home name, then most recently active) with
+// the panel's labels. An endpoint that does not answer is skipped, and
+// pruned when it is dead. A session two endpoints list is taken from the
+// more recently active report.
+func collectSessions(eps []registry.Endpoint, prune func(registry.Endpoint)) []listedSession {
+	var mu sync.Mutex
+	byID := map[string]listedSession{}
+	var wg sync.WaitGroup
+	for _, ep := range eps {
+		wg.Go(func() {
+			h, items, err := endpointSessions(ep)
+			if err != nil {
+				prune(ep)
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			for _, it := range items {
+				if old, ok := byID[it.ID]; ok && !it.LastActive.After(old.LastActive) {
+					continue
+				}
+				byID[it.ID] = listedSession{SessionInfo: it, Endpoint: h.EndpointID, homeName: h.Home.Name}
+			}
+		})
+	}
+	wg.Wait()
+	out := slices.AppendSeq(make([]listedSession, 0, len(byID)), maps.Values(byID))
+	slices.SortFunc(out, func(a, b listedSession) int {
+		return cmp.Or(
+			cmp.Compare(a.homeName, b.homeName), cmp.Compare(a.Home, b.Home),
+			b.LastActive.Compare(a.LastActive), cmp.Compare(a.ID, b.ID))
+	})
+	labels, ids := make([]string, len(out)), make([]string, len(out))
+	for i, s := range out {
+		labels[i], ids[i] = s.Label, s.ID
+	}
+	for i, l := range home.Disambiguate(labels, ids) {
+		out[i].Label = l
+	}
+	return out
+}
+
+// endpointSessions dials ep and returns its hello and first sessions list.
+// A hello naming another endpoint or home than the entry is an error: the
+// entry is stale (M3). An entry without a home (--socket) is not checked.
+func endpointSessions(ep registry.Endpoint) (control.Hello, []route.SessionInfo, error) {
+	c, err := control.Dial(ep.Socket)
+	if err != nil {
+		return control.Hello{}, nil, err
+	}
+	defer func() { _ = c.Close() }()
+	h := c.Hello()
+	if ep.Home.ID != "" && (h.EndpointID != ep.ID || h.Home.ID != ep.Home.ID) {
+		return h, nil, errors.New("stale registry entry")
+	}
+	select {
+	case items, ok := <-c.Sessions():
+		if !ok {
+			return h, nil, control.ErrDisconnected
+		}
+		return h, items, nil
+	case <-time.After(listTimeout):
+		return h, nil, errors.New("no sessions list")
+	}
+}
+
+// resolveSession returns the sessions query names under the first rule that
+// matches any: an exact session or thread id; a session or thread id
+// prefix; an exact label; a label suffix starting at a separator. One match
+// resolves; several are ambiguous.
+func resolveSession(sessions []listedSession, query string) []listedSession {
+	rules := []func(listedSession) bool{
+		func(s listedSession) bool { return s.ID == query || s.ThreadID == query },
+		func(s listedSession) bool {
+			return strings.HasPrefix(s.ID, query) || strings.HasPrefix(s.ThreadID, query)
+		},
+		func(s listedSession) bool { return s.Label == query },
+		func(s listedSession) bool { return strings.HasSuffix(s.Label, labelSep+query) },
+	}
+	for _, match := range rules {
+		var got []listedSession
+		for _, s := range sessions {
+			if match(s) {
+				got = append(got, s)
+			}
+		}
+		if len(got) > 0 {
+			return got
+		}
+	}
+	return nil
+}
+
+// routeText formats a route as the panel does.
+func routeText(r config.Route) string {
+	switch {
+	case r.Model == "":
+		return "-"
+	case r.Effort == "":
+		return r.Model
+	}
+	return r.Model + " · " + string(r.Effort)
 }
 
 func (c cli) proxy(ctx context.Context, configPath string, args []string) int {
