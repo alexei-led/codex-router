@@ -405,6 +405,9 @@ func TestNoClassifierForwardsEverything(t *testing.T) {
 	e := New(Deps{Config: testConfig(), Catalog: store})
 	rw, ok := e.Decide(context.Background(), req(medium, userMsg(secretPrompt)), meta("th", "t1"))
 	wantUnchanged(t, rw, ok)
+	if !e.Snapshot().ClassifierOff {
+		t.Error("snapshot does not say the classifier is off")
+	}
 }
 
 func TestManualPinAfterForeignSettingsUpdate(t *testing.T) {

@@ -93,7 +93,7 @@ func (e *Engine) Snapshot() Snapshot {
 // withHealth adds what needs the classifier's health, read outside e.mu:
 // the health itself and the findings worth a look.
 func (e *Engine) withHealth(s Snapshot) Snapshot {
-	s.Classifier = e.health()
+	s.Classifier, s.ClassifierOff = e.health(), e.ask == nil
 	s.Worth = worth(s)
 	return s
 }

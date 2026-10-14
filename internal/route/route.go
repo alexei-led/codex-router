@@ -137,6 +137,7 @@ type Snapshot struct {
 	Last             *Decision
 	Recent           []Decision
 	Classifier       classifier.Health
+	ClassifierOff    bool // no classifier configured (e.g. its key is unset)
 	ClassifierLabel  string
 	ClassifierMedian time.Duration
 	Routes           map[config.Tier]config.Route

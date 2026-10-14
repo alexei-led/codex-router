@@ -247,6 +247,8 @@ func classifierPaused(s route.Snapshot) bool { return s.Classifier.PausedUntil.A
 func classifierStatus(s route.Snapshot) string {
 	h := s.Classifier
 	switch {
+	case s.ClassifierOff:
+		return classifierName(s) + " off"
 	case classifierPaused(s):
 		return fmt.Sprintf("%s paused until %s", classifierName(s), h.PausedUntil.Format("15:04:05"))
 	case h.Latency > 0:
@@ -592,10 +594,14 @@ func (c *canvas) classifier(s route.Snapshot) {
 	h := s.Classifier
 	c.add(dim("CLASSIFIER"))
 	mark, color := "◉", colorOK
-	if classifierPaused(s) {
+	if classifierPaused(s) || s.ClassifierOff {
 		mark, color = "○", colorWarn
 	}
 	c.add(col(color, mark), plain(" "+classifierName(s)))
+	if s.ClassifierOff {
+		c.add(col(colorWarn, "off"), dim(" · no key or endpoint; requests keep their model unless pinned"))
+		return
+	}
 	if h.Latency > 0 {
 		c.add(plain(fmt.Sprintf("last latency %d ms", h.Latency.Milliseconds())))
 	}
