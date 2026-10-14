@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/facts"
 	"github.com/alexei-led/codex-router/internal/responses"
 )
@@ -531,34 +530,5 @@ func TestExtractNilRequest(t *testing.T) {
 	f := facts.Extract(nil, opts)
 	if f.Observed != facts.ObservedTalk || f.Prompt != "" || f.Failure != nil || f.Items != 0 {
 		t.Errorf("Extract(nil) = %+v", f)
-	}
-}
-
-func TestAgrees(t *testing.T) {
-	tests := []struct {
-		predicted config.Activity
-		observed  facts.Observed
-		want      bool
-	}{
-		{config.ActivityCode, facts.ObservedCode, true},
-		{config.ActivityCode, facts.ObservedRead, false},
-		{config.ActivityDebug, facts.ObservedOps, true},
-		{config.ActivityDebug, facts.ObservedTalk, false},
-		{config.ActivityExplore, facts.ObservedTalk, true},
-		{config.ActivityExplore, facts.ObservedCode, false},
-		{config.ActivityPlan, facts.ObservedDocs, true},
-		{config.ActivityReview, facts.ObservedOps, false},
-		{config.ActivityOps, facts.ObservedRead, true},
-		{config.ActivityDocs, facts.ObservedDocs, true},
-		{config.ActivityDocs, facts.ObservedCode, false},
-		{config.ActivityUncertain, facts.ObservedTalk, false},
-		{"", facts.ObservedTalk, false},
-	}
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s/%s", tt.predicted, tt.observed), func(t *testing.T) {
-			if got := facts.Agrees(tt.predicted, tt.observed); got != tt.want {
-				t.Errorf("Agrees = %v, want %v", got, tt.want)
-			}
-		})
 	}
 }

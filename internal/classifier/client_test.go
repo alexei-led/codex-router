@@ -201,18 +201,6 @@ func TestOllamaSendsNoCredentialAndAsksTheActivitySecond(t *testing.T) {
 	})
 }
 
-func TestMissingKeySendsNothingAndCountsNoFailure(t *testing.T) {
-	rec := script(reply200(jevAnswer))
-	c := jevClient(rec)
-	c.key = ""
-	if _, err := c.Ask(t.Context(), smallInput); !errors.Is(err, ErrMissingKey) {
-		t.Errorf("err = %v, want %v", err, ErrMissingKey)
-	}
-	if rec.count() != 0 || c.Health().Failures != 0 {
-		t.Errorf("requests = %d, health = %+v", rec.count(), c.Health())
-	}
-}
-
 func TestTheDeadlineIsTheClassifierTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c := jevClient(script(untilCancelled))

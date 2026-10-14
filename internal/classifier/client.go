@@ -48,12 +48,9 @@ func (c *Client) Health() Health {
 	return c.health
 }
 
-// Ask returns the classifier's advice for in, or a Code error. Missing key,
-// cancellation and pause answers do not count toward the breaker.
+// Ask returns the classifier's advice for in, or a Code error. Cancellation
+// and pause answers do not count toward the breaker.
 func (c *Client) Ask(ctx context.Context, in Input) (Advice, error) {
-	if c.cfg.KeyEnv != "" && c.key == "" {
-		return Advice{}, ErrMissingKey
-	}
 	if ctx.Err() != nil {
 		return Advice{}, ErrCancelled
 	}

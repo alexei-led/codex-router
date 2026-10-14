@@ -1,11 +1,9 @@
 package facts
 
 import (
-	"slices"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/responses"
 )
 
@@ -103,24 +101,6 @@ func Extract(req *responses.Request, opts Options) Facts {
 		f.Prompt = clip(strings.TrimSpace(items[prompt].Text), opts.MaxTextChars)
 	}
 	return f
-}
-
-// Agrees says whether a turn's observed bucket fits the predicted activity.
-// A weak oracle: it tells code from ops and explore, not plan from review.
-// Uncertain or unknown activities never agree.
-func Agrees(predicted config.Activity, observed Observed) bool {
-	return slices.Contains(allowed[predicted], observed)
-}
-
-var allowed = map[config.Activity][]Observed{
-	config.ActivityCode:    {ObservedCode},
-	config.ActivityDebug:   {ObservedCode, ObservedOps, ObservedRead},
-	config.ActivityExplore: {ObservedRead, ObservedTalk},
-	config.ActivityPlan:    {ObservedTalk, ObservedRead, ObservedDocs},
-	config.ActivityReview:  {ObservedRead, ObservedTalk},
-	// git status or a test listing still runs commands: a read-only shell turn is ops too.
-	config.ActivityOps:  {ObservedOps, ObservedRead},
-	config.ActivityDocs: {ObservedDocs},
 }
 
 // promptIndex is the index of the last message the user typed, where the
