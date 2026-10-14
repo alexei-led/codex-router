@@ -207,3 +207,27 @@ func TestBrainSavesTheLastOfConcurrentCommands(t *testing.T) {
 		t.Fatalf("saved = %+v (lost %v), want the engine's last intent %+v", saved, lost, want)
 	}
 }
+
+func TestLostIntentSurvivesASaveAndRestart(t *testing.T) {
+	r := newRig(t, "")
+	if err := os.MkdirAll(r.homeDir(), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	bad := []byte(`{"version":1,"paused":`)
+	if err := os.WriteFile(r.intentPath(), bad, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r.start(t)
+	r.apply(t, route.Command{Op: route.OpPin, Session: "t1", Tier: config.TierHigh})
+	r.apply(t, route.Command{Op: route.OpPreset, Preset: config.PresetQuality, Scope: route.ScopeHome})
+	r.b.Close()
+
+	if got, err := os.ReadFile(r.intentPath()); err != nil || string(got) != string(bad) {
+		t.Fatalf("intent.json after commands while lost = %q, %v; want it untouched", got, err)
+	}
+	r.start(t)
+
+	if s := r.b.eng.SnapshotFor(""); !s.StateLost || s.Mode != route.ModePaused {
+		t.Fatalf("after restart: state lost %v, mode %s; want lost and paused", s.StateLost, s.Mode)
+	}
+}

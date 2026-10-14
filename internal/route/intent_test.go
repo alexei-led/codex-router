@@ -465,3 +465,26 @@ func TestRestoreKeepsEveryIntentThread(t *testing.T) {
 		t.Fatalf("restored %d intent threads, want %d", got, len(in.Threads))
 	}
 }
+
+func TestLostIntentSurvivesASaveAndRestart(t *testing.T) {
+	saved := &savedIntents{}
+	h := newHarness(t, testConfig(), func(d *Deps) { d.IntentLost, d.SaveIntent = true, saved.save })
+	h.apply(Command{Op: OpPause, Session: "a"})
+	h.apply(Command{Op: OpPin, Session: "b", Tier: config.TierHigh})
+	h.apply(Command{Op: OpPreset, Preset: config.PresetQuality, Scope: ScopeHome})
+	h.engine.SettingsUpdated("c", config.Route{Model: "gpt-6-sol", Effort: config.EffortLow})
+
+	if n := saved.count(); n != 0 {
+		t.Fatalf("%d intents saved while the intent is lost, want none", n)
+	}
+	if !h.engine.SnapshotFor("a").StateLost {
+		t.Fatal("state lost cleared without a home resume")
+	}
+
+	h.apply(Command{Op: OpResume, Scope: ScopeHome})
+
+	got := saved.last(t)
+	if got.Paused || got.Preset != config.PresetQuality || !got.Threads["a"].Paused {
+		t.Fatalf("intent saved at the home resume = %+v, want the commands made while lost", got)
+	}
+}
