@@ -387,13 +387,13 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 	if r := th.review; r != nil && r.ready {
 		th.review = nil
 		if r.answer != nil && !th.turnPinned {
-			cur = e.choose(st, e.incumbent(st), r.answer, true)
+			cur = keepTurn(e.choose(st, e.incumbent(st), r.answer, true), th.state.Turn)
 			th.state, th.advice, th.observedFrom, th.reviewedAt = cur.state, r.answer, r.upTo, th.requests
 			reviewed = true
 		}
 	}
 	if !reviewed && !th.turnPinned && st.facts.Failure != nil && st.facts.Failure.Signature != th.state.EscalatedSignature {
-		if c := e.choose(st, e.incumbent(st), nil, true); c.reason == policy.ReasonEscalation {
+		if c := keepTurn(e.choose(st, e.incumbent(st), nil, true), th.state.Turn); c.reason == policy.ReasonEscalation {
 			cur, th.state = c, c.state
 		}
 	}
@@ -408,6 +408,17 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 		th.review, th.reviewedAt = job, th.requests
 	}
 	return e.finish(st, cur), job
+}
+
+// keepTurn undoes policy.Decide's turn count for a later step: only a turn's
+// first step counts, so an escalation hold spans turns, not mid-turn reviews.
+// An escalation on a later step holds from its own turn.
+func keepTurn(c cell, turn int) cell {
+	if c.reason == policy.ReasonEscalation {
+		c.state.HoldUntilTurn -= c.state.Turn - turn
+	}
+	c.state.Turn = turn
+	return c
 }
 
 func (e *Engine) startReview(th *thread, job *review, in classifier.Input) {
