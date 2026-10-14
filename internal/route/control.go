@@ -87,11 +87,21 @@ func (e *Engine) restore(in Intent, lost bool) {
 
 // persist hands the intent to Deps.SaveIntent after a change, outside the
 // engine lock. Exports may reach it out of order; Rev tells the newest.
+// While the saved intent is lost nothing is saved: the pause is the
+// engine's own, and a save would overwrite the unreadable file with it, so a
+// restart would show a plain pause instead of the lost state. A home resume
+// clears the flag and saves.
 func (e *Engine) persist() {
 	if e.saveIntent == nil {
 		return
 	}
-	in := e.Intent()
+	e.mu.Lock()
+	if e.lost {
+		e.mu.Unlock()
+		return
+	}
+	in := e.intent()
+	e.mu.Unlock()
 	e.emit(func() { e.saveIntent(in) })
 }
 

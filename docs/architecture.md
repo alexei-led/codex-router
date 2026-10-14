@@ -411,7 +411,7 @@ Every error path ends in "forward the original request".
 | Config does not load                                      | The edge forwards with the defaults. The brain exits, and the edge forwards unchanged until it is back.                                                        |
 | Home's daemon restarts                                    | The brain redials, resubscribes every thread and resyncs footers.                                                                                              |
 | Brain restarts                                            | Each thread is held on the route Codex reports until its next reply. Intent is reloaded.                                                                       |
-| `intent.json` unreadable                                  | The home starts paused, and its sessions show `state lost` until a home resume. A missing file is a first start.                                               |
+| `intent.json` unreadable                                  | The home starts paused, and its sessions show `state lost` until a home resume. Nothing is saved meanwhile, so a restart still shows it. A missing file is a first start.                                               |
 | Brain without a model catalog                             | `models_cache.json` is read at brain start. A brain started before the home's first Codex run knows no model, so requests pass through until it restarts.      |
 | Another ChatGPT account on a thread                       | That thread's learned state is reset. Pauses, holds and pins stay.                                                                                             |
 
