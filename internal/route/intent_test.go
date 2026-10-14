@@ -326,7 +326,7 @@ func TestBrainRestartMidTurnIsNotAPick(t *testing.T) {
 
 	rw, ok := h.decide(req(high, midTurn...), meta("a", "a1"))
 
-	wantUnchanged(t, rw, ok)
+	wantRoute(t, rw, ok, medium)
 	if s := h.session("a"); s.Mode == ModeManual {
 		t.Fatalf("session = %+v, want not manual: the step carries its turn's settings", s)
 	}
@@ -355,6 +355,35 @@ func TestHoldEndedByARunningTurnsReplyLeavesThatTurnUnrouted(t *testing.T) {
 		t.Fatalf("classifier calls = %d mid-turn, want the rest of the turn unrouted", h.asker.Calls())
 	}
 	rw, ok = h.decide(req(medium, append(midTurn, userMsg("next"))...), meta("a", "a2"))
+	if h.asker.Calls() != 1 {
+		t.Fatalf("next turn: classifier calls = %d, want routed (rewrite %+v %v)", h.asker.Calls(), rw, ok)
+	}
+}
+
+func TestHeldTurnKeepsTheSeededRouteMidTurn(t *testing.T) {
+	h := newHarness(t, testConfig(), func(d *Deps) { d.HoldUnseeded = true })
+	h.asker.script(answer(tier("high", 0.99)))
+	// The old brain routed the running turn to medium; the turn started on high.
+	h.engine.Resumed("a", medium)
+	items := []responses.Item{
+		userMsg(secretPrompt), {Type: responses.TypeFunctionCall, Name: "exec", CallID: "c1"},
+		{Type: responses.TypeFunctionCallOutput, CallID: "c1", Output: "ok"},
+	}
+
+	rw, ok := h.decide(req(high, items...), meta("a", "a1"))
+	wantRoute(t, rw, ok, medium)
+	h.reply(meta("a", "a1"), medium.Model, 1000, 0)
+	items = append(items, responses.Item{Type: responses.TypeFunctionCall, Name: "exec", CallID: "c2"},
+		responses.Item{Type: responses.TypeFunctionCallOutput, CallID: "c2", Output: "ok"})
+	rw, ok = h.decide(req(high, items...), meta("a", "a1"))
+	wantRoute(t, rw, ok, medium)
+	rw, ok = h.decide(req(medium, items...), meta("a", "a1"))
+	wantUnchanged(t, rw, ok)
+	if h.asker.Calls() != 0 {
+		t.Fatalf("classifier calls = %d in the held turn", h.asker.Calls())
+	}
+
+	rw, ok = h.decide(req(medium, append(items, userMsg("next"))...), meta("a", "a2"))
 	if h.asker.Calls() != 1 {
 		t.Fatalf("next turn: classifier calls = %d, want routed (rewrite %+v %v)", h.asker.Calls(), rw, ok)
 	}
