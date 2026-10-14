@@ -441,6 +441,18 @@ func TestManualPinAfterForeignSettingsUpdate(t *testing.T) {
 	}
 }
 
+func TestSettingsAtTheModelDefaultEffortAreNotAPick(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("low", 0.97)))
+	h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+
+	h.engine.SettingsUpdated("th", config.Route{Model: low.Model})
+
+	if s := h.engine.Snapshot(); s.Mode != ModeOn {
+		t.Fatalf("mode = %s, want on: an empty effort is the model's default", s.Mode)
+	}
+}
+
 func TestPauseAfterManualPickRestoresThePick(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("low", 0.97)), answer(tier("high", 0.99)))

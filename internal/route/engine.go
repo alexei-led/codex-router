@@ -222,14 +222,14 @@ func (e *Engine) resumed(threadID string, r config.Route) (s Snapshot, resync, m
 		return Snapshot{}, true, false
 	}
 	th.footer = r
-	switch i := slices.Index(th.pending, r); {
+	switch i := th.pendingIndex(r); {
 	case i >= 0:
 		th.pending = slices.Clone(th.pending[i+1:])
 		return Snapshot{}, true, false
 	case th.manual:
 		th.lastWritten, th.native = r, r
 		return Snapshot{}, false, false
-	case r == th.lastWritten || r == th.native:
+	case sameRoute(r, th.lastWritten) || sameRoute(r, th.native):
 		return Snapshot{}, true, false
 	}
 	e.pick(th, r)
@@ -710,8 +710,12 @@ func (e *Engine) noteLatency(a *classifier.Advice) {
 // app-server last reported, one the router wrote, echoed or not, or the
 // thread's native route.
 func (th *thread) knows(r config.Route) bool {
-	return sameRoute(r, th.footer) || sameRoute(r, th.lastWritten) || sameRoute(r, th.native) ||
-		slices.ContainsFunc(th.pending, func(p config.Route) bool { return sameRoute(r, p) })
+	return sameRoute(r, th.footer) || sameRoute(r, th.lastWritten) || sameRoute(r, th.native) || th.pendingIndex(r) >= 0
+}
+
+// pendingIndex is the first pending write that settings route r echoes, or -1.
+func (th *thread) pendingIndex(r config.Route) int {
+	return slices.IndexFunc(th.pending, func(p config.Route) bool { return sameRoute(r, p) })
 }
 
 // sameRoute matches a request's route to a settings route. An empty effort
@@ -720,11 +724,21 @@ func sameRoute(a, b config.Route) bool {
 	return a.Model == b.Model && (a.Effort == b.Effort || a.Effort == "" || b.Effort == "")
 }
 
-// inConversation says the input holds an earlier turn's work: a reply or any
-// item but a message.
+// inConversation says the input holds an earlier turn's work: an assistant
+// message, reasoning, or a tool call or its output.
 func inConversation(items []responses.Item) bool {
 	return slices.ContainsFunc(items, func(it responses.Item) bool {
-		return it.Type != responses.TypeMessage || it.Role == "assistant"
+		switch it.Type {
+		case responses.TypeMessage:
+			return it.Role == "assistant"
+		case responses.TypeReasoning, responses.TypeFunctionCall, responses.TypeFunctionCallOutput,
+			responses.TypeCustomToolCall, responses.TypeCustomToolCallOutput, responses.TypeLocalShellCall:
+			return true
+		}
+		// Developer and user messages and item types this code does not
+		// know (Codex 0.162.1 opens every thread with additional_tools) are
+		// context, not a model's reply.
+		return false
 	})
 }
 

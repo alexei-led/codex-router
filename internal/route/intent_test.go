@@ -223,6 +223,8 @@ func TestResumedOnAKnownThread(t *testing.T) {
 	}{
 		{"the router's write", false, low, true, ModeOn},
 		{"a restarted daemon's native route", false, medium, true, ModeOn},
+		{"the native route at the model's default effort", false, config.Route{Model: medium.Model}, true, ModeOn},
+		{"the router's write at the model's default effort", false, config.Route{Model: low.Model}, true, ModeOn},
 		{"a pick made while not subscribed", false, picked, false, ModeManual},
 		{"a manual thread", true, high, false, ModeManual},
 	}
@@ -259,6 +261,15 @@ func TestHoldUnseededHoldsAThreadAlreadyInConversation(t *testing.T) {
 	}{
 		{"brain, mid-conversation", true, conversation, true},
 		{"brain, a thread's first turn", true, []responses.Item{userMsg(secretPrompt)}, false},
+		{"brain, a first turn with Codex's context items", true, []responses.Item{
+			{Type: "additional_tools", Role: "developer"},
+			{Type: responses.TypeMessage, Role: "developer", Text: "instructions"},
+			{Type: responses.TypeMessage, Role: "user", Text: "<environment_context>"},
+			userMsg(secretPrompt),
+		}, false},
+		{"brain, after a tool call", true, []responses.Item{
+			userMsg(secretPrompt), {Type: responses.TypeFunctionCall, Name: "exec"}, userMsg("next"),
+		}, true},
 		{"launcher, mid-conversation", false, conversation, false},
 	}
 	for _, tt := range tests {
