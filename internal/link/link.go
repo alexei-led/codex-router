@@ -41,19 +41,21 @@ const MaxFrameBytes = MaxHeaderBytes + 1 + proxy.MaxBodyBytes
 
 // Header is a frame's JSON header. ID pairs a decide with its rewrite or
 // none. Meta holds parsed turn metadata only, never raw request headers.
-// TimeoutMs is the time the edge still waits for a decide's answer, so the
-// brain decides under the same deadline the in-process proxy would.
+// DeadlineUnixMs is when the edge stops waiting for a decide's answer, in
+// Unix milliseconds. It is absolute because edge and brain share the host's
+// clock: the brain's deadline then covers the frame's transit and parse too,
+// and its classifier call cannot outlive the edge's wait.
 type Header struct {
-	Type      string             `json:"type"`
-	ID        uint64             `json:"id,omitempty"`
-	HomeID    string             `json:"home_id,omitempty"`
-	Meta      *responses.Meta    `json:"meta,omitempty"`
-	TimeoutMs int64              `json:"timeout_ms,omitempty"`
-	Rewrite   *responses.Rewrite `json:"rewrite,omitempty"`
-	Served    string             `json:"served,omitempty"`
-	Usage     *responses.Usage   `json:"usage,omitempty"`
-	Status    int                `json:"status,omitempty"`
-	Error     string             `json:"error,omitempty"`
+	Type           string             `json:"type"`
+	ID             uint64             `json:"id,omitempty"`
+	HomeID         string             `json:"home_id,omitempty"`
+	Meta           *responses.Meta    `json:"meta,omitempty"`
+	DeadlineUnixMs int64              `json:"deadline_unix_ms,omitempty"`
+	Rewrite        *responses.Rewrite `json:"rewrite,omitempty"`
+	Served         string             `json:"served,omitempty"`
+	Usage          *responses.Usage   `json:"usage,omitempty"`
+	Status         int                `json:"status,omitempty"`
+	Error          string             `json:"error,omitempty"`
 }
 
 var errFrame = errors.New("link: bad frame")

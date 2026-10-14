@@ -158,7 +158,7 @@ func Start(o Options) (b *Brain, err error) {
 	}
 
 	d := o.Deps
-	d.Home, d.Sink, d.Cwd = o.Home, b, b.threads.cwd
+	d.Home, d.Sink, d.Cwd, d.HoldUnseeded = o.Home, b, b.threads.cwd, true
 	store := newIntentStore(dir, b.log)
 	d.Intent, d.IntentLost = store.load()
 	d.SaveIntent = store.save
@@ -503,9 +503,10 @@ func (b *Brain) work(ctx context.Context, c *appserver.Client) {
 
 // resume subscribes to a thread and resyncs its footer: the route it reports
 // is the footer's, and the last route the engine wanted is written again
-// when they differ (a restarted daemon). A thread the engine has no request
-// on yet (a brain start) is seeded with that route and held there until a
-// reply measures its cache.
+// when they differ (a restarted daemon), unless the engine takes the route
+// for a /model pick made while the brain was not subscribed. A thread the
+// engine has no request on yet (a brain start) is seeded with that route and
+// held there until a reply measures its cache.
 func (b *Brain) resume(ctx context.Context, c *appserver.Client, id string) {
 	rctx, cancel := context.WithTimeout(ctx, rpcTimeout)
 	r, err := c.Resume(rctx, id)
@@ -515,8 +516,11 @@ func (b *Brain) resume(ctx context.Context, c *appserver.Client, id string) {
 	case err == nil:
 		reported := config.Route{Model: r.Settings.Model, Effort: r.Settings.Effort}
 		b.threads.subscribed(id, r.Cwd)
-		b.eng.Seed(id, reported)
-		b.w.Resync(id, reported)
+		if b.eng.Resumed(id, reported) {
+			b.w.Resync(id, reported)
+		} else {
+			b.w.Reported(id, reported)
+		}
 		b.log.Info("thread-subscribed", "thread", id)
 	case errors.As(err, &rpcErr):
 		// A thread has no rollout until its first turn; its next routed

@@ -275,12 +275,15 @@ func call(method, url, token string, body []byte) error {
 	return nil
 }
 
-func stepBody(step int) []byte {
+func stepBody(step int) []byte { return stepBodyOn(nativeRoute, step) }
+
+// stepBodyOn is stepBody from a thread whose settings are on r.
+func stepBodyOn(r config.Route, step int) []byte {
 	items := []string{`{"type":"message","role":"user","content":[{"type":"input_text","text":"fix the retry test"}]}`}
 	for i := 1; i < step; i++ {
 		items = append(items,
 			fmt.Sprintf(`{"type":"function_call","call_id":"c%d","name":"shell","arguments":"{}"}`, i),
 			fmt.Sprintf(`{"type":"function_call_output","call_id":"c%d","output":"ok"}`, i))
 	}
-	return []byte(`{"model":"gpt-6.1-sol","reasoning":{"effort":"high"},"stream":true,"input":[` + strings.Join(items, ",") + `]}`)
+	return []byte(fmt.Sprintf(`{"model":%q,"reasoning":{"effort":%q},"stream":true,"input":[`, r.Model, r.Effort) + strings.Join(items, ",") + `]}`)
 }

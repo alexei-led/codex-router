@@ -100,10 +100,7 @@ func (c *Client) Decide(ctx context.Context, req *responses.Request, meta respon
 		return responses.Rewrite{}, false
 	}
 	deadline, _ := ctx.Deadline()
-	h := Header{
-		Type: TypeDecide, ID: c.id(), Meta: &meta,
-		TimeoutMs: max(time.Until(deadline).Milliseconds(), 1),
-	}
+	h := Header{Type: TypeDecide, ID: c.id(), Meta: &meta, DeadlineUnixMs: deadline.UnixMilli()}
 	reply := cc.expect(h.ID)
 	defer cc.forget(h.ID)
 	if err := cc.write(ctx, h, req.Body()); err != nil {

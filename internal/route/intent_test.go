@@ -179,7 +179,7 @@ func TestLostIntentPausesTheHomeUntilResume(t *testing.T) {
 func TestSeededThreadHoldsItsRouteUntilAMeasuredReply(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("high", 0.99)))
-	h.engine.Seed("a", low)
+	h.engine.Resumed("a", low)
 	items := []responses.Item{userMsg(secretPrompt)}
 	m := meta("a", "a1")
 
@@ -212,15 +212,76 @@ func TestSeededThreadHoldsItsRouteUntilAMeasuredReply(t *testing.T) {
 	}
 }
 
-func TestSeedKeepsAThreadWithARequestSeen(t *testing.T) {
-	h := newHarness(t, testConfig())
-	h.asker.script(answer(tier("low", 0.97)))
-	h.firstStep("a", "a1")
+func TestResumedOnAKnownThread(t *testing.T) {
+	picked := config.Route{Model: "gpt-6-sol", Effort: config.EffortLow}
+	tests := []struct {
+		name       string
+		manual     bool // a /model pick reported before the resume
+		reported   config.Route
+		wantResync bool
+		wantMode   Mode
+	}{
+		{"the router's write", false, low, true, ModeOn},
+		{"a restarted daemon's native route", false, medium, true, ModeOn},
+		{"a pick made while not subscribed", false, picked, false, ModeManual},
+		{"a manual thread", true, high, false, ModeManual},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			saved := &savedIntents{}
+			h := newHarness(t, testConfig(), func(d *Deps) { d.SaveIntent = saved.save })
+			h.asker.script(answer(tier("low", 0.97)))
+			rw, ok := h.firstStep("a", "a1")
+			wantRoute(t, rw, ok, low)
+			if tt.manual {
+				h.engine.SettingsUpdated("a", picked)
+			}
 
-	h.engine.Seed("a", high)
+			resync := h.engine.Resumed("a", tt.reported)
 
-	if s := h.session("a"); s.Attention != "" || s.Route != low {
-		t.Fatalf("session = %+v, want the routed state kept", s)
+			if s := h.session("a"); resync != tt.wantResync || s.Mode != tt.wantMode {
+				t.Fatalf("resync %v, mode %s; want %v, %s", resync, s.Mode, tt.wantResync, tt.wantMode)
+			}
+			if manual := tt.wantMode == ModeManual; saved.count() > 0 != manual || manual && !saved.last(t).Threads["a"].Manual {
+				t.Fatalf("saved intents %+v, want the manual hold saved: %v", saved.all, manual)
+			}
+		})
+	}
+}
+
+func TestHoldUnseededHoldsAThreadAlreadyInConversation(t *testing.T) {
+	conversation := []responses.Item{userMsg(secretPrompt), {Type: "message", Role: "assistant", Text: "done"}, userMsg("next")}
+	tests := []struct {
+		name     string
+		hold     bool
+		items    []responses.Item
+		wantHeld bool
+	}{
+		{"brain, mid-conversation", true, conversation, true},
+		{"brain, a thread's first turn", true, []responses.Item{userMsg(secretPrompt)}, false},
+		{"launcher, mid-conversation", false, conversation, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, testConfig(), func(d *Deps) { d.HoldUnseeded = tt.hold })
+			h.asker.script(answer(tier("low", 0.97)))
+
+			rw, ok := h.decide(req(medium, tt.items...), meta("a", "a1"))
+
+			if !tt.wantHeld {
+				wantRoute(t, rw, ok, low)
+				return
+			}
+			wantUnchanged(t, rw, ok)
+			if s := h.session("a"); s.Attention != AttentionUnknown || h.asker.Calls() != 0 {
+				t.Fatalf("attention %q, classifier calls %d; want held without a call", s.Attention, h.asker.Calls())
+			}
+			h.reply(meta("a", "a1"), medium.Model, 1000, 0)
+			h.decide(req(medium, append(tt.items, userMsg("more"))...), meta("a", "a2"))
+			if s := h.session("a"); s.Attention != "" || h.asker.Calls() != 1 {
+				t.Fatalf("after a measured reply: attention %q, classifier calls %d; want routed", s.Attention, h.asker.Calls())
+			}
+		})
 	}
 }
 
@@ -228,8 +289,8 @@ func TestSeedWithTheModelDefaultEffort(t *testing.T) {
 	h := newHarness(t, testConfig())
 	def := config.Route{Model: medium.Model}
 
-	h.engine.Seed("a", def)
-	h.engine.Seed("b", config.Route{})
+	h.engine.Resumed("a", def)
+	h.engine.Resumed("b", config.Route{})
 	rw, ok := h.firstStep("a", "a1")
 
 	wantUnchanged(t, rw, ok)
@@ -245,7 +306,7 @@ func TestSeedWithTheModelDefaultEffort(t *testing.T) {
 
 func TestPinEndsASeededHold(t *testing.T) {
 	h := newHarness(t, testConfig())
-	h.engine.Seed("a", low)
+	h.engine.Resumed("a", medium)
 	h.apply(Command{Op: OpPin, Session: "a", Tier: config.TierHigh})
 
 	rw, ok := h.firstStep("a", "a1")

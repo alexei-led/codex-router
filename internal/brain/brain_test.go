@@ -17,6 +17,8 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/alexei-led/codex-router/internal/appserver"
+	"github.com/alexei-led/codex-router/internal/catalog"
+	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
@@ -71,6 +73,7 @@ type fakeDaemon struct {
 	calls   []call
 	conns   map[*websocket.Conn]struct{}
 	srv     *http.Server
+	gate    chan struct{} // when set, resumes wait for it to close
 }
 
 func newFakeDaemon(t *testing.T, path string) *fakeDaemon {
@@ -190,6 +193,11 @@ func (d *fakeDaemon) handle(method string, params json.RawMessage) (result any, 
 		}
 		return map[string]any{"thread": th.json(p.ThreadID)}, 0, nil
 	case appserver.MethodResume:
+		if g := d.gate; g != nil {
+			d.mu.Unlock()
+			<-g
+			d.mu.Lock()
+		}
 		if th == nil || th.noRollout > 0 {
 			if th != nil {
 				th.noRollout--
@@ -224,6 +232,15 @@ func (d *fakeDaemon) notify(method string, params any) {
 	for _, c := range conns {
 		_ = c.Write(context.Background(), websocket.MessageText, out)
 	}
+}
+
+// pick sets a thread's route without a notification, as a /model pick does
+// for a client that is not subscribed.
+func (d *fakeDaemon) pick(id string, r config.Route) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.threads[id].route = r
+	d.calls = nil
 }
 
 func (d *fakeDaemon) clients() int {
@@ -300,6 +317,7 @@ type rig struct {
 	clock *clock
 	home  home.Home
 	env   map[string]string
+	deps  route.Deps
 }
 
 func (r *rig) getenv(k string) string { return r.env[k] }
@@ -320,14 +338,76 @@ func newRig(t *testing.T, state string) *rig {
 		env:   map[string]string{"XDG_STATE_HOME": state, "TMPDIR": tmp},
 	}
 	r.d = newFakeDaemon(t, filepath.Join(tmp, "d.sock"))
+	r.deps = route.Deps{Config: config.Default(), Now: r.clock.Now}
 	return r
+}
+
+const testCatalog = `{"models":[
+ {"slug":"gpt-6.1-sol","context_window":500000,"effective_context_window_percent":95,"comp_hash":"3000",
+  "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"}]},
+ {"slug":"gpt-6-sol","context_window":272000,"effective_context_window_percent":95,"comp_hash":"3000",
+  "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"}]},
+ {"slug":"gpt-6-luna","context_window":272000,"effective_context_window_percent":95,"comp_hash":"3000",
+  "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"}]}
+]}`
+
+// lowAsker advises the low tier on every call.
+type lowAsker struct{}
+
+func (lowAsker) Ask(context.Context, classifier.Input) (classifier.Advice, error) {
+	return classifier.Advice{Choice: "low", Probabilities: map[classifier.Choice]float64{"low": 0.99}}, nil
+}
+
+func (lowAsker) Health() classifier.Health { return classifier.Health{} }
+
+// routing gives the brain a catalog and a classifier, so its engine routes.
+func (r *rig) routing(t *testing.T) {
+	t.Helper()
+	cat, err := catalog.Parse([]byte(testCatalog))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &catalog.Store{}
+	store.Set(cat)
+	r.deps.Catalog, r.deps.Classifier = store, lowAsker{}
+}
+
+func step(r config.Route, items ...responses.Item) *responses.Request {
+	if len(items) == 0 {
+		items = []responses.Item{{Type: responses.TypeMessage, Role: "user", Text: "fix it"}}
+	}
+	return &responses.Request{Model: r.Model, Effort: r.Effort, Input: items}
+}
+
+func turn(thread, id string) responses.Meta {
+	m := userStep(thread)
+	m.TurnID = id
+	return m
+}
+
+// routeThread pins a seeded thread's next turn to the low tier, runs it and
+// waits for the footer write's echo. It returns the route written.
+func (r *rig) routeThread(t *testing.T, id string) config.Route {
+	t.Helper()
+	eventually(t, "seed "+id, func() bool { return r.b.eng.SnapshotFor(id).Baseline == native })
+	r.apply(t, route.Command{Op: route.OpPin, Session: id, Tier: config.TierLow})
+	rw, ok := linkHandler{r.b}.Decide(t.Context(), step(native), turn(id, "tu-routed"))
+	if !ok {
+		t.Fatalf("%s: a pinned turn was not routed", id)
+	}
+	want := config.Route{Model: rw.Model, Effort: rw.Effort}
+	eventually(t, "footer echo", func() bool {
+		s := r.b.eng.SnapshotFor(id)
+		return s.FooterSynced && s.Footer == want
+	})
+	return want
 }
 
 func (r *rig) start(t *testing.T) {
 	t.Helper()
 	b, err := Start(Options{
 		Home:   r.home,
-		Deps:   route.Deps{Config: config.Default(), Now: r.clock.Now},
+		Deps:   r.deps,
 		Getenv: r.getenv,
 		Daemon: r.d.path,
 		Idle:   IdleAfter,
@@ -492,41 +572,126 @@ func TestBrainUnsubscribesIdleThreads(t *testing.T) {
 
 func TestBrainResyncsFootersAfterADaemonRestart(t *testing.T) {
 	r := newRig(t, "")
+	r.routing(t)
 	r.d.load("t1", &fakeThread{cwd: "/w1", source: "user", route: native})
 	r.start(t)
-	eventually(t, "resume t1", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
-
-	r.b.OnDecision(route.Decision{ThreadID: "t1", Route: luna})
-	eventually(t, "footer write", func() bool { return r.d.called(appserver.MethodSettingsUpdate, "t1", luna) })
+	routed := r.routeThread(t, "t1")
 
 	r.d.restart()
 	eventually(t, "resume after restart", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
-	eventually(t, "footer rewritten after restart", func() bool { return r.d.called(appserver.MethodSettingsUpdate, "t1", luna) })
+	eventually(t, "footer rewritten after restart", func() bool { return r.d.called(appserver.MethodSettingsUpdate, "t1", routed) })
 	if n := r.d.count(appserver.MethodSettingsUpdate, "t1"); n != 1 {
 		t.Errorf("footer writes after restart = %d, want 1", n)
 	}
 	if n := r.d.clients(); n != 1 {
 		t.Errorf("daemon clients = %d, want 1", n)
 	}
+	if m := r.b.eng.SnapshotFor("t1").Mode; m != route.ModeOn {
+		t.Errorf("mode = %s, want on", m)
+	}
 }
 
 func TestBrainSkipsTheResyncWhenTheFooterIsCurrent(t *testing.T) {
 	r := newRig(t, "")
+	r.routing(t)
 	r.d.load("t1", &fakeThread{cwd: "/w1", source: "user", route: native})
 	r.start(t)
-	eventually(t, "resume t1", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
-	r.b.OnDecision(route.Decision{ThreadID: "t1", Route: luna})
-	eventually(t, "footer write", func() bool { return r.d.called(appserver.MethodSettingsUpdate, "t1", luna) })
+	r.routeThread(t, "t1")
 
 	r.d.stop()
 	r.d.mu.Lock()
 	r.d.calls = nil
 	r.d.mu.Unlock()
-	r.d.start() // the footer kept luna
+	r.d.start() // the footer kept the routed route
 	eventually(t, "resume after reconnect", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
 	time.Sleep(30 * time.Millisecond)
 	if r.d.called(appserver.MethodSettingsUpdate, "t1", config.Route{}) {
 		t.Error("the footer already showed the route and was written again")
+	}
+	if m := r.b.eng.SnapshotFor("t1").Mode; m != route.ModeOn {
+		t.Errorf("mode = %s, want on", m)
+	}
+}
+
+func TestBrainKeepsAPickMadeWhileTheDaemonWasAway(t *testing.T) {
+	r := newRig(t, "")
+	r.routing(t)
+	r.d.load("t1", &fakeThread{cwd: "/w1", source: "user", route: native})
+	r.start(t)
+	r.routeThread(t, "t1")
+
+	r.d.stop()
+	picked := config.Route{Model: "gpt-6-sol", Effort: config.EffortHigh}
+	r.d.pick("t1", picked)
+	r.d.start()
+	eventually(t, "resume after reconnect", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
+	eventually(t, "t1 manual", func() bool { return r.b.eng.SnapshotFor("t1").Mode == route.ModeManual })
+	time.Sleep(30 * time.Millisecond)
+	if r.d.called(appserver.MethodSettingsUpdate, "t1", config.Route{}) {
+		t.Error("the router's route overwrote the /model pick")
+	}
+}
+
+func TestBrainTakesAPickOnAnIdleThreadFromItsRequest(t *testing.T) {
+	r := newRig(t, "")
+	r.routing(t)
+	r.d.load("t1", &fakeThread{cwd: "/w1", source: "user", route: native})
+	r.start(t)
+	r.routeThread(t, "t1")
+	r.clock.advance(IdleAfter + time.Minute)
+	eventually(t, "unsubscribe t1", func() bool { return r.d.called(appserver.MethodUnsubscribe, "t1", config.Route{}) })
+
+	picked := config.Route{Model: "gpt-6-sol", Effort: config.EffortHigh}
+	r.d.pick("t1", picked)
+	rw, ok := linkHandler{r.b}.Decide(t.Context(), step(picked), turn("t1", "tu-after-pick"))
+
+	if ok {
+		t.Fatalf("rewrite %+v over the /model pick", rw)
+	}
+	if s := r.session(t, "t1"); s.Attention != route.AttentionManual {
+		t.Fatalf("session = %+v, want manual", s)
+	}
+	eventually(t, "resume of t1", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
+	time.Sleep(30 * time.Millisecond)
+	if r.d.called(appserver.MethodSettingsUpdate, "t1", config.Route{}) {
+		t.Error("the router's route overwrote the /model pick")
+	}
+}
+
+func TestBrainHoldsAThreadSeenBeforeItsResume(t *testing.T) {
+	r := newRig(t, "")
+	r.routing(t)
+	r.d.load("t1", &fakeThread{cwd: "/w1", source: "user", route: native})
+	gate := make(chan struct{})
+	release := sync.OnceFunc(func() { close(gate) })
+	t.Cleanup(release)
+	r.d.gate = gate
+	r.start(t)
+	eventually(t, "resume of t1 sent", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
+
+	// The next step of a turn that was running when the brain restarted.
+	midTurn := step(native,
+		responses.Item{Type: responses.TypeMessage, Role: "user", Text: "fix it"},
+		responses.Item{Type: responses.TypeFunctionCall, Name: "exec_command", CallID: "c1"},
+		responses.Item{Type: responses.TypeFunctionCallOutput, CallID: "c1", Output: "ok"},
+	)
+	rw, ok := linkHandler{r.b}.Decide(t.Context(), midTurn, userStep("t1"))
+
+	if ok {
+		t.Fatalf("rewrite %+v before the cache was measured", rw)
+	}
+	if s := r.session(t, "t1"); s.Attention != route.AttentionUnknown {
+		t.Fatalf("session = %+v, want held as unknown", s)
+	}
+	release()
+	eventually(t, "t1 subscribed", func() bool {
+		r.b.threads.mu.Lock()
+		defer r.b.threads.mu.Unlock()
+		th := r.b.threads.m["t1"]
+		return th != nil && th.subscribed
+	})
+	if s := r.session(t, "t1"); s.Attention != route.AttentionUnknown {
+		t.Fatalf("after the resume: session = %+v, want still held", s)
 	}
 }
 

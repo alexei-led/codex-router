@@ -189,18 +189,22 @@ type Sink interface {
 // Intent is the saved intent to start from; IntentLost says it could not be
 // read. SaveIntent (nil: not kept) gets the intent after every change,
 // outside engine locks and possibly concurrently: it keeps the highest Rev.
+// HoldUnseeded (the brain) holds a thread whose first request seen already
+// carries a conversation, as Resumed does: after a restart, a turn's next
+// step can reach the engine before discovery resumes its thread.
 type Deps struct {
-	Config     config.Config
-	Catalog    catalog.Source
-	Classifier classifier.Asker
-	Now        func() time.Time
-	Sink       Sink
-	Logger     *slog.Logger
-	Home       home.Home
-	Cwd        func(threadID string) string
-	Intent     Intent
-	IntentLost bool
-	SaveIntent func(Intent)
+	Config       config.Config
+	Catalog      catalog.Source
+	Classifier   classifier.Asker
+	Now          func() time.Time
+	Sink         Sink
+	Logger       *slog.Logger
+	Home         home.Home
+	Cwd          func(threadID string) string
+	Intent       Intent
+	IntentLost   bool
+	SaveIntent   func(Intent)
+	HoldUnseeded bool
 }
 
 // Bounds on remembered state. RecentKept and StripCells are per thread.
