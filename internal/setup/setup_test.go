@@ -509,14 +509,17 @@ func TestSetupRefusesWithoutWriting(t *testing.T) {
 		name   string
 		config string
 		prep   func(t *testing.T, f *fixture)
+		opts   func(o *Options)
 		want   string
 	}{
-		{"model_provider set", "model_provider = \"openai\"\n", nil, "already sets model_provider"},
+		{"model_provider set", "model_provider = \"openai\"\n", nil, nil, "already sets model_provider"},
+		{"binary path holds a line break", "", nil, func(o *Options) { o.Bin = "/x\nEVIL=1" }, "line break"},
+		{"state dir path holds a line break", "", nil, func(o *Options) { o.StateDir += "\rEVIL=1" }, "line break"},
 		{"home missing", "", func(t *testing.T, f *fixture) {
 			if err := os.Remove(f.h.Path); err != nil {
 				t.Fatal(err)
 			}
-		}, "does not exist"},
+		}, nil, "does not exist"},
 		{"state dir open to others", "", func(t *testing.T, f *fixture) {
 			if err := os.MkdirAll(filepath.Join(f.state, "codex-router"), 0o755); err != nil {
 				t.Fatal(err)
@@ -524,7 +527,7 @@ func TestSetupRefusesWithoutWriting(t *testing.T) {
 			if err := os.Chmod(filepath.Join(f.state, "codex-router"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-		}, "group or others"},
+		}, nil, "group or others"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -532,7 +535,11 @@ func TestSetupRefusesWithoutWriting(t *testing.T) {
 			if tc.prep != nil {
 				tc.prep(t, f)
 			}
-			err := f.run(t, f.options())
+			o := f.options()
+			if tc.opts != nil {
+				tc.opts(&o)
+			}
+			err := f.run(t, o)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("setup = %v, want error containing %q", err, tc.want)
 			}

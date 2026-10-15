@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -75,19 +76,42 @@ func TestReadEnvKeyMissing(t *testing.T) {
 	}
 }
 
-func TestReadEnvKeyRefusesSharedFile(t *testing.T) {
-	for _, mode := range []os.FileMode{0o640, 0o604, 0o644, 0o660} {
-		path := writeEnvFile(t, "API_KEY=secret-value\n", mode)
-		got, err := ReadEnvKey(path, "API_KEY")
-		if !errors.Is(err, ErrEnvFileMode) || got != "" {
-			t.Errorf("mode %o: ReadEnvKey = %q, %v; want ErrEnvFileMode", mode, got, err)
-		}
-		if err != nil && (!strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), "chmod 600")) {
-			t.Errorf("mode %o: error %q should name the path and chmod 600", mode, err)
-		}
-		if err != nil && strings.Contains(err.Error(), "secret-value") {
-			t.Errorf("mode %o: error leaks the value", mode)
-		}
+func TestReadEnvKeyFileMode(t *testing.T) {
+	cases := []struct {
+		mode    os.FileMode
+		refused bool
+	}{
+		{0o600, false},
+		{0o400, false},
+		{0o640, true},
+		{0o604, true},
+		{0o644, true},
+		{0o660, true},
+		{0o620, true},
+		{0o602, true},
+		{0o610, true},
+		{0o601, true},
+	}
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("%o", tc.mode), func(t *testing.T) {
+			path := writeEnvFile(t, "API_KEY=secret-value\n", tc.mode)
+			got, err := ReadEnvKey(path, "API_KEY")
+			if !tc.refused {
+				if err != nil || got != "secret-value" {
+					t.Errorf("ReadEnvKey = %q, %v; want the value", got, err)
+				}
+				return
+			}
+			if !errors.Is(err, ErrEnvFileMode) || got != "" {
+				t.Fatalf("ReadEnvKey = %q, %v; want ErrEnvFileMode", got, err)
+			}
+			if !strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), "chmod 600") {
+				t.Errorf("error %q should name the path and chmod 600", err)
+			}
+			if strings.Contains(err.Error(), "secret-value") {
+				t.Error("error leaks the value")
+			}
+		})
 	}
 }
 
