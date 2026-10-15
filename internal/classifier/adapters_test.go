@@ -371,3 +371,164 @@ func TestOllamaParseActivityReadsUnusableAnswersAsNone(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenAIDecisionsBuildAsksRouteContinuationAndActivity(t *testing.T) {
+	got, err := OpenAIDecisions().Build("gpt-6-luna", Input{
+		Prompt:   "continue",
+		Dialogue: []Message{{Role: "user", Text: "fix tests"}},
+		Routes:   portedRoutes,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body struct {
+		Model     string       `json:"model"`
+		Input     string       `json:"input"`
+		Questions []oaQuestion `json:"questions"`
+	}
+	if err := json.Unmarshal(got, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Model != "gpt-6-luna" {
+		t.Errorf("model = %q", body.Model)
+	}
+	if want := `{"currentRequest":{"text":"continue"},"recentDialogue":[{"role":"user","text":"fix tests"}]}`; body.Input != want {
+		t.Errorf("input = %s, want %s", body.Input, want)
+	}
+	want := []struct {
+		typ, name, instructions string
+		opts                    options
+	}{
+		{"choice", "route", routeInstructions.text(), routeOptions},
+		{"predicate", "continuation", continuationInstructions, nil},
+		{"choice", "activity", activityInstructions.text(), activityOptions},
+	}
+	if len(body.Questions) != len(want) {
+		t.Fatalf("questions = %d, want %d", len(body.Questions), len(want))
+	}
+	for i, w := range want {
+		q := body.Questions[i]
+		if q.Type != w.typ || q.Name != w.name || q.Instructions != w.instructions || len(q.Choices) != len(w.opts) {
+			t.Errorf("question %d = %+v", i, q)
+		}
+		for j, o := range w.opts {
+			if q.Choices[j] != (oaChoice{Value: o.value, Description: o.text()}) {
+				t.Errorf("question %s choice %d = %+v", w.name, j, q.Choices[j])
+			}
+		}
+	}
+	if d := body.Questions[0].Choices[3].Description; !strings.Contains(d, "Use when: frontier reasoning materially reduces rework.") {
+		t.Errorf("high description = %q", d)
+	}
+	if strings.Contains(string(got), "gpt-6.1-sol") || strings.Contains(string(got), `"route":{`) {
+		t.Errorf("body carries route models: %s", got)
+	}
+}
+
+func TestOpenAIDecisionsBuildSendsAnEmptyDialogueAsAList(t *testing.T) {
+	got, err := OpenAIDecisions().Build("m", Input{Prompt: "do x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), `\"recentDialogue\":[]`) {
+		t.Errorf("body = %s", got)
+	}
+}
+
+func TestOpenAIDecisionsParseReadsRouteAndContinuation(t *testing.T) {
+	a, err := OpenAIDecisions().Parse(fixture(t, "openai-decisions-response.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Choice != "medium" || a.Probabilities["high"] != 0.18 || a.Probabilities["uncertain"] != 0.02 || len(a.Probabilities) != 5 {
+		t.Errorf("advice = %+v", a)
+	}
+	if a.Continuation == nil || *a.Continuation != 0.03 {
+		t.Errorf("continuation = %v, want 0.03", a.Continuation)
+	}
+	if a.Activity != nil {
+		t.Errorf("activity = %+v, want nil without an activity answer", a.Activity)
+	}
+}
+
+func TestOpenAIDecisionsParseReadsTheActivity(t *testing.T) {
+	a, err := OpenAIDecisions().Parse(fixture(t, "openai-decisions-activity-response.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Choice != "medium" || a.Activity == nil || a.Activity.Choice != config.ActivityDebug {
+		t.Fatalf("advice = %+v, activity = %+v", a, a.Activity)
+	}
+	if a.Activity.Probabilities[config.ActivityDebug] != 0.72 || a.Activity.Probabilities[config.ActivityDocs] != 0 || len(a.Activity.Probabilities) != len(activityOptions) {
+		t.Errorf("activity probabilities = %v", a.Activity.Probabilities)
+	}
+}
+
+func TestOpenAIDecisionsParseRejects(t *testing.T) {
+	for name, body := range map[string]string{
+		"not json":                   `PRIVATE_PROMPT`,
+		"a refusal":                  `{"answers":[{"type":"refusal","name":"route"}]}`,
+		"no answers":                 `{}`,
+		"answers as an object":       `{"answers":{"route":{}}}`,
+		"no route answer":            `{"answers":[{"type":"predicate","name":"continuation","probability":1}]}`,
+		"a choice outside the route": `{"answers":[{"type":"choice","name":"route","choice":"opus","probabilities":[]}]}`,
+		"an activity as the route":   `{"answers":[{"type":"choice","name":"route","choice":"ops","probabilities":[]}]}`,
+		"probabilities as an object": `{"answers":[{"type":"choice","name":"route","choice":"low","probabilities":{}}]}`,
+		"null probabilities":         `{"answers":[{"type":"choice","name":"route","choice":"low","probabilities":null}]}`,
+		"a choice that is no string": `{"answers":[{"type":"choice","name":"route","choice":7,"probabilities":[]}]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := OpenAIDecisions().Parse([]byte(body)); !errors.Is(err, ErrMalformed) {
+				t.Errorf("err = %v, want %v", err, ErrMalformed)
+			}
+		})
+	}
+}
+
+func TestOpenAIDecisionsParseDegradesMissingNumbers(t *testing.T) {
+	a, err := OpenAIDecisions().Parse([]byte(`{"answers":[{"type":"choice","name":"route","choice":"low","confidence":2,` +
+		`"probabilities":[{"value":"low","probability":7},{"value":"high","probability":"0.9"},{"value":"micro","probability":-1}]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Probabilities["low"] != 1 || a.Probabilities["high"] != 0 || a.Probabilities["micro"] != 0 || a.Probabilities["medium"] != 0 || len(a.Probabilities) != 5 {
+		t.Errorf("probabilities = %v", a.Probabilities)
+	}
+	if a.Continuation != nil {
+		t.Errorf("continuation = %v, want nil without the predicate", *a.Continuation)
+	}
+}
+
+func TestOpenAIDecisionsParseTreatsAnUnreadableActivityAsNone(t *testing.T) {
+	for name, activity := range map[string]string{
+		"missing":                    ``,
+		"null":                       `null`,
+		"a refusal":                  `{"type":"refusal","name":"activity"}`,
+		"an unknown choice":          `{"type":"choice","name":"activity","choice":"deploy","probabilities":[{"value":"ops","probability":1}]}`,
+		"a route value":              `{"type":"choice","name":"activity","choice":"low","probabilities":[{"value":"low","probability":1}]}`,
+		"no probabilities":           `{"type":"choice","name":"activity","choice":"ops"}`,
+		"empty probabilities":        `{"type":"choice","name":"activity","choice":"ops","probabilities":[]}`,
+		"a null probability":         `{"type":"choice","name":"activity","choice":"ops","probabilities":[{"value":"ops","probability":null}]}`,
+		"a text probability":         `{"type":"choice","name":"activity","choice":"ops","probabilities":[{"value":"ops","probability":"0.9"}]}`,
+		"all-zero probabilities":     `{"type":"choice","name":"activity","choice":"ops","probabilities":[{"value":"ops","probability":0},{"value":"code","probability":0}]}`,
+		"no weight on its choice":    `{"type":"choice","name":"activity","choice":"ops","probabilities":[{"value":"code","probability":0.9}]}`,
+		"a zero on its choice":       `{"type":"choice","name":"activity","choice":"ops","probabilities":[{"value":"ops","probability":0},{"value":"code","probability":0.9}]}`,
+		"probabilities as an object": `{"type":"choice","name":"activity","choice":"ops","probabilities":{"ops":1}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			body := `{"answers":[{"type":"choice","name":"route","choice":"medium","probabilities":[{"value":"medium","probability":0.7}]},` +
+				`{"type":"predicate","name":"continuation","probability":0.03}`
+			if activity != "" {
+				body += `,` + activity
+			}
+			body += `]}`
+			a, err := OpenAIDecisions().Parse([]byte(body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if a.Choice != "medium" || a.Probabilities["medium"] != 0.7 || a.Activity != nil || a.Continuation == nil || *a.Continuation != 0.03 {
+				t.Errorf("advice = %+v, activity = %+v", a, a.Activity)
+			}
+		})
+	}
+}

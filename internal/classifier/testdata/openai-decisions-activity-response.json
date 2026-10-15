@@ -1,0 +1,34 @@
+{
+  "answers": [
+    {
+      "type": "choice",
+      "name": "route",
+      "choice": "medium",
+      "probabilities": [
+        { "value": "micro", "probability": 0.02 },
+        { "value": "low", "probability": 0.08 },
+        { "value": "medium", "probability": 0.7 },
+        { "value": "high", "probability": 0.18 },
+        { "value": "uncertain", "probability": 0.02 }
+      ],
+      "confidence": 0.6
+    },
+    { "type": "predicate", "name": "continuation", "probability": 0.03 },
+    {
+      "type": "choice",
+      "name": "activity",
+      "choice": "debug",
+      "probabilities": [
+        { "value": "code", "probability": 0.2 },
+        { "value": "debug", "probability": 0.72 },
+        { "value": "explore", "probability": 0.05 },
+        { "value": "plan", "probability": 0.01 },
+        { "value": "review", "probability": 0.01 },
+        { "value": "ops", "probability": 0.01 },
+        { "value": "docs", "probability": 0 },
+        { "value": "uncertain", "probability": 0 }
+      ],
+      "confidence": 0.68
+    }
+  ]
+}
