@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
 
 	"github.com/alexei-led/codex-router/internal/config"
@@ -17,54 +17,63 @@ import (
 )
 
 const (
-	minWidth   = 40
-	labelWidth = 11
-	indent     = "  "
-	barCells   = 20
-	recentRows = 6
+	minWidth = 40
+	// wideWidth is the width from which the list and the detail sit side by
+	// side.
+	wideWidth = 120
+	// helpWidth is the width from which the header carries its `? help`.
+	helpWidth = 64
+	indent    = "  "
+	// labelWidth is the label column of the detail block and the Policy
+	// and Usage views, with its one-cell margin.
+	labelWidth = 10
 	timeLayout = "15:04"
+	sep        = " · "
 )
 
-var tierOrder = []config.Tier{config.TierHigh, config.TierMedium, config.TierLow, config.TierMicro}
+var tabNames = map[Tab]string{TabSessions: "Sessions", TabPolicy: "Policy", TabUsage: "Usage"}
 
-var tierColor = map[config.Tier]string{
-	config.TierMicro:  "#5fd7af",
-	config.TierLow:    "#5f9fe0",
-	config.TierMedium: "#d7af5f",
-	config.TierHigh:   "#e0708a",
-}
+// tierOrder lists the tiers low to high: popover numbers, buttons, sparklines.
+var tierOrder = []config.Tier{config.TierMicro, config.TierLow, config.TierMedium, config.TierHigh}
 
-const (
-	colorAccent   = "#7c9cff"
-	colorActivity = "#d77757"
-	colorOK       = "#5fd7af"
-	colorWarn     = "#f0b429"
-	colorDim      = "#7d8597"
-)
+// tierRank orders tiers; a switch to a higher rank is an upgrade.
+var tierRank = map[config.Tier]int{config.TierMicro: 0, config.TierLow: 1, config.TierMedium: 2, config.TierHigh: 3}
 
 type seg struct {
 	text    string
-	color   string
+	role    role
+	bg      role
 	bold    bool
 	reverse bool
 	act     action // a click on the text does this
 }
 
-func plain(t string) seg        { return seg{text: t} }
-func dim(t string) seg          { return seg{text: t, color: colorDim} }
-func bold(t string) seg         { return seg{text: t, bold: true} }
-func col(c, t string) seg       { return seg{text: t, color: c} }
-func tierSeg(t config.Tier) seg { return seg{text: "▌" + string(t), color: tierColor[t]} }
-func button(label string, on bool) seg {
-	if on {
-		return seg{text: "[" + label + "]", color: colorAccent, reverse: true}
-	}
-	return seg{text: " " + label + " ", color: colorAccent}
-}
+func plain(t string) seg            { return seg{text: t} }
+func dim(t string) seg              { return seg{text: t, role: roleMuted} }
+func bold(t string) seg             { return seg{text: t, bold: true} }
+func col(r role, t string) seg      { return seg{text: t, role: r} }
+func clickable(s seg, a action) seg { s.act = a; return s }
+
+// pane says which half of the side-by-side Sessions view has the focus.
+type pane int
+
+const (
+	paneList pane = iota
+	paneDetail
+)
+
+// popover says which choice popover is open.
+type popover int
+
+const (
+	popNone popover = iota
+	popPin
+	popPreset
+)
 
 // view is everything render needs; render is pure over it. Fleet is nil
-// only in tests that render a bare snapshot: no top bar, no session line, no
-// Sessions tab. Height 0 means unknown: the Sessions tab does not scroll.
+// only in tests that render a bare snapshot: no list, no session title. Height
+// 0 means unknown: the list does not scroll.
 type view struct {
 	snap         route.Snapshot
 	tab          Tab
@@ -73,16 +82,47 @@ type view struct {
 	disconnected bool
 	notice       string
 	styled       bool
+	light        bool // a light terminal background; dark until known
 	fleet        *fleetState
 	locked       bool
-	cursor       string // Sessions tab selection, "" for the focus
+	loading      bool // the focused session's snapshot has not arrived
+	zoom         bool // stacked: the detail alone, without the list
+	pane         pane
+	help         bool
+	popover      popover
+	toast        string
+}
+
+// multi reports whether the panel shows every session.
+func (v view) multi() bool { return v.fleet != nil && !v.locked }
+
+func (v view) wide() bool { return v.multi() && v.width >= wideWidth }
+
+// listed reports whether the Sessions view draws the list.
+func (v view) listed() bool {
+	return v.multi() && v.tab == TabSessions && (v.wide() || !v.zoom)
 }
 
 type canvas struct {
-	styled bool
-	width  int
-	out    []string
-	zones  []zone
+	styled  bool
+	th      theme
+	width   int
+	out     []string
+	widths  []int
+	zones   []zone
+	anchors map[string]anchor
+}
+
+// anchor is a drawn row an overlay hangs from.
+type anchor struct{ row, x int }
+
+func newCanvas(v view) *canvas {
+	return &canvas{styled: v.styled, th: newTheme(!v.light), width: max(v.width, minWidth), anchors: map[string]anchor{}}
+}
+
+// child is an empty canvas of the same look, w wide.
+func (c *canvas) child(w int) *canvas {
+	return &canvas{styled: c.styled, th: c.th, width: w, anchors: map[string]anchor{}}
 }
 
 func render(v view) string {
@@ -92,134 +132,63 @@ func render(v view) string {
 
 // layout draws v and lists the clickable zones of the drawn rows.
 func layout(v view) (string, []zone) {
-	c := &canvas{styled: v.styled, width: max(v.width, minWidth)}
-	all := v.fleet != nil && !v.locked
-	switch {
-	case all:
-		c.topBar(*v.fleet)
-	case v.fleet != nil:
-		c.lockedHeader(*v.fleet)
-	}
+	c := newCanvas(v)
+	foot := c.footerLines(v)
 	c.header(v)
-	c.tabs(v.tab, all)
-	hints := packHints(keyHints(v), c.width)
-	footer := 1 + len(hints)
-	if v.notice != "" {
-		footer++
-	}
+	c.blank()
 	switch {
-	case v.tab == TabSessions && all:
-		room := 0
-		if v.height > 0 {
-			room = max(v.height-len(c.out)-footer, 1)
-		}
-		c.sessionsTab(*v.fleet, v.cursor, room)
-	case v.fleet != nil && v.fleet.focus == "":
+	case v.fleet != nil && !v.fleet.ended && v.fleet.focus == "" && v.tab != TabSessions:
 		c.add(dim("no Codex session yet · run codex-router in a project to start one"))
-	case v.tab == TabRoutes:
-		c.routes(v.snap)
 	case v.tab == TabPolicy:
-		c.policy(v.snap)
-	case v.tab == TabClassifier:
-		c.classifier(v.snap)
+		c.policy(v)
 	case v.tab == TabUsage:
-		c.usage(v.snap)
+		c.usage(v)
 	default:
-		c.now(v.snap)
+		c.sessions(v, len(foot)+2)
 	}
 	c.blank()
-	for _, h := range hints {
-		c.add(dim(h))
+	footerRow := len(c.out)
+	for _, l := range foot {
+		c.add(l...)
 	}
 	if v.notice != "" {
-		c.add(col(colorWarn, v.notice))
+		c.add(col(roleWarn, v.notice))
 	}
-	return strings.Join(c.out, "\n") + "\n", c.zones
-}
-
-// keyHints lists the keys that work in view v, most useful first: with no
-// session only quit, while disconnected only the keys that move around.
-func keyHints(v view) []string {
-	st := v.fleet
-	quit := hint(keys.Quit, "")
-	if st != nil && (st.ended || st.focus == "") {
-		return []string{quit}
-	}
-	nav := st != nil && !v.locked
-	onList := v.tab == TabSessions && nav
-	var h []string
-	if onList {
-		h = append(h, hint(keys.Up, ""), hint(keys.Enter, ""))
-	}
-	if nav && len(st.all()) > 1 {
-		h = append(h, hint(keys.Session, ""))
-	}
-	if nav && !onList {
-		h = append(h, hint(keys.List, ""))
-	}
-	h = append(h, hint(keys.TabNum, ""))
-	if st == nil {
-		h = append(h, hint(keys.Next, ""))
-	}
-	if !v.disconnected {
-		focused := ""
-		if onList {
-			focused = " focused"
-		} else {
-			h = append(h, hint(keys.Pin, "pin next"))
-		}
-		toggle := "pause"
-		if toggleCommand("", v.snap.Mode).Op == route.OpResume {
-			toggle = "resume"
-		}
-		h = append(h, hint(keys.Toggle, toggle+focused))
-		if st != nil {
-			home := "pause home"
-			if st.homeResumes() {
-				home = "resume home"
-			}
-			if onList {
-				home = strings.Replace(home, "home", "focused home", 1)
-			}
-			h = append(h, hint(keys.Home, home))
-		}
-		if v.tab == TabPolicy && !v.snap.ClassifierOff {
-			h = append(h, hint(keys.Preset, ""))
-		}
-	}
-	return append(h, quit)
-}
-
-// packHints joins hints with " · " into as few lines of width as fit.
-func packHints(hints []string, width int) []string {
-	var out []string
-	line := ""
-	for _, h := range hints {
-		switch {
-		case line == "":
-			line = h
-		case runes(line)+runes(" · ")+runes(h) <= width:
-			line += " · " + h
-		default:
-			out = append(out, line)
-			line = h
-		}
-	}
-	if line != "" {
-		out = append(out, line)
-	}
-	return out
+	return c.compose(v, footerRow)
 }
 
 func (c *canvas) paint(s seg) string {
-	if !c.styled || (s.color == "" && !s.bold && !s.reverse) {
+	if !c.styled || (s.role == roleNone && s.bg == roleNone && !s.bold && !s.reverse) {
 		return s.text
 	}
 	st := lipgloss.NewStyle().Bold(s.bold).Reverse(s.reverse)
-	if s.color != "" {
-		st = st.Foreground(lipgloss.Color(s.color))
+	if s.role != roleNone {
+		st = st.Foreground(c.th[s.role])
+	}
+	if s.bg != roleNone {
+		st = st.Background(c.th[s.bg])
 	}
 	return st.Render(s.text)
+}
+
+// zone adds z, joined to the zone before it when that one has the same action
+// and ends where z starts: a key and its text are one button.
+func (c *canvas) zone(z zone) {
+	if n := len(c.zones); n > 0 {
+		if last := &c.zones[n-1]; last.action == z.action && last.row == z.row && last.x1 == z.x0 {
+			last.x1 = z.x1
+			return
+		}
+	}
+	c.zones = append(c.zones, z)
+}
+
+func segsWidth(segs []seg) int {
+	n := 0
+	for _, s := range segs {
+		n += utf8.RuneCountInString(s.text)
+	}
+	return n
 }
 
 // add appends one line, cutting it to the canvas width on plain text.
@@ -238,7 +207,7 @@ func (c *canvas) add(segs ...seg) {
 		}
 		if s.act.kind != actNone && n > 0 {
 			x0 := c.width - room
-			c.zones = append(c.zones, zone{action: s.act, row: len(c.out), x0: x0, x1: x0 + n})
+			c.zone(zone{action: s.act, row: len(c.out), x0: x0, x1: x0 + n})
 		}
 		room -= n
 		b.WriteString(c.paint(s))
@@ -246,100 +215,159 @@ func (c *canvas) add(segs ...seg) {
 			break
 		}
 	}
-	c.out = append(c.out, b.String())
-}
-
-func (c *canvas) blank() { c.out = append(c.out, "") }
-
-func (c *canvas) section(title string, rest ...seg) {
-	c.blank()
-	c.add(append([]seg{dim(title)}, rest...)...)
-}
-
-func (c *canvas) row(label string, segs ...seg) {
-	c.add(append([]seg{plain(fmt.Sprintf("%-*s", labelWidth, label))}, segs...)...)
-}
-
-// wrapped adds text as lines hanging under a label column.
-func (c *canvas) wrapped(lead string, text string, style seg) {
-	room := max(c.width-utf8.RuneCountInString(lead), 10)
-	var line string
-	flush := func() {
-		if line != "" {
-			t := style
-			t.text = line
-			c.add(plain(lead), t)
-			line = ""
-		}
+	line, w := b.String(), c.width-room
+	if !c.styled {
+		line = strings.TrimRight(line, " ")
+		w = utf8.RuneCountInString(line)
 	}
-	for _, w := range strings.Fields(text) {
-		if line != "" && utf8.RuneCountInString(line)+1+utf8.RuneCountInString(w) > room {
+	c.out = append(c.out, line)
+	c.widths = append(c.widths, w)
+}
+
+func (c *canvas) blank() {
+	c.out = append(c.out, "")
+	c.widths = append(c.widths, 0)
+}
+
+// split adds left and right on one line, right against the edge; right is
+// dropped when the two do not fit.
+func (c *canvas) split(left, right []seg) {
+	gap := c.width - segsWidth(left) - segsWidth(right)
+	if len(right) == 0 || gap < 1 {
+		c.add(left...)
+		return
+	}
+	c.add(append(append(slices.Clone(left), plain(strings.Repeat(" ", gap))), right...)...)
+}
+
+// label is a detail-block label cell.
+func label(name string) seg { return plain(fmt.Sprintf(" %-*s", labelWidth-1, name)) }
+
+// flow adds parts joined by " · " under lead, breaking before a part that
+// does not fit; later lines hang under the lead.
+func (c *canvas) flow(lead seg, parts ...[]seg) {
+	hang := plain(strings.Repeat(" ", utf8.RuneCountInString(lead.text)))
+	line := []seg{lead}
+	room := c.width - segsWidth(line)
+	first := true
+	for _, p := range parts {
+		w := segsWidth(p)
+		if !first && room < utf8.RuneCountInString(sep)+w {
+			c.add(line...)
+			line, room, first = []seg{hang}, c.width-segsWidth([]seg{hang}), true
+		}
+		if !first {
+			line = append(line, dim(sep))
+			room -= utf8.RuneCountInString(sep)
+		}
+		line = append(line, p...)
+		room -= w
+		first = false
+	}
+	c.add(line...)
+}
+
+// wrapped adds text as lines under lead; later lines hang under it.
+func (c *canvas) wrapped(lead seg, text string, style seg) {
+	w := utf8.RuneCountInString(lead.text)
+	room := max(c.width-w, 10)
+	var line string
+	first := true
+	flush := func() {
+		if line == "" {
+			return
+		}
+		t := style
+		t.text = line
+		if first {
+			c.add(lead, t)
+		} else {
+			c.add(plain(strings.Repeat(" ", w)), t)
+		}
+		first, line = false, ""
+	}
+	for _, word := range strings.Fields(text) {
+		if line != "" && utf8.RuneCountInString(line)+1+utf8.RuneCountInString(word) > room {
 			flush()
 		}
 		if line != "" {
 			line += " "
 		}
-		line += w
+		line += word
 	}
 	flush()
 }
 
+// header is the top line: the name, totals and state on the left, the views and
+// `? help` on the right.
 func (c *canvas) header(v view) {
-	s := v.snap
-	segs := []seg{bold("ROUTING"), plain(" ")}
-	switch {
-	case v.fleet != nil && v.fleet.ended:
-		c.add(append(segs, col(colorWarn, "■ ended"), dim(" · the session's router exited · closing"))...)
-		return
-	case v.fleet != nil && v.fleet.focus == "":
-		c.add(append(segs, dim("○ no sessions"), dim(" · watching the registry"))...)
-		return
-	}
-	if v.disconnected {
-		segs = append(segs, col(colorWarn, "✕ disconnected"), dim(" · retrying"))
-		if !s.At.IsZero() {
-			segs = append(segs, dim(" · last snapshot "+s.At.Format("15:04:05")))
+	var right []seg
+	for _, t := range Tabs {
+		s := plain(" " + tabNames[t] + " ")
+		if t == v.tab {
+			s = seg{text: s.text, role: roleAccent, bold: true, reverse: true}
 		}
-		c.add(segs...)
-		return
+		right = append(right, clickable(s, action{kind: actTab, tab: t}))
 	}
-	switch {
-	case s.StateLost:
-		segs = append(segs, col(colorWarn, "! state lost"), dim(" · paused"))
-	case s.Mode == route.ModeManual:
-		segs = append(segs, col(colorWarn, "◐ manual"))
-	case s.Mode == route.ModePaused:
-		segs = append(segs, col(colorDim, "○ paused"))
-	case s.ClassifierOff:
-		segs = append(segs, col(colorWarn, "◉ pins only"))
-	default:
-		segs = append(segs, col(colorOK, "◉ on"))
+	if c.width >= helpWidth {
+		right = append(right, plain("  "), clickable(dim("? help"), action{kind: actKey, key: handle(keys.Help)}))
 	}
-	if f := s.Footer; f.Model != "" {
-		segs = append(segs, dim(" · "+strings.TrimSpace(f.Model+" "+string(f.Effort))))
+	room := c.width - segsWidth(right) - 1
+	status := v.status()
+	var left []seg
+	for _, totals := range v.totals() {
+		cand := []seg{bold("codex-router"), plain("  ")}
+		for _, group := range append(totals, status) {
+			if len(cand) > 2 {
+				cand = append(cand, dim(sep))
+			}
+			cand = append(cand, group...)
+		}
+		if segsWidth(cand) <= room {
+			left = cand
+			break
+		}
 	}
-	segs = append(segs, dim(" · "+classifierStatus(s)))
-	if !s.FooterSynced {
-		segs = append(segs, col(colorWarn, " · footer not synced"))
+	if left == nil {
+		left = []seg{bold("codex-router")}
 	}
-	c.add(segs...)
+	c.split(left, right)
 }
 
-// tabs draws the tab row; withSessions adds the Sessions tab 0 in front.
-func (c *canvas) tabs(active Tab, withSessions bool) {
-	names := map[Tab]string{TabSessions: "Sessions", TabNow: "Now", TabRoutes: "Routes", TabPolicy: "Policy", TabClassifier: "Classifier", TabUsage: "Usage"}
-	var segs []seg
-	for _, t := range tabsFor(withSessions) {
-		tab := dim(" " + names[t] + " ")
-		if t == active || (active == "" && t == TabNow) {
-			tab = seg{text: " " + names[t] + " ", color: colorAccent, reverse: true}
-		}
-		tab.act = action{kind: actTab, tab: t}
-		segs = append(segs, tab)
+// totals lists header candidates from the fullest to the leanest.
+func (v view) totals() [][][]seg {
+	if !v.multi() {
+		return [][][]seg{nil}
 	}
-	c.blank()
-	c.add(segs...)
-	c.blank()
+	n, h := len(v.fleet.all()), len(v.fleet.homes)
+	if n == 0 {
+		return [][][]seg{nil}
+	}
+	return [][][]seg{
+		{{plain(plural(n, "session", "sessions"))}, {plain(plural(h, "home", "homes"))}},
+		{{plain(plural(n, "session", "sessions"))}},
+		nil,
+	}
+}
+
+// status is the header's state: the session's router, else the focused home's
+// classifier.
+func (v view) status() []seg {
+	s := v.snap
+	switch {
+	case v.fleet != nil && v.fleet.ended:
+		return []seg{col(roleWarn, "■ ended"), dim(" · closing")}
+	case v.fleet != nil && v.fleet.focus == "":
+		return []seg{dim("○ no sessions")}
+	case v.disconnected:
+		return []seg{col(roleWarn, "✕ disconnected")}
+	case s.ClassifierOff:
+		return []seg{col(roleWarn, "○ "+classifierName(s)+" off")}
+	case classifierPaused(s):
+		secs := int(math.Ceil(s.Classifier.PausedUntil.Sub(s.At).Seconds()))
+		return []seg{col(roleErr, "✕ "+classifierName(s)+" unreachable"), dim(fmt.Sprintf(" · resumes in %ds", secs))}
+	}
+	return []seg{col(roleOK, classifierName(s)+" ready")}
 }
 
 func classifierName(s route.Snapshot) string {
@@ -351,16 +379,73 @@ func classifierName(s route.Snapshot) string {
 
 func classifierPaused(s route.Snapshot) bool { return s.Classifier.PausedUntil.After(s.At) }
 
-func classifierStatus(s route.Snapshot) string {
-	h := s.Classifier
+// hint is one footer entry: the key in the accent, its text muted; a click
+// on it runs the binding.
+func hint(b key.Binding) []seg {
+	h := b.Help()
+	a := action{kind: actKey, key: handle(b)}
+	return []seg{clickable(seg{text: h.Key, role: roleAccent, bold: true}, a), clickable(dim(" "+h.Desc), a)}
+}
+
+// footerBindings lists the keys that work now, most useful first, ending with
+// help. Disconnected, only the keys that move around; with no session, none.
+func footerBindings(v view) []key.Binding {
+	st := v.fleet
 	switch {
-	case s.ClassifierOff:
-		return classifierName(s) + " off"
-	case classifierPaused(s):
-		return fmt.Sprintf("%s paused until %s", classifierName(s), h.PausedUntil.Format("15:04:05"))
-	default:
-		return classifierName(s) + " ready"
+	case v.help:
+		return []key.Binding{described(keys.Back, "close")}
+	case v.popover == popPin:
+		return []key.Binding{keys.PinPick, described(keys.Back, "close")}
+	case v.popover == popPreset:
+		return []key.Binding{keys.PresetPick, described(keys.Back, "close")}
 	}
+	if st != nil && (st.ended || st.focus == "") {
+		return []key.Binding{keys.Quit, keys.Help}
+	}
+	var out []key.Binding
+	if v.listed() && len(st.all()) > 1 {
+		out = append(out, keys.Up)
+	}
+	if !v.disconnected {
+		toggle := "pause"
+		if toggleCommand("", v.snap.Mode).Op == route.OpResume {
+			toggle = "resume"
+		}
+		home := "pause home"
+		if st != nil && st.homeResumes() {
+			home = "resume home"
+		}
+		if v.tab == TabSessions {
+			out = append(out, keys.Pin)
+		}
+		if v.tab == TabPolicy && !v.snap.ClassifierOff {
+			out = append(out, keys.Preset)
+		}
+		out = append(out, described(keys.Toggle, toggle), described(keys.Home, home))
+	}
+	return append(out, keys.Next, keys.Quit, keys.Help)
+}
+
+// footerLines packs the footer entries into lines of the canvas width.
+func (c *canvas) footerLines(v view) [][]seg {
+	var items [][]seg
+	for _, b := range footerBindings(v) {
+		items = append(items, hint(b))
+	}
+	var out [][]seg
+	var line []seg
+	for _, it := range items {
+		switch {
+		case line == nil:
+			line = it
+		case segsWidth(line)+utf8.RuneCountInString(sep)+segsWidth(it) <= c.width:
+			line = append(append(line, dim(sep)), it...)
+		default:
+			out = append(out, line)
+			line = it
+		}
+	}
+	return append(out, line)
 }
 
 func routeText(r config.Route) string {
@@ -373,40 +458,9 @@ func routeText(r config.Route) string {
 	return r.Model + " · " + string(r.Effort)
 }
 
-func (c *canvas) now(s route.Snapshot) {
-	c.nextTurn(s)
-	if d := s.Last; d != nil {
-		c.row("Activity", activitySegs(d, s.Policy.ActivityMass)...)
-		c.wrapped(fmt.Sprintf("%-*s", labelWidth, "Why"), whyOf(*d), plain(""))
-		if d.Support != "" {
-			c.wrapped(strings.Repeat(" ", labelWidth), d.Support, dim(""))
-		}
-	}
-	c.pinRow(s)
-	c.session(s)
-	c.worth(s.Worth)
-	c.blank()
-	sync := "in sync"
-	if !s.FooterSynced {
-		sync = "not synced yet"
-	}
-	c.row("Codex", plain("footer shows "), bold(routeText(s.Footer)), dim(" · "+sync))
-	c.contextRow(s)
-	c.cacheRow(s)
-}
-
 // keptReasons are the decisions that leave Codex's own model in place. Their
 // tier is the engine's guess for that model, so the panel does not show it.
 var keptReasons = []policy.Reason{policy.ReasonError, policy.ReasonNoClassifier, policy.ReasonPassthrough, policy.ReasonOutOfGroup}
-
-// decisionTier is the tier mark of d, or a dim `kept` when d left the
-// request alone.
-func decisionTier(d route.Decision) seg {
-	if slices.Contains(keptReasons, d.Reason) {
-		return dim("kept")
-	}
-	return tierSeg(d.Tier)
-}
 
 // reasonText says what a reason code means, for decisions that carry no why.
 var reasonText = map[policy.Reason]string{
@@ -443,155 +497,20 @@ func whyOf(d route.Decision) string {
 	return "reason not shown by this panel version"
 }
 
-func (c *canvas) nextTurn(s route.Snapshot) {
-	switch {
-	case s.Mode == route.ModeManual:
-		c.row("Next turn", col(colorWarn, routeText(s.Footer)), dim(" picked with /model · routing holds it · space to resume"))
-	case s.Mode == route.ModePaused:
-		c.row("Next turn", dim("paused · every request goes to "+routeText(s.Baseline)+" unchanged"))
-	case s.Pin != nil:
-		c.row("Next turn", tierSeg(*s.Pin), plain("  "), bold(routeText(s.Routes[*s.Pin])), dim("  pinned"))
-	case s.Last != nil:
-		d := s.Last
-		label := "Next turn"
-		if d.MidTurn {
-			label = "This turn"
-		}
-		segs := []seg{decisionTier(*d), plain("  "), bold(routeText(d.Route))}
-		if d.Rewritten {
-			segs = append(segs, dim("  base "+routeText(d.Original)))
-		}
-		c.row(label, segs...)
-	case s.ClassifierOff:
-		c.row("Next turn", dim("classifier off · requests keep "+s.Baseline.Model+" unless pinned (p)"))
-	default:
-		c.row("Next turn", dim("no routed request yet · baseline "+routeText(s.Baseline)))
-	}
-}
-
-// activitySegs is the activity row: the classifier's activity answer with its
-// probability and the likeliest alternates, else the decision's activity.
-func activitySegs(d *route.Decision, applyAt float64) []seg {
-	r := d.Reading
-	if r == nil || r.Activity == "" {
-		if d.Activity == "" {
-			return []seg{dim("none")}
-		}
-		return []seg{col(colorActivity, string(d.Activity))}
-	}
-	name := col(colorActivity, string(r.Activity))
-	if !slices.Contains(config.Activities, r.Activity) {
-		name = dim(string(r.Activity)) // "uncertain" is an answer, not an activity
-	}
-	segs := []seg{name, plain(" " + percent(r.ActivityP))}
-	if len(r.Alternates) > 0 {
-		alts := make([]string, len(r.Alternates))
-		for i, a := range r.Alternates {
-			alts[i] = string(a.Activity) + " " + percent(a.P)
-		}
-		segs = append(segs, dim("   "+strings.Join(alts, " · ")))
-	}
-	if applyAt > 0 {
-		segs = append(segs, dim("   applies at "+percent(applyAt)+"+"))
-	}
-	return segs
-}
-
 func percent(p float64) string { return fmt.Sprintf("%d%%", int(math.Round(p*100))) }
 
-func (c *canvas) pinRow(s route.Snapshot) {
-	var segs []seg
-	var support map[config.Tier]float64
-	if s.Last != nil && s.Last.Reading != nil {
-		support = s.Last.Reading.Tiers
-	}
-	for _, t := range tierOrder {
-		label := string(t)
-		if s.Last != nil && s.Last.Tier == t && s.Mode == route.ModeOn && s.Pin == nil && !slices.Contains(keptReasons, s.Last.Reason) {
-			label = "▶ " + label
-		}
-		if p, ok := support[t]; ok {
-			label += " " + percent(p)
-		} else if support != nil {
-			label += " —"
-		}
-		b := button(label, s.Pin != nil && *s.Pin == t)
-		b.color = tierColor[t]
-		b.act = action{kind: actPin, tier: t}
-		segs = append(segs, b)
-	}
-	c.row("Pin next", append(segs, dim(" next turn only · p cycles"))...)
-}
-
-func (c *canvas) session(s route.Snapshot) {
-	st := s.Stats
-	if st.Replies == 0 {
-		c.section("SESSION", dim(" · no routed replies yet"))
-		return
-	}
-	head := fmt.Sprintf(" · since %s · %d routed replies · %d route switches", st.Since.Format(timeLayout), st.Replies, st.Switches)
-	c.section("SESSION", plain(head))
-	cells := st.Strip
-	if room := c.width - 2*len(indent); len(cells) > room {
-		cells = cells[len(cells)-room:]
-	}
-	strip := make([]seg, 0, len(cells)+2)
-	strip = append(strip, plain(indent))
-	for _, t := range cells {
-		strip = append(strip, col(tierColor[t], "█"))
-	}
-	if st.RepliesPerCell > 0 {
-		unit := "replies"
-		if st.RepliesPerCell == 1 {
-			unit = "reply"
-		}
-		strip = append(strip, dim(fmt.Sprintf("  %d %s per cell", st.RepliesPerCell, unit)))
-	}
-	c.add(strip...)
-
-	counts := []seg{plain(indent)}
-	for _, t := range tierOrder {
-		if n := st.ByTier[t]; n > 0 {
-			counts = append(counts, col(tierColor[t], "■"), plain(fmt.Sprintf(" %s %d   ", t, n)))
-		}
-	}
-	c.add(counts...)
-	if acts := topActivities(st.ByActivity, 3); len(acts) > 0 {
-		line := []seg{plain(indent)}
-		for i, a := range acts {
-			if i > 0 {
-				line = append(line, plain(" · "))
-			}
-			line = append(line, col(colorActivity, string(a.name)), plain(fmt.Sprintf(" %d", a.n)))
-		}
-		c.add(line...)
-	}
-	if sw := st.LastSwitch; sw != nil {
-		line := plain(fmt.Sprintf("%slast switch %s  %s → %s · %s", indent, sw.At.Format(timeLayout), sw.From, sw.To, sw.Activity))
-		if sw.MidTurn {
-			c.add(line, dim(" (inside a turn)"))
-		} else {
-			c.add(line)
-		}
-	}
-	c.add(append([]seg{plain(indent)}, savedSegs(st, s.Baseline)...)...)
-}
-
+// savedSegs is the saving against the baseline as a sentence.
 func savedSegs(st route.Stats, baseline config.Route) []seg {
 	if st.BaselineUSD <= 0 {
 		return []seg{dim(`savings need "prices" in the config`)}
 	}
 	diff := st.BaselineUSD - st.RoutedUSD
 	pct := int(abs(diff)/st.BaselineUSD*100 + 0.5)
-	word, color := "saved", colorOK
+	word, r := "saved", roleOK
 	if diff < 0 {
-		word, color = "cost", colorWarn
+		word, r = "cost", roleWarn
 	}
-	segs := []seg{plain("Routing " + word + " "), col(color, fmt.Sprintf("≈ $%.2f (%d%%)", abs(diff), pct)), plain(" vs " + routeText(baseline))}
-	if st.UncachedSwitchTokens > 0 {
-		segs = append(segs, dim(" · switch writes "+fmtTokens(st.UncachedSwitchTokens)+" tokens"))
-	}
-	return segs
+	return []seg{plain("Routing " + word + " "), col(r, fmt.Sprintf("≈ $%.2f (%d%%)", abs(diff), pct)), plain(" vs " + routeText(baseline))}
 }
 
 type activityCount struct {
@@ -606,11 +525,11 @@ func topActivities(m map[config.Activity]int, limit int) []activityCount {
 			out = append(out, activityCount{k, n})
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].n != out[j].n {
-			return out[i].n > out[j].n
+	slices.SortFunc(out, func(a, b activityCount) int {
+		if a.n != b.n {
+			return b.n - a.n
 		}
-		return out[i].name < out[j].name
+		return strings.Compare(string(a.name), string(b.name))
 	})
 	if len(out) > limit {
 		out = out[:limit]
@@ -618,55 +537,10 @@ func topActivities(m map[config.Activity]int, limit int) []activityCount {
 	return out
 }
 
-func (c *canvas) contextRow(s route.Snapshot) {
-	if s.Window <= 0 {
-		c.row("Context", dim("window unknown"))
-		return
-	}
-	pct := min(s.ApproxTokens*100/s.Window, 100)
-	c.row("Context", plain(bar(pct)+fmt.Sprintf(" %d%%  ", pct)), dim(fmt.Sprintf("~%s / %s · fit guard: smallest window", fmtTokens(s.ApproxTokens), fmtTokens(s.Window))))
-}
-
-func (c *canvas) cacheRow(s route.Snapshot) {
-	st := s.Stats
-	if st.Replies == 0 {
-		return
-	}
-	if st.LastInputTokens <= 0 {
-		c.row("Cache", plain(fmt.Sprintf("%d%% reused this session", st.CacheReusePct)), dim(" · $ are list-price estimates"))
-		return
-	}
-	c.row("Cache", plain(fmt.Sprintf("%d%% reused on the last reply", st.LastCachedTokens*100/st.LastInputTokens)),
-		dim(fmt.Sprintf(" · %d%% this session · $ at list price", st.CacheReusePct)))
-}
-
-// findingHint names where a finding is changed.
-var findingHint = map[route.FindingKind]string{
-	route.FindingClassifier: "Classifier",
-	route.FindingManual:     "space resumes",
-	route.FindingContext:    "Routes",
-	route.FindingBlocked:    "Routes",
-	route.FindingCache:      "Policy",
-	route.FindingState:      "P resumes the home",
-}
-
-func (c *canvas) worth(findings []route.Finding) {
-	if len(findings) == 0 {
-		return
-	}
-	c.section("WORTH A LOOK", dim(" · this session"))
-	for _, f := range findings {
-		text := f.Text
-		if hint := findingHint[f.Kind]; hint != "" {
-			text += " · " + hint
-		}
-		c.wrapped(indent, text, plain(""))
-	}
-}
-
-func bar(pct int) string {
-	n := pct * barCells / 100
-	return strings.Repeat("█", n) + strings.Repeat("░", barCells-n)
+// bar is pct as a filled bar of cells cells.
+func bar(pct, cells int) string {
+	n := min(max(pct, 0), 100) * cells / 100
+	return strings.Repeat("█", n) + strings.Repeat("░", cells-n)
 }
 
 func fmtTokens(n int) string {
@@ -686,130 +560,4 @@ func abs(f float64) float64 {
 		return -f
 	}
 	return f
-}
-
-func tierLabel(t config.Tier) seg {
-	return seg{text: fmt.Sprintf("%-8s", t), color: tierColor[t]}
-}
-
-func (c *canvas) routes(s route.Snapshot) {
-	c.add(dim("ROUTES"), dim(" · "+groupText(s)))
-	for _, t := range tierOrder {
-		c.add(tierLabel(t), plain(routeText(s.Routes[t])))
-	}
-	c.section("BLOCKED")
-	if len(s.Blocked) == 0 {
-		c.add(dim("none"))
-	}
-	for _, b := range s.Blocked {
-		c.add(plain(b), dim(" · outside "+s.Baseline.Model+"'s compatibility group"))
-	}
-	c.section("RECENT")
-	if len(s.Recent) == 0 {
-		c.add(dim("no decisions yet"))
-	}
-	start := max(len(s.Recent)-recentRows, 0)
-	for i := len(s.Recent) - 1; i >= start; i-- {
-		d := s.Recent[i]
-		c.add(plain(d.At.Format(timeLayout)+" "), decisionTier(d), plain(" "+routeText(d.Route)+"  "), col(colorActivity, string(d.Activity)), dim("  "+whyOf(d)))
-	}
-}
-
-func groupText(s route.Snapshot) string {
-	g := s.Group
-	if g.CompHash == "" {
-		return "compatibility group unknown"
-	}
-	return s.Baseline.Model + "'s compatibility group"
-}
-
-func (c *canvas) policy(s route.Snapshot) {
-	c.add(dim("PRESET"))
-	var segs []seg
-	for _, p := range Presets {
-		b := button(string(p), p == s.Preset)
-		b.act = action{kind: actPreset, preset: p}
-		segs = append(segs, b)
-	}
-	c.add(segs...)
-	if s.ClassifierOff {
-		c.add(col(colorWarn, "no effect while the classifier is off"))
-	}
-	p := s.Policy
-	c.section("THRESHOLDS")
-	c.add(plain(fmt.Sprintf("votes to move up %d · down %d · escalation hold %d turns", p.UpgradeVotes, p.DowngradeVotes, p.EscalationHoldTurns)))
-	c.add(plain(fmt.Sprintf("min dwell %d requests · review every %d requests", p.MinDwellRequests, p.ReviewEveryRequests)))
-	c.add(plain(fmt.Sprintf("upgrade bar %.2f · jump confidence %.2f · downgrade mass %.2f", p.UpgradeBase, p.JumpConfidence, p.DowngradeMass)))
-	c.add(dim("on router error: forward the original request"))
-}
-
-func (c *canvas) classifier(s route.Snapshot) {
-	h := s.Classifier
-	c.add(dim("CLASSIFIER"))
-	mark, color := "◉", colorOK
-	if classifierPaused(s) || s.ClassifierOff {
-		mark, color = "○", colorWarn
-	}
-	title := "Classifier"
-	if s.ClassifierLabel != "" {
-		title = s.ClassifierLabel
-	}
-	if s.ClassifierModel != "" {
-		title += " · " + s.ClassifierModel
-	}
-	c.add(col(color, mark), plain(" "+title))
-	if s.ClassifierOff {
-		segs := []seg{col(colorWarn, "off")}
-		if s.ClassifierOffReason != "" {
-			segs = append(segs, plain(" · "+s.ClassifierOffReason))
-		}
-		c.add(segs...)
-		c.add(dim("requests keep Codex's model; only pins (p) and the context guard change it"))
-		return
-	}
-	if h.Latency == 0 && h.Failures == 0 && h.LastError == "" && s.ClassifierMedian == 0 && !classifierPaused(s) {
-		c.add(plain("ready"), dim(" · no calls yet"))
-		return
-	}
-	if h.Latency > 0 {
-		c.add(plain(fmt.Sprintf("last latency %d ms", h.Latency.Milliseconds())))
-	}
-	if s.ClassifierMedian > 0 {
-		c.add(plain(fmt.Sprintf("median %d ms", s.ClassifierMedian.Milliseconds())), dim(" · recent answers"))
-	}
-	c.add(plain(fmt.Sprintf("consecutive failures %d", h.Failures)))
-	if h.LastError != "" {
-		c.add(plain("last error: "), col(colorWarn, h.LastError))
-	}
-	if classifierPaused(s) {
-		secs := int(math.Ceil(h.PausedUntil.Sub(s.At).Seconds()))
-		c.add(col(colorWarn, "paused until "+h.PausedUntil.Format("15:04:05")), dim(fmt.Sprintf(" · resumes in %ds", secs)))
-		c.add(dim("requests are forwarded unchanged"))
-	}
-}
-
-func (c *canvas) usage(s route.Snapshot) {
-	st := s.Stats
-	c.add(dim("USAGE"), dim(" · this session"))
-	if st.Replies == 0 {
-		c.add(dim("no replies yet"))
-	} else {
-		c.add(plain(fmt.Sprintf("requests %d · switches %d · cache reuse %d%%", st.Replies, st.Switches, st.CacheReusePct)))
-		c.add(savedSegs(st, s.Baseline)...)
-	}
-	if st.BaselineUSD > 0 {
-		c.add(dim(fmt.Sprintf("list-price estimate $%.2f vs $%.2f all-%s (plan billing is limits, not $)", st.RoutedUSD, st.BaselineUSD, routeText(s.Baseline))))
-	}
-	c.section("BY TIER")
-	for _, t := range tierOrder {
-		c.add(tierLabel(t), plain(strconv.Itoa(st.ByTier[t])))
-	}
-	c.section("BY ACTIVITY")
-	acts := topActivities(st.ByActivity, 8)
-	if len(acts) == 0 {
-		c.add(dim("none"))
-	}
-	for _, a := range acts {
-		c.add(col(colorActivity, fmt.Sprintf("%-10s", a.name)), plain(strconv.Itoa(a.n)))
-	}
 }

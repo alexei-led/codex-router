@@ -1,23 +1,38 @@
-◂ ● work · repo-15 · main  ● work · repo-16 · main …                     ▸ 15/20
-ROUTING ◉ on · gpt-6.1-sol high · Jev ready
+codex-router  20 sessions · Jev ready           Sessions  Policy  Usage   ? help
 
- Sessions  Now  Routes  Policy  Classifier  Usage 
+  SESSION         STATE  MODEL               LAST TURNS  SWITCH
+  ↑ 3 more
+  repo-04 · main  ● on   gpt-6-sol · medium  ▅▅▅▅
+  repo-05 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅
+  repo-06 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅
+  repo-07 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅
+  repo-08 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅
+  repo-09 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅
+  repo-10 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
 
-SESSIONS · 20 sessions in 2 homes
-  SESSION                                   STATE           ROUTE
-  ↑ 10 more
+● work
+  repo-11 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
+  repo-12 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
+  repo-13 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
+  repo-14 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
+▸ repo-15 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
+  repo-16 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
+  repo-17 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
+  repo-18 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
+  repo-19 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
+  repo-20 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
 
-● work · 1 endpoint · 155 replies · 0 switches
-  repo-11 · main                            ◉ on            gpt-6-sol · medium
-  repo-12 · main                            ◉ on            gpt-6-sol · medium
-  repo-13 · main                            ◉ on            gpt-6-sol · medium
-  repo-14 · main                            ◉ on            gpt-6-sol · medium
-▸ repo-15 · main                            ◉ on            gpt-6-sol · medium
-  repo-16 · main                            ◉ on            gpt-6-sol · medium
-  repo-17 · main                            ◉ on            gpt-6-sol · medium
-  repo-18 · main                            ◉ on            gpt-6-sol · medium
-  repo-19 · main                            ◉ on            gpt-6-sol · medium
-  repo-20 · main                            ◉ on            gpt-6-sol · medium
+repo-15 · main                                                   work · aaaaaaaa
+ HIGH  debug → gpt-6.1-sol · high     ↑ same test failure twice, edit in between
+       Jev high 18% · no classifier needed · switch ≈ 41k uncached tokens
+       hold 2 turns
+ Pin      micro   low   medium  ▶high                             next turn only
+ Session  48 replies · 9 switches · saved ≈ $0.84 (31%) vs gpt-6.1-sol · high
+          ▃▃▃▃▃▅▅▅▅▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇  1 reply per cell
+ Context  █░░░░░░░░░ 16%  44.6K / 272K      Cache  98% last reply · 97% session
+ Look     context guard kept 2 steps on a larger window than the policy chose ·
+          see Policy
+          routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group
+          · see Policy
 
-↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause focused
-P pause focused home · q quit
+↑↓ select · p pin · space pause · P pause home · tab views · q quit · ? help

@@ -1,8 +1,5 @@
-◂ no sessions ▸
-ROUTING ○ no sessions · watching the registry
-
- Sessions  Now  Routes  Policy  Classifier  Usage 
+codex-router  ○ no sessions                     Sessions  Policy  Usage   ? help
 
 no Codex session yet · run codex-router in a project to start one
 
-q quit
+q quit · ? help

@@ -4,11 +4,12 @@
 //
 //	go run ./scripts/render-docs
 //
-// It writes one SVG per TUI tab and one for the Sessions tab, as the panel
-// shows them with every session (top bar included), one for the panel locked
-// to a session, one for the Codex footer capture and the README split, and a
-// PNG beside each when rsvg-convert is on PATH. The data is made up; it matches the
-// debugging session described in docs/user-guide.md.
+// It writes one SVG per panel screen: the Sessions view stacked at the width
+// of a typical pane and side by side, Policy, Usage, the help overlay, the pin
+// popover and the panel locked to a session, plus one for the Codex footer
+// capture and the README split, and a PNG beside each when rsvg-convert is on
+// PATH. The data is made up; it matches the debugging session described in
+// docs/user-guide.md.
 package main
 
 import (
@@ -31,17 +32,40 @@ import (
 )
 
 const (
-	panelWidth = 100
-	// sessionsWidth fits the top bar's first sessions and every Sessions column.
-	sessionsWidth = 120
+	// panelWidth is a typical pane: Codex on the left, the panel on the right
+	// of a wide terminal.
+	panelWidth = 97
+	// wideWidth is a panel with its own terminal: the list beside the detail.
+	wideWidth = 130
 )
 
-var tabDescriptions = map[tui.Tab]string{
-	tui.TabNow:        "Now tab: the next turn's tier and model, the activity and why, the pin buttons with classifier support, the session strip of routed replies by tier, worth-a-look findings, the Codex footer sync, context and cache.",
-	tui.TabRoutes:     "Routes tab: the model and effort of each tier, models blocked by the compatibility group, and the most recent routing decisions.",
-	tui.TabPolicy:     "Policy tab: the preset buttons and the switching thresholds in effect.",
-	tui.TabClassifier: "Classifier tab: classifier name, last and median latency, consecutive failures.",
-	tui.TabUsage:      "Usage tab: requests, switches, cache reuse, list-price estimate against the baseline model, and counts by tier and activity.",
+// picture is one panel screen of the docs.
+type picture struct {
+	name  string
+	title string
+	desc  string
+	set   func(*tui.FleetView)
+}
+
+var pictures = []picture{
+	{"router-tui-sessions", "codex-router panel, Sessions view",
+		"codex-router tui in a 97 column pane. The header counts 5 sessions in 2 homes, says Jev is ready, and lists the views Sessions, Policy and Usage. The list groups the sessions by Codex home: the default home has three codex-router runs, the work home has a brain that has run for 2 hours and a router whose Codex has not had a first prompt yet. Each row has the session's state, model and effort, a sparkline of the last turns by tier and the last switch. Below, the selected session: the high tier chip, the debug activity and the route gpt-6.1-sol high, why the router moved up, the classifier's evidence, the pin buttons, the session summary with its strip, context and cache, and one thing worth a look.",
+		func(*tui.FleetView) {}},
+	{"router-tui-sessions-wide", "codex-router panel, Sessions view, side by side",
+		"The Sessions view in a terminal of 130 columns. The list of sessions is on the left and the selected session's detail on the right, with an accent gutter on the focused side.",
+		func(v *tui.FleetView) { v.Width = wideWidth }},
+	{"router-tui-policy", "codex-router panel, Policy view",
+		"Policy view: the preset buttons with balanced marked, the classifier Jev with its model and median latency, the model and effort of each tier, the compatibility group, and the thresholds for switching.",
+		func(v *tui.FleetView) { v.Tab = tui.TabPolicy }},
+	{"router-tui-usage", "codex-router panel, Usage view",
+		"Usage view: the estimated saving against the baseline model as one sentence, a ledger of replies, switches and cache reuse, and block bars of replies by tier and by activity.",
+		func(v *tui.FleetView) { v.Tab = tui.TabUsage }},
+	{"router-tui-popover", "codex-router panel, pin popover",
+		"The Sessions view after p: a small box under the pin row offers 1 micro, 2 low, 3 medium, 4 high and 0 none. The footer lists only the keys that work now.",
+		func(v *tui.FleetView) { v.Popover = true }},
+	{"router-tui-help", "codex-router panel, help overlay",
+		"The help overlay drawn over the panel after ?: every key, grouped as Navigate, Session, Home and Views.",
+		func(v *tui.FleetView) { v.Help = true }},
 }
 
 func main() {
@@ -61,22 +85,20 @@ func render(out, footerPath, sessionPath string) error {
 	}
 	snap := sampleSnapshot()
 	homes, sessions := sampleFleet(snap)
-	fleet := tui.FleetView{Homes: homes, Sessions: sessions, Brains: sampleBrains(homes), Focus: sessions[0].ID, Snap: snap, Width: panelWidth}
-	for _, tab := range tui.Tabs {
-		fleet.Tab = tab
-		svg := toSVG(parseANSI(tui.RenderFleetView(fleet)), "codex-router panel, "+string(tab)+" tab", tabDescriptions[tab])
-		if err := write(out, "router-tui-"+string(tab), svg); err != nil {
+	fleet := tui.FleetView{
+		Homes: homes, Sessions: sessions, Brains: sampleBrains(homes), Waiting: sampleWaiting(homes),
+		Focus: sessions[0].ID, Snap: snap, Width: panelWidth,
+	}
+	for _, p := range pictures {
+		v := fleet
+		p.set(&v)
+		if err := write(out, p.name, toSVG(parseANSI(tui.RenderFleetView(v)), p.title, p.desc)); err != nil {
 			return err
 		}
 	}
-	const sessionsDesc = "codex-router tui with every running session. Top bar: the focused session first, then the others, each with its home's dot and a mark for sessions that need a look, and the focus position 1 of 5. Sessions tab: two Codex homes. The default home has three codex-router runs. The work home is set up and has a brain that has run for 2 hours. Each home line has its replies, switches and saving, then one row per session with its state, route, routed replies by tier and last switch."
-	fleet.Tab, fleet.Width = tui.TabSessions, sessionsWidth
-	if err := write(out, "router-tui-sessions", toSVG(parseANSI(tui.RenderFleetView(fleet)), "codex-router panel, Sessions tab", sessionsDesc)); err != nil {
-		return err
-	}
-	fleet.Tab, fleet.Width, fleet.Locked = tui.TabNow, panelWidth, true
+	fleet.Locked = true
 	locked := tui.RenderFleetView(fleet)
-	const lockedDesc = "codex-router tui --session, locked to one session. A single header line names the session, default · codex-router · main, with its home's dot and its id. There is no top bar and no Sessions tab. Below it the Now tab shows the turn that moved up to gpt-6.1-sol high after the same tool failure repeated."
+	const lockedDesc = "codex-router tui --session, locked to one session. There is no list: the header shows the views and the detail of default · codex-router · main fills the screen. The turn moved up to gpt-6.1-sol high after the same tool failure repeated."
 	if err := write(out, "router-tui-locked", toSVG(parseANSI(locked), "codex-router panel locked to one session", lockedDesc)); err != nil {
 		return err
 	}
@@ -130,6 +152,17 @@ func sampleBrains(homes []home.Home) map[string]time.Duration {
 	for _, h := range homes {
 		if h.Name == "work" {
 			return map[string]time.Duration{h.ID: 2 * time.Hour}
+		}
+	}
+	return nil
+}
+
+// sampleWaiting is a router in the work home whose Codex has not had a first
+// prompt yet.
+func sampleWaiting(homes []home.Home) map[string][]string {
+	for _, h := range homes {
+		if h.Name == "work" {
+			return map[string][]string{h.ID: {"work · reflex · main"}}
 		}
 	}
 	return nil

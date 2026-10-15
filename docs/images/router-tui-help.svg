@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 789 484" width="789" height="484" role="img" aria-labelledby="title desc">
+  <title id="title">codex-router panel, help overlay</title>
+  <desc id="desc">The help overlay drawn over the panel after ?: every key, grouped as Navigate, Session, Home and Views.</desc>
+  <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
+  <rect width="789" height="484" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="788" height="483" rx="8" fill="none" stroke="#2e3340"/>
+  <text x="16.0" y="28.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">codex-router</text>
+  <text x="109.6" y="28.0" fill="#d0d0d0" xml:space="preserve">  5 sessions</text>
+  <text x="203.2" y="28.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="226.6" y="28.0" fill="#d0d0d0" xml:space="preserve">2 homes</text>
+  <text x="281.2" y="28.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="304.6" y="28.0" fill="#5fd7af" xml:space="preserve">Jev ready</text>
+  <rect x="515.2" y="14.0" width="78.0" height="19" fill="#87afff"/>
+  <text x="515.2" y="28.0" fill="#14171f" font-weight="700" xml:space="preserve"> Sessions </text>
+  <text x="593.2" y="28.0" fill="#d0d0d0" xml:space="preserve"> Policy  Usage   </text>
+  <text x="725.8" y="28.0" fill="#878787" xml:space="preserve">? help</text>
+  <text x="16.0" y="66.0" fill="#87afff" xml:space="preserve">╭───────────────────────────────────────────────────────────────────────────────────────────────╮</text>
+  <text x="16.0" y="85.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="85.0" fill="#878787" font-weight="700" xml:space="preserve">Navigate</text>
+  <text x="289.0" y="85.0" fill="#878787" font-weight="700" xml:space="preserve">Session</text>
+  <text x="764.8" y="85.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="104.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="104.0" fill="#87afff" font-weight="700" xml:space="preserve">↑↓         </text>
+  <text x="117.4" y="104.0" fill="#d0d0d0" xml:space="preserve">select                </text>
+  <text x="289.0" y="104.0" fill="#87afff" font-weight="700" xml:space="preserve">p          </text>
+  <text x="374.8" y="104.0" fill="#d0d0d0" xml:space="preserve">pin                                               </text>
+  <text x="764.8" y="104.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="123.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="123.0" fill="#87afff" font-weight="700" xml:space="preserve">j k        </text>
+  <text x="117.4" y="123.0" fill="#d0d0d0" xml:space="preserve">same as ↑↓            </text>
+  <text x="289.0" y="123.0" fill="#87afff" font-weight="700" xml:space="preserve">space      </text>
+  <text x="374.8" y="123.0" fill="#d0d0d0" xml:space="preserve">pause                                             </text>
+  <text x="764.8" y="123.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="142.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="142.0" fill="#87afff" font-weight="700" xml:space="preserve">enter      </text>
+  <text x="117.4" y="142.0" fill="#d0d0d0" xml:space="preserve">open                                                                               </text>
+  <text x="764.8" y="142.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="161.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="161.0" fill="#87afff" font-weight="700" xml:space="preserve">esc        </text>
+  <text x="117.4" y="161.0" fill="#d0d0d0" xml:space="preserve">back                  </text>
+  <text x="289.0" y="161.0" fill="#878787" font-weight="700" xml:space="preserve">Home</text>
+  <text x="764.8" y="161.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="180.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="180.0" fill="#87afff" font-weight="700" xml:space="preserve">[          </text>
+  <text x="117.4" y="180.0" fill="#d0d0d0" xml:space="preserve">previous session      </text>
+  <text x="289.0" y="180.0" fill="#87afff" font-weight="700" xml:space="preserve">P          </text>
+  <text x="374.8" y="180.0" fill="#d0d0d0" xml:space="preserve">pause home                                        </text>
+  <text x="764.8" y="180.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="199.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="199.0" fill="#87afff" font-weight="700" xml:space="preserve">]          </text>
+  <text x="117.4" y="199.0" fill="#d0d0d0" xml:space="preserve">next session          </text>
+  <text x="289.0" y="199.0" fill="#87afff" font-weight="700" xml:space="preserve">s          </text>
+  <text x="374.8" y="199.0" fill="#d0d0d0" xml:space="preserve">preset                                            </text>
+  <text x="764.8" y="199.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="218.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="218.0" fill="#87afff" font-weight="700" xml:space="preserve">?          </text>
+  <text x="117.4" y="218.0" fill="#d0d0d0" xml:space="preserve">help                                                                               </text>
+  <text x="764.8" y="218.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="237.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="237.0" fill="#87afff" font-weight="700" xml:space="preserve">q          </text>
+  <text x="117.4" y="237.0" fill="#d0d0d0" xml:space="preserve">quit                  </text>
+  <text x="289.0" y="237.0" fill="#878787" font-weight="700" xml:space="preserve">Views</text>
+  <text x="764.8" y="237.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="256.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="289.0" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">tab        </text>
+  <text x="374.8" y="256.0" fill="#d0d0d0" xml:space="preserve">views                                             </text>
+  <text x="764.8" y="256.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="275.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="289.0" y="275.0" fill="#87afff" font-weight="700" xml:space="preserve">shift+tab  </text>
+  <text x="374.8" y="275.0" fill="#d0d0d0" xml:space="preserve">previous view                                     </text>
+  <text x="764.8" y="275.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="294.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="764.8" y="294.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="313.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="313.0" fill="#878787" xml:space="preserve">click a row to select it, again to open it · wheel scrolls · click a view name, a button or a</text>
+  <text x="764.8" y="313.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="332.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="31.6" y="332.0" fill="#878787" xml:space="preserve">footer key to use it</text>
+  <text x="764.8" y="332.0" fill="#87afff" xml:space="preserve">│</text>
+  <text x="16.0" y="351.0" fill="#87afff" xml:space="preserve">╰───────────────────────────────────────────────────────────────────────────────────────────────╯</text>
+  <text x="94.0" y="370.0" fill="#d7af5f" xml:space="preserve">▅▅▅▅▅▅▅▅▅</text>
+  <text x="164.2" y="370.0" fill="#5fafd7" xml:space="preserve">▃▃▃▃▃</text>
+  <text x="203.2" y="370.0" fill="#d7af5f" xml:space="preserve">▅▅▅▅▅▅</text>
+  <text x="250.0" y="370.0" fill="#5fd7af" xml:space="preserve">▁▁</text>
+  <text x="265.6" y="370.0" fill="#5fafd7" xml:space="preserve">▃▃▃▃</text>
+  <text x="296.8" y="370.0" fill="#d7af5f" xml:space="preserve">▅▅▅▅</text>
+  <text x="328.0" y="370.0" fill="#d75f87" xml:space="preserve">▇▇▇▇▇▇</text>
+  <text x="374.8" y="370.0" fill="#878787" xml:space="preserve">  4 replies per cell</text>
+  <text x="16.0" y="389.0" fill="#d0d0d0" xml:space="preserve"> Context  █░░░░░░░░░ 10%  </text>
+  <text x="218.8" y="389.0" fill="#878787" xml:space="preserve">91K / 828K</text>
+  <text x="343.6" y="389.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">Cache</text>
+  <text x="382.6" y="389.0" fill="#d0d0d0" xml:space="preserve">  97% last reply</text>
+  <text x="507.4" y="389.0" fill="#878787" xml:space="preserve"> · 64% session</text>
+  <text x="16.0" y="408.0" fill="#d0d0d0" xml:space="preserve"> Look     cache reuse 64% after 19 switches; switches wrote 612K uncached tokens · see Policy</text>
+  <text x="16.0" y="427.0" fill="#d0d0d0" xml:space="preserve">          context guard kept 3 steps on a larger window than the policy chose · see Policy</text>
+  <text x="16.0" y="465.0" fill="#87afff" font-weight="700" xml:space="preserve">esc</text>
+  <text x="39.4" y="465.0" fill="#878787" xml:space="preserve"> close</text>
+</svg>

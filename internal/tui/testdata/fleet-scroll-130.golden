@@ -1,0 +1,28 @@
+codex-router  20 sessions · 2 homes · Jev ready                                                   Sessions  Policy  Usage   ? help
+
+▎  SESSION         STATE  MODEL               LAST TURNS     repo-15 · main                                        work · aaaaaaaa
+▎● default                                                    HIGH  debug → gpt-6.1-sol · high
+▎  repo-01 · main  ● on   gpt-6-sol · medium  ▅                     ↑ same test failure twice, edit in between
+▎  repo-02 · main  ● on   gpt-6-sol · medium  ▅▅                    Jev high 18% · no classifier needed
+▎  repo-03 · main  ● on   gpt-6-sol · medium  ▅▅▅                   switch ≈ 41k uncached tokens · hold 2 turns
+▎  repo-04 · main  ● on   gpt-6-sol · medium  ▅▅▅▅            Pin      micro   low   medium  ▶high                  next turn only
+▎  repo-05 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅           Session  48 replies · 9 switches
+▎  repo-06 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅                   saved ≈ $0.84 (31%) vs gpt-6.1-sol · high
+▎  repo-07 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅                  ▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇  1 reply per cell
+▎  repo-08 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅        Context  █░░░░░░░░░ 16%  44.6K / 272K
+▎  repo-09 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅       Cache    98% last reply · 97% session
+▎  repo-10 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅      Look     context guard kept 2 steps on a larger window than the
+▎                                                                      policy chose · see Policy
+▎● work                                                                routes to gpt-5.5 never run: outside gpt-6.1-sol's
+▎  repo-11 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅               compatibility group · see Policy
+▎  repo-12 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅     
+▎  repo-13 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅     
+▎  repo-14 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅     
+▎▸ repo-15 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅     
+▎  repo-16 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅     
+▎  repo-17 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅     
+▎  repo-18 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅     
+▎  repo-19 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅     
+▎  repo-20 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅     
+
+↑↓ select · p pin · space pause · P pause home · tab views · q quit · ? help

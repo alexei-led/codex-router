@@ -12,29 +12,17 @@ import (
 	"github.com/alexei-led/codex-router/internal/registry"
 )
 
-// Tab is one panel tab, in key order 0-5.
+// Tab is one panel view. Tab and shift+tab cycle them.
 type Tab string
 
 const (
-	TabSessions   Tab = "sessions" // tab 0, only when the panel shows all sessions
-	TabNow        Tab = "now"
-	TabRoutes     Tab = "routes"
-	TabPolicy     Tab = "policy"
-	TabClassifier Tab = "classifier"
-	TabUsage      Tab = "usage"
+	TabSessions Tab = "sessions"
+	TabPolicy   Tab = "policy"
+	TabUsage    Tab = "usage"
 )
 
-// Tabs lists the tabs of one session, keys 1-5, in display order.
-var Tabs = []Tab{TabNow, TabRoutes, TabPolicy, TabClassifier, TabUsage}
-
-// tabsFor lists the panel's tabs in key order; withSessions puts the
-// Sessions tab 0 first.
-func tabsFor(withSessions bool) []Tab {
-	if withSessions {
-		return append([]Tab{TabSessions}, Tabs...)
-	}
-	return Tabs
-}
+// Tabs lists the views in display order.
+var Tabs = []Tab{TabSessions, TabPolicy, TabUsage}
 
 // Presets lists the policy presets in cycling order.
 var Presets = []config.Preset{config.PresetThrifty, config.PresetBalanced, config.PresetQuality}

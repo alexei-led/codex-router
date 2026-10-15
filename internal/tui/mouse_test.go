@@ -13,7 +13,7 @@ import (
 )
 
 func TestHit(t *testing.T) {
-	a, b := action{kind: actTab, tab: TabNow}, action{kind: actTab, tab: TabRoutes}
+	a, b := action{kind: actTab, tab: TabSessions}, action{kind: actTab, tab: TabPolicy}
 	zones := []zone{{a, 2, 0, 5}, {b, 2, 5, 9}, {b, 4, 0, 80}}
 	tests := []struct {
 		name string
@@ -42,30 +42,53 @@ func TestHit(t *testing.T) {
 	}
 }
 
+func plainView(m *model) view {
+	v := m.view()
+	v.styled = false
+	return v
+}
+
 func TestZonesCoverTheirLabels(t *testing.T) {
 	m, _, _ := fleetPanel(t)
 	m.st.snap = &route.Snapshot{Mode: route.ModeOn, Preset: config.PresetBalanced, FooterSynced: true}
 	tests := []struct {
-		tab  Tab
-		want map[action]string
+		name    string
+		tab     Tab
+		popover popover
+		want    map[action]string
 	}{
-		{TabNow, map[action]string{
-			{kind: actTab, tab: TabSessions}:       "Sessions",
-			{kind: actTab, tab: TabUsage}:          "Usage",
-			{kind: actPin, tier: config.TierHigh}:  "high",
-			{kind: actPin, tier: config.TierMicro}: "micro",
+		{"sessions", TabSessions, popNone, map[action]string{
+			{kind: actTab, tab: TabSessions}:         "Sessions",
+			{kind: actTab, tab: TabPolicy}:           "Policy",
+			{kind: actTab, tab: TabUsage}:            "Usage",
+			{kind: actKey, key: handle(keys.Help)}:   "? help",
+			{kind: actPin, tier: config.TierHigh}:    "high",
+			{kind: actPin, tier: config.TierMicro}:   "micro",
+			{kind: actKey, key: handle(keys.Pin)}:    "p pin",
+			{kind: actKey, key: handle(keys.Toggle)}: "space pause",
+			{kind: actKey, key: handle(keys.Home)}:   "P pause home",
+			{kind: actKey, key: handle(keys.Quit)}:   "q quit",
+			{kind: actKey, key: handle(keys.Next)}:   "tab views",
 		}},
-		{TabPolicy, map[action]string{
+		{"policy", TabPolicy, popNone, map[action]string{
 			{kind: actPreset, preset: config.PresetThrifty}: "thrifty",
 			{kind: actPreset, preset: config.PresetQuality}: "quality",
+			{kind: actKey, key: handle(keys.Preset)}:        "s preset",
+		}},
+		{"pin popover", TabSessions, popPin, map[action]string{
+			{kind: actPin, tier: config.TierMicro}:  "1 micro",
+			{kind: actPin, tier: config.TierMedium}: "3 medium",
+			{kind: actUnpin}:                        "0 none",
+		}},
+		{"preset popover", TabPolicy, popPreset, map[action]string{
+			{kind: actPreset, preset: config.PresetThrifty}:  "1 thrifty",
+			{kind: actPreset, preset: config.PresetBalanced}: "2 balanced",
 		}},
 	}
 	for _, tt := range tests {
-		t.Run(string(tt.tab), func(t *testing.T) {
-			m.tab = tt.tab
-			v := m.view()
-			v.styled = false
-			out, zones := layout(v)
+		t.Run(tt.name, func(t *testing.T) {
+			m.tab, m.popover = tt.tab, tt.popover
+			out, zones := layout(plainView(m))
 			lines := strings.Split(out, "\n")
 			for a, text := range tt.want {
 				i := slices.IndexFunc(zones, func(z zone) bool { return z.action == a })
@@ -79,6 +102,31 @@ func TestZonesCoverTheirLabels(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestZonesStayOnTheirRowsWhenSideBySide(t *testing.T) {
+	m, _, ss := fleetPanel(t)
+	m.Update(tea.WindowSizeMsg{Width: 130, Height: 50})
+	m.st.snap = &route.Snapshot{Mode: route.ModeOn, FooterSynced: true}
+	out, zones := layout(plainView(m))
+	lines := strings.Split(out, "\n")
+	for a, text := range map[action]string{
+		{kind: actPin, tier: config.TierLow}:   "low",
+		{kind: actPin, tier: config.TierMicro}: "micro",
+	} {
+		i := slices.IndexFunc(zones, func(z zone) bool { return z.action == a })
+		if i < 0 {
+			t.Fatalf("no zone for %+v", a)
+		}
+		z := zones[i]
+		if got := strings.TrimSpace(string([]rune(lines[z.row])[z.x0:z.x1])); got != text {
+			t.Errorf("zone %+v covers %q, want %q", a, got, text)
+		}
+	}
+	i := slices.IndexFunc(zones, func(z zone) bool { return z.action == action{kind: actSelect, session: ss[1].ID} })
+	if i < 0 || !strings.Contains(lines[zones[i].row], "  b  ") {
+		t.Errorf("row zone of %s: %v", ss[1].ID, i)
 	}
 }
 
@@ -100,89 +148,124 @@ func clickOn(t *testing.T, m *model, a action) tea.Cmd {
 func TestClicksSendCommands(t *testing.T) {
 	low := config.TierLow
 	tests := []struct {
-		name  string
-		setup func(*route.Snapshot)
-		tab   Tab
-		on    action
-		want  route.Command
+		name    string
+		setup   func(*route.Snapshot)
+		tab     Tab
+		popover popover
+		on      action
+		want    route.Command
 	}{
-		{"pin a tier", func(*route.Snapshot) {}, TabNow, action{kind: actPin, tier: config.TierMicro}, route.Command{Op: route.OpPin, Session: testSession, Tier: config.TierMicro}},
-		{"pin jumps over the cycle", func(s *route.Snapshot) { s.Pin = &low }, TabNow, action{kind: actPin, tier: config.TierHigh}, route.Command{Op: route.OpPin, Session: testSession, Tier: config.TierHigh}},
-		{"the pinned tier unpins", func(s *route.Snapshot) { s.Pin = &low }, TabNow, action{kind: actPin, tier: config.TierLow}, route.Command{Op: route.OpUnpin, Session: testSession}},
-		{"preset", func(*route.Snapshot) {}, TabPolicy, action{kind: actPreset, preset: config.PresetThrifty}, route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetThrifty}},
+		{"pin a tier", func(*route.Snapshot) {}, TabSessions, popNone, action{kind: actPin, tier: config.TierMicro}, route.Command{Op: route.OpPin, Session: testSession, Tier: config.TierMicro}},
+		{"pin jumps straight to the tier", func(s *route.Snapshot) { s.Pin = &low }, TabSessions, popNone, action{kind: actPin, tier: config.TierHigh}, route.Command{Op: route.OpPin, Session: testSession, Tier: config.TierHigh}},
+		{"the pinned tier unpins", func(s *route.Snapshot) { s.Pin = &low }, TabSessions, popNone, action{kind: actPin, tier: config.TierLow}, route.Command{Op: route.OpUnpin, Session: testSession}},
+		{"a popover choice pins", func(*route.Snapshot) {}, TabSessions, popPin, action{kind: actPin, tier: config.TierMedium}, route.Command{Op: route.OpPin, Session: testSession, Tier: config.TierMedium}},
+		{"the popover's none unpins", func(s *route.Snapshot) { s.Pin = &low }, TabSessions, popPin, action{kind: actUnpin}, route.Command{Op: route.OpUnpin, Session: testSession}},
+		{"preset", func(*route.Snapshot) {}, TabPolicy, popNone, action{kind: actPreset, preset: config.PresetThrifty}, route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetThrifty}},
+		{"a preset popover choice", func(*route.Snapshot) {}, TabPolicy, popPreset, action{kind: actPreset, preset: config.PresetQuality}, route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetQuality}},
+		{"the footer's pause", func(*route.Snapshot) {}, TabSessions, popNone, action{kind: actKey, key: handle(keys.Toggle)}, route.Command{Op: route.OpPause, Session: testSession}},
+		{"the footer's home pause", func(*route.Snapshot) {}, TabUsage, popNone, action{kind: actKey, key: handle(keys.Home)}, route.Command{Op: route.OpPause, Scope: route.ScopeHome}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := fixture()
 			tt.setup(&s)
 			m, f := connected(t, s)
-			m.tab = tt.tab
+			m.tab, m.popover = tt.tab, tt.popover
 			run(m, clickOn(t, m, tt.on))
 			if got := f.sentCmds(); !slices.Equal(got, []route.Command{tt.want}) {
 				t.Errorf("sent %+v, want %+v", got, tt.want)
+			}
+			if m.popover != popNone {
+				t.Error("popover still open")
+			}
+			if m.toast == "" {
+				t.Error("no toast for the ack")
 			}
 		})
 	}
 }
 
-func TestClickOnATabShowsIt(t *testing.T) {
-	m, _, ss := fleetPanel(t)
-	for _, tab := range []Tab{TabUsage, TabSessions, TabNow} {
+func TestClickOnAViewNameShowsIt(t *testing.T) {
+	m, _, _ := fleetPanel(t)
+	for _, tab := range []Tab{TabUsage, TabPolicy, TabSessions} {
 		clickOn(t, m, action{kind: actTab, tab: tab})
 		if m.tab != tab {
 			t.Errorf("tab = %s, want %s", m.tab, tab)
 		}
 	}
-	m.cursor = ss[2].ID
-	clickOn(t, m, action{kind: actTab, tab: TabSessions})
-	if m.cursor != ss[0].ID {
-		t.Errorf("cursor = %s, want the focus %s", m.cursor, ss[0].ID)
+}
+
+func TestClickOnTheFooterRunsItsBinding(t *testing.T) {
+	m, _, _ := fleetPanel(t)
+	clickOn(t, m, action{kind: actKey, key: handle(keys.Next)})
+	if m.tab != TabPolicy {
+		t.Errorf("tab = %s", m.tab)
+	}
+	clickOn(t, m, action{kind: actKey, key: handle(keys.Help)})
+	if !m.help {
+		t.Error("help did not open")
+	}
+	clickAt(m, 3, 3, tea.MouseLeft)
+	if m.help {
+		t.Error("a click outside did not close the help overlay")
+	}
+	clickOn(t, m, action{kind: actKey, key: handle(keys.Quit)})
+}
+
+func TestClickOutsideAPopoverClosesItWithoutActing(t *testing.T) {
+	m, f := connected(t, fixture())
+	press(m, "p")
+	if cmd := clickAt(m, 2, 12, tea.MouseLeft); cmd != nil {
+		t.Error("click outside made a command")
+	}
+	if m.popover != popNone || len(f.sentCmds()) != 0 {
+		t.Errorf("popover %v, sent %v", m.popover, f.sentCmds())
 	}
 }
 
-func TestClickOnTheTopBarFocusesThatSession(t *testing.T) {
-	m, e, ss := fleetPanel(t)
-	run(m, clickOn(t, m, action{kind: actFocus, session: ss[1].ID}))
-	refresh(t, m, func(st fleetState) bool { return st.focus == ss[1].ID })
-	if subs := e.subs(); subs[len(subs)-1] != ss[1].ID {
-		t.Errorf("subscribed %v, want last %s", subs, ss[1].ID)
-	}
-}
-
-func TestSessionsRowClicksSelectThenOpen(t *testing.T) {
+func TestListRowClicksSelectThenOpen(t *testing.T) {
 	m, _, ss := fleetPanel(t)
-	clickOn(t, m, action{kind: actTab, tab: TabSessions})
+	m.Update(tea.WindowSizeMsg{Width: 97, Height: 50})
 	row := action{kind: actSelect, session: ss[2].ID}
 
 	run(m, clickOn(t, m, row))
-	if m.cursor != ss[2].ID || m.tab != TabSessions || m.st.focus != ss[0].ID {
-		t.Fatalf("first click: cursor %s, tab %s, focus %s", m.cursor, m.tab, m.st.focus)
-	}
-	run(m, clickOn(t, m, row))
-	if m.tab != TabNow {
-		t.Errorf("second click: tab = %s", m.tab)
+	if m.st.focus != ss[2].ID || m.zoom {
+		t.Fatalf("first click: focus %s, zoom %v", m.st.focus, m.zoom)
 	}
 	refresh(t, m, func(st fleetState) bool { return st.focus == ss[2].ID })
+	run(m, clickOn(t, m, row))
+	if !m.zoom {
+		t.Error("second click did not open the detail")
+	}
+
+	m.zoom = false
+	m.Update(tea.WindowSizeMsg{Width: 130, Height: 50})
+	run(m, clickOn(t, m, row))
+	if m.pane != paneDetail {
+		t.Errorf("side by side, second click: pane = %v", m.pane)
+	}
 }
 
-func TestWheelMovesTheSessionsCursor(t *testing.T) {
+func TestWheelMovesTheSelection(t *testing.T) {
 	tests := []struct {
 		name   string
 		tab    Tab
+		zoom   bool
 		button tea.MouseButton
 		want   int
 	}{
-		{"down", TabSessions, tea.MouseWheelDown, 1},
-		{"up stops at the first", TabSessions, tea.MouseWheelUp, 0},
-		{"other tabs ignore it", TabNow, tea.MouseWheelDown, 0},
+		{"down", TabSessions, false, tea.MouseWheelDown, 1},
+		{"up stops at the first", TabSessions, false, tea.MouseWheelUp, 0},
+		{"other views ignore it", TabPolicy, false, tea.MouseWheelDown, 0},
+		{"the zoomed detail has no list", TabSessions, true, tea.MouseWheelDown, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m, _, ss := fleetPanel(t)
-			m.tab = tt.tab
+			m.tab, m.zoom = tt.tab, tt.zoom
 			m.Update(tea.MouseWheelMsg{Button: tt.button})
-			if m.selected() != ss[tt.want].ID {
-				t.Errorf("selected %s, want %s", m.selected(), ss[tt.want].ID)
+			if m.st.focus != ss[tt.want].ID {
+				t.Errorf("focus %s, want %s", m.st.focus, ss[tt.want].ID)
 			}
 		})
 	}
@@ -220,7 +303,7 @@ func TestClicksTheMouseShouldNotAct(t *testing.T) {
 
 func TestClickOutsideEveryZoneDoesNothing(t *testing.T) {
 	m, f := connected(t, fixture())
-	if cmd := clickAt(m, 79, 0, tea.MouseLeft); cmd != nil {
+	if cmd := clickAt(m, 79, 1, tea.MouseLeft); cmd != nil {
 		t.Error("click on empty space made a command")
 	}
 	if len(f.sentCmds()) != 0 {

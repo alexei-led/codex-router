@@ -1,0 +1,18 @@
+codex-router  6 sessions · 2 homes · Jev ready  Sessions  Policy  Usage   ? help
+
+  SESSION                  STATE     MODEL                LAST TURNS  SWITCH
+● default
+▸ codex-router · main      ↑ high    gpt-6.1-sol · high   ▅▅▅▅▅▅▅▇▇▇  18:41 ↑
+  codex-router · fix/hook  ● on      gpt-6-luna · medium  ▃▃▃▃▅▅▅▁▁▁  18:29 ↓
+  notes                    ‖ paused  gpt-6-luna · medium  ▃▃▃
+
+● work · brain up 2h
+  api · feat/auth          ◐ manual  gpt-6-sol · medium   ▅▅▃▃▃▃▅▅▅▅
+  api · fix/retry          ↑ high    gpt-6.1-sol · high   ▅▅▅▅▇▇▇     18:41 ↑
+  infra · main             ● on      gpt-6-sol · medium
+  reflex · main            ○ waiting for the first prompt
+
+codex-router · main                                           default · bbbbbbbb
+ loading the session…
+
+↑↓ select · p pin · space pause · P pause home · tab views · q quit · ? help

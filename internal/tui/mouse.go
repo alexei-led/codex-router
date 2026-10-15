@@ -6,11 +6,13 @@ type actionKind int
 
 const (
 	actNone   actionKind = iota
-	actTab               // show tab
-	actFocus             // focus session, from the top bar
-	actSelect            // Sessions tab row: select, then open
+	actTab               // show view
+	actSelect            // list row: select, then open
 	actPin               // pin tier, or unpin it when pinned
+	actUnpin             // clear the pin
 	actPreset            // set the focused home's preset
+	actKey               // run the binding named key
+	actClose             // close the open popover or help overlay
 )
 
 // action is what a click does.
@@ -20,6 +22,7 @@ type action struct {
 	session string
 	tier    config.Tier
 	preset  config.Preset
+	key     string
 }
 
 // zone is a clickable span of one screen row, x0 inclusive, x1 exclusive, in
