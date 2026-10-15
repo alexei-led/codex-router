@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -36,23 +35,7 @@ const (
 	rpcTimeout = 5 * time.Second
 	redialMin  = 250 * time.Millisecond
 	redialMax  = 8 * time.Second
-
-	// pathFile records the link socket when it lives outside the home's
-	// state dir; the edge reads it through LinkPath.
-	pathFile = "brain.path"
 )
-
-// LinkPath is the link socket of the brain whose home state dir is dir:
-// brain.sock in dir, or the path the brain recorded there because that one
-// was too long for a unix socket. The edge reads it before each dial.
-func LinkPath(dir string) string {
-	if b, err := os.ReadFile(filepath.Join(dir, pathFile)); err == nil {
-		if p := strings.TrimSpace(string(b)); filepath.IsAbs(p) {
-			return p
-		}
-	}
-	return filepath.Join(dir, link.SocketName)
-}
 
 // EndpointID is the registry id of a home's brain. It is stable, so a
 // restarted brain replaces its own entry.
@@ -147,8 +130,8 @@ func Start(o Options) (b *Brain, err error) {
 	if err != nil {
 		return b, err
 	}
-	if err := recordLinkPath(dir, linkPath); err != nil {
-		return b, err
+	if err := link.RecordPath(dir, linkPath); err != nil {
+		return b, fmt.Errorf("brain: %w", err)
 	}
 	ctlPath, err := b.socketPath(dir, control.SocketName, o.Home.ID+"-"+control.SocketName)
 	if err != nil {
@@ -251,22 +234,6 @@ func (b *Brain) socketPath(dir, name, short string) (string, error) {
 		return "", fmt.Errorf("brain: socket path %s is too long", p)
 	}
 	return p, nil
-}
-
-// recordLinkPath writes pathFile when the link socket is outside dir, and
-// removes a stale one when it is not.
-func recordLinkPath(dir, linkPath string) error {
-	rec := filepath.Join(dir, pathFile)
-	if filepath.Dir(linkPath) == dir {
-		if err := os.Remove(rec); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("brain: %w", err)
-		}
-		return nil
-	}
-	if err := statedir.WriteAtomic(dir, pathFile, []byte(linkPath+"\n")); err != nil {
-		return fmt.Errorf("brain: record link path: %w", err)
-	}
-	return nil
 }
 
 // register lists the brain in the shared registry. A brain that cannot

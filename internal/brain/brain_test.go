@@ -493,13 +493,13 @@ func TestBrainServesControlLinkAndRegistry(t *testing.T) {
 		t.Errorf("hello = %+v", h)
 	}
 
-	lc := link.NewClient(link.ClientOptions{Path: func() string { return LinkPath(r.homeDir()) }, HomeID: r.home.ID})
+	lc := link.NewClient(link.ClientOptions{Path: func() string { return link.Path(r.homeDir()) }, HomeID: r.home.ID})
 	defer func() { _ = lc.Close() }()
 	if !lc.Up(t.Context()) {
 		t.Fatal("the edge cannot reach the brain over the link socket")
 	}
-	if _, err := os.Stat(filepath.Join(r.homeDir(), pathFile)); !os.IsNotExist(err) {
-		t.Errorf("%s written for a short socket path (err %v)", pathFile, err)
+	if got, want := link.Path(r.homeDir()), filepath.Join(r.homeDir(), link.SocketName); got != want {
+		t.Errorf("link.Path = %q, want %q for a short socket path", got, want)
 	}
 
 	r.b.Close()
@@ -745,7 +745,7 @@ func TestBrainWaitsForTheDaemon(t *testing.T) {
 	r.d.stop()
 	r.d.load("t1", &fakeThread{cwd: "/w1", source: "user", route: native})
 	r.start(t)
-	lc := link.NewClient(link.ClientOptions{Path: func() string { return LinkPath(r.homeDir()) }, HomeID: r.home.ID})
+	lc := link.NewClient(link.ClientOptions{Path: func() string { return link.Path(r.homeDir()) }, HomeID: r.home.ID})
 	defer func() { _ = lc.Close() }()
 	if !lc.Up(t.Context()) {
 		t.Fatal("the link is down while the daemon is")
@@ -760,29 +760,14 @@ func TestBrainMovesLongSocketPathsToTmp(t *testing.T) {
 	r.start(t)
 
 	dir := r.homeDir()
-	rec, err := os.ReadFile(filepath.Join(dir, pathFile))
-	if err != nil {
-		t.Fatalf("no link path record: %v", err)
-	}
 	want := filepath.Join(r.env["TMPDIR"], "codex-router-"+strconv.Itoa(os.Getuid()), r.home.ID+".sock")
-	if got := strings.TrimSpace(string(rec)); got != want {
-		t.Errorf("recorded %q, want %q", got, want)
+	if got := link.Path(dir); got != want {
+		t.Errorf("link.Path = %q, want %q", got, want)
 	}
-	if got := LinkPath(dir); got != want {
-		t.Errorf("LinkPath = %q, want %q", got, want)
-	}
-	lc := link.NewClient(link.ClientOptions{Path: func() string { return LinkPath(dir) }, HomeID: r.home.ID})
+	lc := link.NewClient(link.ClientOptions{Path: func() string { return link.Path(dir) }, HomeID: r.home.ID})
 	defer func() { _ = lc.Close() }()
 	if !lc.Up(t.Context()) {
 		t.Error("the edge cannot reach the brain at the recorded path")
-	}
-
-	r.b.Close()
-	if err := recordLinkPath(dir, filepath.Join(dir, link.SocketName)); err != nil {
-		t.Fatal(err)
-	}
-	if got := LinkPath(dir); got != filepath.Join(dir, link.SocketName) {
-		t.Errorf("LinkPath after the record went = %q", got)
 	}
 }
 
