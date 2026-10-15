@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -192,6 +193,26 @@ func Fallback(o Options, reason error) error {
 	return nil
 }
 
+// sink fans engine output out: decisions to the settings writer's queue,
+// snapshots to the control socket. Both calls return at once; the engine
+// calls OnDecision while it holds the thread's step lock.
+type sink struct {
+	writer *appserver.SettingsWriter
+	ctl    atomic.Pointer[control.Server]
+}
+
+func (s *sink) OnDecision(d route.Decision) {
+	if d.ThreadID != "" && d.Route.Model != "" {
+		s.writer.Enqueue(d.ThreadID, d.Route)
+	}
+}
+
+func (s *sink) OnSnapshot(snap route.Snapshot) {
+	if c := s.ctl.Load(); c != nil {
+		c.Publish(snap)
+	}
+}
+
 // endpoint is the engine as the control socket serves it. The runtime id
 // names the endpoint.
 type endpoint struct {
@@ -215,7 +236,7 @@ type session struct {
 	id      string // runtime id: the endpoint id
 	app     *appServer
 	api     appserver.API
-	writer  *SettingsWriter
+	writer  *appserver.SettingsWriter
 	codex   *exec.Cmd
 }
 
@@ -236,7 +257,7 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 
 	runCtx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	w := NewSettingsWriter(s.log, true)
+	w := appserver.NewSettingsWriter(s.log, true)
 	s.writer = w
 	snk := &sink{writer: w}
 	eng, store, h := newRouter(o, s.log, snk)

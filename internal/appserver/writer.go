@@ -1,4 +1,4 @@
-package launcher
+package appserver
 
 import (
 	"context"
@@ -6,36 +6,12 @@ import (
 	"log/slog"
 	"slices"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/alexei-led/codex-router/internal/appserver"
 	"github.com/alexei-led/codex-router/internal/config"
-	"github.com/alexei-led/codex-router/internal/control"
-	"github.com/alexei-led/codex-router/internal/route"
 )
 
 const rpcTimeout = 5 * time.Second
-
-// sink fans engine output out: decisions to the settings writer's queue,
-// snapshots to the control socket. Both calls return at once; the engine
-// calls OnDecision while it holds the thread's step lock.
-type sink struct {
-	writer *SettingsWriter
-	ctl    atomic.Pointer[control.Server]
-}
-
-func (s *sink) OnDecision(d route.Decision) {
-	if d.ThreadID != "" && d.Route.Model != "" {
-		s.writer.Enqueue(d.ThreadID, d.Route)
-	}
-}
-
-func (s *sink) OnSnapshot(snap route.Snapshot) {
-	if c := s.ctl.Load(); c != nil {
-		c.Publish(snap)
-	}
-}
 
 // SettingsWriter mirrors routes into the Codex footer. Per thread it keeps
 // only the newest wanted route (the engine accepts an echo of any later
@@ -147,7 +123,7 @@ func (w *SettingsWriter) next() (thread string, r config.Route, resume, ok bool)
 
 // Run writes queued routes through api until ctx ends. A caller that
 // reconnects runs it again with the new api; the queue carries over.
-func (w *SettingsWriter) Run(ctx context.Context, api appserver.API) {
+func (w *SettingsWriter) Run(ctx context.Context, api API) {
 	for {
 		for {
 			thread, r, resume, ok := w.next()
@@ -164,11 +140,11 @@ func (w *SettingsWriter) Run(ctx context.Context, api appserver.API) {
 	}
 }
 
-func (w *SettingsWriter) write(ctx context.Context, api appserver.API, thread string, r config.Route, resume bool) {
+func (w *SettingsWriter) write(ctx context.Context, api API, thread string, r config.Route, resume bool) {
 	ctx, cancel := context.WithTimeout(ctx, rpcTimeout)
 	defer cancel()
 	if resume {
-		var rpcErr *appserver.RPCError
+		var rpcErr *RPCError
 		switch _, err := api.Resume(ctx, thread); {
 		case err == nil:
 			w.markResumed(thread)
@@ -179,7 +155,7 @@ func (w *SettingsWriter) write(ctx context.Context, api appserver.API, thread st
 			w.log.Warn("appserver-resume-failed", "thread", thread, "err", err)
 		}
 	}
-	if err := api.UpdateSettings(ctx, thread, appserver.Settings{Model: r.Model, Effort: r.Effort}); err != nil {
+	if err := api.UpdateSettings(ctx, thread, Settings{Model: r.Model, Effort: r.Effort}); err != nil {
 		w.log.Warn("appserver-settings-failed", "thread", thread, "err", err)
 		return
 	}

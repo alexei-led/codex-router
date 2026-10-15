@@ -18,7 +18,6 @@ import (
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
-	"github.com/alexei-led/codex-router/internal/launcher"
 	"github.com/alexei-led/codex-router/internal/link"
 	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/responses"
@@ -87,7 +86,7 @@ type Brain struct {
 	o       Options
 	log     *slog.Logger
 	eng     *route.Engine
-	w       *launcher.SettingsWriter
+	w       *appserver.SettingsWriter
 	threads *threads
 	ctl     atomic.Pointer[control.Server]
 	link    *link.Server
@@ -131,7 +130,7 @@ func Start(o Options) (b *Brain, err error) {
 		o.Deps.Logger = slog.New(slog.DiscardHandler)
 	}
 	b = &Brain{
-		o: o, log: o.Deps.Logger, w: launcher.NewSettingsWriter(o.Deps.Logger, false),
+		o: o, log: o.Deps.Logger, w: appserver.NewSettingsWriter(o.Deps.Logger, false),
 		threads: newThreads(o.Deps.Now), kick: make(chan struct{}, 1),
 	}
 	defer func() {
