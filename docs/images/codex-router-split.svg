@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 541" width="1155" height="541" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1147 541" width="1147" height="541" role="img" aria-labelledby="title desc">
   <title id="title">Codex and the codex-router panel side by side</title>
   <desc id="desc">A terminal split. Left: Codex runs a Go test that fails twice with an edit in between, and its footer shows GPT-6.1-Sol high. Right: the codex-router panel says this turn moved from gpt-6-sol medium to gpt-6.1-sol high because the same tool failure repeated, shows the classifier's tier and activity reading, the session's routed replies by tier, the estimated saving, and that the footer is synced.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
-  <rect width="1155" height="541" rx="8" fill="#14171f"/>
-  <rect x="0.5" y="0.5" width="1154" height="540" rx="8" fill="none" stroke="#2e3340"/>
+  <rect width="1147" height="541" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="1146" height="540" rx="8" fill="none" stroke="#2e3340"/>
   <text x="468.4" y="28.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="491.8" y="28.0" fill="#87afff" xml:space="preserve">● </text>
   <text x="507.4" y="28.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">default · codex-router · main</text>
@@ -15,12 +15,12 @@
   <text x="733.6" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready</text>
   <text x="468.4" y="66.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="468.4" y="85.0" fill="#2e3340" xml:space="preserve"> │ </text>
-  <rect x="491.8" y="71.0" width="54.6" height="19" fill="#87afff"/>
-  <text x="491.8" y="85.0" fill="#14171f" xml:space="preserve">[Now 1]</text>
-  <text x="546.4" y="85.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
-  <text x="624.4" y="85.0" fill="#878787" xml:space="preserve"> Policy 3 </text>
-  <text x="702.4" y="85.0" fill="#878787" xml:space="preserve"> Classifier 4 </text>
-  <text x="811.6" y="85.0" fill="#878787" xml:space="preserve"> Usage 5 </text>
+  <rect x="491.8" y="71.0" width="39.0" height="19" fill="#87afff"/>
+  <text x="491.8" y="85.0" fill="#14171f" xml:space="preserve"> Now </text>
+  <text x="530.8" y="85.0" fill="#878787" xml:space="preserve"> Routes </text>
+  <text x="593.2" y="85.0" fill="#878787" xml:space="preserve"> Policy </text>
+  <text x="655.6" y="85.0" fill="#878787" xml:space="preserve"> Classifier </text>
+  <text x="749.2" y="85.0" fill="#878787" xml:space="preserve"> Usage </text>
   <text x="468.4" y="104.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="468.4" y="123.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="491.8" y="123.0" fill="#d0d0d0" xml:space="preserve">This turn  </text>
@@ -136,12 +136,12 @@
   <text x="491.8" y="370.0" fill="#878787" xml:space="preserve">WORTH A LOOK</text>
   <text x="585.4" y="370.0" fill="#878787" xml:space="preserve"> · this session</text>
   <text x="468.4" y="389.0" fill="#2e3340" xml:space="preserve"> │ </text>
-  <text x="491.8" y="389.0" fill="#d0d0d0" xml:space="preserve">  cache reuse 64% after 19 switches; switches wrote 612K uncached tokens · Policy 3</text>
+  <text x="491.8" y="389.0" fill="#d0d0d0" xml:space="preserve">  cache reuse 64% after 19 switches; switches wrote 612K uncached tokens · Policy</text>
   <text x="16.0" y="408.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">•</text>
   <text x="23.8" y="408.0" fill="#d0d0d0" xml:space="preserve"> Working </text>
   <text x="94.0" y="408.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">(14s • esc to interrupt)</text>
   <text x="468.4" y="408.0" fill="#2e3340" xml:space="preserve"> │ </text>
-  <text x="491.8" y="408.0" fill="#d0d0d0" xml:space="preserve">  context guard kept 3 steps on a larger window than the policy chose · Routes 2</text>
+  <text x="491.8" y="408.0" fill="#d0d0d0" xml:space="preserve">  context guard kept 3 steps on a larger window than the policy chose · Routes</text>
   <text x="468.4" y="427.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="468.4" y="446.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="491.8" y="446.0" fill="#d0d0d0" xml:space="preserve">Codex      footer shows </text>

@@ -50,8 +50,8 @@ func TestZonesCoverTheirLabels(t *testing.T) {
 		want map[action]string
 	}{
 		{TabNow, map[action]string{
-			{kind: actTab, tab: TabSessions}:       "Sessions 0",
-			{kind: actTab, tab: TabUsage}:          "Usage 5",
+			{kind: actTab, tab: TabSessions}:       "Sessions",
+			{kind: actTab, tab: TabUsage}:          "Usage",
 			{kind: actPin, tier: config.TierHigh}:  "high",
 			{kind: actPin, tier: config.TierMicro}: "micro",
 		}},

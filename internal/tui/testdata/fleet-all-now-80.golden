@@ -1,7 +1,7 @@
 ◂ ● work · api · feat/auth ◐  ● work · api · fix/retry ↑ …                 ▸ 3/5
 ROUTING ◉ on · gpt-6.1-sol high · Jev ready
 
- Sessions 0 [Now 1] Routes 2  Policy 3  Classifier 4  Usage 5 
+ Sessions  Now  Routes  Policy  Classifier  Usage 
 
 This turn  ▌high  gpt-6.1-sol · high  base gpt-6-sol · medium
 Activity   debug 72%   code 15% · explore 6%   applies at 60%+
@@ -17,9 +17,9 @@ SESSION · since 18:12 · 48 routed replies · 9 route switches
   Routing saved ≈ $0.84 (31%) vs gpt-6.1-sol · high · switch writes 212K tokens
 
 WORTH A LOOK · this session
-  context guard kept 2 steps on a larger window than the policy chose · Routes 2
+  context guard kept 2 steps on a larger window than the policy chose · Routes
   routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group ·
-  Routes 2
+  Routes
 
 Codex      footer shows gpt-6.1-sol · high · in sync
 Context    ███░░░░░░░░░░░░░░░░░ 16%  ~44.6K / 272K · fit guard: smallest window

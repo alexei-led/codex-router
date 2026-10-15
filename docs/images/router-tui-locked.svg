@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 679 541" width="679" height="541" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 672 541" width="672" height="541" role="img" aria-labelledby="title desc">
   <title id="title">codex-router panel locked to one session</title>
   <desc id="desc">codex-router tui --session, locked to one session. A single header line names the session, default · codex-router · main, with its home's dot and its id. There is no top bar and no Sessions tab. Below it the Now tab shows the turn that moved up to gpt-6.1-sol high after the same tool failure repeated.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
-  <rect width="679" height="541" rx="8" fill="#14171f"/>
-  <rect x="0.5" y="0.5" width="678" height="540" rx="8" fill="none" stroke="#2e3340"/>
+  <rect width="672" height="541" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="671" height="540" rx="8" fill="none" stroke="#2e3340"/>
   <text x="16.0" y="28.0" fill="#87afff" xml:space="preserve">● </text>
   <text x="31.6" y="28.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">default · codex-router · main</text>
   <text x="257.8" y="28.0" fill="#878787" xml:space="preserve">  3fa9c0d1e2b4/019a3c1e-7b2f-7d10-9c4e-2f6b1a8d5e01</text>
@@ -11,12 +11,12 @@
   <text x="78.4" y="47.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
   <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · gpt-6.1-sol high</text>
   <text x="257.8" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready</text>
-  <rect x="16.0" y="71.0" width="54.6" height="19" fill="#87afff"/>
-  <text x="16.0" y="85.0" fill="#14171f" xml:space="preserve">[Now 1]</text>
-  <text x="70.6" y="85.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
-  <text x="148.6" y="85.0" fill="#878787" xml:space="preserve"> Policy 3 </text>
-  <text x="226.6" y="85.0" fill="#878787" xml:space="preserve"> Classifier 4 </text>
-  <text x="335.8" y="85.0" fill="#878787" xml:space="preserve"> Usage 5 </text>
+  <rect x="16.0" y="71.0" width="39.0" height="19" fill="#87afff"/>
+  <text x="16.0" y="85.0" fill="#14171f" xml:space="preserve"> Now </text>
+  <text x="55.0" y="85.0" fill="#878787" xml:space="preserve"> Routes </text>
+  <text x="117.4" y="85.0" fill="#878787" xml:space="preserve"> Policy </text>
+  <text x="179.8" y="85.0" fill="#878787" xml:space="preserve"> Classifier </text>
+  <text x="273.4" y="85.0" fill="#878787" xml:space="preserve"> Usage </text>
   <text x="16.0" y="123.0" fill="#d0d0d0" xml:space="preserve">This turn  </text>
   <text x="101.8" y="123.0" fill="#d75f87" xml:space="preserve">▌high</text>
   <text x="156.4" y="123.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
@@ -95,8 +95,8 @@
   <text x="413.8" y="332.0" fill="#878787" xml:space="preserve"> · switch writes 612K tokens</text>
   <text x="16.0" y="370.0" fill="#878787" xml:space="preserve">WORTH A LOOK</text>
   <text x="109.6" y="370.0" fill="#878787" xml:space="preserve"> · this session</text>
-  <text x="16.0" y="389.0" fill="#d0d0d0" xml:space="preserve">  cache reuse 64% after 19 switches; switches wrote 612K uncached tokens · Policy 3</text>
-  <text x="16.0" y="408.0" fill="#d0d0d0" xml:space="preserve">  context guard kept 3 steps on a larger window than the policy chose · Routes 2</text>
+  <text x="16.0" y="389.0" fill="#d0d0d0" xml:space="preserve">  cache reuse 64% after 19 switches; switches wrote 612K uncached tokens · Policy</text>
+  <text x="16.0" y="408.0" fill="#d0d0d0" xml:space="preserve">  context guard kept 3 steps on a larger window than the policy chose · Routes</text>
   <text x="16.0" y="446.0" fill="#d0d0d0" xml:space="preserve">Codex      footer shows </text>
   <text x="203.2" y="446.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
   <text x="343.6" y="446.0" fill="#878787" xml:space="preserve"> · in sync</text>
