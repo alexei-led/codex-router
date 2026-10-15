@@ -215,6 +215,7 @@ type session struct {
 	id      string // runtime id: the endpoint id
 	app     *appServer
 	api     appserver.API
+	writer  *SettingsWriter
 	codex   *exec.Cmd
 }
 
@@ -236,6 +237,7 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 	runCtx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	w := NewSettingsWriter(s.log, true)
+	s.writer = w
 	snk := &sink{writer: w}
 	eng, store, h := newRouter(o, s.log, snk)
 
