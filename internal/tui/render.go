@@ -511,7 +511,7 @@ func (c *canvas) pinRow(s route.Snapshot) {
 	}
 	for _, t := range tierOrder {
 		label := string(t)
-		if s.Last != nil && s.Last.Tier == t && s.Mode == route.ModeOn && s.Pin == nil {
+		if s.Last != nil && s.Last.Tier == t && s.Mode == route.ModeOn && s.Pin == nil && !slices.Contains(keptReasons, s.Last.Reason) {
 			label = "▶ " + label
 		}
 		if p, ok := support[t]; ok {
