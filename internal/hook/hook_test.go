@@ -68,8 +68,6 @@ func TestMessage(t *testing.T) {
 	}
 }
 
-// handler is one endpoint: it serves the snapshots in snaps, a zero snapshot
-// for any other thread, and lists the threads in list (nil: those in snaps).
 type handler struct {
 	hello control.Hello
 	snaps map[string]route.Snapshot
@@ -93,7 +91,6 @@ func (h handler) Sessions() []route.SessionInfo {
 
 func (h handler) SnapshotFor(thread string) route.Snapshot { return h.snaps[thread] }
 
-// socketDir is short: t.TempDir paths can exceed the unix socket limit.
 func socketDir(t *testing.T) string {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "hk")
@@ -115,7 +112,6 @@ func serveHandler(t *testing.T, h handler) string {
 	return path
 }
 
-// serve serves snap as thread "th"'s snapshot only.
 func serve(t *testing.T, snap route.Snapshot) string {
 	t.Helper()
 	return serveHandler(t, handler{
@@ -124,7 +120,6 @@ func serve(t *testing.T, snap route.Snapshot) string {
 	})
 }
 
-// silentSocket accepts connections and never answers.
 func silentSocket(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(socketDir(t), "silent.sock")
@@ -136,18 +131,21 @@ func silentSocket(t *testing.T) string {
 	return path
 }
 
-// ceiling is the longest a bounded run may take: well past Timeout, so a
-// loaded host does not fail it, far short of a hang.
-const ceiling = 4 * Timeout
+const (
+	stallTimeout = 100 * time.Millisecond
+	ceiling      = 2 * time.Second
+)
 
-// boundedRun fails the test when the call to f takes longer than ceiling.
-func boundedRun(t *testing.T, f func()) {
+func TestMain(m *testing.M) {
+	Timeout = 5 * time.Second
+	os.Exit(m.Run())
+}
+
+func stalled(t *testing.T) {
 	t.Helper()
-	start := time.Now()
-	f()
-	if d := time.Since(start); d > ceiling {
-		t.Errorf("took %v, want at most %v", d, ceiling)
-	}
+	old := Timeout
+	Timeout = stallTimeout
+	t.Cleanup(func() { Timeout = old })
 }
 
 func runEnv(t *testing.T, stdin io.Reader, env map[string]string) string {
@@ -172,25 +170,42 @@ func run(t *testing.T, stdin, socket string) string {
 const stdinT2 = `{"session_id":"th","turn_id":"t2","hook_event_name":"Stop","extra":1}`
 
 func TestRunOverSocket(t *testing.T) {
-	last := dec("th", "t2", 3, "gpt-5.5", config.EffortHigh)
-	sock := serve(t, route.Snapshot{Recent: []route.Decision{dec("th", "t1", 1, "gpt-5.1", config.EffortLow)}, Last: &last})
-
-	got := run(t, stdinT2, sock)
-	want := `{"systemMessage":"router: micro · code → gpt-5.5 · high · simple edit"}`
-	if got != want {
-		t.Errorf("got %s, want %s", got, want)
+	same := dec("th2", "t2", 3, "gpt-5.1", config.EffortLow)
+	sock := serveHandler(t, handler{
+		hello: control.Hello{Home: home.Home{ID: "h1"}},
+		snaps: map[string]route.Snapshot{
+			"th":  switchTo("th", "gpt-5.5"),
+			"th2": {ThreadID: "th2", Recent: []route.Decision{dec("th2", "t1", 1, "gpt-5.1", config.EffortLow)}, Last: &same},
+		},
+	})
+	tests := []struct {
+		name  string
+		stdin string
+		want  string
+	}{
+		{"switch", stdinT2, switchMessage("gpt-5.5")},
+		{"first turn", `{"session_id":"th","turn_id":"t1"}`, "{}"},
+		{"other thread without a switch", `{"session_id":"th2","turn_id":"t2"}`, "{}"},
+		{"unknown thread", `{"session_id":"nope","turn_id":"t2"}`, "{}"},
 	}
-	if got := run(t, `{"session_id":"th","turn_id":"t1"}`, sock); got != "{}" {
-		t.Errorf("non-switch: got %s, want {}", got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := run(t, tt.stdin, sock); got != tt.want {
+				t.Errorf("got %s, want %s", got, tt.want)
+			}
+		})
 	}
 }
 
 func TestRunFailsOpen(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "nope.sock")
+	live := serve(t, switchTo("th", "gpt-5.5"))
 	tests := []struct{ name, stdin, socket string }{
 		{"no socket env", stdinT2, ""},
 		{"unreachable socket", stdinT2, missing},
-		{"garbage stdin", "not json", missing},
+		{"garbage stdin", "not json", live},
+		{"empty stdin", "", live},
+		{"no session id", `{"turn_id":"t2"}`, live},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -201,28 +216,37 @@ func TestRunFailsOpen(t *testing.T) {
 	}
 }
 
-func TestRunBoundedWhenServerSilent(t *testing.T) {
-	boundedRun(t, func() {
-		if got := run(t, stdinT2, silentSocket(t)); got != "{}" {
-			t.Errorf("got %s, want {}", got)
-		}
-	})
+func TestRunIsBoundedWhenStalled(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T) string
+	}{
+		{"server silent", func(t *testing.T) string { return run(t, stdinT2, silentSocket(t)) }},
+		{"stdin never closes", func(t *testing.T) string {
+			pr, pw := io.Pipe()
+			t.Cleanup(func() { _ = pw.Close() })
+			return runReader(t, pr, serve(t, switchTo("th", "gpt-5.5")))
+		}},
+		{"registry endpoint silent", func(t *testing.T) string {
+			f := newFleet(t)
+			f.entry(t, registry.Endpoint{ID: "e-a", Home: f.homeA, Socket: silentSocket(t)})
+			return f.run(t, f.homeA, stdinT2)
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stalled(t)
+			start := time.Now()
+			if got := tt.run(t); got != "{}" {
+				t.Errorf("got %s, want {}", got)
+			}
+			if d := time.Since(start); d < stallTimeout || d > ceiling {
+				t.Errorf("took %v, want between %v and %v", d, stallTimeout, ceiling)
+			}
+		})
+	}
 }
 
-func TestRunBoundedWhenStdinNeverCloses(t *testing.T) {
-	last := dec("th", "t2", 3, "gpt-5.5", config.EffortHigh)
-	sock := serve(t, route.Snapshot{Recent: []route.Decision{dec("th", "t1", 1, "gpt-5.1", config.EffortLow)}, Last: &last})
-	pr, pw := io.Pipe()
-	t.Cleanup(func() { _ = pw.Close() })
-
-	boundedRun(t, func() {
-		if got := runReader(t, pr, sock); got != "{}" {
-			t.Errorf("got %s, want {}", got)
-		}
-	})
-}
-
-// switchTo is thread's snapshot whose turn t2 switched to model at high.
 func switchTo(thread, model string) route.Snapshot {
 	last := dec(thread, "t2", 3, model, config.EffortHigh)
 	return route.Snapshot{ThreadID: thread, Recent: []route.Decision{dec(thread, "t1", 1, "gpt-5.1", config.EffortLow)}, Last: &last}
@@ -232,25 +256,6 @@ func switchMessage(model string) string {
 	return `{"systemMessage":"router: micro · code → ` + model + ` · high · simple edit"}`
 }
 
-func TestRunReportsOwnThreadOnly(t *testing.T) {
-	same := dec("th2", "t2", 3, "gpt-5.1", config.EffortLow)
-	sock := serveHandler(t, handler{
-		hello: control.Hello{Home: home.Home{ID: "h1"}},
-		snaps: map[string]route.Snapshot{
-			"th1": switchTo("th1", "gpt-5.5"),
-			"th2": {ThreadID: "th2", Recent: []route.Decision{dec("th2", "t1", 1, "gpt-5.1", config.EffortLow)}, Last: &same},
-		},
-	})
-
-	if got, want := run(t, `{"session_id":"th1","turn_id":"t2"}`, sock), switchMessage("gpt-5.5"); got != want {
-		t.Errorf("th1: got %s, want %s", got, want)
-	}
-	if got := run(t, `{"session_id":"th2","turn_id":"t2"}`, sock); got != "{}" {
-		t.Errorf("th2: got %s, want {}", got)
-	}
-}
-
-// fleet is a registry under a temp XDG_STATE_HOME and two Codex homes.
 type fleet struct {
 	state, root  string
 	homeA, homeB home.Home
@@ -277,13 +282,10 @@ func resolveHome(t *testing.T, path string) home.Home {
 	return h
 }
 
-// env is the hook's environment in a plain codex of h: no control socket.
 func (f fleet) env(h home.Home) map[string]string {
 	return map[string]string{"XDG_STATE_HOME": f.state, "CODEX_HOME": h.Path}
 }
 
-// register serves snaps as endpoint id of h, listing only the threads in
-// list when it is not nil, and writes its registry entry.
 func (f fleet) register(t *testing.T, id string, h home.Home, snaps map[string]route.Snapshot, list ...string) {
 	t.Helper()
 	sock := serveHandler(t, handler{hello: control.Hello{EndpointID: id, Kind: registry.KindBrain, Home: h}, snaps: snaps, list: list})
@@ -303,20 +305,11 @@ func (f fleet) run(t *testing.T, h home.Home, stdin string) string {
 	return runEnv(t, strings.NewReader(stdin), f.env(h))
 }
 
-func TestRunFindsEndpointInRegistry(t *testing.T) {
+func TestRunPicksEndpointOfOwnHome(t *testing.T) {
 	f := newFleet(t)
 	f.register(t, "e-other", f.homeA, map[string]route.Snapshot{"th": switchTo("th", "gpt-5.4")}, "x")
-	f.register(t, "e-mine", f.homeA, map[string]route.Snapshot{"th": switchTo("th", "gpt-5.5")})
-
-	if got, want := f.run(t, f.homeA, stdinT2), switchMessage("gpt-5.5"); got != want {
-		t.Errorf("got %s, want %s", got, want)
-	}
-}
-
-func TestRunPicksOwnHome(t *testing.T) {
-	f := newFleet(t)
 	f.register(t, "e-a", f.homeA, map[string]route.Snapshot{"th": switchTo("th", "gpt-5.5")})
-	f.register(t, "e-b", f.homeB, map[string]route.Snapshot{"th": switchTo("th", "gpt-5.4")})
+	f.register(t, "e-b", f.homeB, map[string]route.Snapshot{"th": switchTo("th", "gpt-5.3")})
 
 	tests := []struct {
 		name  string
@@ -324,7 +317,7 @@ func TestRunPicksOwnHome(t *testing.T) {
 		model string
 	}{
 		{"default home", f.homeA, "gpt-5.5"},
-		{"work home", f.homeB, "gpt-5.4"},
+		{"work home", f.homeB, "gpt-5.3"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -356,9 +349,6 @@ func TestRunRegistryFailsOpen(t *testing.T) {
 				snaps: map[string]route.Snapshot{"th": switchTo("th", "gpt-5.5")},
 			})
 			f.entry(t, registry.Endpoint{ID: "e-old", Home: f.homeA, Socket: sock})
-		}},
-		{"silent endpoint", func(t *testing.T, f fleet) {
-			f.entry(t, registry.Endpoint{ID: "e-a", Home: f.homeA, Socket: silentSocket(t)})
 		}},
 	}
 	for _, tt := range tests {
