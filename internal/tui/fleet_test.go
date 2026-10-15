@@ -294,10 +294,7 @@ func TestFleetInitialFocus(t *testing.T) {
 				session(homeWork, "t-ra", "/r/a", at(18, 10)),
 			}
 			want := control.SessionID(homeWork.ID, tt.focus)
-			tf.settle(func(st fleetState) bool { return st.focus == want })
-			if got := e.subs(); !slices.Equal(got, []string{want}) {
-				t.Errorf("subscribed %v, want [%s]", got, want)
-			}
+			tf.settle(func(st fleetState) bool { return st.focus == want && slices.Equal(e.subs(), []string{want}) })
 		})
 	}
 }
@@ -332,10 +329,9 @@ func TestFleetFocusSurvivesReorder(t *testing.T) {
 	if st := tf.state(); st.focus != match.ID {
 		t.Errorf("cwd focus moved to %s", st.focus)
 	}
-	tf.settle(func(fleetState) bool { return slices.Equal(e2.subs(), []string{match.ID}) })
-	if got := e1.subs(); !slices.Equal(got, []string{recent.ID, ""}) {
-		t.Errorf("e1 subscribed %v", got)
-	}
+	tf.settle(func(fleetState) bool {
+		return slices.Equal(e2.subs(), []string{match.ID}) && slices.Equal(e1.subs(), []string{recent.ID, ""})
+	})
 }
 
 func TestFleetInitialFocusWaitsForEveryEndpoint(t *testing.T) {
