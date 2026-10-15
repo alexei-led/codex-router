@@ -6,7 +6,7 @@ Terms such as tier, activity, route, pin and compatibility group are defined in 
 
 ## Overview
 
-One `codex-router` process runs for each Codex session. It holds the proxy and the routing engine, starts a private Codex app-server, and runs the normal Codex TUI against that app-server. Any number of them can run at once, in any repo and under any Codex home. Each lists itself in a shared registry, so one panel shows them all (see [Sessions and the registry](#sessions-and-the-registry)).
+One `codex-router` process runs per Codex TUI, and each main thread in it is a session (`/new` starts the next one). The process holds the proxy and the routing engine, starts a private Codex app-server, and runs the normal Codex TUI against that app-server. Any number of them can run at once, in any repo and under any Codex home. Each lists itself in a shared registry, so one panel shows them all (see [Sessions and the registry](#sessions-and-the-registry)).
 
 The other mode routes a whole Codex home, so plain `codex` works: `codex-router setup` installs an edge and a brain for that home as launchd or systemd services. Both modes share the engine, the registry and the control protocol, and one panel shows both. See [A whole home: edge and brain](#a-whole-home-edge-and-brain).
 
@@ -50,7 +50,7 @@ What crosses each boundary:
 - **Proxy to chatgpt.com.** The request with `model` and `reasoning.effort` possibly changed, and the SSE stream back.
 - **Engine to classifier.** The clipped prompt and recent dialogue. No headers and no Codex credentials.
 - **App-server client to app-server.** `thread/settings/update` writes (the footer value) and `thread/settings/updated` notifications (including `/model` picks).
-- **Control socket to panel and hook.** Session lists and the subscribed session's snapshots out, and commands in (pin, pause, resume, preset), each for one session or the whole home. See [Control protocol](#control-protocol).
+- **Control socket to panel, hook and `ctl`.** Session lists and the subscribed session's snapshots out, and commands in: pin and unpin for one session, pause and resume for one session or the whole home, preset for the home. See [Control protocol](#control-protocol).
 
 ## Sessions and the registry
 
@@ -85,7 +85,7 @@ flowchart LR
 - **Session.** One Codex main thread. Its id is `<home id>/<thread id>`, because a thread id alone may repeat across homes. `/new` in Codex starts a new thread, so a new session. The label `home · repo · branch` comes from the `.git` of the router's working directory, read without running git. It is display only; colliding labels get four hex characters derived from the id.
 - **Sessions list.** An engine lists each thread that has had a user step, most recently active first. A thread with no user step or reply for 10 minutes leaves the list, unless it is the engine's most recent thread. Every number in a list entry comes from that thread's own tallies.
 - **Registry.** `$XDG_STATE_HOME/codex-router/registry`, else `~/.local/state/codex-router/registry`. One JSON file per endpoint: endpoint id, kind (`session` for a launcher, `brain` for a home's brain), protocol version, pid, start time, home (id, path, name) and control socket path. The launcher writes its entry once its control socket is up, and removes it first on every exit path, so panels stop listing it before the socket closes. A registry that cannot be written does not stop the session: it routes and prints one line that the panel will not list it.
-- **Readers.** An entry is only a hint. A reader dials the socket and checks that the `hello` names the same endpoint id and home, else it ignores the endpoint. The panel removes an entry only after a failed dial, when the socket does not answer and the pid is gone. The hook never removes entries.
+- **Readers.** An entry is only a hint. A reader dials the socket and checks that the `hello` names the same endpoint id and home, else it ignores the endpoint. The panel, `codex-router sessions` and `ctl` remove an entry only after a failed dial, when the socket does not answer and the pid is gone. The hook never removes entries.
 
 The panel keeps one connection per live endpoint and merges their lists. Homes are sorted by name, sessions most recently active first. It subscribes only the focused session's endpoint to that session. Home commands (`P`, `c`) go to every endpoint of the focused home, and each endpoint applies them to its own threads. When an endpoint's connection drops, its sessions show `disconnected` for 10 s and are then dropped. The panel redials while the entry remains.
 
@@ -93,7 +93,7 @@ The hook uses `CODEX_ROUTER_CONTROL` when the launcher set it. Otherwise it reso
 
 ## Control protocol
 
-The control socket speaks JSON lines, protocol version 2. Panel, hook and `codex-router sessions` all use it.
+The control socket speaks JSON lines, protocol version 2. The panel, the hook, `codex-router sessions` and `ctl` all use it.
 
 ```mermaid
 sequenceDiagram
@@ -102,8 +102,9 @@ sequenceDiagram
   C->>S: hello {protocol: 2}
   S-->>C: hello {endpoint_id, kind, home}
   S-->>C: sessions {seq, items}
-  C->>S: subscribe {session}
+  C->>S: subscribe {session, id}
   S-->>C: snapshot {session, snapshot}
+  S-->>C: ack {id}
   C->>S: pause {session, scope, id}
   S-->>C: ack {id}
   S-->>C: snapshot, and sessions when the list changed
@@ -112,7 +113,13 @@ sequenceDiagram
 - **Handshake.** The client's first line must be `hello` with a known protocol version. Anything else gets an `error` line and the connection closes.
 - **Sessions.** The server pushes the list after the handshake and then whenever it changed, coalesced, with a `seq` that moves on each change.
 - **Subscribe.** Each connection follows at most one session; an empty `session` means the list only. A later `subscribe` replaces the earlier one. The `snapshot` op re-sends the current snapshot.
-- **Commands.** `pin`, `unpin`, `pause`, `resume` and `preset` carry the `session`, a `scope` (`session` or `home`) and a client-chosen `id`. The `ack` or `error` carries the same `id`, so a client can have several commands in flight. A session of another home is refused. The last write wins.
+- **Commands.** Each carries a client-chosen `id`, and the `ack` or `error` carries the same `id`, so a client can have several commands in flight. The `scope` depends on the op:
+
+  - `pin` and `unpin`: one `session`, never the home.
+  - `pause` and `resume`: `session` or `home`. With no `scope`, a command that names a `session` acts on it, and one that does not acts on the home.
+  - `preset`: the home only.
+
+  A session of another home is refused. The last write wins.
 
 ## One turn
 
@@ -135,21 +142,21 @@ sequenceDiagram
   C-->>E: tier and activity probabilities
   Note over E: policy votes and bars,<br/>compatibility and context-fit guards
   E-->>P: model + effort, or none
+  E-)S: thread/settings/update (queued)
+  S-->>T: settings updated: footer repaints
   P->>U: request, model + effort rewritten
   U-->>P: SSE stream
   P-->>S: stream copied, chunk by chunk
   P->>E: observe usage
-  E->>S: thread/settings/update
-  S-->>T: settings updated: footer repaints
 ```
 
 Notes on the steps:
 
 - **Step 3, deadline.** The proxy gives the engine the classifier timeout plus 200 ms. A late answer is ignored and the original request goes out.
 - **Step 4, classifier.** Only the first step of a turn asks, and not when the turn is pinned. Later steps reuse the turn's route, except for the cases in [Routing decisions](#routing-decisions).
-- **Step 7, rewrite.** The proxy buffers the body and changes only `model` and `reasoning.effort`. Every other byte is the original.
-- **Step 10, usage.** On `response.completed`, a tee on the stream reads `response.completed` before Codex can send its next step.
-- **Step 11, footer.** The write is asynchronous. If it fails, routing continues and the panel shows `footer not synced`.
+- **Step 7, footer.** The engine queues the write when it decides, before the request goes upstream, so the footer repaints while the step runs. Writes for one thread keep their order. If a write fails, routing continues and the panel shows `footer not synced`.
+- **Step 9, rewrite.** The proxy buffers the body and changes only `model` and `reasoning.effort`. Every other byte is the original.
+- **Step 12, usage.** A tee on the stream reads `response.completed` before Codex can send its next step.
 
 The engine also reviews a running turn in the background every `reviewEveryRequests` requests. It applies the answer at the next step.
 
@@ -176,7 +183,7 @@ flowchart TD
   pol --> guard
   later --> guard
   guard -->|yes| rw["rewrite model + effort"]:::core
-  guard -->|"no"| keep["keep Codex's model,<br/>or the lowest tier that fits"]:::stay
+  guard -->|"no"| keep["a stronger tier that fits,<br/>else the weakest that fits,<br/>else Codex's model"]:::stay
 
   classDef core fill:#ecfdf5,stroke:#059669,color:#064e3b
   classDef stay fill:#f1f5f9,stroke:#64748b,color:#0f172a
@@ -191,7 +198,7 @@ The list below adds what the diagram leaves out.
 - **Moving up a tier on later steps.** Tool calls that show code, docs or ops work can move a turn up to a stronger activity route without a classifier answer.
 - **Escalation.** The same tool failure twice, with an edit in between, moves one tier up without the classifier. It holds for `escalationHoldTurns` turns. Tool results come from plain tool calls and from code-mode JavaScript cells. For cells, the exit status counts only when the script printed it.
 - **Compatibility group.** A route is used only inside the compatibility group of the model Codex sent (`comp_hash`, Responses Lite, tool mode). A mid-thread switch across groups fails.
-- **Context fit.** A route is used only if the estimated thread size is at most `contextFill` of the route's window. If the chosen tier does not fit, the engine takes the lowest tier that does. If none fits, the request keeps its model. If the request's own model cannot hold the thread but the baseline route can, the request moves up to the baseline. This guard has not been tested live on a thread above about 220k tokens.
+- **Context fit.** A route is used only if the estimated thread size is at most `contextFill` of the route's window. If the chosen tier does not fit, the engine takes the next stronger tier that does, else the weakest tier that does. If none fits, the request keeps its model. If the request's own model cannot hold the thread but the baseline route can, the request moves up to the baseline. This guard has not been tested live on a thread above about 220k tokens.
 
 ### From classifier answer to tier
 
@@ -235,10 +242,11 @@ Modes are per session (thread). A home pause covers every thread of the engine o
 ```mermaid
 stateDiagram-v2
   [*] --> on
-  on --> paused: space or P in panel
-  paused --> on: space or P in panel
+  on --> paused: space (session) or P (home)
+  paused --> on: the pause's own key again
   on --> manual: /model pick in Codex
-  manual --> on: space or P in panel
+  manual --> on: space
+  manual --> paused: P (home)
 ```
 
 - **on.** Routing is active.
@@ -311,6 +319,8 @@ sequenceDiagram
   E->>B: decide {metadata, deadline} + body
   alt brain answers in time
     B-->>E: model + effort, or none
+    B-)D: thread/settings/update (queued)
+    Note over D: footer repaints
     E->>U: request, rewritten or not
   else brain down, slow, or skipped
     E->>U: original request
@@ -318,14 +328,12 @@ sequenceDiagram
   U-->>E: SSE stream
   E-->>D: stream copied
   E-)B: observe usage (queued)
-  B->>D: thread/settings/update
-  Note over D: footers repaint
 ```
 
 - **Edge.** The same proxy as the launcher's, with a link client as its decider. It checks the token, and holds no routing state. A config that does not load makes it warn and use the defaults: the port must not go dead.
 - **Link.** A unix socket in the home's state dir (`brain.sock`, `0600`). A frame is a 4-byte length, a JSON header line and the raw body, so bodies never leave the machine. The `hello` names the home id, and a brain refuses another home. The edge gives a decide its remaining deadline (classifier timeout plus 200 ms). Dial and hello get 200 ms, redials back off from 50 ms to 2 s, and three decide timeouts in a row make the edge skip the brain for 10 s. Usage reports wait in a queue of 256 and are dropped when it is full. A decide goes out after the reports queued before it, so the brain counts a reply before the next step. A decide that reaches the brain past its deadline is dropped, and one whose deadline passes in the engine records nothing: no decision, footer write or spent pin. Every failure means "forward unchanged".
-- **Brain.** The engine, the classifier and the footer writer of the launcher, plus a client of the home's daemon (`$CODEX_HOME/app-server-control/app-server-control.sock`). At start it lists the loaded threads, and later it picks up `thread/started`. It resumes each main thread with `excludeTurns` to get its notifications and cwd, and skips subagent and side threads. A thread with no turn and no settings event for 10 minutes is unsubscribed, so the daemon can unload it. A lost daemon is redialed (250 ms, doubling to 8 s), and every thread is resubscribed and its footer resynced. Like the launcher, the brain never answers the daemon's approval requests. It serves control protocol v2 as a `brain` endpoint with the fixed id `brain-<home id>`, so a restarted brain replaces its own registry entry.
-- **Brain restart.** Learned state (tier, votes, escalation, cache ledger) is gone after a restart. With an empty ledger the engine would take the cache for cold and switch on one vote, so each resumed thread is seeded with the route `thread/resume` reports and held there, attention `unknown`, until its first reply measures the cache. Steps of a turn that started held keep that route. Then routing goes on as usual. User intent (home pause, session pauses, manual holds, pending pins, a preset picked by command) is written to `intent.json` atomically on every change, not at exit, because a crash skips exit handlers. The brain reads it at start.
+- **Brain.** The engine, the classifier and the footer writer of the launcher, plus a client of the home's daemon (`$CODEX_HOME/app-server-control/app-server-control.sock`). At start it lists the loaded threads. Later it picks up `thread/started`, and looks up a thread it first meets in a routed request. It resumes each main thread with `excludeTurns` to get its notifications and cwd, and skips subagent and side threads. A thread with no turn and no settings event for 10 minutes is unsubscribed, so the daemon can unload it. A lost daemon is redialed (250 ms, doubling to 8 s), and every thread is resubscribed and its footer resynced. Like the launcher, the brain never answers the daemon's approval requests. It serves control protocol v2 as a `brain` endpoint with the fixed id `brain-<home id>`, so a restarted brain replaces its own registry entry.
+- **Brain restart.** Learned state (tier, votes, escalation, cache ledger) is gone after a restart. With an empty ledger the engine would take the cache for cold and switch on one vote, so each resumed thread is seeded with the route `thread/resume` reports and held there, attention `unknown`, until its first reply measures the cache, or a pin decides a turn. Steps of a turn that started held keep that route. Then routing goes on as usual. User intent (home pause, session pauses, manual holds, pending pins, a preset picked by command) is written to `intent.json` atomically on every change, not at exit, because a crash skips exit handlers. The brain reads it at start.
 - **Account binding.** The proxy hashes `ChatGPT-Account-ID` (sha256, first 12 hex) into the request metadata. A thread binds to its first account. A different account resets that thread's learned state and keeps its intent. A missing account changes nothing. This covers a new login inside one home, in both modes.
 
 ### Units and setup
@@ -360,7 +368,7 @@ All packages are under `internal/`. The entry point is `cmd/codex-router`. Depen
 | `policy`     | Pure: votes, bars, escalation, holds, context-fit tier search.                                 | `classifier`, `config`                                                                                                |
 | `route`      | The engine: per-thread state, decisions, snapshots, sessions list, commands.                   | `catalog`, `classifier`, `config`, `cost`, `facts`, `home`, `policy`, `responses`                                     |
 | `proxy`      | Loopback Responses proxy and SSE relay.                                                        | `catalog`, `responses`                                                                                                |
-| `appserver`  | JSON-RPC client of the private app-server, and of a home's shared daemon for the brain.        | `config`                                                                                                              |
+| `appserver`  | JSON-RPC client of the private app-server, and of a home's shared daemon for the brain.        | `config`, `responses`                                                                                                 |
 | `control`    | JSON-lines control socket, protocol v2: server and client.                                     | `home`, `route`                                                                                                       |
 | `tui`        | Bubble Tea panel over every registry endpoint. `Render` is pure.                               | `config`, `control`, `home`, `registry`, `route`                                                                      |
 | `hook`       | The optional Codex hook.                                                                       | `control`, `home`, `registry`, `route`                                                                                |
@@ -371,7 +379,7 @@ All packages are under `internal/`. The entry point is `cmd/codex-router`. Depen
 | `service`    | launchd and systemd units of a home: render, install, load, status, ensure.                    | `proxy`                                                                                                               |
 | `setup`      | `codex-router setup`: `config.toml` blocks, port and token, units, undo.                       | `home`, `launcher`, `proxy`, `service`, `statedir`                                                                    |
 
-`route` implements `proxy.Decider`, `proxy.Observer` and `control.Handler` without importing `proxy` or `control`. The `launcher` connects them for one session, and the `brain` for a home: each writes its registry entry. The edge in `cmd/codex-router` connects a `proxy` to a `link` client. `tui` and `hook` import `route` for its snapshot, sessions list and command types. At run time they find engines through the registry and reach them only through the control socket.
+`route` implements `proxy.Decider` and `proxy.Observer`, and with an endpoint's `hello` added, `control.Handler`, without importing `proxy` or `control`. The `launcher` connects them for one session, and the `brain` for a home: each writes its registry entry. The edge in `cmd/codex-router` connects a `proxy` to a `link` client. `tui` and `hook` import `route` for its snapshot, sessions list and command types. At run time they find engines through the registry and reach them only through the control socket.
 
 ## State
 
@@ -390,37 +398,37 @@ When history shrinks (compaction or a rewind), the engine drops the vote streak,
 
 Every error path ends in "forward the original request".
 
-| Where                                                     | Behavior                                                                                                                                                       |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Body does not parse                                       | Original bytes.                                                                                                                                                |
-| Request kind is not `turn`, no `turn_id`, subagent header | Pass through, no decision, no classifier call.                                                                                                                 |
-| Model not in the catalog                                  | Pass through.                                                                                                                                                  |
-| Decider panics                                            | Recovered in the proxy and in the engine. Original bytes.                                                                                                      |
-| Decider exceeds its deadline                              | Original bytes. A late answer is ignored.                                                                                                                      |
-| Rewrite fails                                             | Original bytes.                                                                                                                                                |
-| Classifier error, timeout, pause                          | The turn is not routed. The one exception is the upward context fix, which needs no classifier.                                                                |
-| Route outside the compatibility group, or does not fit    | The request keeps its model, or takes the lowest tier that fits.                                                                                               |
-| Upstream error before any output                          | Codex gets a 502 and retries on its own. The router never re-sends a request.                                                                                  |
-| Stream cut after output started                           | Codex keeps the partial output. Nothing is re-sent.                                                                                                            |
-| Settings write fails                                      | Logged. Routing continues. The footer may lag the route (the panel says `footer not synced` while writes are pending).                                         |
-| Control socket or panel gone                              | No effect on routing.                                                                                                                                          |
-| Router cannot start                                       | One stderr line, then plain `codex`.                                                                                                                           |
-| Proxy listener stops                                      | Bound again on the same port.                                                                                                                                  |
-| Brain down, slow or restarting (edge)                     | Original bytes. After three decide timeouts in a row, the edge skips the brain for 10 s.                                                                       |
-| Edge crash or upgrade                                     | The service manager keeps the port. The next connection waits for the new edge: 18-35 ms in the gate, about 0.1 s in the live run. Codex retries a cut stream. |
-| Edge unit not loaded                                      | Nothing holds the port. Codex retries until it listens again (`codex-router service ensure`).                                                                  |
-| Config does not load                                      | The edge forwards with the defaults. The brain exits, and the edge forwards unchanged until it is back.                                                        |
-| Home's daemon restarts                                    | The brain redials, resubscribes every thread and resyncs footers.                                                                                              |
-| Brain restarts                                            | Each thread is held on the route Codex reports until its next reply. Intent is reloaded.                                                                       |
-| `intent.json` unreadable                                  | The home starts paused, and its sessions show `state lost` until a home resume. Nothing is saved meanwhile, so a restart still shows it. A missing file is a first start.                                               |
+| Where                                                     | Behavior                                                                                                                                                                                      |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Body does not parse                                       | Original bytes.                                                                                                                                                                               |
+| Request kind is not `turn`, no `turn_id`, subagent header | Pass through, no decision, no classifier call.                                                                                                                                                |
+| Model not in the catalog                                  | Pass through.                                                                                                                                                                                 |
+| Decider panics                                            | Recovered in the proxy and in the engine. Original bytes.                                                                                                                                     |
+| Decider exceeds its deadline                              | Original bytes. A late answer is ignored.                                                                                                                                                     |
+| Rewrite fails                                             | Original bytes.                                                                                                                                                                               |
+| Classifier error, timeout, pause                          | The turn is not routed. The one exception is the upward context fix, which needs no classifier.                                                                                               |
+| Route outside the compatibility group, or does not fit    | A stronger tier that fits, else the weakest that fits, else the request keeps its model.                                                                                                      |
+| Upstream error before any output                          | Codex gets a 502 and retries on its own. The router never re-sends a request.                                                                                                                 |
+| Stream cut after output started                           | Codex keeps the partial output. Nothing is re-sent.                                                                                                                                           |
+| Settings write fails                                      | Logged. Routing continues. The footer may lag the route (the panel says `footer not synced` while writes are pending).                                                                        |
+| Control socket or panel gone                              | No effect on routing.                                                                                                                                                                         |
+| Router cannot start                                       | One stderr line, then plain `codex`.                                                                                                                                                          |
+| Proxy listener stops                                      | Bound again on the same port.                                                                                                                                                                 |
+| Brain down, slow or restarting (edge)                     | Original bytes. After three decide timeouts in a row, the edge skips the brain for 10 s.                                                                                                      |
+| Edge crash or upgrade                                     | The service manager keeps the port. The next connection waits for the new edge: 18-35 ms in the gate, about 0.1 s in the live run. Codex retries a cut stream.                                |
+| Edge unit not loaded                                      | Nothing holds the port. Codex retries until it listens again (`codex-router service ensure`).                                                                                                 |
+| Config does not load                                      | The edge forwards with the defaults. The brain exits, and the edge forwards unchanged until it is back.                                                                                       |
+| Home's daemon restarts                                    | The brain redials, resubscribes every thread and resyncs footers.                                                                                                                             |
+| Brain restarts                                            | Each thread is held on the route Codex reports until its next reply. Intent is reloaded.                                                                                                      |
+| `intent.json` unreadable                                  | The home starts paused, and its sessions show `state lost` until a home resume. Nothing is saved meanwhile, so a restart still shows it. A missing file is a first start.                     |
 | Brain without a model catalog                             | `models_cache.json` is read at brain start, and again when its time or size changes: each decide looks, at most every 5 s. Until the home's first Codex run writes it, requests pass through. |
-| Another ChatGPT account on a thread                       | That thread's learned state is reset. Pauses, holds and pins stay.                                                                                             |
+| Another ChatGPT account on a thread                       | That thread's learned state is reset. Pauses, holds and pins stay.                                                                                                                            |
 
-The one case where the router cannot fail open is the launcher process dying. The proxy is in that process, and Codex's provider points at it ([research §9](archive/research.md#9-phase-2-spikes-2026-10-13), spike 1b). A hard kill (`kill -9`, out-of-memory kill) also leaves the private `codex app-server` running. See [Security](#security) for the exposure, and [If the router is killed](user-guide.md#if-the-router-is-killed) for what to do. A set-up home avoids it: the service manager holds the port while the edge is down, so the case shrinks to an edge unit that is not loaded.
+The one case where the router cannot fail open is the launcher process dying. The proxy is in that process, and Codex's provider points at it ([research §9](archive/research.md#9-phase-2-spikes-2026-10-13), spike 1b). See [Known exposure](#known-exposure-a-hard-killed-router) for what that leaks, and [If the router is killed](user-guide.md#if-the-router-is-killed) for what to do.
 
 ## Security
 
-- **Loopback only.** The proxy refuses any listen address but `127.0.0.1`. It serves `POST /v1/responses`, `GET /v1/models` and `GET /healthz`. Anything else is 404. Bodies over 32 MiB get 413.
+- **Loopback only.** The proxy refuses any listen address but `127.0.0.1`. It serves `POST /v1/responses`, `GET /v1/models` and `GET /healthz`. Other paths get 404, other methods 405. Bodies over 32 MiB get 413.
 - **Session token.** Any local user can reach a loopback port, and the port is in the app-server's argv, which `ps` shows to every user. So each session makes a random 128-bit token and puts it in the app-server's environment as `CODEX_ROUTER_TOKEN`, never in argv. The provider's `env_http_headers={"X-Codex-Router-Token"="CODEX_ROUTER_TOKEN"}` makes Codex send it on every request. A `/v1/responses` or `/v1/models` request without the matching header gets 401 before the body is read, so nothing reaches the engine, the classifier or upstream. The header is stripped before forwarding, and the token is never logged. `/healthz` stays open. The `codex --remote` TUI uses the app-server socket and does not get the token. `codex-router proxy` runs without a token and prints a warning.
 - **Home token (setup).** The shared daemon does not inherit the router's env, so `env_http_headers` cannot work there. Setup makes a random 128-bit token per home and writes it as a static `http_headers = { "X-Codex-Router-Token" = "…" }` in the router provider block of `config.toml`. It sets `config.toml` to `0600` and refuses a symlinked one (usually a dotfiles repo, where the token would get committed) unless `--follow-symlink`. The edge reads the same token from `token` (`0600`) in the home's private state dir. The diff that setup prints redacts it, and nothing prints or logs it.
 - **Socket activation.** The service manager owns the edge's port. While the edge unit is loaded, the port is never free, also during an edge crash or upgrade, so no other process can bind it and receive Codex's credentials.

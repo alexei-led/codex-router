@@ -11,7 +11,7 @@ import (
 
 // Env file errors. Their text never holds a value from the file.
 var (
-	ErrEnvFileMode = errors.New("readable by group or others; chmod 600 it")
+	ErrEnvFileMode = errors.New("open to group or others; chmod 600 it")
 	ErrKeyNotInEnv = errors.New("key not in file")
 )
 
