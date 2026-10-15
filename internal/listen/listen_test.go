@@ -127,6 +127,9 @@ func readLine(t *testing.T, r io.Reader, prefixes ...string) string {
 				}
 			}
 		}
+		if err := s.Err(); err != nil {
+			t.Errorf("reading the child's output: %v", err)
+		}
 	}()
 	select {
 	case l := <-got:

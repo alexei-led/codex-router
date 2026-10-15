@@ -1000,7 +1000,7 @@ func TestClosedClientPassesThrough(t *testing.T) {
 	}
 }
 
-type panicBrain struct{ fakeBrain }
+type panicBrain struct{}
 
 func (*panicBrain) Decide(context.Context, *responses.Request, responses.Meta) (responses.Rewrite, bool) {
 	panic("boom")
