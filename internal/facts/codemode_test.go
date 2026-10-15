@@ -7,7 +7,6 @@ import (
 	"github.com/alexei-led/codex-router/internal/responses"
 )
 
-// Code-mode cells as Codex 0.162 sent them in a live session.
 const (
 	goTestCell = "const r = await tools.exec_command({cmd:\"go test ./...\",yield_time_ms:30000,max_output_tokens:4000});\n" +
 		"text(r.output);\ntext(`exit_code=${r.exit_code}`);\n"
@@ -20,8 +19,6 @@ func cell(id, js string) responses.Item {
 	return responses.Item{Type: "custom_tool_call", Name: "exec", CallID: id, Arguments: js}
 }
 
-// cellOut is a cell result as Codex sends it, an array of text parts, read
-// through the request parser.
 func cellOut(id string, parts ...string) responses.Item {
 	content := make([]map[string]string, len(parts))
 	for i, p := range parts {
@@ -45,15 +42,11 @@ func goTestFailed(id, wall, pkgTime string) responses.Item {
 		"exit_code=1")...)
 }
 
-// The live cells of a model that masks the test's status and prints the
-// whole nested result.
 const (
 	maskedTestCell = `const r = await tools.exec_command({cmd:"go test ./...; result=$?; printf 'exit code: %s\\n' \"$result\"; exit 0","yield_time_ms":1000}); text(JSON.stringify(r));`
 	pythonEditCell = `const r = await tools.exec_command({cmd:"python3 -c 'from pathlib import Path; p=Path(\"retry.go\"); p.write_text(\"// probe\\n\"+p.read_text())'"}); text(r.output);`
 )
 
-// stringified is a `text(JSON.stringify(r))` cell result; an empty pkgTime is
-// a command still running.
 func stringified(id, chunk, status, pkgTime string) responses.Item {
 	output := ""
 	if pkgTime != "" {

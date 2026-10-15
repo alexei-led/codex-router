@@ -29,7 +29,6 @@ func TestClipCutsBetweenMultiByteRunes(t *testing.T) {
 	}
 }
 
-// runeClip is the original clip, which converted the whole text to runes.
 func runeClip(text string, limit int) string {
 	runes := []rune(text)
 	if len(runes) <= limit {

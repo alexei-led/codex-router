@@ -43,9 +43,6 @@ func TestParseMeta(t *testing.T) {
 	}
 }
 
-// turnMetadata is an x-codex-turn-metadata value with the keys spike 1c
-// recorded (research §9) and the main thread's source from the stage 1 live
-// test; kind and turn vary per case.
 func turnMetadata(kind, turn string) string {
 	return sourcedMetadata(kind, turn, "user")
 }

@@ -146,8 +146,6 @@ func TestDiffShowsHunksAndRedactsTheToken(t *testing.T) {
 	}
 }
 
-// fakeRunner records service manager commands; they succeed unless fail
-// returns an error for the command line.
 type fakeRunner struct {
 	mu    sync.Mutex
 	calls []string
@@ -173,7 +171,7 @@ func (f *fakeRunner) count() int {
 
 type fixture struct {
 	h      home.Home
-	given  string // the home path as the user gave it
+	given  string
 	state  string
 	runner *fakeRunner
 	mgr    *service.Manager
@@ -195,7 +193,6 @@ func newFixture(t *testing.T, config string) *fixture {
 	return fixtureFor(t, base, codexHome)
 }
 
-// fixtureFor sets up the home the user names codexHome, under base.
 func fixtureFor(t *testing.T, base, codexHome string) *fixture {
 	t.Helper()
 	h, err := home.Resolve(func(k string) string {
@@ -556,7 +553,7 @@ func TestSetupRefusesWithoutWriting(t *testing.T) {
 func TestTwoHomesGetDistinctPortsTokensAndUnits(t *testing.T) {
 	a := newFixture(t, "")
 	b := newFixture(t, "")
-	b.state, b.mgr = a.state, a.mgr // one user: one state dir, one unit dir
+	b.state, b.mgr = a.state, a.mgr
 	ports := []int{41001, 41001, 41002}
 	next := 0
 	free := func() (int, error) {
