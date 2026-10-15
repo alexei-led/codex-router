@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"maps"
 	"net"
 	"os"
 	"os/signal"
@@ -20,7 +19,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"text/tabwriter"
 	"time"
@@ -28,7 +26,6 @@ import (
 	"github.com/alexei-led/codex-router/internal/brain"
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/config"
-	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/hook"
 	"github.com/alexei-led/codex-router/internal/launcher"
@@ -38,6 +35,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/route"
 	"github.com/alexei-led/codex-router/internal/service"
+	"github.com/alexei-led/codex-router/internal/sessions"
 	"github.com/alexei-led/codex-router/internal/setup"
 	"github.com/alexei-led/codex-router/internal/statedir"
 	"github.com/alexei-led/codex-router/internal/tui"
@@ -320,11 +318,11 @@ func (c cli) tui(ctx context.Context, args []string) int {
 		o.Registry = root
 	}
 	if *session != "" {
-		all, err := findSessions(o.Socket, o.Registry)
+		all, err := sessions.List(o.Socket, o.Registry)
 		if err != nil {
 			return c.fail(err)
 		}
-		switch matches := resolveSession(all, *session); len(matches) {
+		switch matches := sessions.Resolve(all, *session); len(matches) {
 		case 0:
 			return c.fail(fmt.Errorf("tui: no running session matches %q; see codex-router sessions", *session))
 		case 1:
@@ -359,7 +357,7 @@ func (c cli) sessions(args []string) int {
 	if err != nil {
 		return c.fail(err)
 	}
-	all, err := findSessions("", root)
+	all, err := sessions.List("", root)
 	if err != nil {
 		return c.fail(err)
 	}
@@ -373,7 +371,7 @@ func (c cli) sessions(args []string) int {
 	}
 	w := tabwriter.NewWriter(c.stdout, 0, 0, 2, ' ', 0)
 	for _, s := range all {
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", s.ID, s.homeName, s.Label, s.Mode, routeText(s.Route))
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", s.ID, s.HomeName, s.Label, s.Mode, sessions.RouteText(s.Route))
 	}
 	if err := w.Flush(); err != nil {
 		return c.fail(err)
@@ -381,146 +379,11 @@ func (c cli) sessions(args []string) int {
 	return exitOK
 }
 
-// labelSep separates the parts of a session label (home.Label).
-const labelSep = " · "
-
-// listTimeout bounds the wait for an endpoint's first sessions list.
-const listTimeout = 2 * time.Second
-
-// listedSession is one running session with the endpoint serving it, as
-// sessions --json prints it.
-type listedSession struct {
-	route.SessionInfo
-	Endpoint string `json:"endpoint_id"`
-	homeName string
-	base     string // the label before Disambiguate, shared by colliding sessions
-	socket   string // the endpoint's control socket
-}
-
-// findSessions lists the sessions of the endpoint at socket, or, when socket
-// is "", of every endpoint in the registry at root.
-func findSessions(socket, root string) ([]listedSession, error) {
-	if socket != "" {
-		return collectSessions([]registry.Endpoint{{Socket: socket}}, func(registry.Endpoint) {}), nil
-	}
-	eps, _, err := registry.List(root)
-	if err != nil {
-		return nil, err
-	}
-	return collectSessions(eps, func(ep registry.Endpoint) { _ = registry.Prune(root, ep) }), nil
-}
-
-// collectSessions asks every endpoint for its sessions, in parallel, and
-// returns them in panel order (home name, then most recently active) with
-// the panel's labels. An endpoint that does not answer is skipped, and
-// pruned when it is dead. A session two endpoints list is taken from the
-// more recently active report.
-func collectSessions(eps []registry.Endpoint, prune func(registry.Endpoint)) []listedSession {
-	var mu sync.Mutex
-	byID := map[string]listedSession{}
-	var wg sync.WaitGroup
-	for _, ep := range eps {
-		wg.Go(func() {
-			h, items, err := endpointSessions(ep)
-			if err != nil {
-				prune(ep)
-				return
-			}
-			mu.Lock()
-			defer mu.Unlock()
-			for _, it := range items {
-				if old, ok := byID[it.ID]; ok && !it.LastActive.After(old.LastActive) {
-					continue
-				}
-				byID[it.ID] = listedSession{SessionInfo: it, Endpoint: h.EndpointID, homeName: h.Home.Name, socket: ep.Socket}
-			}
-		})
-	}
-	wg.Wait()
-	out := slices.AppendSeq(make([]listedSession, 0, len(byID)), maps.Values(byID))
-	slices.SortFunc(out, func(a, b listedSession) int {
-		return cmp.Or(
-			cmp.Compare(a.homeName, b.homeName), cmp.Compare(a.Home, b.Home),
-			b.LastActive.Compare(a.LastActive), cmp.Compare(a.ID, b.ID))
-	})
-	labels, ids := make([]string, len(out)), make([]string, len(out))
-	for i, s := range out {
-		labels[i], ids[i] = s.Label, s.ID
-	}
-	for i, l := range home.Disambiguate(labels, ids) {
-		out[i].base, out[i].Label = out[i].Label, l
-	}
-	return out
-}
-
-// endpointSessions dials ep and returns its hello and first sessions list.
-// A hello naming another endpoint or home than the entry is an error: the
-// entry is stale (M3). An entry without a home (--socket) is not checked.
-func endpointSessions(ep registry.Endpoint) (control.Hello, []route.SessionInfo, error) {
-	c, err := control.Dial(ep.Socket)
-	if err != nil {
-		return control.Hello{}, nil, err
-	}
-	defer func() { _ = c.Close() }()
-	h := c.Hello()
-	if ep.Home.ID != "" && (h.EndpointID != ep.ID || h.Home.ID != ep.Home.ID) {
-		return h, nil, errors.New("stale registry entry")
-	}
-	select {
-	case items, ok := <-c.Sessions():
-		if !ok {
-			return h, nil, control.ErrDisconnected
-		}
-		return h, items, nil
-	case <-time.After(listTimeout):
-		return h, nil, errors.New("no sessions list")
-	}
-}
-
-// resolveSession returns the sessions query names under the first rule that
-// matches any: an exact session or thread id; a session or thread id
-// prefix; an exact label; a label suffix starting at a separator. Label
-// rules try the shown label and the one before disambiguation, so a label
-// that several sessions share names all of them. One match resolves;
-// several are ambiguous.
-func resolveSession(sessions []listedSession, query string) []listedSession {
-	rules := []func(listedSession) bool{
-		func(s listedSession) bool { return s.ID == query || s.ThreadID == query },
-		func(s listedSession) bool {
-			return strings.HasPrefix(s.ID, query) || strings.HasPrefix(s.ThreadID, query)
-		},
-		func(s listedSession) bool { return s.Label == query || s.base == query },
-		func(s listedSession) bool {
-			return strings.HasSuffix(s.Label, labelSep+query) || strings.HasSuffix(s.base, labelSep+query)
-		},
-	}
-	for _, match := range rules {
-		var got []listedSession
-		for _, s := range sessions {
-			if match(s) {
-				got = append(got, s)
-			}
-		}
-		if len(got) > 0 {
-			return got
-		}
-	}
-	return nil
-}
-
-// routeText formats a route as the panel does.
-func routeText(r config.Route) string {
-	switch {
-	case r.Model == "":
-		return "-"
-	case r.Effort == "":
-		return r.Model
-	}
-	return r.Model + " · " + string(r.Effort)
-}
-
 // envThread is the thread id Codex sets in the env of its shell commands.
 const envThread = "CODEX_THREAD_ID"
+
+// blocked names a router a sandbox hides from ctl; tests replace it.
+var blocked = sessions.Blocked
 
 // ctlOps maps ctl's subcommands to commands; status sends none.
 var ctlOps = map[string]route.Op{"status": "", "pause": route.OpPause, "resume": route.OpResume, "pin": route.OpPin}
@@ -567,15 +430,15 @@ func (c cli) ctl(args []string) int {
 	if err != nil {
 		return c.fail(err)
 	}
-	all, err := findSessions("", root)
+	all, err := sessions.List("", root)
 	if err != nil {
 		return c.fail(err)
 	}
-	all = slices.DeleteFunc(all, func(s listedSession) bool { return s.Home != h.ID })
-	matches := shellSessions(all, c.getenv(envThread), dir)
+	all = slices.DeleteFunc(all, func(s sessions.Session) bool { return s.Home != h.ID })
+	matches := sessions.ForShell(all, c.getenv(envThread), dir)
 	switch len(matches) {
 	case 0:
-		if err := blockedEndpoint(root, h.ID); err != nil {
+		if err := blocked(root, h.ID); err != nil {
 			return c.fail(fmt.Errorf("ctl: cannot reach the router of Codex home %s: %w; a sandbox (such as Codex's) blocks local sockets, so run this command outside it", h.Name, err))
 		}
 		return c.fail(fmt.Errorf("ctl: no running session of Codex home %s works in %s; see codex-router sessions", h.Name, dir))
@@ -592,7 +455,7 @@ func (c cli) ctl(args []string) int {
 		return c.printSession(s)
 	}
 	cmd := route.Command{Op: op, Session: s.ID, Scope: route.ScopeSession, Tier: config.Tier(*tier)}
-	if err := sendCommand(s, cmd); err != nil {
+	if err := sessions.Send(s, cmd); err != nil {
 		return c.fail(fmt.Errorf("ctl %s: %w", sub, err))
 	}
 	switch op {
@@ -606,79 +469,11 @@ func (c cli) ctl(args []string) int {
 	return exitOK
 }
 
-// dialSocket connects to a control socket and hangs up; tests replace it.
-var dialSocket = func(path string) error {
-	c, err := net.DialTimeout("unix", path, time.Second)
-	if err == nil {
-		_ = c.Close()
-	}
-	return err
-}
-
-// blockedEndpoint returns the dial error of the first registry endpoint of
-// the home whose socket refuses this process (EPERM or EACCES): Codex's
-// sandbox does that to shell commands, and the router behind it is not dead.
-func blockedEndpoint(root, homeID string) error {
-	eps, _, err := registry.List(root)
-	if err != nil {
-		return nil
-	}
-	for _, ep := range eps {
-		if ep.Home.ID != homeID {
-			continue
-		}
-		if err := dialSocket(ep.Socket); errors.Is(err, syscall.EPERM) || errors.Is(err, syscall.EACCES) {
-			return err
-		}
-	}
-	return nil
-}
-
-// shellSessions returns the session of thread when one is listed, else the
-// sessions whose cwd is the deepest one equal to or containing dir. Paths
-// are compared with symlinks resolved: a shell may see /tmp where Codex
-// reports /private/tmp.
-func shellSessions(sessions []listedSession, thread, dir string) []listedSession {
-	if thread != "" {
-		if i := slices.IndexFunc(sessions, func(s listedSession) bool { return s.ThreadID == thread }); i >= 0 {
-			return sessions[i : i+1]
-		}
-	}
-	dir = canonicalPath(dir)
-	var best []listedSession
-	depth := -1
-	for _, s := range sessions {
-		cwd := canonicalPath(s.Cwd)
-		if !filepath.IsAbs(cwd) {
-			continue
-		}
-		rel, err := filepath.Rel(cwd, dir)
-		if err != nil || rel == ".." || strings.HasPrefix(rel, "../") {
-			continue
-		}
-		switch {
-		case len(cwd) > depth:
-			best, depth = []listedSession{s}, len(cwd)
-		case len(cwd) == depth:
-			best = append(best, s)
-		}
-	}
-	return best
-}
-
-// canonicalPath resolves symlinks in p, or cleans p when it does not exist.
-func canonicalPath(p string) string {
-	if r, err := filepath.EvalSymlinks(p); err == nil {
-		return r
-	}
-	return filepath.Clean(p)
-}
-
 // printSession prints s for ctl status, one field per line.
-func (c cli) printSession(s listedSession) int {
+func (c cli) printSession(s sessions.Session) int {
 	w := tabwriter.NewWriter(c.stdout, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintf(w, "session\t%s\nlabel\t%s\nmode\t%s\ntier\t%s\nroute\t%s\nreplies\t%d\n",
-		s.ID, s.Label, s.Mode, cmp.Or(string(s.Tier), "-"), routeText(s.Route), s.Replies)
+		s.ID, s.Label, s.Mode, cmp.Or(string(s.Tier), "-"), sessions.RouteText(s.Route), s.Replies)
 	if s.Attention != "" {
 		_, _ = fmt.Fprintf(w, "attention\t%s\n", s.Attention)
 	}
@@ -686,19 +481,6 @@ func (c cli) printSession(s listedSession) int {
 		return c.fail(err)
 	}
 	return exitOK
-}
-
-// sendCommand sends cmd to the endpoint that listed s.
-func sendCommand(s listedSession, cmd route.Command) error {
-	cl, err := control.Dial(s.socket)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = cl.Close() }()
-	if cl.Hello().EndpointID != s.Endpoint {
-		return errors.New("the session's router changed; try again")
-	}
-	return cl.Send(cmd)
 }
 
 func (c cli) proxy(ctx context.Context, configPath string, args []string) int {

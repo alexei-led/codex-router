@@ -8,8 +8,10 @@ import (
 	"strings"
 )
 
+// LabelSep separates the parts of a label.
+const LabelSep = " · "
+
 const (
-	labelSep     = " · "
 	gitEntry     = ".git"
 	shortSHALen  = 7
 	suffixHexLen = 4
@@ -55,9 +57,9 @@ func Label(homeName, cwd string) string {
 		return homeName
 	}
 	if repo, branch, ok := RepoBranch(cwd); ok {
-		return homeName + labelSep + repo + labelSep + branch
+		return homeName + LabelSep + repo + LabelSep + branch
 	}
-	return homeName + labelSep + filepath.Base(cwd)
+	return homeName + LabelSep + filepath.Base(cwd)
 }
 
 // Disambiguate returns labels with " · <4-hex>" appended to each label that
@@ -77,7 +79,7 @@ func Disambiguate(labels, ids []string) []string {
 	for i, l := range labels {
 		if count[l] > 1 {
 			sum := sha256.Sum256([]byte(ids[i]))
-			l += labelSep + hex.EncodeToString(sum[:])[:suffixHexLen]
+			l += LabelSep + hex.EncodeToString(sum[:])[:suffixHexLen]
 		}
 		out[i] = l
 	}
