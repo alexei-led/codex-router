@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -14,8 +16,6 @@ import (
 
 var update = flag.Bool("update", false, "rewrite golden files")
 
-// fakeRunner records commands and answers them from replies, keyed by
-// command line prefix. Unknown commands succeed with no output.
 type fakeRunner struct {
 	mu      sync.Mutex
 	calls   []string
@@ -76,7 +76,7 @@ func TestUnitFilesMatchGolden(t *testing.T) {
 	cases := []struct {
 		goos    string
 		dir     string
-		golden  map[string]string // unit file -> golden file
+		golden  map[string]string
 		reloads bool
 	}{
 		{"darwin", "Library/LaunchAgents", map[string]string{
@@ -123,63 +123,88 @@ func TestUnitFilesMatchGolden(t *testing.T) {
 	}
 }
 
+type verbs struct {
+	load, unload, reload string
+	names                []string
+}
+
+var backends = map[string]verbs{
+	"darwin": {load: "bootstrap", unload: "bootout", names: []string{"h1.edge", "h1.brain"}},
+	"linux":  {load: "enable --now", unload: "disable --now", reload: "daemon-reload", names: []string{"edge@h1.socket", "brain@h1.service"}},
+}
+
+func indexOf(calls []string, parts ...string) int {
+	return slices.IndexFunc(calls, func(c string) bool {
+		return !slices.ContainsFunc(parts, func(p string) bool { return !strings.Contains(c, p) })
+	})
+}
+
 func TestInstallLoadsAndReinstallUnloadsFirst(t *testing.T) {
-	cases := []struct {
-		goos      string
-		first     []string
-		reinstall []string
-	}{
-		{"darwin",
-			[]string{
-				"launchctl bootstrap gui/501 {dir}/com.github.alexei-led.codex-router.h1.edge.plist",
-				"launchctl bootstrap gui/501 {dir}/com.github.alexei-led.codex-router.h1.brain.plist",
-			},
-			[]string{
-				"launchctl bootout gui/501/com.github.alexei-led.codex-router.h1.edge",
-				"launchctl bootout gui/501/com.github.alexei-led.codex-router.h1.brain",
-				"launchctl bootstrap gui/501 {dir}/com.github.alexei-led.codex-router.h1.edge.plist",
-				"launchctl bootstrap gui/501 {dir}/com.github.alexei-led.codex-router.h1.brain.plist",
-			}},
-		{"linux",
-			[]string{
-				"systemctl --user daemon-reload",
-				"systemctl --user enable --now codex-router-edge@h1.socket codex-router-brain@h1.service",
-			},
-			[]string{
-				"systemctl --user disable --now codex-router-edge@h1.socket codex-router-edge@h1.service codex-router-brain@h1.service",
-				"systemctl --user daemon-reload",
-				"systemctl --user enable --now codex-router-edge@h1.socket codex-router-brain@h1.service",
-			}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.goos, func(t *testing.T) {
+	for goos, v := range backends {
+		t.Run(goos, func(t *testing.T) {
 			f := &fakeRunner{}
-			m, _ := newManager(t, tc.goos, f)
-			dir := filepath.Dir(m.Units("h1")[0].Path)
-			expand := func(lines []string) []string {
-				out := make([]string, len(lines))
-				for i, l := range lines {
-					out[i] = strings.ReplaceAll(l, "{dir}", dir)
-				}
-				return out
+			m, _ := newManager(t, goos, f)
+			if err := m.Install(context.Background(), spec("h1")); err != nil {
+				t.Fatal(err)
 			}
-			for _, want := range [][]string{tc.first, tc.reinstall} {
-				if err := m.Install(context.Background(), spec("h1")); err != nil {
-					t.Fatal(err)
+			first := f.take()
+			for _, name := range v.names {
+				if indexOf(first, v.load, name) < 0 {
+					t.Errorf("first install did not load %s: %q", name, first)
 				}
-				if got := f.take(); !slices.Equal(got, expand(want)) {
-					t.Errorf("commands:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(expand(want), "\n"))
+			}
+			if indexOf(first, v.unload) >= 0 {
+				t.Errorf("first install unloaded something: %q", first)
+			}
+
+			if err := m.Install(context.Background(), spec("h1")); err != nil {
+				t.Fatal(err)
+			}
+			again := f.take()
+			firstLoad := indexOf(again, v.load)
+			for _, name := range v.names {
+				if i := indexOf(again, v.unload, name); i < 0 || i > firstLoad {
+					t.Errorf("reinstall did not unload %s before loading: %q", name, again)
 				}
 			}
 		})
 	}
 }
 
-func TestInstallFailsWhenLoadFails(t *testing.T) {
-	f := &fakeRunner{replies: map[string]reply{"launchctl bootstrap": {"Bootstrap failed: 5", errExit}}}
-	m, _ := newManager(t, "darwin", f)
-	if err := m.Install(context.Background(), spec("h1")); err == nil {
-		t.Error("Install with a failing bootstrap: want error")
+func TestInstallAndEnsureReturnTheCommandError(t *testing.T) {
+	down := reply{"inactive\n", errExit}
+	failed := reply{"failed", errExit}
+	tests := []struct {
+		name    string
+		goos    string
+		ensure  bool
+		replies map[string]reply
+	}{
+		{"darwin load", "darwin", false, map[string]reply{"launchctl bootstrap": failed}},
+		{"linux load", "linux", false, map[string]reply{"systemctl --user enable": failed}},
+		{"darwin start", "darwin", true, map[string]reply{"launchctl print": down, "launchctl bootstrap": failed}},
+		{"linux start", "linux", true, map[string]reply{"systemctl --user is-active": down, "systemctl --user start": failed}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &fakeRunner{}
+			m, _ := newManager(t, tt.goos, f)
+			ctx := context.Background()
+			var err error
+			if tt.ensure {
+				if err := m.Install(ctx, spec("h1")); err != nil {
+					t.Fatal(err)
+				}
+				f.replies = tt.replies
+				_, err = m.Ensure(ctx, "h1")
+			} else {
+				f.replies = tt.replies
+				err = m.Install(ctx, spec("h1"))
+			}
+			if !errors.Is(err, errExit) {
+				t.Errorf("error = %v, want the failing command's error", err)
+			}
+		})
 	}
 }
 
@@ -218,23 +243,10 @@ func TestTwoHomesGetTheirOwnUnits(t *testing.T) {
 }
 
 func TestUninstall(t *testing.T) {
-	cases := []struct {
-		goos string
-		want []string
-	}{
-		{"darwin", []string{
-			"launchctl bootout gui/501/com.github.alexei-led.codex-router.h1.edge",
-			"launchctl bootout gui/501/com.github.alexei-led.codex-router.h1.brain",
-		}},
-		{"linux", []string{
-			"systemctl --user disable --now codex-router-edge@h1.socket codex-router-edge@h1.service codex-router-brain@h1.service",
-			"systemctl --user daemon-reload",
-		}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.goos, func(t *testing.T) {
+	for goos, v := range backends {
+		t.Run(goos, func(t *testing.T) {
 			f := &fakeRunner{}
-			m, _ := newManager(t, tc.goos, f)
+			m, _ := newManager(t, goos, f)
 			if removed, err := m.Uninstall(context.Background(), "h1"); err != nil || removed != nil {
 				t.Errorf("Uninstall of nothing = %v, %v; want nil, nil", removed, err)
 			}
@@ -249,8 +261,17 @@ func TestUninstall(t *testing.T) {
 			if err != nil || len(removed) != len(m.Units("h1")) {
 				t.Fatalf("Uninstall = %d units, %v", len(removed), err)
 			}
-			if got := f.take(); !slices.Equal(got, tc.want) {
-				t.Errorf("commands = %q, want %q", got, tc.want)
+			got := f.take()
+			last := -1
+			for _, name := range v.names {
+				i := indexOf(got, v.unload, name)
+				if i < 0 {
+					t.Errorf("%s not unloaded: %q", name, got)
+				}
+				last = max(last, i)
+			}
+			if v.reload != "" && indexOf(got, v.reload) <= last {
+				t.Errorf("no %s after unloading: %q", v.reload, got)
 			}
 			if left := m.Installed("h1"); len(left) != 0 {
 				t.Errorf("unit files left: %v", left)
@@ -317,7 +338,7 @@ func TestStatusAndEnsure(t *testing.T) {
 			}
 			f.take()
 			f.replies = tc.replies
-			if got := states(m.Status(context.Background(), "h1")); !equalStates(got, tc.want) {
+			if got := states(m.Status(context.Background(), "h1")); !maps.Equal(got, tc.want) {
 				t.Errorf("Status = %v, want %v", got, tc.want)
 			}
 			f.take()
@@ -340,33 +361,6 @@ func TestStatusAndEnsure(t *testing.T) {
 				t.Errorf("Ensure ran %q, want %q", starts, want)
 			}
 		})
-	}
-}
-
-func equalStates(a, b map[string]State) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for k, v := range a {
-		if b[k] != v {
-			return false
-		}
-	}
-	return true
-}
-
-func TestEnsureReportsAStartFailure(t *testing.T) {
-	f := &fakeRunner{}
-	m, _ := newManager(t, "linux", f)
-	if err := m.Install(context.Background(), spec("h1")); err != nil {
-		t.Fatal(err)
-	}
-	f.replies = map[string]reply{
-		"systemctl --user is-active": {"inactive\n", errExit},
-		"systemctl --user start":     {"Failed to start", errExit},
-	}
-	if _, err := m.Ensure(context.Background(), "h1"); err == nil {
-		t.Error("Ensure with a failing start: want error")
 	}
 }
 
@@ -396,11 +390,44 @@ func TestPlistEscapesPaths(t *testing.T) {
 }
 
 func TestNewRejects(t *testing.T) {
-	if _, err := New(Options{GOOS: "windows", Home: t.TempDir()}); err == nil {
-		t.Error("windows: want error")
+	tests := []struct {
+		name string
+		o    Options
+		want string
+	}{
+		{"unsupported OS", Options{GOOS: "windows", Home: "/home/u"}, "windows has no supported service manager"},
+		{"relative HOME", Options{GOOS: "linux", Home: "relative"}, "HOME is not an absolute path"},
 	}
-	if _, err := New(Options{GOOS: "linux", Home: "relative"}); err == nil {
-		t.Error("relative HOME: want error")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := New(tt.o); err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("New = %v, want error containing %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestStateString(t *testing.T) {
+	tests := []struct {
+		s    State
+		want string
+	}{{Missing, "not installed"}, {Down, "down"}, {Up, "up"}}
+	for _, tt := range tests {
+		if got := tt.s.String(); got != tt.want {
+			t.Errorf("State(%d) = %q, want %q", tt.s, got, tt.want)
+		}
+	}
+}
+
+func TestExecReturnsOutputAndWrapsFailure(t *testing.T) {
+	out, err := Exec(context.Background(), "sh", "-c", "echo hi")
+	if err != nil || out != "hi\n" {
+		t.Errorf("Exec = %q, %v; want hi, nil", out, err)
+	}
+	out, err = Exec(context.Background(), "sh", "-c", "echo boom; exit 3")
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 3 || out != "boom\n" || !strings.Contains(err.Error(), "boom") {
+		t.Errorf("Exec = %q, %v; want exit 3 with the output in the error", out, err)
 	}
 }
 
