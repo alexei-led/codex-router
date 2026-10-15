@@ -275,8 +275,12 @@ func (c cli) loadConfig(flagPath string) (config.Config, error) {
 	return config.Load(path)
 }
 
+// launchExec replaces the process with plain codex when the router cannot
+// start; nil execs for real, tests replace it.
+var launchExec func(path string, argv, env []string) error
+
 func (c cli) launch(configPath string, codexArgs []string) int {
-	o := launcher.Options{CodexArgs: codexArgs, Env: c.env, Stderr: c.stderr}
+	o := launcher.Options{CodexArgs: codexArgs, Env: c.env, Stderr: c.stderr, Exec: launchExec}
 	cfg, err := c.loadConfig(configPath)
 	if err != nil {
 		if err := launcher.Fallback(o, err); err != nil {
