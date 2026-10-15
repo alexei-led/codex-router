@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -657,5 +659,57 @@ func TestRetryAfter(t *testing.T) {
 		if got != tc.want || ok != tc.ok {
 			t.Errorf("retryAfter(%q) = %v, %v; want %v, %v", tc.value, got, ok, tc.want, tc.ok)
 		}
+	}
+}
+
+const cloudflareAccount = "acct/1"
+
+func TestOpenAIDecisionsEndToEnd(t *testing.T) {
+	var path, auth, body string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		path, auth, body = r.URL.Path, r.Header.Get("Authorization"), string(raw)
+		_, _ = w.Write(fixture(t, "openai-decisions-activity-response.json"))
+	}))
+	defer srv.Close()
+	cfg := config.Classifier{API: config.APIOpenAIDecisions, Endpoint: srv.URL + "/v1/decisions", Model: "gpt-6-luna", KeyEnv: "OPENAI_API_KEY", TimeoutMs: 3000}
+	advice, err := New(cfg, testKey, OpenAIDecisions(), srv.Client(), time.Now).Ask(t.Context(), smallInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != "/v1/decisions" || auth != "Bearer "+testKey {
+		t.Errorf("path = %q, authorization ok = %v", path, auth == "Bearer "+testKey)
+	}
+	if !strings.Contains(body, `"model":"gpt-6-luna"`) || !strings.Contains(body, `"predicate"`) {
+		t.Errorf("body = %s", body)
+	}
+	assertNoForeignCredential(t, body)
+	if advice.Choice != "medium" || advice.Continuation == nil || advice.Activity == nil || advice.Activity.Choice != config.ActivityDebug {
+		t.Errorf("advice = %+v", advice)
+	}
+}
+
+func TestClefEndToEndReadsTheWrappedCloudflareAnswer(t *testing.T) {
+	var path, auth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path, auth = r.URL.EscapedPath(), r.Header.Get("Authorization")
+		_, _ = w.Write(fixture(t, "clef-flash-response.json"))
+	}))
+	defer srv.Close()
+	def := config.Default().Classifiers["clef-flash"]
+	endpoint := strings.Replace(def.Endpoint, "https://api.cloudflare.com", srv.URL, 1)
+	def.Endpoint = strings.ReplaceAll(endpoint, "{CLOUDFLARE_ACCOUNT_ID}", url.PathEscape(cloudflareAccount))
+	advice, err := New(def, testKey, SystemOne(), srv.Client(), time.Now).Ask(t.Context(), smallInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "/client/v4/accounts/acct%2F1/ai/run/@cf/cloudflare/clef-flash"; path != want {
+		t.Errorf("path = %q, want %q", path, want)
+	}
+	if auth != "Bearer "+testKey {
+		t.Error("authorization header carries the wrong credential")
+	}
+	if advice.Choice != "micro" || advice.Probabilities["micro"] != 0.5923 {
+		t.Errorf("advice = %+v", advice)
 	}
 }
