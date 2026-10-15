@@ -726,6 +726,46 @@ func TestListenReplacesStaleSocket(t *testing.T) {
 	}
 }
 
+func TestPathFollowsTheRecord(t *testing.T) {
+	const moved = "/tmp/codex-router-1/h.sock"
+	cases := []struct {
+		name   string
+		raw    string
+		record []string
+		want   string
+	}{
+		{"no record", "", nil, ""},
+		{"socket outside dir", "", []string{moved}, moved},
+		{"socket back in dir drops the record", "", []string{moved, SocketName}, ""},
+		{"relative record ignored", "h.sock\n", nil, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if tc.raw != "" {
+				if err := os.WriteFile(filepath.Join(dir, pathFile), []byte(tc.raw), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, p := range tc.record {
+				if !filepath.IsAbs(p) {
+					p = filepath.Join(dir, p)
+				}
+				if err := RecordPath(dir, p); err != nil {
+					t.Fatal(err)
+				}
+			}
+			want := tc.want
+			if want == "" {
+				want = filepath.Join(dir, SocketName)
+			}
+			if got := Path(dir); got != want {
+				t.Errorf("Path = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 type sniff struct {
 	mu   sync.Mutex
 	sent bytes.Buffer

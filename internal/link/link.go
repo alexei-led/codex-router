@@ -9,13 +9,48 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/responses"
+	"github.com/alexei-led/codex-router/internal/statedir"
 )
 
 // SocketName is the brain's link socket inside the home's state dir.
 const SocketName = "brain.sock"
+
+// pathFile records the link socket when it lives outside the home's state
+// dir; the edge reads it through Path.
+const pathFile = "brain.path"
+
+// Path is the link socket of the brain whose home state dir is dir:
+// SocketName in dir, or the path the brain recorded there because that one
+// was too long for a unix socket. The edge reads it before each dial.
+func Path(dir string) string {
+	if b, err := os.ReadFile(filepath.Join(dir, pathFile)); err == nil {
+		if p := strings.TrimSpace(string(b)); filepath.IsAbs(p) {
+			return p
+		}
+	}
+	return filepath.Join(dir, SocketName)
+}
+
+// RecordPath writes pathFile when the link socket p is outside dir, and
+// removes a stale one when it is not.
+func RecordPath(dir, p string) error {
+	rec := filepath.Join(dir, pathFile)
+	if filepath.Dir(p) == dir {
+		if err := os.Remove(rec); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return nil
+	}
+	if err := statedir.WriteAtomic(dir, pathFile, []byte(p+"\n")); err != nil {
+		return fmt.Errorf("record link path: %w", err)
+	}
+	return nil
+}
 
 // SocketMode is the permission the socket is created with.
 const SocketMode os.FileMode = 0o600
