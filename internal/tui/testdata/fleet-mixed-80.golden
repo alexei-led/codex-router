@@ -1,17 +1,26 @@
-◂ ● work · infra  ● work · api  ● work · web  ● default · notes            ▸ 2/4
-ROUTING ◉ on · gpt-6.1-sol high · Jev ready
+codex-router  4 sessions · 2 homes · Jev ready  Sessions  Policy  Usage   ? help
 
- Sessions  Now  Routes  Policy  Classifier  Usage 
+  SESSION        STATE  MODEL  LAST TURNS  SWITCH
+● default
+  notes          ● on   -
+  reflex · main  ○ waiting for the first prompt
 
-SESSIONS · 4 sessions in 2 homes
-  SESSION                                   STATE           ROUTE
-● default · 1 endpoint · 0 replies · 0 switches
-  notes                                     ◉ on            -
+● work · brain up 3h
+▸ infra          ● on   -
+  api            ● on   -
+  web            ● on   -
 
-● work · 2 endpoints · brain up 3h · 0 replies · 0 switches
-▸ infra                                     ◉ on            -
-  api                                       ◉ on            -
-  web                                       ◉ on            -
+infra                                                            work · aaaaaaaa
+ HIGH  debug → gpt-6.1-sol · high     ↑ same test failure twice, edit in between
+       Jev high 18% · no classifier needed · switch ≈ 41k uncached tokens
+       hold 2 turns
+ Pin      micro   low   medium  ▶high                             next turn only
+ Session  48 replies · 9 switches · saved ≈ $0.84 (31%) vs gpt-6.1-sol · high
+          ▃▃▃▃▃▅▅▅▅▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇  1 reply per cell
+ Context  █░░░░░░░░░ 16%  44.6K / 272K      Cache  98% last reply · 97% session
+ Look     context guard kept 2 steps on a larger window than the policy chose ·
+          see Policy
+          routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group
+          · see Policy
 
-↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause focused
-P pause focused home · q quit
+↑↓ select · p pin · space pause · P pause home · tab views · q quit · ? help

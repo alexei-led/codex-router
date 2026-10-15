@@ -40,10 +40,12 @@ type fleetSession struct {
 // fleetEndpointInfo is one endpoint of a home as the panel shows it. Up is
 // how long a live endpoint has run, 0 when its start is unknown.
 type fleetEndpointInfo struct {
-	id   string
-	kind string
-	lost bool
-	up   time.Duration
+	id    string
+	kind  string
+	lost  bool
+	up    time.Duration
+	label string // the launcher's working directory as home · repo · branch; empty for a brain
+	idle  bool   // live, and lists no sessions: its Codex has not sent a prompt yet
 }
 
 // fleetHome is one Codex home: its endpoints and its sessions, most
@@ -458,15 +460,22 @@ func (f *fleet) owner(session string) string {
 // focusOn moves the focus to session id when it is listed. Locked mode
 // keeps its focus. A chosen focus is never replaced by a cwd match.
 func (f *fleet) focusOn(id string) {
+	if f.pick(id) {
+		f.sync()
+	}
+}
+
+// pick moves the focus to session id and reports whether it moved; the
+// subscriptions follow with sync.
+func (f *fleet) pick(id string) bool {
 	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.locked != "" || id == f.focus ||
 		!slices.ContainsFunc(f.sessions(), func(s fleetSession) bool { return s.ID == id }) {
-		f.mu.Unlock()
-		return
+		return false
 	}
 	f.focus, f.snap, f.auto, f.provisional = id, nil, false, false
-	f.mu.Unlock()
-	f.sync()
+	return true
 }
 
 // state copies the fleet for rendering.
@@ -505,7 +514,8 @@ func (f *fleet) state() fleetState {
 	now := f.now()
 	for id, e := range f.eps {
 		g := group(e.hello.Home)
-		info := fleetEndpointInfo{id: id, kind: e.hello.Kind, lost: e.c == nil}
+		info := fleetEndpointInfo{id: id, kind: e.hello.Kind, lost: e.c == nil, label: e.hello.Label}
+		info.idle = !info.lost && e.listed && len(e.items) == 0
 		if !info.lost && !e.ep.Started.IsZero() {
 			info.up = max(now.Sub(e.ep.Started), 0)
 		}

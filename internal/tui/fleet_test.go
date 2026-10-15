@@ -178,6 +178,12 @@ func (tf *testFleet) started(id string, at time.Time) {
 	}
 }
 
+func (tf *testFleet) label(id, label string) {
+	tf.mu.Lock()
+	defer tf.mu.Unlock()
+	tf.conns[id].hello.Label = label
+}
+
 func (tf *testFleet) remove(id string) {
 	tf.mu.Lock()
 	defer tf.mu.Unlock()
@@ -508,9 +514,9 @@ func TestFleetHomeCommandsReachEveryEndpointOfTheFocusedHome(t *testing.T) {
 
 	m := newModel(tf.fleet)
 	m.Update(fleetMsg{})
-	run(m, press(m, "P"))
+	pressAll(m, "P")
 	m.tab = TabPolicy
-	run(m, press(m, "c"))
+	pressAll(m, "s", "3")
 
 	want := []route.Command{
 		{Op: route.OpPause, Scope: route.ScopeHome},

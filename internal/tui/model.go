@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"slices"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -18,6 +19,8 @@ const (
 	defaultWidth = 80
 	// endedExit is how long a locked panel shows `ended` before it quits.
 	endedExit = 3 * time.Second
+	// toastFor is how long a confirmation stays.
+	toastFor = 2500 * time.Millisecond
 	// focusClick is how long after the terminal gains focus a click is the
 	// click that focused it, not a command.
 	focusClick = 150 * time.Millisecond
@@ -37,7 +40,12 @@ type (
 	fleetMsg struct{}
 	beatMsg  struct{}
 	endedMsg struct{}
-	sentMsg  struct{ err error }
+	// sentMsg is a command's ack. Done is the toast that confirms it.
+	sentMsg struct {
+		err  error
+		done string
+	}
+	toastMsg struct{ seq int }
 )
 
 type model struct {
@@ -46,19 +54,28 @@ type model struct {
 	tab    Tab
 	width  int
 	height int
-	cursor string // Sessions tab selection
-	ending bool   // the ended exit is scheduled
+	ending bool // the ended exit is scheduled
 	notice string
 	mouse  bool // the panel takes the mouse
 	focus  time.Time
 	now    func() time.Time
+
+	light    bool // the terminal background is light; dark until it says so
+	zoom     bool // stacked: the selected session's detail without the list
+	pane     pane // side by side: which half has the focus
+	help     bool
+	popover  popover
+	toast    string
+	toastSeq int
 }
 
 func newModel(f *fleet) *model {
-	return &model{f: f, st: fleetState{disconnected: true}, tab: TabNow, width: defaultWidth, now: time.Now}
+	return &model{f: f, st: fleetState{disconnected: true}, tab: TabSessions, width: defaultWidth, now: time.Now}
 }
 
-func (m *model) Init() tea.Cmd { return tea.Batch(waitFleetCmd(m.f), beatCmd()) }
+func (m *model) Init() tea.Cmd {
+	return tea.Batch(waitFleetCmd(m.f), beatCmd(), tea.RequestBackgroundColor)
+}
 
 func waitFleetCmd(f *fleet) tea.Cmd {
 	return func() tea.Msg {
@@ -75,11 +92,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+	case tea.BackgroundColorMsg:
+		m.light = !msg.IsDark()
 	case fleetMsg:
 		m.st = m.f.state()
-		if _, ok := m.listed(m.cursor); !ok {
-			m.cursor = m.st.focus
-		}
 		if m.st.ended && !m.ending {
 			m.ending = true
 			return m, tea.Batch(waitFleetCmd(m.f), tea.Tick(endedExit, func(time.Time) tea.Msg { return endedMsg{} }))
@@ -100,6 +116,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.notice = msg.err.Error()
 		case msg.err != nil:
 			m.notice = "command failed: " + msg.err.Error()
+		case msg.done != "":
+			m.toastSeq++
+			m.toast = msg.done
+			seq := m.toastSeq
+			return m, tea.Tick(toastFor, func(time.Time) tea.Msg { return toastMsg{seq} })
+		}
+	case toastMsg:
+		if msg.seq == m.toastSeq {
+			m.toast = ""
 		}
 	case tea.KeyPressMsg:
 		return m, m.key(msg)
@@ -108,12 +133,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseClickMsg:
 		return m, m.click(msg.Mouse())
 	case tea.MouseWheelMsg:
-		if m.tab == TabSessions {
+		if m.view().listed() {
 			switch msg.Mouse().Button {
 			case tea.MouseWheelUp:
-				m.moveCursor(-1)
+				return m, m.selectStep(-1)
 			case tea.MouseWheelDown:
-				m.moveCursor(1)
+				return m, m.selectStep(1)
 			}
 		}
 	}
@@ -131,97 +156,172 @@ func (m *model) click(ms tea.Mouse) tea.Cmd {
 	if !ok {
 		return nil
 	}
+	m.popover = popNone
 	switch a.kind {
+	case actClose:
+		m.help = false
 	case actTab:
-		m.tab = a.tab
-		if a.tab == TabSessions {
-			m.cursor = m.st.focus
-		}
-	case actFocus:
-		return m.focusOn(a.session)
+		m.show(a.tab, 1)
 	case actSelect:
-		if a.session != m.selected() {
-			m.cursor = a.session
-			return nil
+		if a.session != m.st.focus {
+			return m.focusOn(a.session)
 		}
-		m.tab = TabNow
-		return m.focusOn(a.session)
+		return m.run(keys.Open)
 	case actPin:
 		if p := m.snap().Pin; p != nil && *p == a.tier {
-			return m.command(route.Command{Op: route.OpUnpin, Session: m.st.focus})
+			return m.unpin()
 		}
-		return m.command(route.Command{Op: route.OpPin, Session: m.st.focus, Tier: a.tier})
+		return m.pin(a.tier)
+	case actUnpin:
+		return m.unpin()
 	case actPreset:
-		return m.homeCommand(route.Command{Op: route.OpPreset, Preset: a.preset})
+		return m.setPreset(a.preset)
+	case actKey:
+		if b, ok := keys.named(a.key); ok {
+			return m.run(b)
+		}
 	}
 	return nil
 }
 
-// selected is the Sessions tab row the cursor is on; the focus until it moves.
-func (m *model) selected() string {
-	if m.cursor == "" {
-		return m.st.focus
-	}
-	return m.cursor
-}
-
+// key dispatches a key press. An open overlay takes the keys first.
 func (m *model) key(k tea.KeyPressMsg) tea.Cmd {
-	all := m.f.locked == ""
-	tabs := tabsFor(all)
 	switch {
 	case key.Matches(k, keys.Quit):
 		return tea.Quit
-	case key.Matches(k, keys.TabNum):
-		m.tab = Tabs[k.String()[0]-'1']
-	case key.Matches(k, keys.List):
-		if all {
-			m.tab, m.cursor = TabSessions, m.st.focus
+	case m.help:
+		if key.Matches(k, keys.Back, keys.Help) {
+			m.help = false
 		}
-	case key.Matches(k, keys.Next):
-		m.tab = tabs[(m.tabIndex(tabs)+1)%len(tabs)]
-	case key.Matches(k, keys.Prev):
-		m.tab = tabs[(m.tabIndex(tabs)+len(tabs)-1)%len(tabs)]
-	case key.Matches(k, keys.Session):
-		if all {
-			if k.String() == "[" {
-				return m.step(-1)
-			}
-			return m.step(1)
-		}
-	case key.Matches(k, keys.Up):
-		if m.tab == TabSessions {
-			m.moveCursor(-1)
-		}
-	case key.Matches(k, keys.Down):
-		if m.tab == TabSessions {
-			m.moveCursor(1)
-		}
-	case key.Matches(k, keys.Enter):
-		if m.tab == TabSessions && m.cursor != "" {
-			m.tab = TabNow
-			return m.focusOn(m.cursor)
-		}
-	case key.Matches(k, keys.Pin):
-		return m.command(pinCycle(m.st.focus, m.snap().Pin))
-	case key.Matches(k, keys.Toggle):
-		return m.command(toggleCommand(m.st.focus, m.snap().Mode))
-	case key.Matches(k, keys.Home):
-		return m.homeCommand(m.homeToggle())
-	case key.Matches(k, keys.Preset):
-		if m.tab == TabPolicy {
-			return m.homeCommand(route.Command{Op: route.OpPreset, Preset: nextPreset(m.snap().Preset)})
+		return nil
+	case m.popover != popNone:
+		return m.choose(k)
+	}
+	for _, b := range keys.bindings() {
+		if key.Matches(k, b) {
+			return m.run(b)
 		}
 	}
 	return nil
 }
 
-func (m *model) tabIndex(tabs []Tab) int {
-	for i, t := range tabs {
-		if t == m.tab {
-			return i
+// choose handles a key while a popover is open: esc closes it, a number picks.
+func (m *model) choose(k tea.KeyPressMsg) tea.Cmd {
+	if key.Matches(k, keys.Back) {
+		m.popover = popNone
+		return nil
+	}
+	n := strings.Index("0123456789", k.String())
+	pop := m.popover
+	switch {
+	case pop == popPin && key.Matches(k, keys.PinPick):
+		m.popover = popNone
+		if n == 0 {
+			return m.unpin()
+		}
+		return m.pin(tierOrder[n-1])
+	case pop == popPreset && key.Matches(k, keys.PresetPick):
+		m.popover = popNone
+		return m.setPreset(Presets[n-1])
+	}
+	return nil
+}
+
+func is(a, b key.Binding) bool { return handle(a) == handle(b) }
+
+// run does what binding b stands for; a key press and a click on a footer
+// entry both come here.
+func (m *model) run(b key.Binding) tea.Cmd {
+	v := m.view()
+	switch {
+	case is(b, keys.Quit):
+		return tea.Quit
+	case is(b, keys.Help):
+		m.help = true
+	case is(b, keys.Back):
+		m.zoom, m.pane = false, paneList
+	case is(b, keys.Next):
+		m.cycle(1)
+	case is(b, keys.Prev):
+		m.cycle(-1)
+	case is(b, keys.Up):
+		if v.listed() {
+			return m.selectStep(-1)
+		}
+	case is(b, keys.Down):
+		if v.listed() {
+			return m.selectStep(1)
+		}
+	case is(b, keys.Open):
+		if v.listed() && m.st.focus != "" {
+			if v.wide() {
+				m.pane = paneDetail
+			} else {
+				m.zoom = true
+			}
+		}
+	case is(b, keys.PrevSession):
+		if v.multi() {
+			return m.step(-1)
+		}
+	case is(b, keys.NextSession):
+		if v.multi() {
+			return m.step(1)
+		}
+	case is(b, keys.Pin):
+		if m.tab == TabSessions && m.st.focus != "" {
+			m.popover = popPin
+		}
+	case is(b, keys.Preset):
+		if m.tab == TabPolicy && m.st.focus != "" {
+			m.popover = popPreset
+		}
+	case is(b, keys.Toggle):
+		cmd := toggleCommand(m.st.focus, m.snap().Mode)
+		return m.command(cmd, map[route.Op]string{route.OpPause: "session paused", route.OpResume: "session resumed"}[cmd.Op])
+	case is(b, keys.Home):
+		cmd := m.homeToggle()
+		return m.homeCommand(cmd, map[route.Op]string{route.OpPause: "home paused", route.OpResume: "home resumed"}[cmd.Op])
+	}
+	return nil
+}
+
+func (m *model) pin(t config.Tier) tea.Cmd {
+	return m.command(route.Command{Op: route.OpPin, Session: m.st.focus, Tier: t}, "pinned "+string(t)+" for the next turn")
+}
+
+func (m *model) unpin() tea.Cmd {
+	return m.command(route.Command{Op: route.OpUnpin, Session: m.st.focus}, "pin cleared")
+}
+
+func (m *model) setPreset(p config.Preset) tea.Cmd {
+	return m.homeCommand(route.Command{Op: route.OpPreset, Preset: p}, "preset "+string(p)+" sent to the home")
+}
+
+// show opens view t. Going on into Sessions lands on the list, going back
+// on the detail, which is the last stop of the tab ring when it is side by side.
+func (m *model) show(t Tab, dir int) {
+	m.tab, m.zoom, m.pane = t, false, paneList
+	if dir < 0 && t == TabSessions {
+		m.pane = paneDetail
+	}
+}
+
+// cycle moves d stops along the ring of panes and views: side by side, the
+// Sessions view has two stops, the list and the detail.
+func (m *model) cycle(d int) {
+	if v := m.view(); v.wide() && m.tab == TabSessions {
+		if d > 0 && m.pane == paneList {
+			m.pane = paneDetail
+			return
+		}
+		if d < 0 && m.pane == paneDetail {
+			m.pane = paneList
+			return
 		}
 	}
-	return slices.Index(tabs, TabNow)
+	i := slices.Index(Tabs, m.tab)
+	m.show(Tabs[(i+d+len(Tabs))%len(Tabs)], d)
 }
 
 // listed returns the index of session id in the sessions list.
@@ -240,28 +340,26 @@ func (m *model) step(d int) tea.Cmd {
 	return m.focusOn(all[((i+d)%len(all)+len(all))%len(all)].ID)
 }
 
-// moveCursor moves the Sessions tab selection d rows, stopping at the ends.
-func (m *model) moveCursor(d int) {
+// selectStep moves the selection d rows, stopping at the ends. The selected
+// session is the focused one: the detail shows it.
+func (m *model) selectStep(d int) tea.Cmd {
 	all := m.st.all()
 	if len(all) == 0 {
-		return
+		return nil
 	}
-	i, ok := m.listed(m.cursor)
-	if !ok {
-		i, _ = m.listed(m.st.focus)
-	}
-	m.cursor = all[min(max(i+d, 0), len(all)-1)].ID
+	i, _ := m.listed(m.st.focus)
+	return m.focusOn(all[min(max(i+d, 0), len(all)-1)].ID)
 }
 
 // focusOn focuses session id. The panel shows it at once; the fleet
 // resubscribes in the background and confirms with its next state.
 func (m *model) focusOn(id string) tea.Cmd {
-	if id == m.st.focus {
+	if id == m.st.focus || !m.f.pick(id) {
 		return nil
 	}
-	m.st.focus, m.st.snap, m.cursor = id, nil, id
+	m.st.focus, m.st.snap = id, nil
 	f := m.f
-	return func() tea.Msg { f.focusOn(id); return nil }
+	return func() tea.Msg { f.sync(); return nil }
 }
 
 // snap is the focused session's snapshot, empty until one arrives.
@@ -272,25 +370,26 @@ func (m *model) snap() route.Snapshot {
 	return *m.st.snap
 }
 
-// command sends a command for the focused session.
-func (m *model) command(cmd route.Command) tea.Cmd {
+// command sends a command for the focused session; done is the toast the
+// ack earns.
+func (m *model) command(cmd route.Command, done string) tea.Cmd {
 	if m.st.focus == "" || m.st.disconnected {
 		m.notice = errNotConnected.Error()
 		return nil
 	}
 	f := m.f
-	return func() tea.Msg { return sentMsg{f.send(cmd)} }
+	return func() tea.Msg { return sentMsg{err: f.send(cmd), done: done} }
 }
 
 // homeCommand sends cmd to every endpoint of the focused session's home.
-func (m *model) homeCommand(cmd route.Command) tea.Cmd {
+func (m *model) homeCommand(cmd route.Command, done string) tea.Cmd {
 	s, ok := m.st.focused()
 	if !ok {
 		m.notice = errNotConnected.Error()
 		return nil
 	}
 	f, h := m.f, s.Home
-	return func() tea.Msg { return sentMsg{f.sendHome(h, cmd)} }
+	return func() tea.Msg { return sentMsg{err: f.sendHome(h, cmd), done: done} }
 }
 
 // homeToggle pauses the focused home unless every session of it is already
@@ -317,19 +416,6 @@ func (s fleetState) homeResumes() bool {
 	return true
 }
 
-// pinCycle walks session's pin through none, high, medium, low, micro, none.
-func pinCycle(session string, cur *config.Tier) route.Command {
-	if cur == nil {
-		return route.Command{Op: route.OpPin, Session: session, Tier: tierOrder[0]}
-	}
-	for i, t := range tierOrder {
-		if t == *cur && i+1 < len(tierOrder) {
-			return route.Command{Op: route.OpPin, Session: session, Tier: tierOrder[i+1]}
-		}
-	}
-	return route.Command{Op: route.OpUnpin, Session: session}
-}
-
 // toggleCommand pauses session, or resumes it when paused or manual.
 func toggleCommand(session string, mode route.Mode) route.Command {
 	if mode == route.ModeOn || mode == "" {
@@ -338,17 +424,9 @@ func toggleCommand(session string, mode route.Mode) route.Command {
 	return route.Command{Op: route.OpResume, Session: session}
 }
 
-func nextPreset(cur config.Preset) config.Preset {
-	for i, p := range Presets {
-		if p == cur {
-			return Presets[(i+1)%len(Presets)]
-		}
-	}
-	return Presets[0]
-}
-
 func (m *model) View() tea.View {
-	v := tea.NewView(render(m.view()))
+	out, _ := layout(m.view())
+	v := tea.NewView(out)
 	v.AltScreen = true
 	if m.mouse {
 		v.MouseMode = tea.MouseModeCellMotion
@@ -360,6 +438,8 @@ func (m *model) View() tea.View {
 func (m *model) view() view {
 	return view{
 		snap: m.snap(), tab: m.tab, width: m.width, height: m.height, disconnected: m.st.disconnected,
-		notice: m.notice, styled: true, fleet: &m.st, locked: m.f.locked != "", cursor: m.cursor,
+		notice: m.notice, styled: true, light: m.light, fleet: &m.st, locked: m.f.locked != "",
+		loading: m.st.snap == nil && m.st.focus != "" && !m.st.disconnected,
+		zoom:    m.zoom, pane: m.pane, help: m.help, popover: m.popover, toast: m.toast,
 	}
 }

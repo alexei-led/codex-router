@@ -15,54 +15,45 @@ import (
 )
 
 const (
-	// sessionsWide is the width from which the Sessions tab shows the
-	// REPLIES and LAST SWITCH columns.
-	sessionsWide  = 100
 	gap           = "  "
-	stateWidth    = 14 // "✕ disconnected"
-	routeWidth    = 20
-	switchWidth   = 17 // "18:41 medium→high"
-	repliesWidth  = 4  // " 148"
-	minSessionCol = 20
-	maxSessionCol = 40
+	sparkCells    = 10
+	switchWidth   = 7 // "18:42 ↑"
+	minSessionCol = 16
+	maxSessionCol = 32
+	// listShare is the list's share of a side-by-side panel, in percent.
+	listShare = 45
+	// minListRows is the fewest list lines worth drawing above the detail.
+	minListRows = 4
+	waitingText = "○ waiting for the first prompt"
+	noSession   = "no Codex session yet · run codex-router in a project to start one"
 )
 
-// homeColors color each home's dot, by the home's place in the list.
-var homeColors = []string{colorAccent, "#c792ea", colorOK, "#d7af5f", "#e0708a"}
+// homeRoles color each home's dot, by the home's place in the list.
+var homeRoles = []role{roleAccent, roleInfo, roleOK, roleMedium, roleHigh}
 
-var attentionMarks = map[route.Attention]string{
-	route.AttentionManual:     "◐",
-	route.AttentionPaused:     "‖",
-	route.AttentionEscalation: "↑",
-	route.AttentionUnknown:    "?",
-	route.AttentionStateLost:  "!",
-}
-
-// attentionMark is the top bar mark for a; an attention this panel does not
-// know shows as unknown.
-func attentionMark(a route.Attention) string {
-	if a == "" {
-		return ""
-	}
-	if m, ok := attentionMarks[a]; ok {
-		return m
-	}
-	return "?"
+// spark draws a tier in the LAST TURNS column.
+var spark = map[config.Tier]string{
+	config.TierMicro: "▁", config.TierLow: "▃", config.TierMedium: "▅", config.TierHigh: "▇",
 }
 
 // FleetView is what RenderFleetView draws for the docs images. Each session
 // is on its own endpoint, as stage 1 launchers run them, unless its home is
 // in Brains: then one brain serves the home, and the value is how long it
-// has run.
+// has run. Waiting lists, by home id, the labels of routers whose Codex has
+// not sent a prompt yet.
 type FleetView struct {
 	Homes    []home.Home
 	Sessions []route.SessionInfo
 	Brains   map[string]time.Duration
+	Waiting  map[string][]string
 	Focus    string
 	Snap     route.Snapshot // the focused session's snapshot
 	Tab      Tab
 	Width    int
-	Locked   bool // a panel run with --session: no top bar, no Sessions tab
+	Height   int
+	Help     bool
+	Popover  bool // the pin popover is open
+	Locked   bool // a panel run with --session: no list
 }
 
 // RenderFleetView draws v with ANSI colors. Output depends only on v.
@@ -85,11 +76,24 @@ func RenderFleetView(v FleetView) string {
 			}
 			g.sessions = append(g.sessions, fleetSession{SessionInfo: x, endpoint: ep})
 		}
+		for _, l := range v.Waiting[h.ID] {
+			g.endpoints = append(g.endpoints, fleetEndpointInfo{id: "waiting-" + l, kind: registry.KindSession, label: l, idle: true})
+		}
 		st.homes = append(st.homes, g)
+	}
+	pop := popNone
+	if v.Popover {
+		pop = popPin
+	}
+	if v.Tab == "" {
+		v.Tab = TabSessions
 	}
 	var b strings.Builder
 	w := colorprofile.Writer{Forward: &b, Profile: colorprofile.ANSI256}
-	_, _ = w.WriteString(render(view{snap: v.Snap, tab: v.Tab, width: v.Width, styled: true, fleet: &st, locked: v.Locked}))
+	_, _ = w.WriteString(render(view{
+		snap: v.Snap, tab: v.Tab, width: v.Width, height: v.Height, styled: true, fleet: &st, locked: v.Locked,
+		help: v.Help, popover: pop,
+	}))
 	return b.String()
 }
 
@@ -102,13 +106,13 @@ func (s fleetState) all() []fleetSession {
 	return out
 }
 
-func (s fleetState) homeColor(id string) string {
+func (s fleetState) homeRole(id string) role {
 	for i, h := range s.homes {
 		if h.home.ID == id {
-			return homeColors[i%len(homeColors)]
+			return homeRoles[i%len(homeRoles)]
 		}
 	}
-	return colorDim
+	return roleMuted
 }
 
 func runes(s string) int { return utf8.RuneCountInString(s) }
@@ -137,133 +141,194 @@ func plural(n int, one, many string) string {
 	return fmt.Sprintf("%d %s", n, many)
 }
 
-// topBar is `◂ <focused> <others…> ▸ i/n`: the focus first, then the
-// sessions after it in list order, cut with … where the width ends.
-func (c *canvas) topBar(st fleetState) {
-	all := st.all()
-	if len(all) == 0 {
-		c.add(dim("◂ no sessions ▸"))
-		return
+// sessions is the Sessions view: the list and the selected session's detail,
+// stacked, side by side, or the detail alone.
+func (c *canvas) sessions(v view, reserve int) {
+	switch {
+	case v.wide():
+		c.sideBySide(v, reserve)
+	case v.listed() && v.fleet.focus == "":
+		c.list(v, 0)
+	case v.listed():
+		d := c.child(c.width)
+		d.detail(v)
+		room := 0
+		if v.height > 0 {
+			room = max(v.height-len(c.out)-len(d.out)-reserve-1, minListRows)
+		}
+		c.list(v, room)
+		c.blank()
+		c.stack(d)
+	case v.fleet != nil && v.fleet.focus == "":
+		c.add(dim(noSession))
+	default:
+		c.detail(v)
 	}
-	at := 0
-	for i, s := range all {
-		if s.ID == st.focus {
-			at = i
-		}
-	}
-	right := fmt.Sprintf(" ▸ %d/%d", at+1, len(all))
-	room := c.width - runes("◂ ") - runes(right)
-	segs := []seg{dim("◂ ")}
-	for k := range all {
-		s := all[(at+k)%len(all)]
-		label, mark := s.Label, attentionMark(s.Attention)
-		if mark != "" {
-			mark = " " + mark
-		}
-		sep := ""
-		if k > 0 {
-			sep = gap
-		}
-		need := runes(sep) + 2 + runes(label) + runes(mark)
-		if need > room {
-			if k > 0 {
-				if room >= 2 {
-					segs = append(segs, dim(" …"))
-					room -= 2
-				}
-				break
-			}
-			label = clip(label, room-2-runes(mark))
-			need = 2 + runes(label) + runes(mark)
-		}
-		room -= need
-		name := plain(label)
-		switch {
-		case k == 0:
-			name = seg{text: label, color: colorAccent, bold: true}
-		case s.disconnected:
-			name = dim(label)
-		}
-		act := action{kind: actFocus, session: s.ID}
-		dot := col(st.homeColor(s.Home), "● ")
-		dot.act, name.act = act, act
-		segs = append(segs, plain(sep), dot, name, col(colorWarn, mark))
-	}
-	segs = append(segs, plain(strings.Repeat(" ", max(room, 0))), dim(right))
-	c.add(segs...)
 }
 
-// lockedHeader is the one line a panel locked to a session shows instead of
-// the top bar.
-func (c *canvas) lockedHeader(st fleetState) {
-	s, ok := st.focused()
-	if !ok {
-		c.add(dim("● "), plain(st.focus))
-		return
+// stack appends d's lines below c's, keeping its zones and anchors.
+func (c *canvas) stack(d *canvas) {
+	for _, z := range d.zones {
+		z.row += len(c.out)
+		c.zones = append(c.zones, z)
 	}
-	c.add(col(st.homeColor(s.Home), "● "), bold(s.Label), dim(gap+s.ID))
+	for k, a := range d.anchors {
+		a.row += len(c.out)
+		c.anchors[k] = a
+	}
+	c.out = append(c.out, d.out...)
+	c.widths = append(c.widths, d.widths...)
 }
 
-// sessionLine is one line of the Sessions tab body; session is set on
-// session rows.
-type sessionLine struct {
+// sideBySide draws the list on the left and the detail on the right, with an
+// accent gutter on the focused pane.
+func (c *canvas) sideBySide(v view, reserve int) {
+	lw := c.width * listShare / 100
+	rw := c.width - lw - 3
+	l, r := c.child(lw), c.child(rw)
+	room := 0
+	if v.height > 0 {
+		room = max(v.height-len(c.out)-reserve, minListRows)
+	}
+	l.list(v, room)
+	if v.fleet.focus == "" {
+		r.add(dim(noSession))
+	} else {
+		r.detail(v)
+	}
+	mark := func(p pane) string {
+		if v.pane == p {
+			return c.paint(seg{text: "▎", role: roleAccent})
+		}
+		return " "
+	}
+	for i := range max(len(l.out), len(r.out)) {
+		left, lwid := "", 0
+		if i < len(l.out) {
+			left, lwid = l.out[i], l.widths[i]
+		}
+		right, rwid := "", 0
+		if i < len(r.out) {
+			right, rwid = r.out[i], r.widths[i]
+		}
+		c.out = append(c.out, mark(paneList)+left+strings.Repeat(" ", lw-lwid)+" "+mark(paneDetail)+right)
+		c.widths = append(c.widths, lw+3+rwid)
+	}
+	base := len(c.out) - max(len(l.out), len(r.out))
+	for _, z := range l.zones {
+		z.row, z.x0, z.x1 = z.row+base, z.x0+1, z.x1+1
+		c.zones = append(c.zones, z)
+	}
+	for _, z := range r.zones {
+		z.row, z.x0, z.x1 = z.row+base, z.x0+lw+3, z.x1+lw+3
+		c.zones = append(c.zones, z)
+	}
+	for k, a := range r.anchors {
+		a.row, a.x = a.row+base, a.x+lw+3
+		c.anchors[k] = a
+	}
+}
+
+// listLine is one line of the list body; session is set on session rows.
+type listLine struct {
 	segs    []seg
 	session string
 }
 
-// sessionCols are the Sessions tab column widths; strip is 0 when the
-// REPLIES and LAST SWITCH columns are dropped.
-type sessionCols struct {
-	session, strip int
+// listCols are the list's column widths; model, turns and sw are dropped,
+// in that order of importance, when the width runs out.
+type listCols struct {
+	session, state, model int
+	turns, sw             bool
 }
 
-func columns(width int) sessionCols {
-	fixed := runes("▸ ") + stateWidth + routeWidth + 2*runes(gap)
-	if width < sessionsWide {
-		return sessionCols{session: max(width-fixed, 10)}
+// listColumns sizes the columns to the sessions listed and the width.
+func listColumns(width int, st fleetState) listCols {
+	cols := listCols{session: len("SESSION"), state: len("STATE"), model: len("MODEL")}
+	for _, h := range st.homes {
+		for _, e := range h.endpoints {
+			if e.idle {
+				cols.session = max(cols.session, runes(waitingName(e, h)))
+			}
+		}
 	}
-	fixed += switchWidth + repliesWidth + 2*runes(gap)
-	sess := min(max(width-fixed-route.SessionStrip, minSessionCol), maxSessionCol)
-	return sessionCols{session: sess, strip: min(route.SessionStrip, max(width-fixed-sess, 1))}
+	for _, s := range st.all() {
+		text, _ := stateOf(s)
+		cols.session = max(cols.session, runes(rowLabel(s)))
+		cols.state = max(cols.state, runes(text))
+		cols.model = max(cols.model, runes(routeText(s.Route)))
+	}
+	cols.session = min(cols.session, maxSessionCol)
+	used := runes("▸ ") + minSessionCol + runes(gap) + cols.state
+	fits := func(w int) bool {
+		if used+runes(gap)+w > width {
+			return false
+		}
+		used += runes(gap) + w
+		return true
+	}
+	switch {
+	case !fits(cols.model):
+		cols.model = 0
+	case !fits(sparkCells):
+	case !fits(switchWidth):
+		cols.turns = true
+	default:
+		cols.turns, cols.sw = true, true
+	}
+	cols.session = min(cols.session, max(minSessionCol+width-used, 6))
+	return cols
 }
 
-// sessionsTab lists every session grouped by home. room is how many lines
-// fit; 0 means no limit. Past it, the list scrolls to keep cursor in view.
-func (c *canvas) sessionsTab(st fleetState, cursor string, room int) {
-	all := st.all()
+// rowLabel is a session's label without its home, which the home line shows.
+func rowLabel(s fleetSession) string {
+	if i := strings.Index(s.Label, home.LabelSep); i >= 0 {
+		return s.Label[i+len(home.LabelSep):]
+	}
+	return s.Label
+}
+
+// list draws the sessions grouped by home. room is how many lines fit; 0
+// means no limit. Past it, the list scrolls to keep the selection in view.
+func (c *canvas) list(v view, room int) {
+	st := *v.fleet
 	if len(st.homes) == 0 {
-		c.add(dim("SESSIONS"), dim(" · none yet"))
-		c.add(dim("each codex-router run lists its Codex session here"))
+		c.add(dim(noSession))
 		return
 	}
-	if cursor == "" {
-		cursor = st.focus
+	cols := listColumns(c.width, st)
+	titles := []seg{plain("  "), dim(pad("SESSION", cols.session)), plain(gap), dim(pad("STATE", cols.state))}
+	if cols.model > 0 {
+		titles = append(titles, plain(gap), dim(pad("MODEL", cols.model)))
 	}
-	c.add(dim("SESSIONS"), dim(fmt.Sprintf(" · %s in %s", plural(len(all), "session", "sessions"), plural(len(st.homes), "home", "homes"))))
-	cols := columns(c.width)
-	titles := []seg{plain("  "), dim(pad("SESSION", cols.session)), plain(gap), dim(pad("STATE", stateWidth)), plain(gap)}
-	if cols.strip > 0 {
-		titles = append(titles, dim(pad("ROUTE", routeWidth)), plain(gap), dim(pad("REPLIES", cols.strip+repliesWidth)), plain(gap), dim("LAST SWITCH"))
-	} else {
-		titles = append(titles, dim("ROUTE"))
+	if cols.turns {
+		titles = append(titles, plain(gap), dim(pad("LAST TURNS", sparkCells)))
+	}
+	if cols.sw {
+		titles = append(titles, plain(gap), dim("SWITCH"))
 	}
 	c.add(titles...)
 	if room > 0 {
-		room = max(room-2, 1)
+		room = max(room-1, 1)
 	}
 
-	var lines []sessionLine
+	var lines []listLine
 	cur := 0
 	for i, h := range st.homes {
 		if i > 0 {
-			lines = append(lines, sessionLine{})
+			lines = append(lines, listLine{})
 		}
-		lines = append(lines, sessionLine{segs: homeHeader(st, h)})
+		lines = append(lines, listLine{segs: homeHeader(st, h)})
 		for _, s := range h.sessions {
-			if s.ID == cursor {
+			if s.ID == st.focus {
 				cur = len(lines)
 			}
-			lines = append(lines, sessionLine{segs: sessionRow(s, h, cols, s.ID == cursor, s.ID == st.focus), session: s.ID})
+			lines = append(lines, listLine{segs: c.fill(sessionRow(s, h, cols, s.ID == st.focus), s.ID == st.focus), session: s.ID})
+		}
+		for _, e := range h.endpoints {
+			if e.idle {
+				lines = append(lines, listLine{segs: waitingRow(e, h, cols)})
+			}
 		}
 	}
 	start, end := 0, len(lines)
@@ -286,7 +351,21 @@ func (c *canvas) sessionsTab(st fleetState, cursor string, room int) {
 	}
 }
 
-func countSessions(lines []sessionLine) int {
+// fill gives the selected row its background across the whole width.
+func (c *canvas) fill(segs []seg, selected bool) []seg {
+	if !selected {
+		return segs
+	}
+	for i := range segs {
+		segs[i].bg = roleSurface
+	}
+	if rest := c.width - segsWidth(segs); rest > 0 && c.styled {
+		segs = append(segs, seg{text: strings.Repeat(" ", rest), bg: roleSurface})
+	}
+	return segs
+}
+
+func countSessions(lines []listLine) int {
 	n := 0
 	for _, l := range lines {
 		if l.session != "" {
@@ -296,44 +375,26 @@ func countSessions(lines []sessionLine) int {
 	return n
 }
 
-// homeHeader is a home's line: its endpoints' state, its brain's state, and
-// the sums of its sessions' tallies. A lost brain is not counted as lost: it
-// has its own words.
+// homeHeader is a home's line: its dot and name, its brain's state, and how
+// many of its routers are lost. A lost brain is not counted as lost: it has
+// its own words.
 func homeHeader(st fleetState, h fleetHome) []seg {
-	segs := []seg{col(st.homeColor(h.home.ID), "● "), bold(h.home.Name), dim(" · " + plural(len(h.endpoints), "endpoint", "endpoints"))}
+	segs := []seg{col(st.homeRole(h.home.ID), "● "), bold(h.home.Name)}
 	lost := 0
 	for _, e := range h.endpoints {
 		switch {
 		case e.kind == registry.KindBrain && e.lost:
-			segs = append(segs, dim(" · "), col(colorWarn, "brain down: default model"))
+			segs = append(segs, dim(sep), col(roleWarn, "brain down: default model"))
 		case e.kind == registry.KindBrain && e.up > 0:
-			segs = append(segs, dim(" · "), col(colorOK, "brain up "+uptime(e.up)))
+			segs = append(segs, dim(sep), col(roleOK, "brain up "+uptime(e.up)))
 		case e.kind == registry.KindBrain:
-			segs = append(segs, dim(" · "), col(colorOK, "brain up"))
+			segs = append(segs, dim(sep), col(roleOK, "brain up"))
 		case e.lost:
 			lost++
 		}
 	}
 	if lost > 0 {
-		segs = append(segs, col(colorWarn, fmt.Sprintf(" · %d lost", lost)))
-	}
-	replies, switches := 0, 0
-	var saved float64
-	priced := false
-	for _, s := range h.sessions {
-		replies += s.Replies
-		switches += s.Switches
-		if s.SavedUSD != nil {
-			saved += *s.SavedUSD
-			priced = true
-		}
-	}
-	segs = append(segs, dim(" · "+plural(replies, "reply", "replies")+" · "+plural(switches, "switch", "switches")))
-	switch {
-	case priced && saved < 0:
-		segs = append(segs, dim(" · "), col(colorWarn, fmt.Sprintf("cost ≈ $%.2f", -saved)))
-	case priced:
-		segs = append(segs, dim(" · "), col(colorOK, fmt.Sprintf("saved ≈ $%.2f", saved)))
+		segs = append(segs, col(roleWarn, fmt.Sprintf(" · %d lost", lost)))
 	}
 	return segs
 }
@@ -351,59 +412,74 @@ func uptime(d time.Duration) string {
 	return fmt.Sprintf("%dd", int(d/(24*time.Hour)))
 }
 
-// sessionRow is one session's columns. The label drops its home prefix,
-// which the home line above already shows.
-func sessionRow(s fleetSession, h fleetHome, cols sessionCols, cursor, focus bool) []seg {
+// waitingRow is a router that has answered but has no session yet. A brain
+// has no working directory, so it shows as `brain`.
+func waitingRow(e fleetEndpointInfo, h fleetHome, cols listCols) []seg {
+	return []seg{plain("  "), plain(pad(waitingName(e, h), cols.session)), plain(gap), dim(waitingText)}
+}
+
+func waitingName(e fleetEndpointInfo, h fleetHome) string {
+	if name := strings.TrimPrefix(e.label, h.home.Name+home.LabelSep); name != "" {
+		return name
+	}
+	return e.kind
+}
+
+// sessionRow is one session's columns.
+func sessionRow(s fleetSession, h fleetHome, cols listCols, selected bool) []seg {
 	marker := plain("  ")
-	switch {
-	case cursor:
-		marker = col(colorAccent, "▸ ")
-	case focus:
-		marker = col(colorAccent, "● ")
+	if selected {
+		marker = seg{text: "▸ ", role: roleAccent, bold: true}
 	}
-	label := plain(pad(strings.TrimPrefix(s.Label, h.home.Name+" · "), cols.session))
-	if focus {
-		label.bold = true
+	name := plain(pad(rowLabel(s), cols.session))
+	name.bold = selected
+	text, r := stateOf(s)
+	segs := []seg{marker, name, plain(gap), col(r, pad(text, cols.state))}
+	if cols.model > 0 {
+		segs = append(segs, plain(gap), plain(pad(routeText(s.Route), cols.model)))
 	}
-	segs := []seg{marker, label, plain(gap), stateCell(s), plain(gap)}
-	if cols.strip == 0 {
-		return append(segs, plain(clip(routeText(s.Route), routeWidth)))
+	if cols.turns {
+		segs = append(segs, plain(gap))
+		tail := s.Strip[max(len(s.Strip)-sparkCells, 0):]
+		for _, t := range tail {
+			segs = append(segs, col(tierRole[t], spark[t]))
+		}
+		segs = append(segs, plain(strings.Repeat(" ", sparkCells-len(tail))))
 	}
-	segs = append(segs, plain(pad(routeText(s.Route), routeWidth)), plain(gap))
-	strip := s.Strip[max(len(s.Strip)-cols.strip, 0):]
-	for _, t := range strip {
-		segs = append(segs, col(tierColor[t], "█"))
-	}
-	segs = append(segs, plain(strings.Repeat(" ", cols.strip-len(strip))+fmt.Sprintf("%*d", repliesWidth, s.Replies)), plain(gap))
-	if sw := s.LastSwitch; sw != nil {
-		segs = append(segs, plain(sw.At.Format(timeLayout)+" "), col(tierColor[sw.From], string(sw.From)), plain("→"), col(tierColor[sw.To], string(sw.To)))
-	} else {
-		segs = append(segs, dim("-"))
+	if cols.sw {
+		segs = append(segs, plain(gap))
+		if sw := s.LastSwitch; sw != nil {
+			arrow := "↓"
+			if tierRank[sw.To] > tierRank[sw.From] {
+				arrow = "↑"
+			}
+			segs = append(segs, plain(sw.At.Format(timeLayout)+" "), col(tierRole[sw.To], arrow))
+		}
 	}
 	return segs
 }
 
-// stateCell is the STATE column: a lost connection first, then the
-// session's attention flag, else its mode.
-func stateCell(s fleetSession) seg {
-	text, color := "◉ "+string(s.Mode), colorOK
+// stateOf is the STATE column: a lost connection first, then the session's
+// attention flag, else its mode. Every state has a glyph.
+func stateOf(s fleetSession) (string, role) {
 	switch {
 	case s.disconnected:
-		text, color = "✕ disconnected", colorWarn
-	case s.Attention == route.AttentionPaused:
-		text, color = "‖ paused", colorDim
+		return "✕ disconnected", roleWarn
+	case s.Attention == route.AttentionPaused, s.Attention == "" && s.Mode == route.ModePaused:
+		return "‖ paused", roleMuted
 	case s.Attention == route.AttentionManual:
-		text, color = "◐ manual", colorWarn
+		return "◐ manual", roleWarn
 	case s.Attention == route.AttentionEscalation:
-		text, color = "↑ escalation", tierColor[config.TierHigh]
+		if s.Tier == "" {
+			return "↑ escalated", roleHigh
+		}
+		return "↑ " + string(s.Tier), tierRole[s.Tier]
 	case s.Attention == route.AttentionStateLost:
-		text, color = "! state lost", colorWarn
+		return "! state lost", roleWarn
 	case s.Attention == route.AttentionUnknown:
-		text, color = "? unknown", colorDim
+		return "? unknown", roleMuted
 	case s.Attention != "":
-		text, color = "? "+string(s.Attention), colorWarn
-	case s.Mode == "":
-		text = "◉ " + string(route.ModeOn)
+		return "? " + string(s.Attention), roleWarn
 	}
-	return col(color, pad(text, stateWidth))
+	return "● on", roleOK
 }
