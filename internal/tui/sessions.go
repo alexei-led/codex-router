@@ -89,7 +89,7 @@ func RenderFleetView(v FleetView) string {
 	}
 	var b strings.Builder
 	w := colorprofile.Writer{Forward: &b, Profile: colorprofile.ANSI256}
-	w.WriteString(render(view{snap: v.Snap, tab: v.Tab, width: v.Width, styled: true, fleet: &st, locked: v.Locked}))
+	_, _ = w.WriteString(render(view{snap: v.Snap, tab: v.Tab, width: v.Width, styled: true, fleet: &st, locked: v.Locked}))
 	return b.String()
 }
 
