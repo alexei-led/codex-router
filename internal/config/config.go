@@ -100,10 +100,11 @@ const ClassifierOff = "off"
 type Classifiers map[string]Classifier
 
 // Classifier describes one classifier endpoint. API names the wire adapter
-// ("system-one" or "ollama"). KeyEnv names the environment variable holding
-// the bearer key; empty means no key. EnvFile is a dotenv file (absolute or
-// ~/ path) read for KeyEnv when the process env does not set it: service
-// units do not see the shell's env.
+// ("system-one", "openai-decisions" or "ollama"). KeyEnv names the
+// environment variable holding the bearer key; empty means no key. Endpoint
+// may hold {NAME} placeholders, filled from the variable NAME. EnvFile is a
+// dotenv file (absolute or ~/ path) read for KeyEnv and each placeholder when
+// the process env does not set it: service units do not see the shell's env.
 type Classifier struct {
 	Label     string `json:"label"`
 	API       string `json:"api"`
@@ -155,6 +156,7 @@ const (
 
 // Classifier wire adapters.
 const (
-	APISystemOne = "system-one"
-	APIOllama    = "ollama"
+	APISystemOne       = "system-one"
+	APIOpenAIDecisions = "openai-decisions"
+	APIOllama          = "ollama"
 )

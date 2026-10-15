@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -187,6 +188,51 @@ func TestEffectivePresetValues(t *testing.T) {
 	}
 }
 
+func setEndpoint(c *Config, name, endpoint string) {
+	cl := c.Classifiers[name]
+	cl.Endpoint = endpoint
+	c.Classifiers[name] = cl
+}
+
+func TestDefaultClassifiers(t *testing.T) {
+	const cloudflare = "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/"
+	want := map[string]Classifier{
+		"jev":        {Label: "Jev", API: APISystemOne, Endpoint: "https://api.typesafe.ai/v1/systemone", Model: "jev-1.13.0", KeyEnv: "TYPESAFE_API_KEY", TimeoutMs: 1500},
+		"clef":       {Label: "Clef", API: APISystemOne, Endpoint: cloudflare + "clef", Model: "clef", KeyEnv: "CLOUDFLARE_API_TOKEN", TimeoutMs: 3000},
+		"clef-flash": {Label: "Clef Flash", API: APISystemOne, Endpoint: cloudflare + "clef-flash", Model: "clef-flash", KeyEnv: "CLOUDFLARE_API_TOKEN", TimeoutMs: 3000},
+		"clef-omni":  {Label: "Clef Omni", API: APISystemOne, Endpoint: cloudflare + "clef-omni", Model: "clef-omni", KeyEnv: "CLOUDFLARE_API_TOKEN", TimeoutMs: 3000},
+		"openai":     {Label: "OpenAI", API: APIOpenAIDecisions, Endpoint: "https://api.openai.com/v1/decisions", Model: "gpt-6-luna", KeyEnv: "OPENAI_API_KEY", TimeoutMs: 3000},
+		"ollama":     {Label: "Ollama", API: APIOllama, Endpoint: "http://127.0.0.1:11434/api/chat", Model: "qwen3.5:9b", TimeoutMs: 5000},
+	}
+	if got := Default(); got.Classifier != "jev" || !reflect.DeepEqual(map[string]Classifier(got.Classifiers), want) {
+		t.Errorf("classifier = %q, classifiers = %+v", got.Classifier, got.Classifiers)
+	}
+}
+
+func TestEndpointPlaceholders(t *testing.T) {
+	cases := []struct {
+		endpoint string
+		want     []string
+		wantErr  bool
+	}{
+		{"https://x/y", nil, false},
+		{"https://x/{ACCOUNT_ID}/run", []string{"ACCOUNT_ID"}, false},
+		{"https://{HOST}/{A1}/{HOST}", []string{"HOST", "A1"}, false},
+		{"https://x/{acct}", nil, true},
+		{"https://x/{_A}", nil, true},
+		{"https://x/{A B}", nil, true},
+		{"https://x/{A", nil, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.endpoint, func(t *testing.T) {
+			got, err := EndpointPlaceholders(tc.endpoint)
+			if (err != nil) != tc.wantErr || !slices.Equal(got, tc.want) {
+				t.Errorf("EndpointPlaceholders = %v, %v; want %v, err %v", got, err, tc.want, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateRejects(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -208,9 +254,15 @@ func TestValidateRejects(t *testing.T) {
 		{"classifier not listed", func(c *Config) { c.Classifier = "ghost" }, "classifier"},
 		{"bad classifier api", func(c *Config) {
 			cl := c.Classifiers["jev"]
-			cl.API = "openai-decisions"
+			cl.API = "bogus"
 			c.Classifiers["jev"] = cl
 		}, "classifiers.jev.api"},
+		{"lowercase placeholder", func(c *Config) { setEndpoint(c, "clef", "https://x/{account}/run") }, "classifiers.clef.endpoint"},
+		{"empty placeholder", func(c *Config) { setEndpoint(c, "clef", "https://x/{}/run") }, "classifiers.clef.endpoint"},
+		{"digit-first placeholder", func(c *Config) { setEndpoint(c, "clef", "https://x/{1A}/run") }, "classifiers.clef.endpoint"},
+		{"nested placeholder", func(c *Config) { setEndpoint(c, "clef", "https://x/{{A}}/run") }, "classifiers.clef.endpoint"},
+		{"unclosed placeholder", func(c *Config) { setEndpoint(c, "clef", "https://x/{A/run") }, "classifiers.clef.endpoint"},
+		{"stray closing brace", func(c *Config) { setEndpoint(c, "clef", "https://x/A}/run") }, "classifiers.clef.endpoint"},
 		{"zero classifier timeout", func(c *Config) {
 			cl := c.Classifiers["ollama"]
 			cl.TimeoutMs = 0

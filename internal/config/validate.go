@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -112,11 +113,14 @@ func (c Config) validateClassifiers() error {
 	for _, name := range sortedKeys(c.Classifiers) {
 		cl := c.Classifiers[name]
 		path := "classifiers." + name
-		if cl.API != APISystemOne && cl.API != APIOllama {
+		if !slices.Contains([]string{APISystemOne, APIOpenAIDecisions, APIOllama}, cl.API) {
 			return fmt.Errorf("%s.api: unknown api %q", path, cl.API)
 		}
 		if cl.Endpoint == "" {
 			return fmt.Errorf("%s.endpoint: empty", path)
+		}
+		if _, err := EndpointPlaceholders(cl.Endpoint); err != nil {
+			return fmt.Errorf("%s.endpoint: %w", path, err)
 		}
 		if cl.Model == "" {
 			return fmt.Errorf("%s.model: empty", path)
@@ -129,6 +133,31 @@ func (c Config) validateClassifiers() error {
 		}
 	}
 	return nil
+}
+
+var (
+	braced          = regexp.MustCompile(`\{[^{}]*\}`)
+	placeholderName = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
+)
+
+// EndpointPlaceholders returns the NAMEs of the {NAME} placeholders in
+// endpoint, in order of first use. A brace that is not part of a well-formed
+// placeholder is an error.
+func EndpointPlaceholders(endpoint string) ([]string, error) {
+	var names []string
+	for _, m := range braced.FindAllString(endpoint, -1) {
+		name := m[1 : len(m)-1]
+		if !placeholderName.MatchString(name) {
+			return nil, fmt.Errorf("placeholder %s: name must match %s", m, placeholderName)
+		}
+		if !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+	if strings.ContainsAny(braced.ReplaceAllString(endpoint, ""), "{}") {
+		return nil, errors.New("unbalanced brace")
+	}
+	return names, nil
 }
 
 func (p Policy) validate() error {

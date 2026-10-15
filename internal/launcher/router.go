@@ -6,9 +6,11 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -67,9 +69,10 @@ func launcherCwd() func(string) string {
 }
 
 // newClassifier returns the configured classifier, or nil and the reason it
-// is off. The key comes from the env var KeyEnv names, else from the
-// classifier's envFile. A named key found in neither turns it off: the
-// router still runs and pins still work. The reason never holds the key.
+// is off. The key and each {NAME} placeholder of the endpoint come from the
+// env var of that name, else from the classifier's envFile. A value found in
+// neither turns it off: the router still runs and pins still work. The
+// reason never holds a value.
 func newClassifier(cfg config.Config, getenv func(string) string) (classifier.Asker, string) {
 	if cfg.Classifier == config.ClassifierOff {
 		return nil, "classifier is off in the config"
@@ -80,21 +83,28 @@ func newClassifier(cfg config.Config, getenv func(string) string) (classifier.As
 	}
 	var key string
 	if cc.KeyEnv != "" {
-		key = getenv(cc.KeyEnv)
-		if key == "" && cc.EnvFile == "" {
-			return nil, cc.KeyEnv + " is not set"
+		var why string
+		if key, why = lookup(cc, cc.KeyEnv, getenv); why != "" {
+			return nil, why
 		}
-		if key == "" {
-			var err error
-			if key, err = readKeyFile(cc, getenv); err != nil {
-				return nil, cc.KeyEnv + " is not set; envFile " + err.Error()
-			}
+	}
+	names, err := config.EndpointPlaceholders(cc.Endpoint)
+	if err != nil {
+		return nil, "endpoint " + err.Error()
+	}
+	for _, name := range names {
+		value, why := lookup(cc, name, getenv)
+		if why != "" {
+			return nil, why
 		}
+		cc.Endpoint = strings.ReplaceAll(cc.Endpoint, "{"+name+"}", url.PathEscape(value))
 	}
 	var a classifier.Adapter
 	switch cc.API {
 	case config.APISystemOne:
 		a = classifier.SystemOne()
+	case config.APIOpenAIDecisions:
+		a = classifier.OpenAIDecisions()
 	case config.APIOllama:
 		a = classifier.Ollama()
 	default:
@@ -103,8 +113,24 @@ func newClassifier(cfg config.Config, getenv func(string) string) (classifier.As
 	return classifier.New(cc, key, a, &http.Client{}, time.Now), ""
 }
 
-// readKeyFile reads cc.KeyEnv from cc.EnvFile, with "~/" taken from HOME.
-func readKeyFile(cc config.Classifier, getenv func(string) string) (string, error) {
+// lookup returns the value of name from the env, else from cc.EnvFile. The
+// reason is empty on success and never holds the value.
+func lookup(cc config.Classifier, name string, getenv func(string) string) (value, why string) {
+	if value = getenv(name); value != "" {
+		return value, ""
+	}
+	if cc.EnvFile == "" {
+		return "", name + " is not set"
+	}
+	value, err := readEnvFile(cc.EnvFile, name, getenv)
+	if err != nil {
+		return "", name + " is not set; envFile " + err.Error()
+	}
+	return value, ""
+}
+
+// readEnvFile reads name from the dotenv file at path, with "~/" taken from HOME.
+func readEnvFile(path, name string, getenv func(string) string) (string, error) {
 	home := getenv("HOME")
 	if home == "" {
 		var err error
@@ -112,7 +138,7 @@ func readKeyFile(cc config.Classifier, getenv func(string) string) (string, erro
 			return "", err
 		}
 	}
-	return config.ReadEnvKey(config.ExpandHome(cc.EnvFile, home), cc.KeyEnv)
+	return config.ReadEnvKey(config.ExpandHome(path, home), name)
 }
 
 type serveFunc func(ctx context.Context) error

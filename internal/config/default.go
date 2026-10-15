@@ -7,10 +7,13 @@ const (
 	decideMargin = 200 * time.Millisecond
 	// fallbackClassifierTimeout applies when the selected classifier has none.
 	fallbackClassifierTimeout = 1500 * time.Millisecond
+	// cloudflareEndpoint is the Workers AI run URL of the Clef models; the
+	// account comes from CLOUDFLARE_ACCOUNT_ID.
+	cloudflareEndpoint = "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/"
 )
 
 // Default returns the built-in configuration: the four gpt-6 models that share
-// one compatibility group (plan D2), classifier Jev with a local Ollama option.
+// one compatibility group (plan D2), classifier Jev with Clef, OpenAI and a local Ollama option.
 func Default() Config {
 	return Config{
 		Baseline: TierMedium,
@@ -51,6 +54,38 @@ func Default() Config {
 				Model:     "jev-1.13.0",
 				KeyEnv:    "TYPESAFE_API_KEY",
 				TimeoutMs: 1500,
+			},
+			"clef": {
+				Label:     "Clef",
+				API:       APISystemOne,
+				Endpoint:  cloudflareEndpoint + "clef",
+				Model:     "clef",
+				KeyEnv:    "CLOUDFLARE_API_TOKEN",
+				TimeoutMs: 3000,
+			},
+			"clef-flash": {
+				Label:     "Clef Flash",
+				API:       APISystemOne,
+				Endpoint:  cloudflareEndpoint + "clef-flash",
+				Model:     "clef-flash",
+				KeyEnv:    "CLOUDFLARE_API_TOKEN",
+				TimeoutMs: 3000,
+			},
+			"clef-omni": {
+				Label:     "Clef Omni",
+				API:       APISystemOne,
+				Endpoint:  cloudflareEndpoint + "clef-omni",
+				Model:     "clef-omni",
+				KeyEnv:    "CLOUDFLARE_API_TOKEN",
+				TimeoutMs: 3000,
+			},
+			"openai": {
+				Label:     "OpenAI",
+				API:       APIOpenAIDecisions,
+				Endpoint:  "https://api.openai.com/v1/decisions",
+				Model:     "gpt-6-luna",
+				KeyEnv:    "OPENAI_API_KEY",
+				TimeoutMs: 3000,
 			},
 			"ollama": {
 				Label:     "Ollama",
