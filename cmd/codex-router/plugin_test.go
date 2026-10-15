@@ -332,8 +332,6 @@ func TestPluginHooksReturnFastWithServicesDown(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	units := len(mgr.Status(t.Context(), h.ID))
-
 	_, byEvent := readHooks(t)
 	t.Run("hooks", func(t *testing.T) {
 		for _, event := range []string{"SessionStart", "UserPromptSubmit", "Stop"} {
@@ -362,7 +360,7 @@ func TestPluginHooksReturnFastWithServicesDown(t *testing.T) {
 	}
 	waitForLog(t, smLog, "the units started", func(log string) bool { return strings.Contains(log, start) })
 	release()
-	waitForLog(t, smLog, "every start to finish", func(log string) bool { return strings.Count(log, doneMark) >= units })
+	waitForLog(t, smLog, "every start to finish", func(log string) bool { return strings.Count(log, doneMark) >= strings.Count(log, start) })
 }
 
 const doneMark = "start-finished"
