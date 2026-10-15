@@ -36,6 +36,7 @@ const (
 	envExit          = "CODEX_ROUTER_FAKE_EXIT"
 	envResumeFail    = "CODEX_ROUTER_FAKE_RESUME_FAIL"
 	envAppServerDies = "CODEX_ROUTER_FAKE_APPSERVER_DIES"
+	envAppServerHang = "CODEX_ROUTER_FAKE_APPSERVER_HANG"
 
 	fakeThread     = "thread-1"
 	fakeToken      = "Bearer SECRET-TOKEN-123"
@@ -119,6 +120,9 @@ func fakeAppServer(args []string) int {
 	})
 	if os.Getenv(envAppServerDies) != "" {
 		return exitFailed
+	}
+	if os.Getenv(envAppServerHang) != "" {
+		time.Sleep(time.Hour)
 	}
 	ln, err := net.Listen("unix", sock)
 	if err != nil {

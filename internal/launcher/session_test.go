@@ -199,23 +199,6 @@ func TestRouterDepsNeverLogsTheFileKey(t *testing.T) {
 	}
 }
 
-func TestRunLogsClassifierDisabledAndStillPins(t *testing.T) {
-	up := newUpstream(t)
-	h := newHarness(t)
-	h.opts.Upstream = up.URL + "/backend-api/codex"
-
-	if code := h.run(t); code != 7 {
-		t.Fatalf("exit code = %d, want 7; stderr: %s", code, h.stderr.String())
-	}
-	if logs := h.logs.String(); !strings.Contains(logs, `"msg":"classifier-disabled"`) ||
-		!strings.Contains(logs, "CODEX_ROUTER_TEST_UNSET_KEY is not set") {
-		t.Errorf("log does not say the classifier is off: %s", logs)
-	}
-	if updates := h.recorded(t, "update"); len(updates) != 1 || !strings.Contains(string(updates[0]), `"model":"gpt-6-luna"`) {
-		t.Errorf("settings writes = %s, want the pinned route", updates)
-	}
-}
-
 func TestMakeRuntimeDirCreatesPrivateDirs(t *testing.T) {
 	base := filepath.Join(shortTempDir(t), "rt")
 	dir, id, err := makeRuntimeDir(base, nil)

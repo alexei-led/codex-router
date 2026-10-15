@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -264,8 +265,12 @@ func TestRunRoutesASessionAndReturnsCodexExitCode(t *testing.T) {
 			if len(h.execed) != 0 {
 				t.Errorf("fell back to plain codex: %v", h.execed)
 			}
-			if logs := h.logs.String(); strings.Contains(logs, "SECRET-TOKEN") || strings.Contains(logs, "fix the retry test") {
+			logs := h.logs.String()
+			if strings.Contains(logs, "SECRET-TOKEN") || strings.Contains(logs, "fix the retry test") {
 				t.Error("log carries a header value or request text")
+			}
+			if !strings.Contains(logs, `"msg":"classifier-disabled"`) || !strings.Contains(logs, "CODEX_ROUTER_TEST_UNSET_KEY is not set") {
+				t.Errorf("log does not say the classifier is off: %s", logs)
 			}
 		})
 	}
@@ -377,29 +382,93 @@ func TestRunFallsBackToPlainCodex(t *testing.T) {
 	}
 }
 
-func TestRunWithoutARegistryStillRoutes(t *testing.T) {
-	up := newUpstream(t)
-	h := newHarness(t)
-	h.opts.Upstream = up.URL + "/backend-api/codex"
-	state := filepath.Join(t.TempDir(), "state")
-	if err := os.WriteFile(state, nil, 0o600); err != nil {
+func TestRunStopsWhenInterruptedDuringStartup(t *testing.T) {
+	cases := []struct {
+		name      string
+		interrupt func(cancel context.CancelFunc)
+		wantCode  int
+		wantErr   error
+	}{
+		{"context cancelled", func(cancel context.CancelFunc) { cancel() }, 0, context.Canceled},
+		{"SIGTERM", func(context.CancelFunc) { _ = syscall.Kill(os.Getpid(), syscall.SIGTERM) }, 128 + int(syscall.SIGTERM), nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t, envAppServerHang+"=1")
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			type result struct {
+				code int
+				err  error
+			}
+			done := make(chan result, 1)
+			go func() {
+				code, err := Run(ctx, h.opts)
+				done <- result{code, err}
+			}()
+			deadline := time.Now().Add(5 * time.Second)
+			for len(h.recorded(t, "start")) == 0 {
+				if time.Now().After(deadline) {
+					t.Fatal("app-server never started")
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+
+			tc.interrupt(cancel)
+
+			select {
+			case got := <-done:
+				if got.code != tc.wantCode || !errors.Is(got.err, tc.wantErr) {
+					t.Errorf("Run = %d, %v; want %d, %v", got.code, got.err, tc.wantCode, tc.wantErr)
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatal("Run did not return")
+			}
+			if len(h.execed) != 0 || h.stderr.String() != "" {
+				t.Errorf("fell back to plain codex: exec %v, stderr %q", h.execed, h.stderr.String())
+			}
+			h.assertRuntimeRemoved(t)
+			h.assertUnregistered(t)
+		})
+	}
+}
+
+func TestSessionRegister(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "state")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	h.opts.Env = append(h.opts.Env, "XDG_STATE_HOME="+state)
+	dir := t.TempDir()
+	cases := []struct {
+		name       string
+		state      string
+		wantListed bool
+	}{
+		{"state dir usable", dir, true},
+		{"state dir is a file", file, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var stderr, logs syncBuffer
+			s := &session{
+				o:   Options{Env: []string{"XDG_STATE_HOME=" + tc.state}, Stderr: &stderr},
+				log: slog.New(slog.NewJSONHandler(&logs, nil)),
+			}
 
-	if code := h.run(t); code != 7 {
-		t.Fatalf("exit code = %d, want 7; stderr: %s", code, h.stderr.String())
+			s.register(registry.Endpoint{ID: "abcd", Kind: registry.KindSession})
+
+			if listed := s.reg != ""; listed != tc.wantListed {
+				t.Errorf("registered = %v, want %v", listed, tc.wantListed)
+			}
+			warned := strings.HasPrefix(stderr.String(), "codex-router: the panel will not list this session: registry:")
+			if warned == tc.wantListed {
+				t.Errorf("stderr = %q, want a warning only when registration fails", stderr.String())
+			}
+			if logged := strings.Contains(logs.String(), `"msg":"registry-write-failed"`); logged == tc.wantListed {
+				t.Errorf("failure logged = %v, want %v", logged, !tc.wantListed)
+			}
+		})
 	}
-	if got := h.stderr.String(); !strings.HasPrefix(got, "codex-router: the panel will not list this session: registry:") {
-		t.Errorf("stderr = %q, want one registry warning", got)
-	}
-	if !strings.Contains(h.logs.String(), `"msg":"registry-write-failed"`) {
-		t.Error("log does not record the registry failure")
-	}
-	if len(h.execed) != 0 {
-		t.Errorf("fell back to plain codex: %v", h.execed)
-	}
-	h.assertRuntimeRemoved(t)
 }
 
 func TestServeAnswersHealthAndPrintsPort(t *testing.T) {
