@@ -709,25 +709,74 @@ func TestRuntimeBase(t *testing.T) {
 	}
 }
 
+func TestLogDir(t *testing.T) {
+	cases := []struct {
+		name    string
+		env     map[string]string
+		want    string
+		wantErr bool
+	}{
+		{"xdg state home", map[string]string{"XDG_STATE_HOME": "/s", "HOME": "/h"}, "/s/" + RuntimeDirName + "/" + logDirName, false},
+		{"relative xdg falls back to home", map[string]string{"XDG_STATE_HOME": "s", "HOME": "/h"}, "/h/.local/state/" + RuntimeDirName + "/" + logDirName, false},
+		{"no absolute dir", map[string]string{"HOME": "h"}, "", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := logDir(func(k string) string { return tc.env[k] })
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("logDir = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestOpenLogWritesPrivateFile(t *testing.T) {
-	state := t.TempDir()
-	log, restore := openLog(Options{Env: []string{"XDG_STATE_HOME=" + state}, Stderr: io.Discard}, "abcd1234")
-	log.Info("hello", "port", 1)
+	cases := []struct {
+		name    string
+		prepare func(dir string) error
+	}{
+		{"new dir", func(string) error { return nil }},
+		{"loose dir is tightened", func(dir string) error { return os.MkdirAll(dir, 0o755) }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			state := t.TempDir()
+			dir := filepath.Join(state, RuntimeDirName, logDirName)
+			if err := tc.prepare(dir); err != nil {
+				t.Fatal(err)
+			}
+			log, restore := openLog(Options{Env: []string{"XDG_STATE_HOME=" + state}, Stderr: io.Discard}, "abcd1234")
+			log.Info("hello", "port", 1)
+			restore()
+
+			for path, want := range map[string]os.FileMode{dir: 0o700, filepath.Join(dir, "abcd1234.log"): 0o600} {
+				fi, err := os.Stat(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if fi.Mode().Perm() != want {
+					t.Errorf("%s mode = %o, want %o", path, fi.Mode().Perm(), want)
+				}
+			}
+			b, _ := os.ReadFile(filepath.Join(dir, "abcd1234.log"))
+			if !strings.Contains(string(b), `"msg":"hello"`) {
+				t.Errorf("log = %s", b)
+			}
+		})
+	}
+}
+
+func TestOpenLogWithoutADirSaysSoOnce(t *testing.T) {
+	var stderr bytes.Buffer
+	log, restore := openLog(Options{Env: []string{"HOME=relative"}, Stderr: &stderr}, "abcd1234")
+	log.Info("dropped")
 	restore()
 
-	dir := filepath.Join(state, RuntimeDirName, logDirName)
-	for path, want := range map[string]os.FileMode{dir: 0o700, filepath.Join(dir, "abcd1234.log"): 0o600} {
-		fi, err := os.Stat(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fi.Mode().Perm() != want {
-			t.Errorf("%s mode = %o, want %o", path, fi.Mode().Perm(), want)
-		}
-	}
-	b, _ := os.ReadFile(filepath.Join(dir, "abcd1234.log"))
-	if !strings.Contains(string(b), `"msg":"hello"`) {
-		t.Errorf("log = %s", b)
+	if got := strings.Count(stderr.String(), "\n"); got != 1 || !strings.Contains(stderr.String(), "codex-router: no log file:") {
+		t.Errorf("stderr = %q, want one no-log-file line", stderr.String())
 	}
 }
 
