@@ -174,7 +174,7 @@ func serveRPC(ctx context.Context, ws *websocket.Conn) {
 			send(map[string]any{"id": *m.ID, "result": map[string]any{}})
 			send(map[string]any{"method": "thread/settings/updated", "params": map[string]any{
 				"threadId":       p.ThreadID,
-				"threadSettings": map[string]any{"model": p.Model, "effort": p.Effort, "modelProvider": ProviderID, "cwd": "/w"},
+				"threadSettings": map[string]any{"model": p.Model, "effort": p.Effort, "modelProvider": proxy.ProviderID, "cwd": "/w"},
 			}})
 		}
 	}

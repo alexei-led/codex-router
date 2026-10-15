@@ -10,7 +10,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/alexei-led/codex-router/internal/launcher"
 	"github.com/alexei-led/codex-router/internal/proxy"
 )
 
@@ -36,7 +35,7 @@ func (p Provider) baseURL() string {
 
 // selectBlock picks the router. It must come before the first table.
 func (p Provider) selectBlock() string {
-	return blockBegin + "\n" + `model_provider = "` + launcher.ProviderID + `"` + "\n" + blockEnd + "\n"
+	return blockBegin + "\n" + `model_provider = "` + proxy.ProviderID + `"` + "\n" + blockEnd + "\n"
 }
 
 // tableBlock defines the router provider. The token goes in http_headers,
@@ -45,8 +44,8 @@ func (p Provider) selectBlock() string {
 // which the edge forwards upstream only.
 func (p Provider) tableBlock(begin string) string {
 	return begin + "\n" +
-		"[model_providers." + launcher.ProviderID + "]\n" +
-		`name = "` + launcher.ProviderName + `"` + "\n" +
+		"[model_providers." + proxy.ProviderID + "]\n" +
+		`name = "` + proxy.ProviderName + `"` + "\n" +
 		`base_url = "` + p.baseURL() + `"` + "\n" +
 		`wire_api = "responses"` + "\n" +
 		"requires_openai_auth = true\n" +
@@ -74,8 +73,8 @@ func AddProvider(src []byte, p Provider) ([]byte, error) {
 		return nil, fmt.Errorf("config.toml already sets model_provider = %q; remove it to route this home", fmt.Sprint(v))
 	}
 	if provs, ok := old["model_providers"].(map[string]any); ok {
-		if _, ok := provs[launcher.ProviderID]; ok {
-			return nil, fmt.Errorf("config.toml already defines model_providers.%s; remove it to route this home", launcher.ProviderID)
+		if _, ok := provs[proxy.ProviderID]; ok {
+			return nil, fmt.Errorf("config.toml already defines model_providers.%s; remove it to route this home", proxy.ProviderID)
 		}
 	}
 	lines := splitLines(string(base))
@@ -131,17 +130,17 @@ func check(out []byte, old map[string]any, p Provider) error {
 	if err := toml.Unmarshal(out, &got); err != nil {
 		return err
 	}
-	if got["model_provider"] != launcher.ProviderID {
+	if got["model_provider"] != proxy.ProviderID {
 		return errors.New("model_provider is not the router")
 	}
 	provs, _ := got["model_providers"].(map[string]any)
-	prov, _ := provs[launcher.ProviderID].(map[string]any)
+	prov, _ := provs[proxy.ProviderID].(map[string]any)
 	headers, _ := prov["http_headers"].(map[string]any)
 	if prov["base_url"] != p.baseURL() || headers[proxy.HeaderToken] != p.Token {
 		return errors.New("router provider does not match")
 	}
 	delete(got, "model_provider")
-	delete(provs, launcher.ProviderID)
+	delete(provs, proxy.ProviderID)
 	if _, ok := old["model_providers"]; !ok && len(provs) == 0 {
 		delete(got, "model_providers")
 	}

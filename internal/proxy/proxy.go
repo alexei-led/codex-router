@@ -30,6 +30,13 @@ const (
 // never goes upstream.
 const HeaderToken = "X-Codex-Router-Token"
 
+// ProviderID and ProviderName name the model provider Codex is pointed at
+// the proxy with.
+const (
+	ProviderID   = "router"
+	ProviderName = "router"
+)
+
 // MaxBodyBytes caps a request body; larger bodies get 413.
 const MaxBodyBytes = 32 << 20
 
