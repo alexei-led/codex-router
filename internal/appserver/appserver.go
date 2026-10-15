@@ -172,6 +172,7 @@ type reply struct {
 // the stream unusable.
 type Client struct {
 	conn         Conn
+	log          *slog.Logger
 	ctx          context.Context // lifetime: reads and writes
 	cancel       context.CancelFunc
 	nextID       atomic.Int64
@@ -189,10 +190,11 @@ type Client struct {
 	connErr    error
 }
 
-// Dial connects to the app-server socket through d and starts reading.
-// Call Initialize before any other request.
-func Dial(ctx context.Context, socketPath string, d Dialer) (API, error) {
-	c, err := dialClient(ctx, socketPath, d, false)
+// Dial connects to the app-server socket through d and starts reading. The
+// client logs to log; nil means slog.Default(). Call Initialize before any
+// other request.
+func Dial(ctx context.Context, socketPath string, d Dialer, log *slog.Logger) (API, error) {
+	c, err := dialClient(ctx, socketPath, d, log, false)
 	if err != nil {
 		return nil, err
 	}
@@ -201,18 +203,22 @@ func Dial(ctx context.Context, socketPath string, d Dialer) (API, error) {
 
 // DialDaemon is Dial for a home's shared daemon: the client also yields
 // thread lifecycle and turn notifications on Threads.
-func DialDaemon(ctx context.Context, socketPath string, d Dialer) (*Client, error) {
-	return dialClient(ctx, socketPath, d, true)
+func DialDaemon(ctx context.Context, socketPath string, d Dialer, log *slog.Logger) (*Client, error) {
+	return dialClient(ctx, socketPath, d, log, true)
 }
 
-func dialClient(ctx context.Context, socketPath string, d Dialer, threads bool) (*Client, error) {
+func dialClient(ctx context.Context, socketPath string, d Dialer, log *slog.Logger, threads bool) (*Client, error) {
 	conn, err := d.Dial(ctx, socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("appserver: dial: %w", err)
 	}
+	if log == nil {
+		log = slog.Default()
+	}
 	lifetime, cancel := context.WithCancel(context.Background())
 	c := &Client{
 		conn:         conn,
+		log:          log,
 		ctx:          lifetime,
 		cancel:       cancel,
 		writeSem:     make(chan struct{}, 1),
@@ -431,13 +437,13 @@ func (c *Client) readLoop() {
 		b, err := c.conn.Read(c.ctx)
 		if err != nil {
 			if !c.connClosed.Load() {
-				slog.Warn("appserver-read-failed", "err", err)
+				c.log.Warn("appserver-read-failed", "err", err)
 			}
 			return
 		}
 		var in inbound
 		if err := json.Unmarshal(b, &in); err != nil {
-			slog.Warn("appserver-bad-message", "bytes", len(b))
+			c.log.Warn("appserver-bad-message", "bytes", len(b))
 			continue
 		}
 		if !c.dispatch(in) {
@@ -455,11 +461,11 @@ func (c *Client) dispatch(in inbound) bool {
 		// client of the thread, and the first answer wins. The router has
 		// nothing to say, so it stays silent and the Codex TUI answers: an
 		// error reply here failed every approval in a routed thread.
-		slog.Debug("appserver-server-request-ignored", "method", in.Method)
+		c.log.Debug("appserver-server-request-ignored", "method", in.Method)
 	case in.Method == MethodSettingsUpdated:
 		u, ok := parseSettingsUpdated(in.Params)
 		if !ok {
-			slog.Warn("appserver-bad-notification", "method", in.Method)
+			c.log.Warn("appserver-bad-notification", "method", in.Method)
 			return true
 		}
 		select {
@@ -470,7 +476,7 @@ func (c *Client) dispatch(in inbound) bool {
 	case c.threads != nil && threadMethods[in.Method]:
 		ev, ok := parseThreadEvent(in.Method, in.Params)
 		if !ok {
-			slog.Warn("appserver-bad-notification", "method", in.Method)
+			c.log.Warn("appserver-bad-notification", "method", in.Method)
 			return true
 		}
 		select {
@@ -487,7 +493,7 @@ func (c *Client) dispatch(in inbound) bool {
 func (c *Client) resolve(in inbound) {
 	var id int64
 	if err := json.Unmarshal(in.ID, &id); err != nil {
-		slog.Warn("appserver-unknown-response-id")
+		c.log.Warn("appserver-unknown-response-id")
 		return
 	}
 	c.mu.Lock()

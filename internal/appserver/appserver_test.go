@@ -1,9 +1,11 @@
 package appserver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -175,7 +177,7 @@ func dial(t *testing.T, path string, d Dialer) API {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), waitFor)
 	defer cancel()
-	api, err := Dial(ctx, path, d)
+	api, err := Dial(ctx, path, d, nil)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
@@ -694,10 +696,30 @@ func TestDialMissingSocketFails(t *testing.T) {
 	each(t, func(t *testing.T, tr transport) {
 		ctx, cancel := context.WithTimeout(context.Background(), waitFor)
 		defer cancel()
-		if _, err := Dial(ctx, socketPath(t), tr.dialer); err == nil {
+		if _, err := Dial(ctx, socketPath(t), tr.dialer, nil); err == nil {
 			t.Fatal("Dial to a missing socket succeeded")
 		}
 	})
+}
+
+func TestClientLogsToItsLogger(t *testing.T) {
+	conn := newStuckConn()
+	var logged bytes.Buffer
+	ctx, cancel := context.WithTimeout(context.Background(), waitFor)
+	defer cancel()
+	api, err := Dial(ctx, "unused", dialerFunc(func(context.Context, string) (Conn, error) { return conn, nil }),
+		slog.New(slog.NewTextHandler(&logged, nil)))
+	if err != nil {
+		t.Fatalf("Dial: %v", err)
+	}
+	conn.in <- []byte("not json")
+	conn.in <- []byte(`{"method":"` + MethodSettingsUpdated + `","params":{"threadId":"t1","threadSettings":{"model":"m"}}}`)
+	nextUpdate(t, api)
+	_ = api.Close()
+
+	if !strings.Contains(logged.String(), "msg=appserver-bad-message") {
+		t.Errorf("log = %q, want appserver-bad-message", logged.String())
+	}
 }
 
 func connectDaemon(t *testing.T, tr transport) (*Client, *fakeServer) {
@@ -705,7 +727,7 @@ func connectDaemon(t *testing.T, tr transport) (*Client, *fakeServer) {
 	srv := startServer(t, tr)
 	ctx, cancel := context.WithTimeout(context.Background(), waitFor)
 	defer cancel()
-	c, err := DialDaemon(ctx, srv.path, tr.dialer)
+	c, err := DialDaemon(ctx, srv.path, tr.dialer, nil)
 	if err != nil {
 		t.Fatalf("DialDaemon: %v", err)
 	}

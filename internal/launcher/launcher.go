@@ -287,7 +287,7 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 	if s.app, err = startAppServer(o.CodexBin, sock, port, appEnv); err != nil {
 		return s, err
 	}
-	if s.api, err = dialAppServer(ctx, sock, s.app.done); err != nil {
+	if s.api, err = dialAppServer(ctx, sock, s.app.done, s.log); err != nil {
 		return s, err
 	}
 	s.log.Info("appserver-ready", "port", port)
