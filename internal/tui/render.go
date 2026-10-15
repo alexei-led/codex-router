@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"io"
 	"math"
 	"slices"
 	"sort"
@@ -10,8 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
+	"charm.land/lipgloss/v2"
 
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/route"
@@ -79,7 +77,6 @@ type view struct {
 }
 
 type canvas struct {
-	r      *lipgloss.Renderer
 	styled bool
 	width  int
 	out    []string
@@ -87,10 +84,6 @@ type canvas struct {
 
 func render(v view) string {
 	c := &canvas{styled: v.styled, width: max(v.width, minWidth)}
-	if v.styled {
-		c.r = lipgloss.NewRenderer(io.Discard)
-		c.r.SetColorProfile(termenv.ANSI256)
-	}
 	all := v.fleet != nil && !v.locked
 	switch {
 	case all:
@@ -140,17 +133,17 @@ func keyHints(v view) []string {
 	var h []string
 	switch {
 	case v.fleet == nil:
-		h = []string{"1-5 tabs", "tab next", "p pin next", "space pause/resume"}
+		h = []string{hint(keys.TabNum, ""), hint(keys.Next, ""), hint(keys.Pin, "pin next"), hint(keys.Toggle, "pause/resume")}
 	case v.locked:
-		h = []string{"1-5 tabs", "p pin next", "space pause", "P pause home"}
+		h = []string{hint(keys.TabNum, ""), hint(keys.Pin, "pin next"), hint(keys.Toggle, ""), hint(keys.Home, "")}
 	case v.tab == TabSessions:
-		h = []string{"↑↓ select", "enter focus", "[ ] session", "1-5 tabs", "space pause", "P pause home"}
+		h = []string{hint(keys.Up, ""), hint(keys.Enter, ""), hint(keys.Session, ""), hint(keys.TabNum, ""), hint(keys.Toggle, ""), hint(keys.Home, "")}
 	default:
-		h = []string{"[ ] session", "0 list", "1-5 tabs", "p pin", "space pause", "P pause home"}
+		h = []string{hint(keys.Session, ""), hint(keys.List, ""), hint(keys.TabNum, ""), hint(keys.Pin, ""), hint(keys.Toggle, ""), hint(keys.Home, "")}
 	}
-	h = append(h, "q quit")
+	h = append(h, hint(keys.Quit, ""))
 	if v.tab == TabPolicy {
-		h = append(h, "c preset")
+		h = append(h, hint(keys.Preset, ""))
 	}
 	return h
 }
@@ -180,7 +173,7 @@ func (c *canvas) paint(s seg) string {
 	if !c.styled || (s.color == "" && !s.bold && !s.reverse) {
 		return s.text
 	}
-	st := c.r.NewStyle().Bold(s.bold).Reverse(s.reverse)
+	st := lipgloss.NewStyle().Bold(s.bold).Reverse(s.reverse)
 	if s.color != "" {
 		st = st.Foreground(lipgloss.Color(s.color))
 	}

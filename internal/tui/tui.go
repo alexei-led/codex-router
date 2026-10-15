@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
@@ -63,7 +63,7 @@ func Run(ctx context.Context, o Options) error {
 	f.locked = o.Session
 	f.cwd, _ = os.Getwd()
 	go f.run(ctx)
-	p := tea.NewProgram(newModel(f), tea.WithContext(ctx), tea.WithAltScreen())
+	p := tea.NewProgram(newModel(f), tea.WithContext(ctx))
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("run panel: %w", err)
 	}
