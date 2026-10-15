@@ -9,5 +9,7 @@ codex-router · main                                                            
  Context  █░░░░░░░░░ 16%  44.6K / 272K      Cache  98% last reply · 97% session
  Look     context guard kept 2 steps on a larger window than the policy chose · see Policy
           routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group · see Policy
+ Recent   18:41  high   gpt-6.1-sol · high · same test failure twice, edit in between
+          18:38  medium gpt-6-sol · medium · moved up a tier
 
 p pin · space pause · P pause home · tab views · q quit · ? help

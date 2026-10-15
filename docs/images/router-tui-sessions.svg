@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 789 484" width="789" height="484" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 789 579" width="789" height="579" role="img" aria-labelledby="title desc">
   <title id="title">codex-router panel, Sessions view</title>
   <desc id="desc">codex-router tui in a 97 column pane. The header counts 5 sessions in 2 homes, says Jev is ready, and lists the views Sessions, Policy and Usage. The list groups the sessions by Codex home: the default home has three codex-router runs, the work home has a brain that has run for 2 hours and a router whose Codex has not had a first prompt yet. Each row has the session's state, model and effort, a sparkline of the last turns by tier and the last switch. Below, the selected session: the high tier chip, the debug activity and the route gpt-6.1-sol high, why the router moved up, the classifier's evidence, the pin buttons, the session summary with its strip, context and cache, and one thing worth a look.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
-  <rect width="789" height="484" rx="8" fill="#14171f"/>
-  <rect x="0.5" y="0.5" width="788" height="483" rx="8" fill="none" stroke="#2e3340"/>
+  <rect width="789" height="579" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="788" height="578" rx="8" fill="none" stroke="#2e3340"/>
   <text x="16.0" y="28.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">codex-router</text>
   <text x="109.6" y="28.0" fill="#d0d0d0" xml:space="preserve">  5 sessions</text>
   <text x="203.2" y="28.0" fill="#878787" xml:space="preserve"> · </text>
@@ -188,24 +188,45 @@
   <text x="507.4" y="389.0" fill="#878787" xml:space="preserve"> · 64% session</text>
   <text x="16.0" y="408.0" fill="#d0d0d0" xml:space="preserve"> Look     cache reuse 64% after 19 switches; switches wrote 612K uncached tokens · see Policy</text>
   <text x="16.0" y="427.0" fill="#d0d0d0" xml:space="preserve">          context guard kept 3 steps on a larger window than the policy chose · see Policy</text>
-  <text x="16.0" y="465.0" fill="#87afff" font-weight="700" xml:space="preserve">↑↓</text>
-  <text x="31.6" y="465.0" fill="#878787" xml:space="preserve"> select</text>
-  <text x="86.2" y="465.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="109.6" y="465.0" fill="#87afff" font-weight="700" xml:space="preserve">p</text>
-  <text x="117.4" y="465.0" fill="#878787" xml:space="preserve"> pin</text>
-  <text x="148.6" y="465.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="172.0" y="465.0" fill="#87afff" font-weight="700" xml:space="preserve">space</text>
-  <text x="211.0" y="465.0" fill="#878787" xml:space="preserve"> pause</text>
-  <text x="257.8" y="465.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="281.2" y="465.0" fill="#87afff" font-weight="700" xml:space="preserve">P</text>
-  <text x="289.0" y="465.0" fill="#878787" xml:space="preserve"> pause home</text>
-  <text x="374.8" y="465.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="398.2" y="465.0" fill="#87afff" font-weight="700" xml:space="preserve">tab</text>
-  <text x="421.6" y="465.0" fill="#878787" xml:space="preserve"> views</text>
-  <text x="468.4" y="465.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="491.8" y="465.0" fill="#87afff" font-weight="700" xml:space="preserve">q</text>
-  <text x="499.6" y="465.0" fill="#878787" xml:space="preserve"> quit</text>
-  <text x="538.6" y="465.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="562.0" y="465.0" fill="#87afff" font-weight="700" xml:space="preserve">?</text>
-  <text x="569.8" y="465.0" fill="#878787" xml:space="preserve"> help</text>
+  <text x="16.0" y="446.0" fill="#d0d0d0" xml:space="preserve"> Recent   </text>
+  <text x="94.0" y="446.0" fill="#878787" xml:space="preserve">18:42  </text>
+  <text x="148.6" y="446.0" fill="#d75f87" xml:space="preserve">high   </text>
+  <text x="203.2" y="446.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="343.6" y="446.0" fill="#878787" xml:space="preserve"> · escalated after a repeated failure</text>
+  <text x="94.0" y="465.0" fill="#878787" xml:space="preserve">18:41  </text>
+  <text x="148.6" y="465.0" fill="#d7af5f" xml:space="preserve">medium </text>
+  <text x="203.2" y="465.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
+  <text x="328.0" y="465.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="94.0" y="484.0" fill="#878787" xml:space="preserve">18:40  </text>
+  <text x="148.6" y="484.0" fill="#d7af5f" xml:space="preserve">medium </text>
+  <text x="203.2" y="484.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
+  <text x="328.0" y="484.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="94.0" y="503.0" fill="#878787" xml:space="preserve">18:38  </text>
+  <text x="148.6" y="503.0" fill="#d7af5f" xml:space="preserve">medium </text>
+  <text x="203.2" y="503.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
+  <text x="328.0" y="503.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="94.0" y="522.0" fill="#878787" xml:space="preserve">18:38  </text>
+  <text x="148.6" y="522.0" fill="#d7af5f" xml:space="preserve">medium </text>
+  <text x="203.2" y="522.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
+  <text x="328.0" y="522.0" fill="#878787" xml:space="preserve"> · moved up a tier</text>
+  <text x="16.0" y="560.0" fill="#87afff" font-weight="700" xml:space="preserve">↑↓</text>
+  <text x="31.6" y="560.0" fill="#878787" xml:space="preserve"> select</text>
+  <text x="86.2" y="560.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="109.6" y="560.0" fill="#87afff" font-weight="700" xml:space="preserve">p</text>
+  <text x="117.4" y="560.0" fill="#878787" xml:space="preserve"> pin</text>
+  <text x="148.6" y="560.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="172.0" y="560.0" fill="#87afff" font-weight="700" xml:space="preserve">space</text>
+  <text x="211.0" y="560.0" fill="#878787" xml:space="preserve"> pause</text>
+  <text x="257.8" y="560.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="281.2" y="560.0" fill="#87afff" font-weight="700" xml:space="preserve">P</text>
+  <text x="289.0" y="560.0" fill="#878787" xml:space="preserve"> pause home</text>
+  <text x="374.8" y="560.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="398.2" y="560.0" fill="#87afff" font-weight="700" xml:space="preserve">tab</text>
+  <text x="421.6" y="560.0" fill="#878787" xml:space="preserve"> views</text>
+  <text x="468.4" y="560.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="491.8" y="560.0" fill="#87afff" font-weight="700" xml:space="preserve">q</text>
+  <text x="499.6" y="560.0" fill="#878787" xml:space="preserve"> quit</text>
+  <text x="538.6" y="560.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="562.0" y="560.0" fill="#87afff" font-weight="700" xml:space="preserve">?</text>
+  <text x="569.8" y="560.0" fill="#878787" xml:space="preserve"> help</text>
 </svg>

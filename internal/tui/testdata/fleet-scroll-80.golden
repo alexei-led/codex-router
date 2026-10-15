@@ -1,9 +1,7 @@
 codex-router  20 sessions · Jev ready           Sessions  Policy  Usage   ? help
 
   SESSION         STATE  MODEL               LAST TURNS  SWITCH
-  ↑ 3 more
-  repo-04 · main  ● on   gpt-6-sol · medium  ▅▅▅▅
-  repo-05 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅
+  ↑ 5 more
   repo-06 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅
   repo-07 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅
   repo-08 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅
@@ -34,5 +32,7 @@ repo-15 · main                                                   work · aaaaaa
           see Policy
           routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group
           · see Policy
+ Recent   18:41  high   gpt-6.1-sol · high · same test failure twice, edit in b…
+          18:38  medium gpt-6-sol · medium · moved up a tier
 
 ↑↓ select · p pin · space pause · P pause home · tab views · q quit · ? help
