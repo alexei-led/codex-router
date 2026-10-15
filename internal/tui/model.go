@@ -18,6 +18,9 @@ const (
 	defaultWidth = 80
 	// endedExit is how long a locked panel shows `ended` before it quits.
 	endedExit = 3 * time.Second
+	// focusClick is how long after the terminal gains focus a click is the
+	// click that focused it, not a command.
+	focusClick = 150 * time.Millisecond
 )
 
 // conn is the part of control.Client the panel uses.
@@ -46,10 +49,13 @@ type model struct {
 	cursor string // Sessions tab selection
 	ending bool   // the ended exit is scheduled
 	notice string
+	mouse  bool // the panel takes the mouse
+	focus  time.Time
+	now    func() time.Time
 }
 
 func newModel(f *fleet) *model {
-	return &model{f: f, st: fleetState{disconnected: true}, tab: TabNow, width: defaultWidth}
+	return &model{f: f, st: fleetState{disconnected: true}, tab: TabNow, width: defaultWidth, now: time.Now}
 }
 
 func (m *model) Init() tea.Cmd { return tea.Batch(waitFleetCmd(m.f), beatCmd()) }
@@ -97,8 +103,66 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyPressMsg:
 		return m, m.key(msg)
+	case tea.FocusMsg:
+		m.focus = m.now()
+	case tea.MouseClickMsg:
+		return m, m.click(msg.Mouse())
+	case tea.MouseWheelMsg:
+		if m.tab == TabSessions {
+			switch msg.Mouse().Button {
+			case tea.MouseWheelUp:
+				m.moveCursor(-1)
+			case tea.MouseWheelDown:
+				m.moveCursor(1)
+			}
+		}
 	}
 	return m, nil
+}
+
+// click runs the action under a left click. It lays the view out again
+// rather than keeping the last drawn zones, so it cannot act on a stale one.
+func (m *model) click(ms tea.Mouse) tea.Cmd {
+	if ms.Button != tea.MouseLeft || m.now().Sub(m.focus) < focusClick {
+		return nil
+	}
+	_, zones := layout(m.view())
+	a, ok := hit(zones, ms.X, ms.Y)
+	if !ok {
+		return nil
+	}
+	switch a.kind {
+	case actTab:
+		m.tab = a.tab
+		if a.tab == TabSessions {
+			m.cursor = m.st.focus
+		}
+	case actFocus:
+		return m.focusOn(a.session)
+	case actSelect:
+		if a.session != m.selected() {
+			m.cursor = a.session
+			return nil
+		}
+		m.tab = TabNow
+		return m.focusOn(a.session)
+	case actPin:
+		if p := m.snap().Pin; p != nil && *p == a.tier {
+			return m.command(route.Command{Op: route.OpUnpin, Session: m.st.focus})
+		}
+		return m.command(route.Command{Op: route.OpPin, Session: m.st.focus, Tier: a.tier})
+	case actPreset:
+		return m.homeCommand(route.Command{Op: route.OpPreset, Preset: a.preset})
+	}
+	return nil
+}
+
+// selected is the Sessions tab row the cursor is on; the focus until it moves.
+func (m *model) selected() string {
+	if m.cursor == "" {
+		return m.st.focus
+	}
+	return m.cursor
 }
 
 func (m *model) key(k tea.KeyPressMsg) tea.Cmd {
@@ -277,6 +341,10 @@ func nextPreset(cur config.Preset) config.Preset {
 func (m *model) View() tea.View {
 	v := tea.NewView(render(m.view()))
 	v.AltScreen = true
+	if m.mouse {
+		v.MouseMode = tea.MouseModeCellMotion
+		v.ReportFocus = true
+	}
 	return v
 }
 

@@ -422,6 +422,7 @@ func TestTUISocketBypassesTheRegistry(t *testing.T) {
 		want     tui.Options
 	}{
 		{"all sessions", []string{"tui", "--socket", sock}, exitOK, tui.Options{Socket: sock}},
+		{"no mouse", []string{"tui", "--socket", sock, "--no-mouse"}, exitOK, tui.Options{Socket: sock, NoMouse: true}},
 		{"locked by label", []string{"tui", "--socket", sock, "--session", "feat-x"}, exitOK, tui.Options{Socket: sock, Session: sessWorkFeat.ID}},
 		{"other endpoint's session", []string{"tui", "--socket", sock, "--session", "notes · main"}, exitError, tui.Options{}},
 	}

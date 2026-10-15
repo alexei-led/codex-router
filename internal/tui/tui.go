@@ -42,10 +42,12 @@ var Presets = []config.Preset{config.PresetThrifty, config.PresetBalanced, confi
 // Options configure Run. Socket, when set, shows that one endpoint and
 // skips the registry; else the panel watches the registry dir Registry.
 // Session, when set, locks the panel to that session id; else it shows all.
+// NoMouse leaves the mouse to the terminal, so text selection works.
 type Options struct {
 	Socket   string
 	Registry string
 	Session  string
+	NoMouse  bool
 }
 
 // Run shows the panel until the user quits or ctx ends. It redials lost
@@ -63,7 +65,9 @@ func Run(ctx context.Context, o Options) error {
 	f.locked = o.Session
 	f.cwd, _ = os.Getwd()
 	go f.run(ctx)
-	p := tea.NewProgram(newModel(f), tea.WithContext(ctx))
+	m := newModel(f)
+	m.mouse = !o.NoMouse
+	p := tea.NewProgram(m, tea.WithContext(ctx))
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("run panel: %w", err)
 	}
