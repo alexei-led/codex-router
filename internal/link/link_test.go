@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -242,10 +243,34 @@ func TestReadFrameRejects(t *testing.T) {
 	}
 }
 
-func TestWriteFrameRefusesBodyOverCap(t *testing.T) {
-	body := make([]byte, proxy.MaxBodyBytes+MaxHeaderBytes)
-	if err := WriteFrame(io.Discard, Header{Type: TypeDecide}, body); !errors.Is(err, errFrame) {
-		t.Fatalf("err = %v, want errFrame", err)
+func TestFrameBodyCap(t *testing.T) {
+	h := Header{Type: TypeDecide, ID: math.MaxUint64, Meta: &stepMeta, DeadlineUnixMs: math.MaxInt64}
+	cases := []struct {
+		name string
+		size int
+		want error
+	}{
+		{"proxy cap fits with a decide header", proxy.MaxBodyBytes, nil},
+		{"over the frame cap", proxy.MaxBodyBytes + MaxHeaderBytes, errFrame},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			body := bytes.Repeat([]byte("a"), tc.size)
+			var buf bytes.Buffer
+			if err := WriteFrame(&buf, h, body); !errors.Is(err, tc.want) {
+				t.Fatalf("WriteFrame err = %v, want %v", err, tc.want)
+			}
+			if tc.want != nil {
+				return
+			}
+			got, gotBody, err := ReadFrame(&buf)
+			if err != nil {
+				t.Fatalf("ReadFrame: %v", err)
+			}
+			if got.Meta == nil || *got.Meta != stepMeta || !bytes.Equal(gotBody, body) {
+				t.Errorf("round trip lost the header or body: meta %+v, %d bytes", got.Meta, len(gotBody))
+			}
+		})
 	}
 }
 
@@ -594,22 +619,6 @@ func TestWrongHomeRejected(t *testing.T) {
 	}
 	if _, _, err := ReadFrame(conn); !errors.Is(err, io.EOF) {
 		t.Fatalf("connection still open after refusal: %v", err)
-	}
-}
-
-func TestDecideCarriesMaxBody(t *testing.T) {
-	head, tail := `{"model":"gpt-6.1-sol","input":[{"type":"message","role":"user","content":"`, `"}]}`
-	body := []byte(head + strings.Repeat("a", proxy.MaxBodyBytes-len(head)-len(tail)) + tail)
-	path := sockPath(t)
-	brain := &fakeBrain{rw: toLow, ok: true}
-	startBrain(t, path, homeA, brain)
-	c := newClient(t, path, homeA, 30*time.Second)
-
-	if rw, ok := c.Decide(context.Background(), parse(t, body), stepMeta); !ok || rw != toLow {
-		t.Fatalf("Decide = %+v, %v", rw, ok)
-	}
-	if calls := brain.calls(); len(calls) != 1 || !bytes.Equal(calls[0].body, body) {
-		t.Fatal("brain did not get the 32 MiB body intact")
 	}
 }
 
