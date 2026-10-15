@@ -209,6 +209,7 @@ Use it in a split next to Codex, so the panel always shows that one session. Whe
 2. a unique prefix of either
 3. the exact label
 4. the end of a label that starts at a part boundary, for example `api · feat/auth` or just `feat/auth`, but not `auth`
+5. the start of a label that ends at a part boundary, for example the home name `work`, or `work · api`
 
 The first rule with any match decides. A label shared by several sessions matches all of them. When several sessions match, `tui` lists them and exits with 2. When none matches, it exits with 1. Use `codex-router sessions` to see the ids and labels.
 
