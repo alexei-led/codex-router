@@ -186,7 +186,7 @@ It prints one line per session: id, home, label, mode and route, in the panel's 
 ### Panel
 
 ```sh
-codex-router tui [--session ID|LABEL] [--socket PATH]
+codex-router tui [--session ID|LABEL] [--socket PATH] [--no-mouse]
 ```
 
 Without flags, the panel shows every running session of every home. The top bar lists them, the focused session first, then the rest in list order, with the focus position on the right (`▸ 1/5`). Each session has its home's colored dot, and a mark when it needs a look: `◐` manual hold, `‖` paused, `↑` escalation, `?` unknown (a restarted brain holds the session's route until its next reply), `!` state lost (the brain could not read its saved pause, pin and preset, so the home is paused until `P` resumes it). The panel first focuses the session whose directory is the panel's directory or the closest one above it, else the most recently active session. Tabs 1-5 show the focused session.
@@ -197,7 +197,7 @@ Without flags, the panel shows every running session of every home. The top bar 
 
 - **Home line**: the number of routers (endpoints) serving the home. In the picture, `default` has three `codex-router` runs, and `work` is [set up](#route-a-whole-home-setup), so its one endpoint is the home's brain (`brain up 2h`). A brain that is down shows `brain down: default model`, and Codex's requests pass through unchanged. The line also shows how many other routers are lost, and the totals of its sessions: replies, switches, and the saving when `prices` is set. A brain that goes down stays on the line until it is back. Its sessions leave after 10 s.
 - **Rows**: the label without the home, the state (`on`, `paused`, `manual`, `escalation`, `unknown`, `state lost`, `disconnected`), the route, the last 24 routed replies colored by tier with the reply count, and the last switch. Below 100 columns the panel drops the replies and last switch columns.
-- `↑` `↓` move the selection, and `enter` focuses that session and opens Now. A long list scrolls.
+- `↑` `↓` move the selection, and `enter` focuses that session and opens Now. A long list scrolls. `●` marks the focused session when the selection is elsewhere. On this tab `space` and `P` act on the focused session, not on the selection.
 
 `--session` locks the panel to one session: no top bar and no Sessions tab, only a header line `● home · repo · branch  <id>`. Keys `[`, `]` and `0` do nothing there.
 
@@ -230,7 +230,29 @@ When a router goes away, its sessions show `disconnected`, and leave the list 10
 | `c` (Policy tab)   | next preset for the focused session's home: thrifty, balanced, quality         |
 | `q`, `ctrl+c`      | quit the panel                                                                 |
 
-The header shows the focused session's mode (`on`, `manual`, `paused`), the classifier state, and whether the footer is synced.
+The footer lists only the keys that work now: `space` reads `pause` or `resume`, `[ ]` is hidden with one session, and `c` shows only on Policy while the classifier is on.
+
+The mouse works too, with the left button:
+
+| Click on                            | Action                                                           |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| a tab label, including `Sessions 0` | show that tab                                                    |
+| a session in the top bar            | focus it                                                         |
+| a row on the Sessions tab           | select it; click the selected row again to focus it and open Now |
+| a tier in **Pin next** (Now)        | pin the next turn to that tier; click the pinned tier to unpin   |
+| a preset button (Policy)            | set that preset for the focused session's home                   |
+| the wheel on the Sessions tab       | move the selection                                               |
+
+The wheel does nothing on other tabs. A click that only focuses the terminal window does nothing.
+
+The panel takes the mouse, so the terminal's own text selection is off. Hold `Shift` (Option on macOS Terminal.app and iTerm2) while you drag to select text anyway. Or run `codex-router tui --no-mouse` to leave the mouse to the terminal: keys work as before, and clicks do nothing.
+
+The header shows the focused session's mode, the model the footer shows, the classifier state, and `footer not synced` when the footer lags:
+
+- `◉ on`: routing is active.
+- `◉ pins only`: routing is on but the classifier is off, so only pins (`p`) and the context guard change the model.
+- `◐ manual`: you picked a model with `/model`, and routing holds it until `space`.
+- `‖ paused` (`○ paused` in the header): requests pass through unchanged.
 
 **Now** shows the current decision and the session so far:
 
@@ -244,15 +266,15 @@ The header shows the focused session's mode (`on`, `manual`, `paused`), the clas
 - **Worth a look**: things to act on, each naming the tab where you change it. Examples: the classifier is paused or failing, a manual hold, the context guard kept a larger window, or cache reuse is low after switches.
 - **Codex**, **Context**, **Cache**: what the footer shows, how full the smallest window is, and prompt-cache reuse.
 
-**Routes** lists each tier's route, the compatibility group, models blocked because they are outside it, and the last six decisions.
+**Routes** lists each tier's route, the model whose compatibility group they must share, models blocked because they are outside it, and the last six decisions with their reason. A decision that left Codex's own model in place (classifier off or failed) shows `kept` in place of a tier.
 
 ![Routes tab](images/router-tui-routes.svg)
 
-**Policy** shows the presets and the thresholds in effect. `c` picks the next preset.
+**Policy** shows the presets and the thresholds in effect. `c` picks the next preset, and a click on a button sets it. While the classifier is off, the tab says `no effect while the classifier is off`.
 
 ![Policy tab: the preset buttons with balanced selected, and the thresholds in effect](images/router-tui-policy.svg)
 
-**Classifier** shows its state, latency, failures, and the pause time while it is paused (`off` with no key).
+**Classifier** shows its name and model, state, latency, failures, the last error (`timeout`, `http 503`, `bad response`; never the key), and while it is paused, when it resumes. With no calls yet it says `ready · no calls yet`. When it is off, it shows `off` and the reason, such as the unset key variable.
 
 ![Classifier tab: Jev ready, last and median latency, no failures](images/router-tui-classifier.svg)
 
@@ -446,8 +468,8 @@ Undo backs `config.toml` up, removes the marked blocks, then stops and removes t
 | Symptom                                                                 | Cause and fix                                                                                                                                                                                                                                                                                    |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `codex-router: <reason>; running plain codex`                           | The config is invalid, or a startup step failed. The reason names it. Fix the config, or check `codex --version` and the session log.                                                                                                                                                            |
-| Panel says `Jev off`; the model never changes                           | The classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session. A brain does not see your shell: set the classifier's `envFile`, then restart the brain.                                                                                       |
-| Panel says `paused until …`                                             | The classifier failed 3 times in a row and pauses for 60 s. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                                                                                                                                  |
+| Panel says `pins only` or `Jev off`; the model never changes            | The Classifier tab names the reason; usually the classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session. A brain does not see your shell: set the classifier's `envFile`, then restart the brain.                                          |
+| Panel says `paused until …`                                             | The classifier failed 3 times in a row and pauses for 60 s. The Classifier tab shows the last error. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                                                                                         |
 | `footer not synced`                                                     | Settings writes to the app-server are pending or failed. Routing still works. If it persists, your Codex version may not support the sync (see [Codex versions](#codex-versions)).                                                                                                               |
 | Panel says `no sessions`; `codex-router sessions` prints nothing        | No session is registered for your user under this state dir. Start a session, or use the same `XDG_STATE_HOME` (or none) in the panel's shell as in the session's shell.                                                                                                                         |
 | `codex-router: the panel will not list this session: …`                 | The router could not write its registry entry, usually because the registry dir is not a private directory of yours (mode `0700`). The session routes as usual.                                                                                                                                  |
