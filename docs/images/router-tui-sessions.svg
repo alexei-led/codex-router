@@ -19,13 +19,13 @@
   <text x="78.4" y="47.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
   <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · gpt-6.1-sol high</text>
   <text x="257.8" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready</text>
-  <rect x="16.0" y="71.0" width="93.6" height="19" fill="#87afff"/>
-  <text x="16.0" y="85.0" fill="#14171f" xml:space="preserve">[Sessions 0]</text>
-  <text x="109.6" y="85.0" fill="#878787" xml:space="preserve"> Now 1 </text>
-  <text x="164.2" y="85.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
-  <text x="242.2" y="85.0" fill="#878787" xml:space="preserve"> Policy 3 </text>
-  <text x="320.2" y="85.0" fill="#878787" xml:space="preserve"> Classifier 4 </text>
-  <text x="429.4" y="85.0" fill="#878787" xml:space="preserve"> Usage 5 </text>
+  <rect x="16.0" y="71.0" width="78.0" height="19" fill="#87afff"/>
+  <text x="16.0" y="85.0" fill="#14171f" xml:space="preserve"> Sessions </text>
+  <text x="94.0" y="85.0" fill="#878787" xml:space="preserve"> Now </text>
+  <text x="133.0" y="85.0" fill="#878787" xml:space="preserve"> Routes </text>
+  <text x="195.4" y="85.0" fill="#878787" xml:space="preserve"> Policy </text>
+  <text x="257.8" y="85.0" fill="#878787" xml:space="preserve"> Classifier </text>
+  <text x="351.4" y="85.0" fill="#878787" xml:space="preserve"> Usage </text>
   <text x="16.0" y="123.0" fill="#878787" xml:space="preserve">SESSIONS</text>
   <text x="78.4" y="123.0" fill="#878787" xml:space="preserve"> · 5 sessions in 2 homes</text>
   <text x="31.6" y="142.0" fill="#878787" xml:space="preserve">SESSION                        </text>

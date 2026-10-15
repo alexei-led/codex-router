@@ -329,14 +329,10 @@ func (c *canvas) header(v view) {
 func (c *canvas) tabs(active Tab, withSessions bool) {
 	names := map[Tab]string{TabSessions: "Sessions", TabNow: "Now", TabRoutes: "Routes", TabPolicy: "Policy", TabClassifier: "Classifier", TabUsage: "Usage"}
 	var segs []seg
-	for i, t := range tabsFor(withSessions) {
-		if !withSessions {
-			i++
-		}
-		label := fmt.Sprintf("%s %d", names[t], i)
-		tab := dim(" " + label + " ")
+	for _, t := range tabsFor(withSessions) {
+		tab := dim(" " + names[t] + " ")
 		if t == active || (active == "" && t == TabNow) {
-			tab = seg{text: "[" + label + "]", color: colorAccent, reverse: true}
+			tab = seg{text: " " + names[t] + " ", color: colorAccent, reverse: true}
 		}
 		tab.act = action{kind: actTab, tab: t}
 		segs = append(segs, tab)
@@ -646,11 +642,11 @@ func (c *canvas) cacheRow(s route.Snapshot) {
 
 // findingHint names where a finding is changed.
 var findingHint = map[route.FindingKind]string{
-	route.FindingClassifier: "Classifier 4",
+	route.FindingClassifier: "Classifier",
 	route.FindingManual:     "space resumes",
-	route.FindingContext:    "Routes 2",
-	route.FindingBlocked:    "Routes 2",
-	route.FindingCache:      "Policy 3",
+	route.FindingContext:    "Routes",
+	route.FindingBlocked:    "Routes",
+	route.FindingCache:      "Policy",
 	route.FindingState:      "P resumes the home",
 }
 

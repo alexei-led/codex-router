@@ -236,7 +236,7 @@ The mouse works too, with the left button:
 
 | Click on                            | Action                                                           |
 | ----------------------------------- | ---------------------------------------------------------------- |
-| a tab label, including `Sessions 0` | show that tab                                                    |
+| a tab label, including `Sessions`   | show that tab                                                    |
 | a session in the top bar            | focus it                                                         |
 | a row on the Sessions tab           | select it; click the selected row again to focus it and open Now |
 | a tier in **Pin next** (Now)        | pin the next turn to that tier; click the pinned tier to unpin   |
