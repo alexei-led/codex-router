@@ -53,7 +53,7 @@ func RouterDeps(o Options, log *slog.Logger) (route.Deps, *catalog.Store) {
 	if asker == nil {
 		log.Warn("classifier-disabled", "reason", why)
 	}
-	return route.Deps{Config: o.Config, Catalog: store, Classifier: asker, Logger: log, Home: h}, store
+	return route.Deps{Config: o.Config, Catalog: store, Classifier: asker, ClassifierOffReason: why, Logger: log, Home: h}, store
 }
 
 // launcherCwd gives every thread the launcher's cwd: the app-server and

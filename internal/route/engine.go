@@ -52,6 +52,7 @@ var (
 type Engine struct {
 	cat          catalog.Source
 	ask          classifier.Asker
+	askOff       string // why ask is nil
 	now          func() time.Time
 	sink         Sink
 	log          *slog.Logger
@@ -161,6 +162,7 @@ func New(d Deps) *Engine {
 	e := &Engine{
 		cat:          d.Catalog,
 		ask:          d.Classifier,
+		askOff:       d.ClassifierOffReason,
 		now:          d.Now,
 		sink:         d.Sink,
 		log:          d.Logger,

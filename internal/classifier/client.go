@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 	"unicode/utf16"
@@ -28,6 +29,7 @@ type Client struct {
 
 	slot      chan struct{}
 	abandoned <-chan reply // written only by the slot holder
+	status    int          // the last HTTP error status, written only by the slot holder
 
 	mu     sync.Mutex
 	health Health
@@ -73,6 +75,7 @@ func (c *Client) Ask(ctx context.Context, in Input) (Advice, error) {
 	start := c.now()
 	deadline, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	c.status = 0
 	advice, err := c.complete(budget{ctx: deadline, outer: ctx, until: start.Add(timeout)}, in)
 	latency := c.now().Sub(start)
 	c.record(err, latency)
@@ -105,10 +108,22 @@ func (c *Client) record(err error, latency time.Duration) {
 	case errors.Is(err, ErrCancelled):
 	default:
 		c.health.Failures = min(c.health.Failures+1, FailuresToPause)
+		c.health.LastError = c.reason(err)
 		if c.health.Failures >= FailuresToPause {
 			c.health.PausedUntil = c.now().Add(PauseDuration)
 		}
 	}
+}
+
+// reason is err as a short, key-free code for Health.LastError.
+func (c *Client) reason(err error) string {
+	switch {
+	case errors.Is(err, ErrMalformed):
+		return "bad response"
+	case errors.Is(err, ErrAuth), errors.Is(err, ErrHTTP):
+		return "http " + strconv.Itoa(c.status)
+	}
+	return err.Error()
 }
 
 // budget bounds one Ask. ctx ends at the timeout; outer is the caller's
@@ -143,8 +158,10 @@ func (c *Client) complete(b budget, in Input) (Advice, error) {
 		case r.ok():
 			return c.answer(b, in, r.body)
 		case r.status == http.StatusUnauthorized || r.status == http.StatusForbidden:
+			c.status = r.status
 			return Advice{}, ErrAuth
 		case !transient(r.status) || attempt == MaxAttempts:
+			c.status = r.status
 			return Advice{}, ErrHTTP
 		}
 		delay, ok := retryAfter(r.header.Get("Retry-After"), c.now())

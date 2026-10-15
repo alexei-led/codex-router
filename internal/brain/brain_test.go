@@ -609,6 +609,17 @@ func TestBrainResyncsFootersAfterADaemonRestart(t *testing.T) {
 	}
 }
 
+func TestBrainSnapshotsSayWhyTheClassifierIsOff(t *testing.T) {
+	r := newRig(t, "")
+	r.deps.ClassifierOffReason = "TYPESAFE_API_KEY is not set"
+	r.d.load("t1", &fakeThread{cwd: "/w1", source: "user", route: native})
+	r.start(t)
+	eventually(t, "seed t1", func() bool { return r.b.eng.SnapshotFor("t1").Baseline == native })
+	if s := r.b.eng.SnapshotFor("t1"); !s.ClassifierOff || s.ClassifierOffReason != "TYPESAFE_API_KEY is not set" {
+		t.Errorf("off %v reason %q", s.ClassifierOff, s.ClassifierOffReason)
+	}
+}
+
 func TestBrainSkipsTheResyncWhenTheFooterIsCurrent(t *testing.T) {
 	r := newRig(t, "")
 	r.routing(t)

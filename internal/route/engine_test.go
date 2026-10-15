@@ -414,6 +414,29 @@ func TestNoClassifierForwardsEverything(t *testing.T) {
 	}
 }
 
+func TestSnapshotNamesTheClassifierModelAndWhyItIsOff(t *testing.T) {
+	tests := []struct {
+		name       string
+		opts       []func(*Deps)
+		wantOff    bool
+		wantReason string
+	}{
+		{"on", nil, false, ""},
+		{"off with a reason", []func(*Deps){func(d *Deps) {
+			d.Classifier, d.ClassifierOffReason = nil, "TYPESAFE_API_KEY is not set"
+		}}, true, "TYPESAFE_API_KEY is not set"},
+		{"on drops a stale reason", []func(*Deps){func(d *Deps) { d.ClassifierOffReason = "stale" }}, false, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newHarness(t, testConfig(), tt.opts...).engine.Snapshot()
+			if s.ClassifierOff != tt.wantOff || s.ClassifierOffReason != tt.wantReason || s.ClassifierModel != "jev-1.13.0" {
+				t.Errorf("off %v reason %q model %q", s.ClassifierOff, s.ClassifierOffReason, s.ClassifierModel)
+			}
+		})
+	}
+}
+
 func TestManualPinAfterForeignSettingsUpdate(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("low", 0.97)), answer(tier("low", 0.97)), answer(tier("high", 0.99)))

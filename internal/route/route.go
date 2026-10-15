@@ -148,30 +148,33 @@ type Finding struct {
 type Snapshot struct {
 	// Seq orders snapshots: they are taken under the engine lock but
 	// published after it, so a consumer drops one older than it holds.
-	Seq              uint64
-	ThreadID         string
-	At               time.Time
-	Mode             Mode
-	StateLost        bool // the saved intent was unreadable; the home is paused until resume
-	Preset           config.Preset
-	Pin              *config.Tier
-	Baseline         config.Route
-	Footer           config.Route
-	FooterSynced     bool
-	Last             *Decision
-	Recent           []Decision
-	Classifier       classifier.Health
-	ClassifierOff    bool // no classifier configured (e.g. its key is unset)
-	ClassifierLabel  string
-	ClassifierMedian time.Duration
-	Routes           map[config.Tier]config.Route
-	Group            catalog.Group
-	Blocked          []string
-	Policy           config.Policy
-	Stats            Stats
-	ApproxTokens     int
-	Window           int
-	Worth            []Finding
+	Seq           uint64
+	ThreadID      string
+	At            time.Time
+	Mode          Mode
+	StateLost     bool // the saved intent was unreadable; the home is paused until resume
+	Preset        config.Preset
+	Pin           *config.Tier
+	Baseline      config.Route
+	Footer        config.Route
+	FooterSynced  bool
+	Last          *Decision
+	Recent        []Decision
+	Classifier    classifier.Health
+	ClassifierOff bool // no classifier configured (e.g. its key is unset)
+	// ClassifierOffReason says why it is off, without the key. Empty when on.
+	ClassifierOffReason string
+	ClassifierLabel     string
+	ClassifierModel     string
+	ClassifierMedian    time.Duration
+	Routes              map[config.Tier]config.Route
+	Group               catalog.Group
+	Blocked             []string
+	Policy              config.Policy
+	Stats               Stats
+	ApproxTokens        int
+	Window              int
+	Worth               []Finding
 }
 
 // Sink receives decisions and snapshots; the launcher fans them out to the
@@ -193,18 +196,20 @@ type Sink interface {
 // carries a conversation, as Resumed does: after a restart, a turn's next
 // step can reach the engine before discovery resumes its thread.
 type Deps struct {
-	Config       config.Config
-	Catalog      catalog.Source
-	Classifier   classifier.Asker
-	Now          func() time.Time
-	Sink         Sink
-	Logger       *slog.Logger
-	Home         home.Home
-	Cwd          func(threadID string) string
-	Intent       Intent
-	IntentLost   bool
-	SaveIntent   func(Intent)
-	HoldUnseeded bool
+	Config     config.Config
+	Catalog    catalog.Source
+	Classifier classifier.Asker
+	// ClassifierOffReason is why Classifier is nil; the snapshot shows it.
+	ClassifierOffReason string
+	Now                 func() time.Time
+	Sink                Sink
+	Logger              *slog.Logger
+	Home                home.Home
+	Cwd                 func(threadID string) string
+	Intent              Intent
+	IntentLost          bool
+	SaveIntent          func(Intent)
+	HoldUnseeded        bool
 }
 
 // Bounds on remembered state. RecentKept and StripCells are per thread.
