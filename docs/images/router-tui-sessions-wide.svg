@@ -118,6 +118,7 @@
   <text x="234.4" y="237.0" fill="#878787" xml:space="preserve">○ waiting for the first prompt</text>
   <text x="468.4" y="237.0" fill="#d0d0d0" xml:space="preserve">    Context  █░░░░░░░░░ 10%  </text>
   <text x="694.6" y="237.0" fill="#878787" xml:space="preserve">91K / 828K</text>
+  <text x="772.6" y="237.0" fill="#878787" xml:space="preserve"> gpt-6.1-sol</text>
   <text x="16.0" y="256.0" fill="#87afff" xml:space="preserve">▎</text>
   <text x="23.8" y="256.0" fill="#d0d0d0" xml:space="preserve">                                                             Cache    97% last reply</text>
   <text x="679.0" y="256.0" fill="#878787" xml:space="preserve"> · 64% session</text>

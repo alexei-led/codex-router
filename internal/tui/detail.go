@@ -247,6 +247,9 @@ func (c *canvas) contextRows(s route.Snapshot) {
 	} else {
 		pct := min(s.ApproxTokens*100/s.Window, 100)
 		ctx = []seg{label("Context"), plain(bar(pct, contextCells) + fmt.Sprintf(" %d%%  ", pct)), dim(fmt.Sprintf("%s / %s", fmtTokens(s.ApproxTokens), fmtTokens(s.Window)))}
+		if s.Footer.Model != "" {
+			ctx = append(ctx, dim(" "+s.Footer.Model))
+		}
 	}
 	st := s.Stats
 	switch {

@@ -107,9 +107,10 @@
   <text x="468.4" y="237.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="491.8" y="237.0" fill="#d0d0d0" xml:space="preserve"> Context  █░░░░░░░░░ 10%  </text>
   <text x="694.6" y="237.0" fill="#878787" xml:space="preserve">91K / 828K</text>
-  <text x="819.4" y="237.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">Cache</text>
-  <text x="858.4" y="237.0" fill="#d0d0d0" xml:space="preserve">  97% last reply</text>
-  <text x="983.2" y="237.0" fill="#878787" xml:space="preserve"> · 64% session</text>
+  <text x="772.6" y="237.0" fill="#878787" xml:space="preserve"> gpt-6.1-sol</text>
+  <text x="913.0" y="237.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">Cache</text>
+  <text x="952.0" y="237.0" fill="#d0d0d0" xml:space="preserve">  97% last reply</text>
+  <text x="1076.8" y="237.0" fill="#878787" xml:space="preserve"> · 64% session</text>
   <text x="16.0" y="256.0" fill="#d0d0d0" xml:space="preserve">    exit code: 1</text>
   <text x="468.4" y="256.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="491.8" y="256.0" fill="#d0d0d0" xml:space="preserve"> Look     cache reuse 64% after 19 switches; switches wrote 612K uncached tokens · see Policy</text>
