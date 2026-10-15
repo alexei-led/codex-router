@@ -321,6 +321,7 @@ type rig struct {
 	deps  route.Deps
 	// models, when set, reloads the catalog from the home's models cache.
 	models *catalog.CacheWatch
+	quiet  int
 }
 
 func (r *rig) getenv(k string) string { return r.env[k] }
@@ -404,6 +405,19 @@ func (r *rig) routeThread(t *testing.T, id string) config.Route {
 		return s.FooterSynced && s.Footer == want
 	})
 	return want
+}
+
+func (r *rig) quiesce(t *testing.T) {
+	t.Helper()
+	r.quiet++
+	id := "quiesce-" + strconv.Itoa(r.quiet)
+	r.d.mu.Lock()
+	r.d.threads[id] = &fakeThread{cwd: "/q", source: "user", route: native}
+	r.d.mu.Unlock()
+	linkHandler{r.b}.Decide(t.Context(), step(native), userStep(id))
+	eventually(t, "daemon worker pass for "+id, func() bool { return r.d.called(appserver.MethodResume, id, config.Route{}) })
+	r.b.w.Enqueue(id, luna)
+	eventually(t, "footer writer pass for "+id, func() bool { return r.d.called(appserver.MethodSettingsUpdate, id, luna) })
 }
 
 func (r *rig) start(t *testing.T) {
@@ -523,7 +537,7 @@ func TestBrainFollowsAThreadSeenOnTheLinkOnceItHasARollout(t *testing.T) {
 
 	h := linkHandler{r.b}
 	h.Decide(t.Context(), nil, responses.Meta{ThreadID: "t9", RequestKind: "compaction"})
-	time.Sleep(20 * time.Millisecond)
+	r.quiesce(t)
 	if r.d.called(appserver.MethodRead, "t9", config.Route{}) {
 		t.Fatal("a request that is not a user step made the brain look the thread up")
 	}
@@ -562,7 +576,7 @@ func TestBrainUnsubscribesIdleThreads(t *testing.T) {
 	r.clock.advance(5 * time.Minute)
 
 	eventually(t, "unsubscribe t1", func() bool { return r.d.called(appserver.MethodUnsubscribe, "t1", config.Route{}) })
-	time.Sleep(30 * time.Millisecond)
+	r.quiesce(t)
 	if r.d.called(appserver.MethodUnsubscribe, "t2", config.Route{}) || !r.b.threads.known("t2") {
 		t.Error("t2 had a turn 5 minutes ago and was dropped")
 	}
@@ -606,9 +620,9 @@ func TestBrainSkipsTheResyncWhenTheFooterIsCurrent(t *testing.T) {
 	r.d.mu.Lock()
 	r.d.calls = nil
 	r.d.mu.Unlock()
-	r.d.start() // the footer kept the routed route
+	r.d.start()
 	eventually(t, "resume after reconnect", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
-	time.Sleep(30 * time.Millisecond)
+	r.quiesce(t)
 	if r.d.called(appserver.MethodSettingsUpdate, "t1", config.Route{}) {
 		t.Error("the footer already showed the route and was written again")
 	}
@@ -630,7 +644,7 @@ func TestBrainKeepsAPickMadeWhileTheDaemonWasAway(t *testing.T) {
 	r.d.start()
 	eventually(t, "resume after reconnect", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
 	eventually(t, "t1 manual", func() bool { return r.b.eng.SnapshotFor("t1").Mode == route.ModeManual })
-	time.Sleep(30 * time.Millisecond)
+	r.quiesce(t)
 	if r.d.called(appserver.MethodSettingsUpdate, "t1", config.Route{}) {
 		t.Error("the router's route overwrote the /model pick")
 	}
@@ -656,7 +670,7 @@ func TestBrainTakesAPickOnAnIdleThreadFromItsRequest(t *testing.T) {
 		t.Fatalf("session = %+v, want manual", s)
 	}
 	eventually(t, "resume of t1", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
-	time.Sleep(30 * time.Millisecond)
+	r.quiesce(t)
 	if r.d.called(appserver.MethodSettingsUpdate, "t1", config.Route{}) {
 		t.Error("the router's route overwrote the /model pick")
 	}
@@ -673,7 +687,6 @@ func TestBrainHoldsAThreadSeenBeforeItsResume(t *testing.T) {
 	r.start(t)
 	eventually(t, "resume of t1 sent", func() bool { return r.d.called(appserver.MethodResume, "t1", config.Route{}) })
 
-	// The next step of a turn that was running when the brain restarted.
 	midTurn := step(native,
 		responses.Item{Type: responses.TypeMessage, Role: "user", Text: "fix it"},
 		responses.Item{Type: responses.TypeFunctionCall, Name: "exec_command", CallID: "c1"},
@@ -765,7 +778,6 @@ func TestBrainMovesLongSocketPathsToTmp(t *testing.T) {
 	}
 
 	r.b.Close()
-	// A brain that fits again removes the record.
 	if err := recordLinkPath(dir, filepath.Join(dir, link.SocketName)); err != nil {
 		t.Fatal(err)
 	}
@@ -786,5 +798,33 @@ func TestBrainRefusesAnOpenStateDir(t *testing.T) {
 	_, err := Start(Options{Home: r.home, Deps: route.Deps{Config: config.Default()}, Getenv: r.getenv, Daemon: r.d.path})
 	if err == nil || !strings.Contains(err.Error(), "must not be accessible") {
 		t.Errorf("Start = %v, want a refusal", err)
+	}
+}
+
+func TestBrainCountsAReplyAsActivityAndEndsTheSeededHold(t *testing.T) {
+	r := newRig(t, "")
+	r.d.load("replied", &fakeThread{cwd: "/w1", source: "user", route: native})
+	r.d.load("silent", &fakeThread{cwd: "/w2", source: "user", route: native})
+	r.start(t)
+	for _, id := range []string{"replied", "silent"} {
+		eventually(t, "seed "+id, func() bool { return r.b.eng.SnapshotFor(id).Baseline == native })
+	}
+	h := linkHandler{r.b}
+	h.Decide(t.Context(), step(native), userStep("replied"))
+	if s := r.session(t, "replied"); s.Attention != route.AttentionUnknown {
+		t.Fatalf("session = %+v, want held as unknown", s)
+	}
+
+	r.clock.advance(IdleAfter - time.Minute)
+	h.Observe(userStep("replied"), native.Model, responses.Usage{InputTokens: 1000, TotalTokens: 1100}, 200)
+	r.clock.advance(2 * time.Minute)
+
+	eventually(t, "unsubscribe silent", func() bool { return r.d.called(appserver.MethodUnsubscribe, "silent", config.Route{}) })
+	r.quiesce(t)
+	if s := r.session(t, "replied"); s.Attention != "" {
+		t.Errorf("attention after a measured reply = %q, want the hold ended", s.Attention)
+	}
+	if !r.b.threads.known("replied") || r.d.called(appserver.MethodUnsubscribe, "replied", config.Route{}) {
+		t.Error("a thread with a reply a minute ago was dropped as idle")
 	}
 }
