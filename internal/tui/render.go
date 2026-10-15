@@ -46,6 +46,7 @@ type seg struct {
 	color   string
 	bold    bool
 	reverse bool
+	act     action // a click on the text does this
 }
 
 func plain(t string) seg        { return seg{text: t} }
@@ -80,9 +81,16 @@ type canvas struct {
 	styled bool
 	width  int
 	out    []string
+	zones  []zone
 }
 
 func render(v view) string {
+	out, _ := layout(v)
+	return out
+}
+
+// layout draws v and lists the clickable zones of the drawn rows.
+func layout(v view) (string, []zone) {
 	c := &canvas{styled: v.styled, width: max(v.width, minWidth)}
 	all := v.fleet != nil && !v.locked
 	switch {
@@ -125,7 +133,7 @@ func render(v view) string {
 	if v.notice != "" {
 		c.add(col(colorWarn, v.notice))
 	}
-	return strings.Join(c.out, "\n") + "\n"
+	return strings.Join(c.out, "\n") + "\n", c.zones
 }
 
 // keyHints lists the keys the view takes, most useful first.
@@ -186,16 +194,23 @@ func (c *canvas) add(segs ...seg) {
 	var b strings.Builder
 	for _, s := range segs {
 		n := utf8.RuneCountInString(s.text)
-		if n > room {
+		cut := n > room
+		if cut {
 			if room == 0 {
 				break
 			}
 			s.text = string([]rune(s.text)[:max(room-1, 0)]) + "…"
-			b.WriteString(c.paint(s))
-			break
+			n = utf8.RuneCountInString(s.text)
+		}
+		if s.act.kind != actNone && n > 0 {
+			x0 := c.width - room
+			c.zones = append(c.zones, zone{action: s.act, row: len(c.out), x0: x0, x1: x0 + n})
 		}
 		room -= n
 		b.WriteString(c.paint(s))
+		if cut {
+			break
+		}
 	}
 	c.out = append(c.out, b.String())
 }
@@ -282,11 +297,12 @@ func (c *canvas) tabs(active Tab, withSessions bool) {
 			i++
 		}
 		label := fmt.Sprintf("%s %d", names[t], i)
+		tab := dim(" " + label + " ")
 		if t == active || (active == "" && t == TabNow) {
-			segs = append(segs, seg{text: "[" + label + "]", color: colorAccent, reverse: true})
-		} else {
-			segs = append(segs, dim(" "+label+" "))
+			tab = seg{text: "[" + label + "]", color: colorAccent, reverse: true}
 		}
+		tab.act = action{kind: actTab, tab: t}
+		segs = append(segs, tab)
 	}
 	c.blank()
 	c.add(segs...)
@@ -424,6 +440,7 @@ func (c *canvas) pinRow(s route.Snapshot) {
 		}
 		b := button(label, s.Pin != nil && *s.Pin == t)
 		b.color = tierColor[t]
+		b.act = action{kind: actPin, tier: t}
 		segs = append(segs, b)
 	}
 	c.row("Pin next", append(segs, dim(" next turn only · p cycles"))...)
@@ -638,7 +655,9 @@ func (c *canvas) policy(s route.Snapshot) {
 	c.add(dim("PRESET"))
 	var segs []seg
 	for _, p := range Presets {
-		segs = append(segs, button(string(p), p == s.Preset))
+		b := button(string(p), p == s.Preset)
+		b.act = action{kind: actPreset, preset: p}
+		segs = append(segs, b)
 	}
 	c.add(segs...)
 	p := s.Policy

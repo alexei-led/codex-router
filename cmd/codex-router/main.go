@@ -57,7 +57,7 @@ reasoning effort for every step, and mirrors the choice into Codex's footer.
 
 Usage:
   codex-router [--config PATH] [--] [codex args...]  run codex through the router
-  codex-router tui [--session ID|LABEL] [--socket PATH]
+  codex-router tui [--session ID|LABEL] [--socket PATH] [--no-mouse]
                                                      show the router panel
   codex-router sessions [--json]                     list running sessions
   codex-router hook                                  Codex hook: print a line when the route switched
@@ -87,6 +87,8 @@ registry; --socket shows only the endpoint at that control socket.
 --session locks the panel to one session: an exact session or thread id,
 else a unique prefix of one, else an exact label, else a label suffix that
 starts at a " · " (for example "repo · branch" or a branch name).
+--no-mouse leaves the mouse to the terminal, so text selection works; the
+panel otherwise takes clicks on tabs, sessions, pins and presets.
 sessions prints one line per session: id, home, label, mode, route; --json
 prints the full session list with each session's endpoint_id.
 proxy --port defaults to the config's proxy.port (0 = any free port) and
@@ -303,13 +305,14 @@ func (c cli) tui(ctx context.Context, args []string) int {
 	fs.SetOutput(c.stderr)
 	socket := fs.String("socket", "", "control socket `path` (default: every running session in the registry)")
 	session := fs.String("session", "", "lock the panel to one session: its `id` or label (see codex-router sessions)")
+	noMouse := fs.Bool("no-mouse", false, "leave the mouse to the terminal (text selection works)")
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
 	}
 	if fs.NArg() > 0 {
 		return c.usageError(fmt.Errorf("tui: unexpected argument %q", fs.Arg(0)))
 	}
-	o := tui.Options{Socket: *socket}
+	o := tui.Options{Socket: *socket, NoMouse: *noMouse}
 	if *socket == "" {
 		root, err := registry.Root(c.getenv)
 		if err != nil {

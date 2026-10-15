@@ -184,7 +184,10 @@ func (c *canvas) topBar(st fleetState) {
 		case s.disconnected:
 			name = dim(label)
 		}
-		segs = append(segs, plain(sep), col(st.homeColor(s.Home), "● "), name, col(colorWarn, mark))
+		act := action{kind: actFocus, session: s.ID}
+		dot := col(st.homeColor(s.Home), "● ")
+		dot.act, name.act = act, act
+		segs = append(segs, plain(sep), dot, name, col(colorWarn, mark))
 	}
 	segs = append(segs, plain(strings.Repeat(" ", max(room, 0))), dim(right))
 	c.add(segs...)
@@ -274,6 +277,9 @@ func (c *canvas) sessionsTab(st fleetState, cursor string, room int) {
 	}
 	for _, l := range lines[start:end] {
 		c.add(l.segs...)
+		if l.session != "" {
+			c.zones = append(c.zones, zone{action: action{kind: actSelect, session: l.session}, row: len(c.out) - 1, x1: c.width})
+		}
 	}
 	if n := countSessions(lines[end:]); n > 0 {
 		c.add(dim(fmt.Sprintf("  ↓ %d more", n)))
