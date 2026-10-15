@@ -261,7 +261,7 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 	eng, store, h := newRouter(o, s.log, snk)
 
 	ctlPath := filepath.Join(dir, control.SocketName)
-	hello := control.Hello{EndpointID: id, Kind: registry.KindSession, Home: h}
+	hello := control.Hello{EndpointID: id, Kind: registry.KindSession, Home: h, Label: launcherLabel(h)}
 	if s.ctl, err = control.Listen(ctlPath, endpoint{eng, hello}); err != nil {
 		return s, err
 	}

@@ -100,7 +100,7 @@ sequenceDiagram
   participant C as panel or hook
   participant S as router control socket
   C->>S: hello {protocol: 2}
-  S-->>C: hello {endpoint_id, kind, home}
+  S-->>C: hello {endpoint_id, kind, home, label?}
   S-->>C: sessions {seq, items}
   C->>S: subscribe {session, id}
   S-->>C: snapshot {session, snapshot}
@@ -110,7 +110,7 @@ sequenceDiagram
   S-->>C: snapshot, and sessions when the list changed
 ```
 
-- **Handshake.** The client's first line must be `hello` with a known protocol version. Anything else gets an `error` line and the connection closes.
+- **Handshake.** The client's first line must be `hello` with a known protocol version. Anything else gets an `error` line and the connection closes. The server's `hello` may carry a `label`: a launcher's working directory as `home · repo · branch`, so the panel can name a router before its first session. A brain leaves it out.
 - **Sessions.** The server pushes the list after the handshake and then whenever it changed, coalesced, with a `seq` that moves on each change.
 - **Subscribe.** Each connection follows at most one session; an empty `session` means the list only. A later `subscribe` replaces the earlier one. The `snapshot` op re-sends the current snapshot.
 - **Commands.** Each carries a client-chosen `id`, and the `ack` or `error` carries the same `id`, so a client can have several commands in flight. The `scope` depends on the op:

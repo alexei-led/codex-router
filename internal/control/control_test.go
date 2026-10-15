@@ -22,7 +22,7 @@ import (
 
 const testHome = "3fa9c0d1e2b4"
 
-var testHello = Hello{EndpointID: "ep-1", Kind: "session", Home: home.Home{ID: testHome, Path: "/h/.codex-work", Name: "work"}}
+var testHello = Hello{EndpointID: "ep-1", Kind: "session", Home: home.Home{ID: testHome, Path: "/h/.codex-work", Name: "work"}, Label: "work · api · main"}
 
 func sid(thread string) string { return SessionID(testHome, thread) }
 

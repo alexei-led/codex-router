@@ -68,6 +68,16 @@ func launcherCwd() func(string) string {
 	return func(string) string { return wd }
 }
 
+// launcherLabel names the launcher's working directory like a session label,
+// "home · repo · branch". Empty when the directory is unknown.
+func launcherLabel(h home.Home) string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return home.Label(h.Name, wd)
+}
+
 // newClassifier returns the configured classifier, or nil and the reason it
 // is off. The key and each {NAME} placeholder of the endpoint come from the
 // env var of that name, else from the classifier's envFile. A value found in

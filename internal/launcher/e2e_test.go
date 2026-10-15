@@ -375,8 +375,9 @@ func TestE2ESessionRegistersAndSaysHelloWithItsHome(t *testing.T) {
 		t.Fatal(err)
 	}
 	hello := e.ctl.Hello()
-	if hello.Kind != registry.KindSession || hello.Home != want || hello.EndpointID != filepath.Base(e.s.dir) {
-		t.Errorf("hello = %+v, want kind %q, home %+v, endpoint id %q", hello, registry.KindSession, want, filepath.Base(e.s.dir))
+	wd, _ := os.Getwd()
+	if hello.Kind != registry.KindSession || hello.Home != want || hello.EndpointID != filepath.Base(e.s.dir) || hello.Label != home.Label(want.Name, wd) {
+		t.Errorf("hello = %+v, want kind %q, home %+v, endpoint id %q, label %q", hello, registry.KindSession, want, filepath.Base(e.s.dir), home.Label(want.Name, wd))
 	}
 
 	eps := e.h.registered(t)
@@ -390,7 +391,6 @@ func TestE2ESessionRegistersAndSaysHelloWithItsHome(t *testing.T) {
 	}
 
 	e.mustPost(t, turnReq("turn-1", 1))
-	wd, _ := os.Getwd()
 	deadline := time.After(e2eWait)
 	for {
 		select {
