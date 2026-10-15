@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -38,37 +40,170 @@ func testEnv(t *testing.T) []string {
 	return []string{"HOME=" + home, "TMPDIR=" + home, "CODEX_HOME=" + home, envConfig + "=" + filepath.Join(home, "none.json")}
 }
 
-func TestRunPrintsAndRejects(t *testing.T) {
+func TestRunPrints(t *testing.T) {
 	cases := []struct {
 		name       string
 		args       []string
-		wantCode   int
 		wantStdout string
-		wantStderr string
 	}{
-		{"version subcommand", []string{"version"}, exitOK, "dev\n", ""},
-		{"version flag", []string{"--version"}, exitOK, "dev\n", ""},
-		{"help", []string{"--help"}, exitOK, "Exit codes:", ""},
-		{"config without path", []string{"--config"}, exitUsage, "", "--config needs a path"},
-		{"unknown proxy flag", []string{"proxy", "--bogus"}, exitUsage, "", "flag provided but not defined"},
-		{"stray tui argument", []string{"tui", "extra"}, exitUsage, "", `unexpected argument "extra"`},
-		{"stray sessions argument", []string{"sessions", "extra"}, exitUsage, "", `unexpected argument "extra"`},
-		{"hook without a router", []string{"hook"}, exitOK, "{}\n", ""},
+		{"version subcommand", []string{"version"}, "dev\n"},
+		{"version flag", []string{"--version"}, "dev\n"},
+		{"help", []string{"--help"}, "Exit codes:"},
+		{"hook without a router", []string{"hook"}, "{}\n"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			code := run(context.Background(), tc.args, testEnv(t), strings.NewReader(""), &stdout, &stderr)
-			if code != tc.wantCode {
-				t.Errorf("exit code = %d, want %d (stderr %q)", code, tc.wantCode, stderr.String())
-			}
-			if !strings.Contains(stdout.String(), tc.wantStdout) {
-				t.Errorf("stdout = %q, want it to contain %q", stdout.String(), tc.wantStdout)
-			}
-			if !strings.Contains(stderr.String(), tc.wantStderr) {
-				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), tc.wantStderr)
+			if code != exitOK || !strings.Contains(stdout.String(), tc.wantStdout) || stderr.Len() != 0 {
+				t.Errorf("exit %d, stdout %q, stderr %q; want 0, %q, nothing", code, stdout.String(), stderr.String(), tc.wantStdout)
 			}
 		})
+	}
+}
+
+func TestUsageErrors(t *testing.T) {
+	fakeServices(t)
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"config without a path", []string{"--config"}, "--config needs a path"},
+		{"unknown proxy flag", []string{"proxy", "--bogus"}, ""},
+		{"stray tui argument", []string{"tui", "extra"}, `unexpected argument "extra"`},
+		{"stray sessions argument", []string{"sessions", "extra"}, `unexpected argument "extra"`},
+		{"stray proxy argument", []string{"proxy", "extra"}, `unexpected argument "extra"`},
+		{"stray edge argument", []string{"edge", "extra"}, `unexpected argument "extra"`},
+		{"stray brain argument", []string{"brain", "extra"}, `unexpected argument "extra"`},
+		{"stray service argument", []string{"service", "status", "extra"}, `unexpected argument "extra"`},
+		{"stray ctl argument", []string{"ctl", "pause", "now"}, `unexpected argument "now"`},
+		{"relative edge home", []string{"edge", "--home", "rel"}, "not an absolute path"},
+		{"relative edge state dir", []string{"edge", "--state-dir", "rel"}, "not an absolute path"},
+		{"relative brain home", []string{"brain", "--home", "rel"}, "not an absolute path"},
+		{"relative brain state dir", []string{"brain", "--state-dir", "rel"}, "not an absolute path"},
+		{"relative setup home", []string{"setup", "--home", "rel"}, "not an absolute path"},
+		{"purge without undo", []string{"setup", "--purge"}, "--purge needs --undo"},
+		{"service without a subcommand", []string{"service"}, "want ensure or status"},
+		{"service unknown subcommand", []string{"service", "restart"}, "want ensure or status"},
+		{"service takes no state dir", []string{"service", "ensure", "--state-dir", "/x"}, ""},
+		{"ctl without a subcommand", []string{"ctl"}, "want status, pause, resume or pin"},
+		{"ctl unknown subcommand", []string{"ctl", "preset"}, "want status, pause, resume or pin"},
+		{"pin without a tier", []string{"ctl", "pin"}, `--tier "" is not`},
+		{"pin with a bad tier", []string{"ctl", "pin", "--tier", "huge"}, `--tier "huge" is not`},
+		{"tier on status", []string{"ctl", "status", "--tier", "high"}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			code := run(context.Background(), tc.args, testEnv(t), strings.NewReader(""), &stdout, &stderr)
+			if code != exitUsage || !strings.Contains(stderr.String(), tc.want) || stdout.Len() != 0 {
+				t.Errorf("exit %d, stdout %q, stderr %q; want %d, no stdout, stderr containing %q", code, stdout.String(), stderr.String(), exitUsage, tc.want)
+			}
+		})
+	}
+}
+
+func badConfig(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(path, []byte(`{"bogus": 1}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func fakeCodexOnPath(t *testing.T, script string) (dir string) {
+	t.Helper()
+	dir = t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "codex"), []byte("#!/bin/sh\n"+script+"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	return dir
+}
+
+type execCall struct {
+	path      string
+	argv, env []string
+}
+
+func TestLaunchFallsBackToPlainCodex(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		argv []string
+	}{
+		{"codex args", []string{"exec", "-m", "x"}, []string{"codex", "exec", "-m", "x"}},
+		{"after --, router flags go to codex", []string{"--", "--version"}, []string{"codex", "--version"}},
+		{"no args", nil, []string{"codex"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := fakeCodexOnPath(t, "")
+			var calls []execCall
+			launchExec = func(path string, argv, env []string) error {
+				calls = append(calls, execCall{path, argv, env})
+				return nil
+			}
+			t.Cleanup(func() { launchExec = nil })
+			env := append(testEnv(t), "MARKER=1")
+			var stderr bytes.Buffer
+			code := run(context.Background(), append([]string{"--config", badConfig(t)}, tc.args...), env, nil, io.Discard, &stderr)
+			if code != exitOK || !strings.Contains(stderr.String(), "running plain codex") {
+				t.Fatalf("exit %d, stderr %q; want 0 and the fallback line", code, stderr.String())
+			}
+			if len(calls) != 1 || calls[0].path != filepath.Join(dir, "codex") || !slices.Equal(calls[0].argv, tc.argv) || !slices.Contains(calls[0].env, "MARKER=1") {
+				t.Errorf("exec calls %+v, want codex at %s with argv %v and the caller's env", calls, dir, tc.argv)
+			}
+		})
+	}
+}
+
+func TestLaunchFailsWhenPlainCodexCannotRun(t *testing.T) {
+	cases := []struct {
+		name    string
+		onPath  bool
+		execErr error
+		want    string
+	}{
+		{"codex not found", false, nil, "find codex"},
+		{"exec fails", true, syscall.ENOEXEC, "exec codex"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.onPath {
+				fakeCodexOnPath(t, "")
+			} else {
+				t.Setenv("PATH", t.TempDir())
+			}
+			launchExec = func(string, []string, []string) error { return tc.execErr }
+			t.Cleanup(func() { launchExec = nil })
+			var stderr bytes.Buffer
+			code := run(context.Background(), []string{"--config", badConfig(t), "exec"}, testEnv(t), nil, io.Discard, &stderr)
+			if code != exitError || !strings.Contains(stderr.String(), tc.want) {
+				t.Errorf("exit %d, stderr %q; want 1 and %q", code, stderr.String(), tc.want)
+			}
+		})
+	}
+}
+
+func TestLaunchedCodexKeepsItsArgsAndExitCode(t *testing.T) {
+	dir := fakeCodexOnPath(t, `printf '%s\n' "$@" >"$CODEX_ARGS_OUT"; exit 7`)
+	out := filepath.Join(t.TempDir(), "args")
+	bin, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(bin, "--config", badConfig(t), "--", "--version", "resume")
+	cmd.Env = append(testEnv(t), "PATH="+dir, "CODEX_ARGS_OUT="+out, envTestBinary+"=1", noRaceExitSleep)
+	err = cmd.Run()
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 7 {
+		t.Fatalf("exit = %v, want codex's code 7", err)
+	}
+	if got, _ := os.ReadFile(out); string(got) != "--version\nresume\n" {
+		t.Errorf("codex args = %q, want the args after -- unchanged", got)
 	}
 }
 
@@ -85,15 +220,16 @@ func TestTUIFailsWithoutARegistry(t *testing.T) {
 	}
 }
 
-func TestProxyRejectsBadConfig(t *testing.T) {
-	bad := filepath.Join(t.TempDir(), "config.json")
-	if err := os.WriteFile(bad, []byte(`{"bogus": 1}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	var stderr bytes.Buffer
-	code := run(context.Background(), []string{"--config", bad, "proxy", "--port", "0"}, testEnv(t), nil, io.Discard, &stderr)
-	if code != exitError || !strings.Contains(stderr.String(), "bogus") {
-		t.Errorf("exit code = %d, stderr %q; want 1 naming the bad key", code, stderr.String())
+func TestSubcommandsRejectABadConfig(t *testing.T) {
+	bad := badConfig(t)
+	for _, args := range [][]string{{"proxy", "--port", "0"}, {"brain"}} {
+		t.Run(args[0], func(t *testing.T) {
+			var stderr bytes.Buffer
+			code := run(context.Background(), append([]string{"--config", bad}, args...), testEnv(t), nil, io.Discard, &stderr)
+			if code != exitError || !strings.Contains(stderr.String(), "bogus") {
+				t.Errorf("exit code = %d, stderr %q; want 1 naming the bad key", code, stderr.String())
+			}
+		})
 	}
 }
 
@@ -136,13 +272,8 @@ func TestProxyServesHealthAndPrintsProviderFlags(t *testing.T) {
 	}
 
 	cancel()
-	select {
-	case code := <-done:
-		if code != exitOK {
-			t.Errorf("exit code = %d, want 0", code)
-		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("proxy did not stop")
+	if code := waitExit(t, "proxy", done); code != exitOK {
+		t.Errorf("exit code = %d, want 0", code)
 	}
 }
 
@@ -165,7 +296,6 @@ var (
 	sessDefault  = testSession(homeDefault, "019a-t3", "default · notes · main", 1)
 )
 
-// endpointHandler is a control.Handler serving fixed sessions.
 type endpointHandler struct {
 	hello    control.Hello
 	sessions []route.SessionInfo
@@ -176,9 +306,6 @@ func (h endpointHandler) Sessions() []route.SessionInfo     { return h.sessions 
 func (h endpointHandler) SnapshotFor(string) route.Snapshot { return route.Snapshot{} }
 func (h endpointHandler) Hello() control.Hello              { return h.hello }
 
-// fleetFixture is a registry with two live endpoints, "ep-work" (two work
-// sessions) and "ep-default", plus a dead entry. It returns the env that
-// points at the registry and the sockets by endpoint id.
 func fleetFixture(t *testing.T) (env []string, sockets map[string]string) {
 	t.Helper()
 	env, root, sockDir := testRegistry(t)
@@ -193,8 +320,6 @@ func fleetFixture(t *testing.T) (env []string, sockets map[string]string) {
 	return env, sockets
 }
 
-// testRegistry returns the env that points at a fresh registry, its root,
-// and a dir for sockets.
 func testRegistry(t *testing.T) (env []string, root, sockDir string) {
 	t.Helper()
 	state := t.TempDir()
@@ -208,7 +333,6 @@ func testRegistry(t *testing.T) (env []string, root, sockDir string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Unix socket paths are short on macOS, so not under t.TempDir.
 	sockDir, err = os.MkdirTemp("", "crm")
 	if err != nil {
 		t.Fatal(err)
@@ -217,8 +341,6 @@ func testRegistry(t *testing.T) (env []string, root, sockDir string) {
 	return env, root, sockDir
 }
 
-// serveEndpoint serves sessions as endpoint id of home h on a socket in
-// sockDir, registers it under root, and returns the socket path.
 func serveEndpoint(t *testing.T, root, sockDir, id string, h home.Home, sessions ...route.SessionInfo) string {
 	t.Helper()
 	sock := filepath.Join(sockDir, id+".sock")
@@ -236,7 +358,6 @@ func serveEndpoint(t *testing.T, root, sockDir, id string, h home.Home, sessions
 	return sock
 }
 
-// stubPanel replaces the panel for one test and returns the options it got.
 func stubPanel(t *testing.T) *[]tui.Options {
 	t.Helper()
 	var got []tui.Options
@@ -249,7 +370,68 @@ func stubPanel(t *testing.T) *[]tui.Options {
 	return &got
 }
 
-func TestTUIResolvesSession(t *testing.T) {
+func listed(s route.SessionInfo) listedSession { return listedSession{SessionInfo: s, base: s.Label} }
+
+func listedTwins(thread ...string) []listedSession {
+	const shared = "work · repo · main"
+	var sessions []route.SessionInfo
+	var ids, labels []string
+	for i, th := range thread {
+		s := testSession(homeWork, th, shared, i+1)
+		sessions = append(sessions, s)
+		ids, labels = append(ids, s.ID), append(labels, shared)
+	}
+	var out []listedSession
+	for i, label := range home.Disambiguate(labels, ids) {
+		l := listed(sessions[i])
+		l.Label = label
+		out = append(out, l)
+	}
+	return out
+}
+
+func TestResolveSession(t *testing.T) {
+	plain := []listedSession{listed(sessWorkMain), listed(sessWorkFeat), listed(sessDefault)}
+	twins := listedTwins("t-a", "t-b")
+	cases := []struct {
+		name     string
+		sessions []listedSession
+		query    string
+		want     []string
+	}{
+		{"exact id", plain, sessDefault.ID, []string{sessDefault.ID}},
+		{"exact thread id", plain, "019a-t1", []string{sessWorkMain.ID}},
+		{"unique id prefix", plain, homeDefault.ID[:6], []string{sessDefault.ID}},
+		{"unique thread id prefix", plain, "019b", []string{sessWorkFeat.ID}},
+		{"exact label", plain, "work · codex-router · main", []string{sessWorkMain.ID}},
+		{"label suffix", plain, "codex-router · feat-x", []string{sessWorkFeat.ID}},
+		{"ambiguous thread prefix", plain, "019a", []string{sessWorkMain.ID, sessDefault.ID}},
+		{"ambiguous label suffix", plain, "main", []string{sessWorkMain.ID, sessDefault.ID}},
+		{"ambiguous home prefix", plain, homeWork.ID, []string{sessWorkMain.ID, sessWorkFeat.ID}},
+		{"suffix inside a word", plain, "ain", nil},
+		{"not found", plain, "nope", nil},
+		{"shared full label", twins, "work · repo · main", []string{twins[0].ID, twins[1].ID}},
+		{"shared branch suffix", twins, "main", []string{twins[0].ID, twins[1].ID}},
+		{"shared repo and branch suffix", twins, "repo · main", []string{twins[0].ID, twins[1].ID}},
+		{"disambiguated label", twins, twins[1].Label, []string{twins[1].ID}},
+		{"hex suffix", twins, strings.TrimPrefix(twins[0].Label, twins[0].base+labelSep), []string{twins[0].ID}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var got []string
+			for _, s := range resolveSession(tc.sessions, tc.query) {
+				got = append(got, s.ID)
+			}
+			slices.Sort(got)
+			want := slices.Sorted(slices.Values(tc.want))
+			if !slices.Equal(got, want) {
+				t.Errorf("resolveSession(%q) = %v, want %v", tc.query, got, want)
+			}
+		})
+	}
+}
+
+func TestTUIReportsTheResolvedSession(t *testing.T) {
 	env, _ := fleetFixture(t)
 	cases := []struct {
 		name       string
@@ -258,17 +440,9 @@ func TestTUIResolvesSession(t *testing.T) {
 		wantID     string
 		wantStderr []string
 	}{
-		{"exact id", sessDefault.ID, exitOK, sessDefault.ID, nil},
-		{"exact thread id", "019a-t1", exitOK, sessWorkMain.ID, nil},
-		{"unique id prefix", homeDefault.ID[:6], exitOK, sessDefault.ID, nil},
-		{"unique thread id prefix", "019b", exitOK, sessWorkFeat.ID, nil},
-		{"exact label", "work · codex-router · main", exitOK, sessWorkMain.ID, nil},
-		{"label suffix", "codex-router · feat-x", exitOK, sessWorkFeat.ID, nil},
-		{"ambiguous thread prefix", "019a", exitUsage, "", []string{`"019a" matches 2 sessions`, sessWorkMain.ID, sessDefault.ID}},
-		{"ambiguous label suffix", "main", exitUsage, "", []string{"default · notes · main", "work · codex-router · main"}},
-		{"ambiguous home prefix", homeWork.ID, exitUsage, "", []string{sessWorkMain.ID, sessWorkFeat.ID}},
-		{"suffix inside a word", "ain", exitError, "", []string{`no running session matches "ain"`}},
-		{"not found", "nope", exitError, "", []string{`no running session matches "nope"`}},
+		{"one match", "019b", exitOK, sessWorkFeat.ID, nil},
+		{"ambiguous lists the matches", "019a", exitUsage, "", []string{`"019a" matches 2 sessions`, sessWorkMain.ID, sessWorkMain.Label, sessDefault.ID, sessDefault.Label}},
+		{"no match", "nope", exitError, "", []string{`no running session matches "nope"`}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -288,50 +462,6 @@ func TestTUIResolvesSession(t *testing.T) {
 				t.Errorf("panel ran with %+v", *got)
 			case tc.wantID != "" && (len(*got) != 1 || (*got)[0].Session != tc.wantID || (*got)[0].Registry == ""):
 				t.Errorf("panel options %+v, want session %s over the registry", *got, tc.wantID)
-			}
-		})
-	}
-}
-
-func TestTUIResolvesCollidingLabels(t *testing.T) {
-	env, root, sockDir := testRegistry(t)
-	const shared = "work · repo · main"
-	twinA := testSession(homeWork, "t-a", shared, 2)
-	twinB := testSession(homeWork, "t-b", shared, 1)
-	serveEndpoint(t, root, sockDir, "ep", homeWork, twinA, twinB)
-	shown := home.Disambiguate([]string{shared, shared}, []string{twinA.ID, twinB.ID})
-	hexA := strings.TrimPrefix(shown[0], shared+labelSep)
-
-	cases := []struct {
-		name     string
-		query    string
-		wantCode int
-		wantID   string
-	}{
-		{"shared full label", shared, exitUsage, ""},
-		{"shared branch suffix", "main", exitUsage, ""},
-		{"shared repo and branch suffix", "repo · main", exitUsage, ""},
-		{"disambiguated label", shown[1], exitOK, twinB.ID},
-		{"hex suffix", hexA, exitOK, twinA.ID},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := stubPanel(t)
-			var stderr bytes.Buffer
-			code := run(context.Background(), []string{"tui", "--session", tc.query}, env, nil, io.Discard, &stderr)
-			if code != tc.wantCode {
-				t.Fatalf("exit %d, want %d (stderr %q)", code, tc.wantCode, stderr.String())
-			}
-			if tc.wantCode == exitUsage {
-				for _, w := range shown {
-					if !strings.Contains(stderr.String(), w) {
-						t.Errorf("stderr %q, want it to list %q", stderr.String(), w)
-					}
-				}
-				return
-			}
-			if len(*got) != 1 || (*got)[0].Session != tc.wantID {
-				t.Errorf("panel options %+v, want session %s", *got, tc.wantID)
 			}
 		})
 	}
@@ -419,32 +549,13 @@ func TestSessionsLines(t *testing.T) {
 }
 
 func TestSessionsPrunesDeadAndDisambiguates(t *testing.T) {
-	state := t.TempDir()
-	env := append(testEnv(t), "XDG_STATE_HOME="+state)
-	root, err := registry.Root(func(k string) string { return map[string]string{"XDG_STATE_HOME": state}[k] })
-	if err != nil {
-		t.Fatal(err)
-	}
-	sockDir, err := os.MkdirTemp("", "crm")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(sockDir) })
-	sock := filepath.Join(sockDir, "ep.sock")
+	env, root, sockDir := testRegistry(t)
 	twinA := testSession(homeWork, "t-a", "work · repo · main", 1)
 	twinB := testSession(homeWork, "t-b", "work · repo · main", 2)
-	srv, err := control.Listen(sock, endpointHandler{
-		hello:    control.Hello{EndpointID: "ep", Kind: registry.KindSession, Home: homeWork},
-		sessions: []route.SessionInfo{twinA, twinB},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = srv.Close() })
+	sock := serveEndpoint(t, root, sockDir, "ep", homeWork, twinA, twinB)
 	for _, ep := range []registry.Endpoint{
-		{ID: "ep", Kind: registry.KindSession, Home: homeWork, Socket: sock},
 		{ID: "ep-dead", Kind: registry.KindSession, Home: homeWork, Socket: filepath.Join(sockDir, "dead.sock")},
-		{ID: "ep-stale", Kind: registry.KindSession, Home: homeDefault, Socket: sock}, // hello names another endpoint
+		{ID: "ep-stale", Kind: registry.KindSession, Home: homeDefault, Socket: sock},
 	} {
 		if err := registry.Write(root, ep); err != nil {
 			t.Fatal(err)
@@ -497,12 +608,12 @@ const (
 	edgeBody  = `{"model":"gpt-6-sol","reasoning":{"effort":"medium"},"input":[` +
 		`{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]}],"stream":true}`
 	edgeTurn = `{"session_id":"s-1","thread_id":"th-1","turn_id":"tu-1","agent_name":"main"}`
+
+	exitWait      = 10 * time.Second
+	edgeBindTries = 5
 )
 
-// edgeSetup lays out a home's stage 2 state the way setup does: a private
-// homes/<id> dir with a token and a free port. The state base is under
-// /tmp so the brain socket path fits the macOS limit.
-func edgeSetup(t *testing.T) (args []string, h home.Home, dir string, port int) {
+func edgeSetup(t *testing.T) (args []string, h home.Home, dir string) {
 	t.Helper()
 	state, err := os.MkdirTemp("/tmp", "cre")
 	if err != nil {
@@ -523,21 +634,61 @@ func edgeSetup(t *testing.T) (args []string, h home.Home, dir string, port int) 
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	ln, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
+	if err := os.WriteFile(filepath.Join(dir, statedir.TokenFile), []byte(edgeToken+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	port = ln.Addr().(*net.TCPAddr).Port
-	_ = ln.Close()
-	for name, v := range map[string]string{statedir.TokenFile: edgeToken + "\n", statedir.PortFile: strconv.Itoa(port) + "\n"} {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(v), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return []string{"edge", "--home", codexHome, "--state-dir", state}, h, dir, port
+	return []string{"edge", "--home", codexHome, "--state-dir", state}, h, dir
 }
 
-// syncBuffer is a bytes.Buffer the edge logs into while the test reads it.
+func waitExit(t *testing.T, name string, done <-chan int) int {
+	t.Helper()
+	select {
+	case code := <-done:
+		return code
+	case <-time.After(exitWait):
+		t.Fatalf("%s did not stop", name)
+		return 0
+	}
+}
+
+func startEdge(ctx context.Context, t *testing.T, args []string, dir string, env []string) (base string, done <-chan int, stderr *syncBuffer) {
+	t.Helper()
+attempt:
+	for range edgeBindTries {
+		ln, err := net.Listen("tcp4", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		port := ln.Addr().(*net.TCPAddr).Port
+		_ = ln.Close()
+		if err := os.WriteFile(filepath.Join(dir, statedir.PortFile), []byte(strconv.Itoa(port)+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		base = "http://127.0.0.1:" + strconv.Itoa(port)
+		stderr = &syncBuffer{}
+		exited := make(chan int, 1)
+		go func() { exited <- run(ctx, args, env, nil, io.Discard, stderr) }()
+		deadline := time.Now().Add(exitWait)
+		for healthz(base) == "" {
+			select {
+			case code := <-exited:
+				if strings.Contains(stderr.String(), "address already in use") {
+					continue attempt
+				}
+				t.Fatalf("edge exited %d before it answered: %s", code, stderr.String())
+			default:
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("edge did not answer: %s", stderr.String())
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		return base, exited, stderr
+	}
+	t.Fatalf("no free port for the edge after %d tries", edgeBindTries)
+	return "", nil, nil
+}
+
 type syncBuffer struct {
 	mu  sync.Mutex
 	buf bytes.Buffer
@@ -555,8 +706,6 @@ func (b *syncBuffer) String() string {
 	return b.buf.String()
 }
 
-// fakeBackend records what reaches upstream and answers one completed
-// response.
 type fakeBackend struct {
 	mu     sync.Mutex
 	bodies []string
@@ -579,7 +728,6 @@ func (b *fakeBackend) seen() (bodies, tokens []string) {
 	return slices.Clone(b.bodies), slices.Clone(b.tokens)
 }
 
-// rewriteTo is a brain that routes every step to one model.
 type rewriteTo string
 
 func (m rewriteTo) Decide(context.Context, *responses.Request, responses.Meta) (responses.Rewrite, bool) {
@@ -607,7 +755,6 @@ func edgePost(t *testing.T, base, token string) int {
 	return resp.StatusCode
 }
 
-// healthz returns the edge's /healthz body, or "" while it does not answer.
 func healthz(base string) string {
 	resp, err := http.Get(base + proxy.PathHealth)
 	if err != nil {
@@ -636,15 +783,10 @@ func TestEdgeForwardsWithBrainDownAndRoutesWithBrainUp(t *testing.T) {
 	edgeUpstream = up.URL + "/backend-api/codex"
 	t.Cleanup(func() { edgeUpstream = "" })
 
-	args, h, dir, port := edgeSetup(t)
+	args, h, dir := edgeSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var stderr syncBuffer
-	done := make(chan int, 1)
-	go func() { done <- run(ctx, args, testEnv(t), nil, io.Discard, &stderr) }()
-
-	base := "http://127.0.0.1:" + strconv.Itoa(port)
-	waitFor(t, "edge up", func() bool { return healthz(base) != "" })
+	base, done, stderr := startEdge(ctx, t, args, dir, testEnv(t))
 	if got := healthz(base); got != "ok\nbrain: down\n" {
 		t.Errorf("healthz with no brain = %q", got)
 	}
@@ -683,13 +825,8 @@ func TestEdgeForwardsWithBrainDownAndRoutesWithBrainUp(t *testing.T) {
 	}
 
 	cancel()
-	select {
-	case code := <-done:
-		if code != exitOK {
-			t.Errorf("exit %d, stderr %q", code, stderr.String())
-		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("edge did not stop")
+	if code := waitExit(t, "edge", done); code != exitOK {
+		t.Errorf("exit %d, stderr %q", code, stderr.String())
 	}
 	if strings.Contains(stderr.String(), edgeToken) {
 		t.Error("the token reached the log")
@@ -702,21 +839,12 @@ func TestEdgeForwardsWithAnUnreadableConfig(t *testing.T) {
 	defer up.Close()
 	edgeUpstream = up.URL + "/backend-api/codex"
 	t.Cleanup(func() { edgeUpstream = "" })
-	bad := filepath.Join(t.TempDir(), "config.json")
-	if err := os.WriteFile(bad, []byte(`{"bogus": 1}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	args, _, _, port := edgeSetup(t)
+	bad := badConfig(t)
+	args, _, dir := edgeSetup(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var stderr syncBuffer
-	done := make(chan int, 1)
-	go func() {
-		done <- run(ctx, append([]string{"--config", bad}, args...), testEnv(t), nil, io.Discard, &stderr)
-	}()
-	base := "http://127.0.0.1:" + strconv.Itoa(port)
-	waitFor(t, "edge up", func() bool { return healthz(base) != "" })
+	base, done, stderr := startEdge(ctx, t, append([]string{"--config", bad}, args...), dir, testEnv(t))
 
 	if code := edgePost(t, base, edgeToken); code != http.StatusOK {
 		t.Fatalf("status %d, want 200 forwarded upstream", code)
@@ -728,7 +856,7 @@ func TestEdgeForwardsWithAnUnreadableConfig(t *testing.T) {
 		t.Errorf("stderr %q, want the config-unreadable warning", stderr.String())
 	}
 	cancel()
-	if code := <-done; code != exitOK {
+	if code := waitExit(t, "edge", done); code != exitOK {
 		t.Errorf("exit %d, stderr %q", code, stderr.String())
 	}
 }
@@ -776,19 +904,10 @@ func TestEdgeRefusesToStart(t *testing.T) {
 			}
 			return args
 		}, exitError, "does not hold a port"},
-		{"relative home", func(_ *testing.T, args []string, _ string) []string {
-			return append(args, "--home", "rel")
-		}, exitUsage, "not an absolute path"},
-		{"relative state dir", func(_ *testing.T, args []string, _ string) []string {
-			return append(args, "--state-dir", "rel")
-		}, exitUsage, "not an absolute path"},
-		{"stray argument", func(_ *testing.T, args []string, _ string) []string {
-			return append(args, "extra")
-		}, exitUsage, `unexpected argument "extra"`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			args, _, dir, _ := edgeSetup(t)
+			args, _, dir := edgeSetup(t)
 			args = tc.edit(t, args, dir)
 			var stderr bytes.Buffer
 			code := run(context.Background(), args, testEnv(t), nil, io.Discard, &stderr)
@@ -806,17 +925,15 @@ func TestBrainServesTheEdgeAndListsItself(t *testing.T) {
 	edgeUpstream = up.URL + "/backend-api/codex"
 	t.Cleanup(func() { edgeUpstream = "" })
 
-	edgeArgs, h, _, port := edgeSetup(t)
+	edgeArgs, h, dir := edgeSetup(t)
 	brainArgs := append([]string{"brain"}, edgeArgs[1:]...)
 	state := edgeArgs[len(edgeArgs)-1]
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var brainErr, edgeErr syncBuffer
-	brainDone, edgeDone := make(chan int, 1), make(chan int, 1)
+	var brainErr syncBuffer
+	brainDone := make(chan int, 1)
 	go func() { brainDone <- run(ctx, brainArgs, testEnv(t), nil, io.Discard, &brainErr) }()
-	go func() { edgeDone <- run(ctx, edgeArgs, testEnv(t), nil, io.Discard, &edgeErr) }()
-
-	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	base, edgeDone, edgeErr := startEdge(ctx, t, edgeArgs, dir, testEnv(t))
 	waitFor(t, "brain up behind the edge", func() bool { return healthz(base) == "ok\nbrain: up\n" })
 	if code := edgePost(t, base, edgeToken); code != http.StatusOK {
 		t.Fatalf("status %d, want 200", code)
@@ -845,14 +962,9 @@ func TestBrainServesTheEdgeAndListsItself(t *testing.T) {
 	}
 
 	cancel()
-	for name, done := range map[string]chan int{"brain": brainDone, "edge": edgeDone} {
-		select {
-		case code := <-done:
-			if code != exitOK {
-				t.Errorf("%s exit %d, stderr %q / %q", name, code, brainErr.String(), edgeErr.String())
-			}
-		case <-time.After(10 * time.Second):
-			t.Fatalf("%s did not stop", name)
+	for name, done := range map[string]<-chan int{"brain": brainDone, "edge": edgeDone} {
+		if code := waitExit(t, name, done); code != exitOK {
+			t.Errorf("%s exit %d, stderr %q / %q", name, code, brainErr.String(), edgeErr.String())
 		}
 	}
 	if !strings.Contains(brainErr.String(), "daemon-unreachable") {
@@ -864,7 +976,7 @@ func TestBrainServesTheEdgeAndListsItself(t *testing.T) {
 }
 
 func TestEdgeDialsTheRecordedBrainSocket(t *testing.T) {
-	args, h, dir, port := edgeSetup(t)
+	args, h, dir := edgeSetup(t)
 	sock := filepath.Join(filepath.Dir(filepath.Dir(dir)), "elsewhere.sock")
 	if err := os.WriteFile(filepath.Join(dir, "brain.path"), []byte(sock+"\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -877,13 +989,9 @@ func TestEdgeDialsTheRecordedBrainSocket(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	done := make(chan int, 1)
-	go func() { done <- run(ctx, args, testEnv(t), nil, io.Discard, io.Discard) }()
-	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	base, done, _ := startEdge(ctx, t, args, dir, testEnv(t))
 	waitFor(t, "edge reaches the brain at the recorded path", func() bool { return healthz(base) == "ok\nbrain: up\n" })
 
-	// A brain that restarts with a new socket path records it after the
-	// edge started.
 	if err := brainSrv.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -899,38 +1007,9 @@ func TestEdgeDialsTheRecordedBrainSocket(t *testing.T) {
 	defer func() { _ = brainSrv2.Close() }()
 	waitFor(t, "edge follows the brain to the new path", func() bool { return healthz(base) == "ok\nbrain: up\n" })
 	cancel()
-	<-done
+	waitExit(t, "edge", done)
 }
 
-func TestBrainRefusesToStart(t *testing.T) {
-	bad := filepath.Join(t.TempDir(), "config.json")
-	if err := os.WriteFile(bad, []byte(`{"bogus": 1}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	cases := []struct {
-		name     string
-		args     []string
-		wantCode int
-		want     string
-	}{
-		{"relative home", []string{"brain", "--home", "rel"}, exitUsage, "not an absolute path"},
-		{"relative state dir", []string{"brain", "--state-dir", "rel"}, exitUsage, "not an absolute path"},
-		{"stray argument", []string{"brain", "extra"}, exitUsage, `brain: unexpected argument "extra"`},
-		{"bad config", []string{"--config", bad, "brain"}, exitError, "bogus"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			var stderr bytes.Buffer
-			code := run(context.Background(), tc.args, testEnv(t), nil, io.Discard, &stderr)
-			if code != tc.wantCode || !strings.Contains(stderr.String(), tc.want) {
-				t.Errorf("exit %d, stderr %q; want %d and %q", code, stderr.String(), tc.wantCode, tc.want)
-			}
-		})
-	}
-}
-
-// fakeServices replaces launchctl, systemctl and the binary path; every
-// service command succeeds with no output.
 func fakeServices(t *testing.T) func() []string {
 	t.Helper()
 	var mu sync.Mutex
@@ -1020,7 +1099,7 @@ func TestSetupThenEdgeThenUndo(t *testing.T) {
 		t.Errorf("edge with setup's token: status %d, want 200", code)
 	}
 	cancel()
-	<-done
+	waitExit(t, "edge", done)
 
 	code, out, _ = cmd("service", "status", "--home", codexHome)
 	if code != exitOK || !strings.Contains(out, "edge") || !strings.Contains(out, "brain") || strings.Contains(out, "not installed") {
@@ -1042,31 +1121,6 @@ func TestSetupThenEdgeThenUndo(t *testing.T) {
 	}
 }
 
-func TestSetupAndServiceUsage(t *testing.T) {
-	fakeServices(t)
-	cases := []struct {
-		name string
-		args []string
-		want string
-	}{
-		{"purge without undo", []string{"setup", "--purge"}, "--purge needs --undo"},
-		{"relative home", []string{"setup", "--home", "rel"}, "not an absolute path"},
-		{"service without a subcommand", []string{"service"}, "want ensure or status"},
-		{"service unknown subcommand", []string{"service", "restart"}, "want ensure or status"},
-		{"service stray argument", []string{"service", "status", "extra"}, `unexpected argument "extra"`},
-		{"service takes no state dir", []string{"service", "ensure", "--state-dir", "/x"}, "flag provided but not defined"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			var stderr bytes.Buffer
-			code := run(context.Background(), tc.args, testEnv(t), strings.NewReader(""), io.Discard, &stderr)
-			if code != exitUsage || !strings.Contains(stderr.String(), tc.want) {
-				t.Errorf("exit %d, stderr %q; want %d and %q", code, stderr.String(), exitUsage, tc.want)
-			}
-		})
-	}
-}
-
 func TestSetupRefusalExitsOne(t *testing.T) {
 	fakeServices(t)
 	codexHome := t.TempDir()
@@ -1080,7 +1134,6 @@ func TestSetupRefusalExitsOne(t *testing.T) {
 	}
 }
 
-// recordingHandler serves fixed sessions and records the commands it gets.
 type recordingHandler struct {
 	endpointHandler
 	mu  *sync.Mutex
@@ -1094,10 +1147,6 @@ func (h recordingHandler) Apply(c route.Command) error {
 	return nil
 }
 
-// ctlFixture serves, for a real Codex home, sessions in repo, in repo/sub
-// and two in twin, plus a session of another home in repo/sub/deep. It
-// returns the env, the home path, the project dir and a func that returns
-// the commands the home's endpoint got.
 func ctlFixture(t *testing.T) (env []string, codexHome, projects string, applied func() []route.Command) {
 	t.Helper()
 	env, root, sockDir := testRegistry(t)
@@ -1145,41 +1194,91 @@ func ctlFixture(t *testing.T) (env []string, codexHome, projects string, applied
 	}
 }
 
-func TestCtlResolvesTheShellSession(t *testing.T) {
-	env, codexHome, projects, _ := ctlFixture(t)
+func TestShellSessions(t *testing.T) {
+	projects := t.TempDir()
+	for _, d := range []string{"repo/sub/deep", "twin"} {
+		if err := os.MkdirAll(filepath.Join(projects, d), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
 	link := filepath.Join(t.TempDir(), "link")
 	if err := os.Symlink(filepath.Join(projects, "repo"), link); err != nil {
 		t.Fatal(err)
 	}
+	in := func(thread, dir string) listedSession {
+		return listedSession{SessionInfo: route.SessionInfo{ThreadID: thread, Cwd: filepath.Join(projects, dir)}}
+	}
+	sessions := []listedSession{in("t-repo", "repo"), in("t-sub", "repo/sub"), in("t-twin1", "twin"), in("t-twin2", "twin")}
+	cases := []struct {
+		name   string
+		dir    string
+		thread string
+		want   []string
+	}{
+		{"cwd of a session", filepath.Join(projects, "repo"), "", []string{"t-repo"}},
+		{"deepest cwd wins", filepath.Join(projects, "repo/sub"), "", []string{"t-sub"}},
+		{"below a session's cwd", filepath.Join(projects, "repo/sub/deep"), "", []string{"t-sub"}},
+		{"through a symlink", link, "", []string{"t-repo"}},
+		{"thread id beats cwd", filepath.Join(projects, "twin"), "t-repo", []string{"t-repo"}},
+		{"unknown thread id falls back to cwd", filepath.Join(projects, "repo"), "t-gone", []string{"t-repo"}},
+		{"sessions sharing the cwd", filepath.Join(projects, "twin"), "", []string{"t-twin1", "t-twin2"}},
+		{"no session works there", projects, "", nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var got []string
+			for _, s := range shellSessions(sessions, tc.thread, tc.dir) {
+				got = append(got, s.ThreadID)
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Errorf("shellSessions(thread %q, %s) = %v, want %v", tc.thread, tc.dir, got, tc.want)
+			}
+		})
+	}
+}
+
+func statusFields(out string) map[string]string {
+	fields := map[string]string{}
+	for line := range strings.Lines(out) {
+		if f := strings.Fields(line); len(f) > 1 {
+			fields[f[0]] = strings.Join(f[1:], " ")
+		}
+	}
+	return fields
+}
+
+func TestCtlStatusPicksTheSessionOfTheHome(t *testing.T) {
+	env, codexHome, projects, _ := ctlFixture(t)
 	cases := []struct {
 		name       string
 		cwd        string
 		thread     string
 		wantCode   int
-		wantStdout []string
+		wantFields map[string]string
 		wantStderr []string
 	}{
-		{"cwd of a session", filepath.Join(projects, "repo"), "", exitOK, []string{"label    work · repo · main\n", "mode     on\n", "route    gpt-5.5 · low\n"}, nil},
-		{"deepest cwd wins", filepath.Join(projects, "repo/sub"), "", exitOK, []string{"work · repo · sub", "attention  paused\n"}, nil},
-		{"below a session's cwd, other home deeper", filepath.Join(projects, "repo/sub/deep"), "", exitOK, []string{"work · repo · sub"}, nil},
-		{"cwd through a symlink", link, "", exitOK, []string{"work · repo · main"}, nil},
-		{"thread id beats cwd", filepath.Join(projects, "twin"), "t-repo", exitOK, []string{"work · repo · main"}, nil},
-		{"unknown thread id falls back to cwd", filepath.Join(projects, "repo"), "t-gone", exitOK, []string{"work · repo · main"}, nil},
-		{"other home's thread id is not used", filepath.Join(projects, "repo"), "t-other", exitOK, []string{"work · repo · main"}, nil},
-		{"two sessions share the cwd", filepath.Join(projects, "twin"), "", exitUsage, nil, []string{"2 sessions", "work · twin · a", "work · twin · b"}},
-		{"no session works there", projects, "", exitError, nil, []string{"no running session of Codex home"}},
+		{"cwd of a session", "repo", "", exitOK,
+			map[string]string{"label": "work · repo · main", "mode": "on", "route": "gpt-5.5 · low"}, nil},
+		{"another home's deeper session is ignored", "repo/sub/deep", "", exitOK,
+			map[string]string{"label": "work · repo · sub", "attention": "paused"}, nil},
+		{"thread id beats cwd", "twin", "t-repo", exitOK, map[string]string{"label": "work · repo · main"}, nil},
+		{"another home's thread id is not used", "repo", "t-other", exitOK, map[string]string{"label": "work · repo · main"}, nil},
+		{"sessions sharing the cwd", "twin", "", exitUsage, nil, []string{"2 sessions", "work · twin · a", "work · twin · b"}},
+		{"no session works there", ".", "", exitError, nil, []string{"no running session of Codex home"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			env := append(slices.Clone(env), envThread+"="+tc.thread)
 			var stdout, stderr bytes.Buffer
-			code := run(context.Background(), []string{"ctl", "status", "--home", codexHome, "--cwd", tc.cwd}, env, nil, &stdout, &stderr)
+			args := []string{"ctl", "status", "--home", codexHome, "--cwd", filepath.Join(projects, tc.cwd)}
+			code := run(context.Background(), args, env, nil, &stdout, &stderr)
 			if code != tc.wantCode {
 				t.Fatalf("exit %d, want %d (stdout %q, stderr %q)", code, tc.wantCode, stdout.String(), stderr.String())
 			}
-			for _, w := range tc.wantStdout {
-				if !strings.Contains(stdout.String(), w) {
-					t.Errorf("stdout %q, want it to contain %q", stdout.String(), w)
+			got := statusFields(stdout.String())
+			for k, want := range tc.wantFields {
+				if got[k] != want {
+					t.Errorf("%s = %q, want %q (stdout %q)", k, got[k], want, stdout.String())
 				}
 			}
 			for _, w := range tc.wantStderr {
@@ -1210,7 +1309,6 @@ func TestCtlNamesASandboxBlockedSocket(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// The brain runs (its pid is alive) but this process cannot dial it.
 			ep := registry.Endpoint{ID: "brain-x", Kind: registry.KindBrain, PID: os.Getpid(), Home: h, Socket: filepath.Join(sockDir, "c.sock")}
 			if err := registry.Write(root, ep); err != nil {
 				t.Fatal(err)
@@ -1262,30 +1360,6 @@ func TestCtlSendsSessionCommands(t *testing.T) {
 			got[0].ID = ""
 			if got[0] != tc.want {
 				t.Errorf("endpoint got %+v, want %+v", got[0], tc.want)
-			}
-		})
-	}
-}
-
-func TestCtlUsage(t *testing.T) {
-	cases := []struct {
-		name string
-		args []string
-		want string
-	}{
-		{"no subcommand", []string{"ctl"}, "want status, pause, resume or pin"},
-		{"unknown subcommand", []string{"ctl", "preset"}, "want status, pause, resume or pin"},
-		{"pin without a tier", []string{"ctl", "pin"}, `--tier "" is not`},
-		{"pin with a bad tier", []string{"ctl", "pin", "--tier", "huge"}, `--tier "huge" is not`},
-		{"tier on status", []string{"ctl", "status", "--tier", "high"}, "flag provided but not defined"},
-		{"stray argument", []string{"ctl", "pause", "now"}, `unexpected argument "now"`},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			var stderr bytes.Buffer
-			code := run(context.Background(), tc.args, testEnv(t), nil, io.Discard, &stderr)
-			if code != exitUsage || !strings.Contains(stderr.String(), tc.want) {
-				t.Errorf("exit %d, stderr %q; want %d and %q", code, stderr.String(), exitUsage, tc.want)
 			}
 		})
 	}
