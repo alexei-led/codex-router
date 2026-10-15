@@ -39,8 +39,6 @@ func (s *savedIntents) last(t *testing.T) Intent {
 	return s.all[len(s.all)-1]
 }
 
-func tierPtr(t config.Tier) *config.Tier { return &t }
-
 func withoutRev(in Intent) Intent {
 	in.Rev = 0
 	return in
@@ -61,7 +59,7 @@ func TestIntentSurvivesARestartAndLearnedStateDoesNot(t *testing.T) {
 	saved := h.engine.Intent()
 	want := Intent{Paused: true, Preset: config.PresetQuality, Threads: map[string]ThreadIntent{
 		"manual": {Manual: true},
-		"pinned": {Pin: tierPtr(config.TierHigh)},
+		"pinned": {Pin: new(config.TierHigh)},
 		"paused": {Paused: true},
 	}}
 	if got := withoutRev(saved); !reflect.DeepEqual(got, want) {
@@ -400,7 +398,6 @@ func resume(e *Engine, r config.Route) { e.Resumed("a", r) }
 
 func TestBrainRestartMidTurnIsNotAPick(t *testing.T) {
 	h := newHarness(t, testConfig(), func(d *Deps) { d.HoldUnseeded = true })
-	// The router wrote medium for the next turn; the running turn started on high.
 	h.engine.Resumed("a", medium)
 	midTurn := []responses.Item{
 		userMsg(secretPrompt), {Type: responses.TypeFunctionCall, Name: "exec", CallID: "c1"},
@@ -429,7 +426,6 @@ func TestHoldEndedByARunningTurnsReplyLeavesThatTurnUnrouted(t *testing.T) {
 		{Type: responses.TypeFunctionCallOutput, CallID: "c1", Output: "ok"},
 	}
 
-	// The restarted brain first sees the reply to a step the old brain decided.
 	h.reply(meta("a", "a1"), medium.Model, 1000, 0)
 	rw, ok := h.decide(req(medium, midTurn...), meta("a", "a1"))
 
@@ -446,7 +442,6 @@ func TestHoldEndedByARunningTurnsReplyLeavesThatTurnUnrouted(t *testing.T) {
 func TestHeldTurnKeepsTheSeededRouteMidTurn(t *testing.T) {
 	h := newHarness(t, testConfig(), func(d *Deps) { d.HoldUnseeded = true })
 	h.asker.script(answer(tier("high", 0.99)))
-	// The old brain routed the running turn to medium; the turn started on high.
 	h.engine.Resumed("a", medium)
 	items := []responses.Item{
 		userMsg(secretPrompt), {Type: responses.TypeFunctionCall, Name: "exec", CallID: "c1"},
@@ -492,7 +487,7 @@ func TestEvictionKeepsThreadIntent(t *testing.T) {
 		want  ThreadIntent
 	}{
 		{"pause", func(h *harness) { h.apply(Command{Op: OpPause, Session: "a"}) }, ThreadIntent{Paused: true}},
-		{"pin", func(h *harness) { h.apply(Command{Op: OpPin, Session: "a", Tier: config.TierHigh}) }, ThreadIntent{Pin: tierPtr(config.TierHigh)}},
+		{"pin", func(h *harness) { h.apply(Command{Op: OpPin, Session: "a", Tier: config.TierHigh}) }, ThreadIntent{Pin: new(config.TierHigh)}},
 		{"manual hold", func(h *harness) {
 			h.asker.script(answer(tier("low", 0.97)))
 			h.firstStep("a", "a1")

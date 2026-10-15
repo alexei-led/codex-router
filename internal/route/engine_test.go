@@ -517,7 +517,6 @@ func TestRequestOnAnUnreportedPickIsManual(t *testing.T) {
 	h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
 	h.engine.SettingsUpdated("th", low)
 
-	// No thread/settings/updated: the brain was not subscribed to the thread.
 	picked := config.Route{Model: "gpt-6-sol", Effort: config.EffortLow}
 	rw, ok := h.decide(req(picked, userMsg(secretPrompt), userMsg("next")), meta("th", "t2"))
 
@@ -789,11 +788,19 @@ func TestNewTurnDropsAPendingReview(t *testing.T) {
 	}
 	h.engine.reviews.Wait()
 
-	rw, ok := h.decide(req(medium, append(items, userMsg("next"))...), meta("th", "t2"))
-
+	items = append(items, userMsg("next"))
+	rw, ok := h.decide(req(medium, items...), meta("th", "t2"))
 	wantUnchanged(t, rw, ok)
 	if d := h.last(); d.Reason != policy.ReasonSameTier {
 		t.Fatalf("decision = %+v", d)
+	}
+
+	items = append(items, call("n1", "ls"), result("n1", 0, ""))
+	rw, ok = h.decide(req(medium, items...), meta("th", "t2"))
+
+	wantUnchanged(t, rw, ok)
+	if h.asker.Calls() != 3 {
+		t.Fatalf("classifier calls = %d, want 3", h.asker.Calls())
 	}
 }
 
@@ -815,13 +822,116 @@ func TestActivityOverrideRoutesInsideTheTier(t *testing.T) {
 	}
 }
 
-func TestWeakActivityKeepsTheBaseRoute(t *testing.T) {
-	h := newHarness(t, testConfig())
-	h.asker.script(answer(withActivity(tier("medium", 0.99), config.ActivityDebug, 0.4)))
+func TestLateralMovesInsideATier(t *testing.T) {
+	pricey := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+	crossModel := testConfig()
+	crossModel.Activities[config.ActivityDebug] = map[config.Tier]config.Route{config.TierMedium: pricey}
+	tests := []struct {
+		name       string
+		cfg        config.Config
+		first      classifier.Advice
+		firstRoute config.Route
+		reply      bool
+		second     classifier.Advice
+		wantRoute  config.Route
+		wantReason policy.Reason
+	}{
+		{
+			name: "upgrade under the bar stays", cfg: testConfig(),
+			first: withActivity(tier("medium", 0.99), config.ActivityDebug, 0.7), firstRoute: medium,
+		},
+		{
+			name: "upgrade over the bar moves", cfg: testConfig(),
+			first: withActivity(tier("medium", 0.99), config.ActivityDebug, 0.8), firstRoute: debug,
+		},
+		{
+			name: "downgrade before a measured reply moves", cfg: testConfig(),
+			first: withActivity(tier("medium", 0.99), config.ActivityDebug, 0.8), firstRoute: debug,
+			second: withActivity(tier("medium", 0.99), config.ActivityDebug, 0.5), wantRoute: medium, wantReason: ReasonActivityDown,
+		},
+		{
+			name: "downgrade to the same warm model moves", cfg: testConfig(),
+			first: withActivity(tier("medium", 0.99), config.ActivityDebug, 0.8), firstRoute: debug, reply: true,
+			second: withActivity(tier("medium", 0.99), config.ActivityDebug, 0.5), wantRoute: medium, wantReason: ReasonActivityDown,
+		},
+		{
+			name: "downgrade that loses a warm cache waits", cfg: crossModel,
+			first: withActivity(tier("medium", 0.99), config.ActivityDebug, 0.8), firstRoute: pricey, reply: true,
+			second: withActivity(tier("medium", 0.99), config.ActivityDebug, 0.5), wantRoute: pricey, wantReason: ReasonActivityPending,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, tt.cfg)
+			h.asker.script(answer(tt.first), answer(tt.second))
+			m := meta("th", "t1")
 
-	rw, ok := h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+			rw, ok := h.decide(req(medium, userMsg(secretPrompt)), m)
+
+			if tt.firstRoute == medium {
+				wantUnchanged(t, rw, ok)
+				if d := h.last(); d.Reason != ReasonActivityPending {
+					t.Fatalf("decision = %+v, want a pending activity", d)
+				}
+				return
+			}
+			wantRoute(t, rw, ok, tt.firstRoute)
+			if tt.second.Choice == "" {
+				return
+			}
+			if tt.reply {
+				h.reply(m, tt.firstRoute.Model, 50_000, 49_000)
+			}
+
+			rw, ok = h.decide(req(tt.firstRoute, userMsg(secretPrompt), userMsg("next")), meta("th", "t2"))
+
+			if tt.wantRoute == tt.firstRoute {
+				wantUnchanged(t, rw, ok)
+			} else {
+				wantRoute(t, rw, ok, tt.wantRoute)
+			}
+			if d := h.last(); d.Reason != tt.wantReason {
+				t.Fatalf("decision = %+v, want reason %s", d, tt.wantReason)
+			}
+		})
+	}
+}
+
+func TestEscalationHoldRefusesAWeakerLateralRoute(t *testing.T) {
+	cfg := testConfig()
+	cfg.Activities[config.ActivityExplore] = map[config.Tier]config.Route{config.TierHigh: {Effort: config.EffortLow}}
+	h := newHarness(t, cfg)
+	h.asker.script(answer(tier("medium", 0.99)), answer(withActivity(tier("medium", 0.99), config.ActivityExplore, 0.9)))
+	m := meta("th", "t1")
+	failing := func(id string) []responses.Item {
+		return []responses.Item{call(id, "go test ./pkg/queue"), result(id, 1, "--- FAIL: TestRetry\nretry_test.go:48: attempts = 2, want 3")}
+	}
+	items := []responses.Item{userMsg(secretPrompt)}
+	h.decide(req(medium, items...), m)
+	items = append(items, failing("c1")...)
+	h.decide(req(medium, items...), m)
+	items = append(append(items, editGo("c2"), edited("c2")), failing("c3")...)
+	rw, ok := h.decide(req(medium, items...), m)
+	wantRoute(t, rw, ok, high)
+
+	rw, ok = h.decide(req(high, append(items, userMsg("look around"))...), meta("th", "t2"))
 
 	wantUnchanged(t, rw, ok)
+	if d := h.last(); d.Reason != policy.ReasonHold {
+		t.Fatalf("decision = %+v, want the hold", d)
+	}
+}
+
+func TestRouteWithoutEffortKeepsTheEffortCodexSent(t *testing.T) {
+	cfg := testConfig()
+	cfg.Routes[config.TierLow] = config.Route{Model: "gpt-6-luna"}
+	h := newHarness(t, cfg)
+	h.asker.script(answer(tier("low", 0.97)))
+	sent := config.Route{Model: "gpt-6-sol", Effort: config.EffortHigh}
+
+	rw, ok := h.decide(req(sent, userMsg(secretPrompt)), meta("th", "t1"))
+
+	wantRoute(t, rw, ok, config.Route{Model: "gpt-6-luna", Effort: config.EffortHigh})
 }
 
 func TestObservedToolCallsMoveTheTurnUp(t *testing.T) {
@@ -1341,8 +1451,9 @@ func TestObservedMoveGuards(t *testing.T) {
 func TestDecideLockWaitPastTheDeadlineCommitsNothing(t *testing.T) {
 	saved := &savedIntents{}
 	h := newHarness(t, testConfig(), func(d *Deps) { d.SaveIntent = saved.save })
-	release := make(chan struct{})
+	release, asking := make(chan struct{}), make(chan struct{})
 	h.asker.script(func() (classifier.Advice, error) {
+		close(asking)
 		<-release
 		return tier("low", 0.97), nil
 	})
@@ -1351,9 +1462,7 @@ func TestDecideLockWaitPastTheDeadlineCommitsNothing(t *testing.T) {
 		defer close(first)
 		h.firstStep("th", "t1")
 	}()
-	for h.asker.Calls() == 0 {
-		time.Sleep(time.Millisecond)
-	}
+	<-asking
 	h.apply(Command{Op: OpPin, Session: "th", Tier: config.TierHigh})
 
 	expired, cancel := context.WithCancel(context.Background())
@@ -1403,29 +1512,64 @@ func TestDecideWhoseClassifierAnswersAtTheDeadlineCommitsNothing(t *testing.T) {
 
 func TestFirstStepPausedOrPickedWhileClassifyingCommitsNothing(t *testing.T) {
 	cases := []struct {
-		name string
-		stop func(h *harness)
+		name       string
+		stop, undo Command
+		pick       bool
 	}{
-		{"session pause", func(h *harness) { h.apply(Command{Op: OpPause, Session: "th"}) }},
-		{"home pause", func(h *harness) { h.apply(Command{Op: OpPause}) }},
-		{"model pick", func(h *harness) {
-			h.engine.SettingsUpdated("th", config.Route{Model: "gpt-6-sol", Effort: config.EffortLow})
-		}},
+		{"session pause", Command{Op: OpPause, Session: "th"}, Command{Op: OpResume, Session: "th"}, false},
+		{"home pause", Command{Op: OpPause}, Command{Op: OpResume}, false},
+		{"model pick", Command{}, Command{Op: OpResume, Session: "th"}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newHarness(t, testConfig())
 			h.asker.script(func() (classifier.Advice, error) {
-				tc.stop(h)
+				if tc.pick {
+					h.engine.SettingsUpdated("th", config.Route{Model: "gpt-6-sol", Effort: config.EffortLow})
+				} else {
+					h.apply(tc.stop)
+				}
 				return tier("low", 0.97), nil
 			})
+			items := []responses.Item{userMsg(secretPrompt)}
 
-			rw, ok := h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+			rw, ok := h.decide(req(medium, items...), meta("th", "t1"))
 
 			wantUnchanged(t, rw, ok)
 			if ds := h.sink.Decisions(); len(ds) != 0 {
 				t.Fatalf("decisions = %+v, want none: the footer must keep what the pause or pick set", ds)
 			}
+
+			h.apply(tc.undo)
+			items = append(items, call("c1", "ls"), result("c1", 0, ""))
+			rw, ok = h.decide(req(medium, items...), meta("th", "t1"))
+
+			wantUnchanged(t, rw, ok)
+			if ds := h.sink.Decisions(); len(ds) != 0 || h.asker.Calls() != 1 {
+				t.Fatalf("decisions %+v, classifier calls %d; want the rest of the turn unrouted", ds, h.asker.Calls())
+			}
 		})
+	}
+}
+
+func TestStepPastItsDeadlineLeavesTheTurnsRouting(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("low", 0.97)))
+	items := []responses.Item{userMsg(secretPrompt)}
+	m := meta("th", "t1")
+	rw, ok := h.decide(req(medium, items...), m)
+	wantRoute(t, rw, ok, low)
+
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	items = append(items, call("c1", "ls"), result("c1", 0, ""))
+	rw, ok = h.engine.Decide(expired, req(medium, items...), m)
+	wantUnchanged(t, rw, ok)
+
+	items = append(items, call("c2", "ls"), result("c2", 0, ""))
+	rw, ok = h.decide(req(medium, items...), m)
+	wantRoute(t, rw, ok, low)
+	if ds := h.sink.Decisions(); len(ds) != 2 || !ds[1].MidTurn {
+		t.Fatalf("decisions = %+v, want the first step's and a mid-turn one", ds)
 	}
 }

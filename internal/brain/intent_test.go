@@ -140,11 +140,11 @@ func TestIntentStoreLoad(t *testing.T) {
 		wantLost bool
 	}{
 		{"no file", nil, false},
-		{"valid", ptr(`{"version":1,"preset":"quality"}`), false},
-		{"empty", ptr(""), true},
-		{"truncated", ptr(`{"version":1,"threads":{"t1":`), true},
-		{"other version", ptr(`{"version":2,"paused":true}`), true},
-		{"wrong type", ptr(`{"version":1,"paused":"yes"}`), true},
+		{"valid", new(`{"version":1,"preset":"quality"}`), false},
+		{"empty", new(""), true},
+		{"truncated", new(`{"version":1,"threads":{"t1":`), true},
+		{"other version", new(`{"version":2,"paused":true}`), true},
+		{"wrong type", new(`{"version":1,"paused":"yes"}`), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -164,8 +164,6 @@ func TestIntentStoreLoad(t *testing.T) {
 		})
 	}
 }
-
-func ptr(s string) *string { return &s }
 
 func TestIntentStoreKeepsTheNewestOfConcurrentWrites(t *testing.T) {
 	dir := t.TempDir()
