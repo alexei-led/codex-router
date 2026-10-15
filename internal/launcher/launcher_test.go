@@ -17,6 +17,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/appserver"
@@ -497,37 +498,40 @@ func TestServeAnswersHealthAndPrintsPort(t *testing.T) {
 }
 
 func TestKeepServingRelistensAfterServeStops(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	serving := make(chan struct{})
-	failing := func(context.Context) error { return errors.New("accept failed") }
-	relistens := 0
-	relisten := func() (serveFunc, error) {
-		relistens++
-		if relistens == 1 {
-			return nil, errors.New("port busy")
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		serving := make(chan struct{})
+		failing := func(context.Context) error { return errors.New("accept failed") }
+		relistens := 0
+		relisten := func() (serveFunc, error) {
+			relistens++
+			if relistens == 1 {
+				return nil, errors.New("port busy")
+			}
+			return func(ctx context.Context) error {
+				close(serving)
+				<-ctx.Done()
+				return nil
+			}, nil
 		}
-		return func(ctx context.Context) error {
-			close(serving)
-			<-ctx.Done()
-			return nil
-		}, nil
-	}
-	done := make(chan struct{})
-	go func() {
-		keepServing(ctx, failing, relisten, slog.New(slog.DiscardHandler))
-		close(done)
-	}()
-	select {
-	case <-serving:
-	case <-time.After(5 * time.Second):
-		t.Fatal("proxy never served again")
-	}
-	cancel()
-	<-done
-	if relistens != 2 {
-		t.Errorf("relistens = %d, want 2", relistens)
-	}
+		done := make(chan struct{})
+		go func() {
+			keepServing(ctx, failing, relisten, slog.New(slog.DiscardHandler))
+			close(done)
+		}()
+
+		synctest.Sleep(2 * relistenDelay)
+		select {
+		case <-serving:
+		default:
+			t.Fatal("proxy never served again")
+		}
+		cancel()
+		<-done
+		if relistens != 2 {
+			t.Errorf("relistens = %d, want 2", relistens)
+		}
+	})
 }
 
 type fakeAPI struct {
