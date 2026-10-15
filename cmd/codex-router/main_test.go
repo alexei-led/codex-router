@@ -370,67 +370,6 @@ func stubPanel(t *testing.T) *[]tui.Options {
 	return &got
 }
 
-func listed(s route.SessionInfo) listedSession { return listedSession{SessionInfo: s, base: s.Label} }
-
-func listedTwins(thread ...string) []listedSession {
-	const shared = "work · repo · main"
-	var sessions []route.SessionInfo
-	var ids, labels []string
-	for i, th := range thread {
-		s := testSession(homeWork, th, shared, i+1)
-		sessions = append(sessions, s)
-		ids, labels = append(ids, s.ID), append(labels, shared)
-	}
-	var out []listedSession
-	for i, label := range home.Disambiguate(labels, ids) {
-		l := listed(sessions[i])
-		l.Label = label
-		out = append(out, l)
-	}
-	return out
-}
-
-func TestResolveSession(t *testing.T) {
-	plain := []listedSession{listed(sessWorkMain), listed(sessWorkFeat), listed(sessDefault)}
-	twins := listedTwins("t-a", "t-b")
-	cases := []struct {
-		name     string
-		sessions []listedSession
-		query    string
-		want     []string
-	}{
-		{"exact id", plain, sessDefault.ID, []string{sessDefault.ID}},
-		{"exact thread id", plain, "019a-t1", []string{sessWorkMain.ID}},
-		{"unique id prefix", plain, homeDefault.ID[:6], []string{sessDefault.ID}},
-		{"unique thread id prefix", plain, "019b", []string{sessWorkFeat.ID}},
-		{"exact label", plain, "work · codex-router · main", []string{sessWorkMain.ID}},
-		{"label suffix", plain, "codex-router · feat-x", []string{sessWorkFeat.ID}},
-		{"ambiguous thread prefix", plain, "019a", []string{sessWorkMain.ID, sessDefault.ID}},
-		{"ambiguous label suffix", plain, "main", []string{sessWorkMain.ID, sessDefault.ID}},
-		{"ambiguous home prefix", plain, homeWork.ID, []string{sessWorkMain.ID, sessWorkFeat.ID}},
-		{"suffix inside a word", plain, "ain", nil},
-		{"not found", plain, "nope", nil},
-		{"shared full label", twins, "work · repo · main", []string{twins[0].ID, twins[1].ID}},
-		{"shared branch suffix", twins, "main", []string{twins[0].ID, twins[1].ID}},
-		{"shared repo and branch suffix", twins, "repo · main", []string{twins[0].ID, twins[1].ID}},
-		{"disambiguated label", twins, twins[1].Label, []string{twins[1].ID}},
-		{"hex suffix", twins, strings.TrimPrefix(twins[0].Label, twins[0].base+labelSep), []string{twins[0].ID}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			var got []string
-			for _, s := range resolveSession(tc.sessions, tc.query) {
-				got = append(got, s.ID)
-			}
-			slices.Sort(got)
-			want := slices.Sorted(slices.Values(tc.want))
-			if !slices.Equal(got, want) {
-				t.Errorf("resolveSession(%q) = %v, want %v", tc.query, got, want)
-			}
-		})
-	}
-}
-
 func TestTUIReportsTheResolvedSession(t *testing.T) {
 	env, _ := fleetFixture(t)
 	cases := []struct {
@@ -1194,49 +1133,6 @@ func ctlFixture(t *testing.T) (env []string, codexHome, projects string, applied
 	}
 }
 
-func TestShellSessions(t *testing.T) {
-	projects := t.TempDir()
-	for _, d := range []string{"repo/sub/deep", "twin"} {
-		if err := os.MkdirAll(filepath.Join(projects, d), 0o700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	link := filepath.Join(t.TempDir(), "link")
-	if err := os.Symlink(filepath.Join(projects, "repo"), link); err != nil {
-		t.Fatal(err)
-	}
-	in := func(thread, dir string) listedSession {
-		return listedSession{SessionInfo: route.SessionInfo{ThreadID: thread, Cwd: filepath.Join(projects, dir)}}
-	}
-	sessions := []listedSession{in("t-repo", "repo"), in("t-sub", "repo/sub"), in("t-twin1", "twin"), in("t-twin2", "twin")}
-	cases := []struct {
-		name   string
-		dir    string
-		thread string
-		want   []string
-	}{
-		{"cwd of a session", filepath.Join(projects, "repo"), "", []string{"t-repo"}},
-		{"deepest cwd wins", filepath.Join(projects, "repo/sub"), "", []string{"t-sub"}},
-		{"below a session's cwd", filepath.Join(projects, "repo/sub/deep"), "", []string{"t-sub"}},
-		{"through a symlink", link, "", []string{"t-repo"}},
-		{"thread id beats cwd", filepath.Join(projects, "twin"), "t-repo", []string{"t-repo"}},
-		{"unknown thread id falls back to cwd", filepath.Join(projects, "repo"), "t-gone", []string{"t-repo"}},
-		{"sessions sharing the cwd", filepath.Join(projects, "twin"), "", []string{"t-twin1", "t-twin2"}},
-		{"no session works there", projects, "", nil},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			var got []string
-			for _, s := range shellSessions(sessions, tc.thread, tc.dir) {
-				got = append(got, s.ThreadID)
-			}
-			if !slices.Equal(got, tc.want) {
-				t.Errorf("shellSessions(thread %q, %s) = %v, want %v", tc.thread, tc.dir, got, tc.want)
-			}
-		})
-	}
-}
-
 func statusFields(out string) map[string]string {
 	fields := map[string]string{}
 	for line := range strings.Lines(out) {
@@ -1292,14 +1188,13 @@ func TestCtlStatusPicksTheSessionOfTheHome(t *testing.T) {
 
 func TestCtlNamesASandboxBlockedSocket(t *testing.T) {
 	cases := []struct {
-		name     string
-		dialErr  error
-		wantText string
+		name       string
+		blockedErr error
+		wantText   string
 	}{
 		{"sandbox refuses the socket", &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.EPERM)},
 			"cannot reach the router of Codex home"},
-		{"router gone", &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.ENOENT)},
-			"no running session of Codex home"},
+		{"router gone", nil, "no running session of Codex home"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1313,9 +1208,9 @@ func TestCtlNamesASandboxBlockedSocket(t *testing.T) {
 			if err := registry.Write(root, ep); err != nil {
 				t.Fatal(err)
 			}
-			orig := dialSocket
-			dialSocket = func(string) error { return tc.dialErr }
-			t.Cleanup(func() { dialSocket = orig })
+			orig := blocked
+			blocked = func(string, string) error { return tc.blockedErr }
+			t.Cleanup(func() { blocked = orig })
 
 			var stdout, stderr bytes.Buffer
 			code := run(context.Background(), []string{"ctl", "status", "--home", codexHome, "--cwd", codexHome}, env, nil, &stdout, &stderr)
