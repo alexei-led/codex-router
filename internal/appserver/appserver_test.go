@@ -514,10 +514,11 @@ func TestServerRequestIsLeftToTheTUI(t *testing.T) {
 		if err := await(t, errc); err != nil {
 			t.Fatalf("call after a server request: %v", err)
 		}
-		select {
-		case m := <-srv.in:
-			t.Fatalf("client answered %+v; a server request must be left to the Codex TUI", m)
-		case <-time.After(100 * time.Millisecond):
+		errc = async(func() error { return api.UpdateSettings(context.Background(), "t2", Settings{Model: "m"}) })
+		next := srv.expect(MethodSettingsUpdate)
+		srv.reply(next.ID, map[string]any{})
+		if err := await(t, errc); err != nil {
+			t.Fatalf("second call: %v", err)
 		}
 	})
 }
@@ -550,10 +551,14 @@ func TestAlreadyCancelledCallSendsNothing(t *testing.T) {
 		if err := api.UpdateSettings(ctx, "t1", Settings{Model: "m"}); !errors.Is(err, context.Canceled) {
 			t.Fatalf("err = %v, want context.Canceled", err)
 		}
-		select {
-		case m := <-srv.in:
-			t.Fatalf("server received %q", m.Method)
-		case <-time.After(50 * time.Millisecond):
+		errc := async(func() error { return api.UpdateSettings(context.Background(), "t2", Settings{Model: "m"}) })
+		first := srv.expect(MethodSettingsUpdate)
+		srv.reply(first.ID, map[string]any{})
+		if err := await(t, errc); err != nil {
+			t.Fatalf("call after the cancelled one: %v", err)
+		}
+		if !strings.Contains(string(first.Params), `"t2"`) {
+			t.Errorf("first message the server got = %s, want the t2 call", first.Params)
 		}
 	})
 }
