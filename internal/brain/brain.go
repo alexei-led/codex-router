@@ -352,7 +352,7 @@ func (b *Brain) followDaemon(ctx context.Context) {
 func (b *Brain) connect(ctx context.Context) (*appserver.Client, error) {
 	ctx, cancel := context.WithTimeout(ctx, rpcTimeout)
 	defer cancel()
-	c, err := appserver.DialDaemon(ctx, b.o.Daemon, b.o.Dialer)
+	c, err := appserver.DialDaemon(ctx, b.o.Daemon, b.o.Dialer, b.log)
 	if err != nil {
 		return nil, err
 	}

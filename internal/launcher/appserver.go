@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"syscall"
 	"time"
@@ -70,12 +71,12 @@ func (a *appServer) stop() {
 }
 
 // dialAppServer connects to sock once the app-server listens and runs the
-// initialize handshake.
-func dialAppServer(ctx context.Context, sock string, exited <-chan struct{}) (appserver.API, error) {
+// initialize handshake. The client logs to log.
+func dialAppServer(ctx context.Context, sock string, exited <-chan struct{}, log *slog.Logger) (appserver.API, error) {
 	ctx, cancel := context.WithTimeout(ctx, appServerTimeout)
 	defer cancel()
 	for {
-		api, err := appserver.Dial(ctx, sock, appserver.WebSocket())
+		api, err := appserver.Dial(ctx, sock, appserver.WebSocket(), log)
 		if err == nil {
 			if err := api.Initialize(ctx); err != nil {
 				_ = api.Close()
