@@ -16,20 +16,6 @@ const (
 	stripSuffixWidth = 22
 )
 
-// barFor is the policy bar a decision compares the classifier's support
-// for the tier with; 0 when the decision does not.
-func barFor(r policy.Reason, p config.Policy) float64 {
-	switch r {
-	case policy.ReasonUpgrade, policy.ReasonUpgradePending:
-		return p.UpgradeBase
-	case policy.ReasonJump:
-		return p.JumpConfidence
-	case policy.ReasonDowngrade, policy.ReasonDowngradePending:
-		return p.DowngradeMass
-	}
-	return 0
-}
-
 // reasonMark points the way a decision moved the tier.
 func reasonMark(r policy.Reason) string {
 	switch r {
@@ -130,8 +116,7 @@ func (c *canvas) band(s route.Snapshot) {
 		}
 		evidence = append(evidence, []seg{dim("pin a tier with p")})
 	case s.Last != nil:
-		d := s.Last
-		chipSeg, text, right, evidence = c.decision(s, *d)
+		chipSeg, text, right, evidence = c.decision(s, turnDecision(s.Recent, *s.Last))
 	default:
 		chipSeg = chip("WAITING", roleMuted)
 		text = []seg{dim("no routed request yet · baseline " + routeText(s.Baseline))}
@@ -180,15 +165,7 @@ func supportSegs(s route.Snapshot, d route.Decision) [][]seg {
 	var parts [][]seg
 	if r := d.Reading; r != nil {
 		if p, ok := r.Tiers[d.Tier]; ok {
-			t := fmt.Sprintf("%s %s %s", classifierName(s), d.Tier, percent(p))
-			if bar := barFor(d.Reason, s.Policy); bar > 0 {
-				op := "≥"
-				if p < bar {
-					op = "<"
-				}
-				t += " " + op + " " + percent(bar)
-			}
-			parts = append(parts, []seg{plain(t)})
+			parts = append(parts, []seg{plain(fmt.Sprintf("%s %s %s", classifierName(s), d.Tier, percent(p)))})
 		}
 	}
 	for _, p := range strings.Split(d.Support, sep) {
@@ -323,16 +300,67 @@ const recentShown = 5
 // recent lists the last decisions, newest first, so each turn in the strip
 // can be traced to its route and reason.
 func (c *canvas) recent(s route.Snapshot) {
-	for n := 0; n < recentShown && n < len(s.Recent); n++ {
-		d := s.Recent[len(s.Recent)-1-n]
+	for n, g := range recentGroups(s.Recent, recentShown) {
 		lead := plain(strings.Repeat(" ", labelWidth))
 		if n == 0 {
 			lead = label("Recent")
 		}
+		d := g.decision
 		mark := col(tierRole[d.Tier], fmt.Sprintf("%-7s", d.Tier))
 		if slices.Contains(keptReasons, d.Reason) {
 			mark = dim(fmt.Sprintf("%-7s", "kept"))
 		}
-		c.add(lead, dim(d.At.Format("15:04")+"  "), mark, plain(routeText(d.Route)), dim(sep+whyOf(d)))
+		segs := []seg{lead, dim(d.At.Format("15:04") + "  "), mark, plain(routeText(d.Route)), dim(sep + whyOf(d))}
+		if g.steps > 1 {
+			segs = append(segs, dim(fmt.Sprintf(" · +%d steps", g.steps-1)))
+		}
+		c.add(segs...)
 	}
+}
+
+// turnDecision is d with the reason, reading and support of its turn's
+// first decision when d only carries the turn on (a later step keeps the
+// route the turn chose; its own reason says nothing new).
+func turnDecision(recent []route.Decision, d route.Decision) route.Decision {
+	if d.Reason != route.ReasonContinue {
+		return d
+	}
+	for i := len(recent) - 1; i >= 0; i-- {
+		h := recent[i]
+		if h.TurnID != d.TurnID || h.Reason == route.ReasonContinue {
+			continue
+		}
+		if h.Route == d.Route {
+			d.Reason, d.Why, d.Reading, d.Support = h.Reason, h.Why, h.Reading, h.Support
+		}
+		break
+	}
+	return d
+}
+
+// recentGroup is consecutive decisions of one turn on one route.
+type recentGroup struct {
+	decision route.Decision
+	steps    int
+}
+
+// recentGroups folds recent, newest first, into at most n groups: the steps
+// of a turn that kept its route are one row with the turn's own reason.
+func recentGroups(recent []route.Decision, n int) []recentGroup {
+	var out []recentGroup
+	for i := len(recent) - 1; i >= 0; i-- {
+		d := recent[i]
+		if k := len(out) - 1; k >= 0 && d.TurnID != "" && out[k].decision.TurnID == d.TurnID && out[k].decision.Route == d.Route {
+			out[k].steps++
+			if out[k].decision.Reason == route.ReasonContinue {
+				out[k].decision = d
+			}
+			continue
+		}
+		if len(out) == n {
+			break
+		}
+		out = append(out, recentGroup{decision: d, steps: 1})
+	}
+	return out
 }
