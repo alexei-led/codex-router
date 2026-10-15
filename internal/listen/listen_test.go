@@ -15,13 +15,10 @@ import (
 )
 
 const (
-	envChild = "LISTEN_TEST_CHILD" // the socket name the child asks for
+	envChild = "LISTEN_TEST_CHILD"
 	reply    = "served by the child"
 )
 
-// TestActivatedChild runs only as the child of TestSystemdActivation: it
-// takes its socket, prints the port and the LISTEN_* variables left, and
-// answers one connection.
 func TestActivatedChild(t *testing.T) {
 	name := os.Getenv(envChild)
 	if name == "" {
@@ -60,15 +57,12 @@ func tcpListener(t *testing.T) (*net.TCPListener, *os.File) {
 
 func port(ln net.Listener) int { return ln.Addr().(*net.TCPAddr).Port }
 
-// TestSystemdActivation passes sockets as fd 3 and up to a child, the way
-// systemd does. sh sets LISTEN_PID to its own pid and execs the test
-// binary, which keeps the pid.
 func TestSystemdActivation(t *testing.T) {
 	cases := []struct {
 		name    string
 		sockets int
 		fdNames string
-		want    int // index of the socket the child must serve
+		want    int
 	}{
 		{"one socket, no names", 1, "", 0},
 		{"named socket among two", 2, "other:edge", 1},
@@ -76,6 +70,7 @@ func TestSystemdActivation(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var lns []*net.TCPListener
 			var files []*os.File
 			for range tc.sockets {
@@ -117,8 +112,6 @@ func TestSystemdActivation(t *testing.T) {
 	}
 }
 
-// readLine returns the first line of r that starts with one of prefixes,
-// then drains r so the child never blocks on its output.
 func readLine(t *testing.T, r io.Reader, prefixes ...string) string {
 	t.Helper()
 	got := make(chan string, 1)
