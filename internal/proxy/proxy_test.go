@@ -959,6 +959,7 @@ func TestBodyOverCapIs413(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			up := sseUpstream(t, evCompleted)
 			h := startProxy(t, up.url(), withBodyCap)
 
