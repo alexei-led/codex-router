@@ -530,6 +530,9 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		th.turnOff = true
 		d := e.base(st)
 		d.Tier, d.Route, d.Reason = th.tier, st.original, policy.ReasonError
+		if errors.Is(askErr, errNoClassifier) {
+			d.Reason = policy.ReasonNoClassifier
+		}
 		d.Why = whyText(d, st.cfg, st.tokens)
 		th.retries = appendCapped(th.retries, retry{st.fp, d}, retriesKept)
 		th.remember(d)
