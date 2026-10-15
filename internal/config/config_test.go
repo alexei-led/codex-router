@@ -98,12 +98,52 @@ func TestLoad(t *testing.T) {
 	}
 }
 
+func TestLoadClassifiers(t *testing.T) {
+	jev := Default().Classifiers["jev"]
+	withFile := jev
+	withFile.EnvFile = "~/.config/codex-router/.env"
+	noKey := jev
+	noKey.KeyEnv = ""
+	cases := []struct {
+		name           string
+		body           string
+		wantClassifier string
+		wantJev        Classifier
+	}{
+		{"envFile keeps the other fields", `{"classifiers":{"jev":{"envFile":"~/.config/codex-router/.env"}}}`, "jev", withFile},
+		{"an empty field clears it", `{"classifiers":{"jev":{"keyEnv":""}}}`, "jev", noKey},
+		{"off needs no entry", `{"classifier":"off"}`, ClassifierOff, jev},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "config.json")
+			if err := os.WriteFile(p, []byte(tc.body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := Load(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.Classifier != tc.wantClassifier || cfg.Classifiers["jev"] != tc.wantJev {
+				t.Errorf("classifier %q, jev %+v; want %q, %+v", cfg.Classifier, cfg.Classifiers["jev"], tc.wantClassifier, tc.wantJev)
+			}
+			if cfg.Classifiers["ollama"] != Default().Classifiers["ollama"] {
+				t.Errorf("untouched ollama changed: %+v", cfg.Classifiers["ollama"])
+			}
+		})
+	}
+}
+
 func TestLoadErrorsNameField(t *testing.T) {
 	cases := []struct{ name, body, want string }{
 		{"bad tier", `{"routes":{"huge":{"model":"m"}}}`, "routes.huge"},
 		{"bad effort", `{"routes":{"low":{"model":"m","effort":"max"}}}`, "routes.low.effort"},
 		{"empty model", `{"routes":{"high":{"effort":"high"}}}`, "routes.high.model"},
 		{"bad baseline", `{"baseline":"huge"}`, "baseline"},
+		{"unknown classifier", `{"classifier":"nope"}`, "classifier"},
+		{"new classifier without endpoint", `{"classifiers":{"x":{"api":"ollama","model":"m","timeoutMs":1}}}`, "classifiers.x.endpoint"},
+		{"unknown classifier field", `{"classifiers":{"jev":{"keyFile":"~/.env"}}}`, "classifiers.jev"},
+		{"relative envFile", `{"classifiers":{"jev":{"envFile":"key.env"}}}`, "classifiers.jev.envFile"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -284,10 +324,15 @@ func TestDecideTimeout(t *testing.T) {
 		{"negative falls back", -5, 1700 * time.Millisecond},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			c := Config{Classifier: "k", Classifiers: map[string]Classifier{"k": {TimeoutMs: tc.timeoutMs}}}
+			c := Config{Classifier: "k", Classifiers: Classifiers{"k": {TimeoutMs: tc.timeoutMs}}}
 			if got := c.DecideTimeout(); got != tc.want {
 				t.Errorf("DecideTimeout = %v, want %v", got, tc.want)
 			}
 		})
+	}
+	off := Default()
+	off.Classifier = ClassifierOff
+	if got := off.DecideTimeout(); got != 1700*time.Millisecond {
+		t.Errorf("off: DecideTimeout = %v, want the fallback", got)
 	}
 }

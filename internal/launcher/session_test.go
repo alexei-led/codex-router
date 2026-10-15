@@ -158,6 +158,8 @@ func TestNewClassifier(t *testing.T) {
 			"TYPESAFE_API_KEY is not set; envFile open " + missing + ": no such file or directory"},
 		{"no key needed", func() config.Config { c := config.Default(); c.Classifier = "ollama"; return c }(), nil, true, ""},
 		{"not configured", unknown, nil, false, "no classifier configured"},
+		{"off", func() config.Config { c := config.Default(); c.Classifier = config.ClassifierOff; return c }(),
+			map[string]string{"TYPESAFE_API_KEY": "k"}, false, "classifier is off in the config"},
 		{"unknown api", withAPI("bogus"), map[string]string{"TYPESAFE_API_KEY": "k"}, false, "unknown api bogus"},
 	}
 	for _, tc := range cases {
