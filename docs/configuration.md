@@ -69,7 +69,7 @@ A route is `{"model": "<slug>", "effort": "<effort>"}`. An empty `effort` keeps 
 | `low`    | `gpt-6-luna`  | `medium`       |
 | `micro`  | `gpt-6-luna`  | `low`          |
 
-The four defaults share one model compatibility group, so switching between them mid-thread works **[verified]**. A model in a different group fails mid-thread, so the router refuses a route outside the group of the model Codex sent and keeps the request. The Routes tab lists such models as blocked.
+The four defaults share one model compatibility group, so switching between them mid-thread works **[verified]**. A model in a different group fails mid-thread, so the router refuses a route outside the group of the model Codex sent and keeps the request. The Policy view lists such models as blocked.
 
 An `activities.<activity>.<tier>` entry replaces the tier's model and effort field by field; an empty field inherits the tier's route. The default sends `debug` at `medium` to `gpt-6-sol` with `high` effort. An activity route applies when the classifier's activity probability reaches `policy.activityMass`.
 
