@@ -58,11 +58,15 @@ type Request struct {
 	Protocol int `json:"protocol,omitempty"`
 }
 
-// Hello identifies the endpoint behind a socket.
+// Hello identifies the endpoint behind a socket. Label is the launcher's
+// working directory as "home · repo · branch", so a panel can name a router
+// whose Codex has no session yet; a brain serves many directories and leaves
+// it empty. Protocol 2 clients ignore it.
 type Hello struct {
 	EndpointID string    `json:"endpoint_id"`
 	Kind       string    `json:"kind"`
 	Home       home.Home `json:"home"`
+	Label      string    `json:"label,omitempty"`
 }
 
 // Message is one server-to-client line. ID echoes the request's id on ack
