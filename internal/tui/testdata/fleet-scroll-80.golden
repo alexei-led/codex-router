@@ -1,8 +1,7 @@
 codex-router  20 sessions · Jev ready           Sessions  Policy  Usage   ? help
 
   SESSION         STATE  MODEL               LAST TURNS  SWITCH
-  ↑ 5 more
-  repo-06 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅
+  ↑ 6 more
   repo-07 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅
   repo-08 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅
   repo-09 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅
@@ -27,7 +26,8 @@ repo-15 · main                                                   work · aaaaaa
  Pin      micro   low   medium  ▶high                             next turn only
  Session  48 replies · 9 switches · saved ≈ $0.84 (31%) vs gpt-6.1-sol · high
           ▃▃▃▃▃▅▅▅▅▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇  1 reply per cell
- Context  █░░░░░░░░░ 16%  44.6K / 272K      Cache  98% last reply · 97% session
+ Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol
+ Cache    98% last reply · 97% session
  Look     context guard kept 2 steps on a larger window than the policy chose ·
           see Policy
           routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group

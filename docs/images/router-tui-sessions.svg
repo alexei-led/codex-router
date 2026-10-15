@@ -183,9 +183,10 @@
   <text x="374.8" y="370.0" fill="#878787" xml:space="preserve">  4 replies per cell</text>
   <text x="16.0" y="389.0" fill="#d0d0d0" xml:space="preserve"> Context  █░░░░░░░░░ 10%  </text>
   <text x="218.8" y="389.0" fill="#878787" xml:space="preserve">91K / 828K</text>
-  <text x="343.6" y="389.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">Cache</text>
-  <text x="382.6" y="389.0" fill="#d0d0d0" xml:space="preserve">  97% last reply</text>
-  <text x="507.4" y="389.0" fill="#878787" xml:space="preserve"> · 64% session</text>
+  <text x="296.8" y="389.0" fill="#878787" xml:space="preserve"> gpt-6.1-sol</text>
+  <text x="437.2" y="389.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">Cache</text>
+  <text x="476.2" y="389.0" fill="#d0d0d0" xml:space="preserve">  97% last reply</text>
+  <text x="601.0" y="389.0" fill="#878787" xml:space="preserve"> · 64% session</text>
   <text x="16.0" y="408.0" fill="#d0d0d0" xml:space="preserve"> Look     cache reuse 64% after 19 switches; switches wrote 612K uncached tokens · see Policy</text>
   <text x="16.0" y="427.0" fill="#d0d0d0" xml:space="preserve">          context guard kept 3 steps on a larger window than the policy chose · see Policy</text>
   <text x="16.0" y="446.0" fill="#d0d0d0" xml:space="preserve"> Recent   </text>

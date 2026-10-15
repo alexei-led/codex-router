@@ -9,7 +9,7 @@ codex-router  6 sessions · 2 homes · Jev ready                                
 ▎● work · brain up 2h                                         Session  48 replies · 9 switches
 ▎  api · feat/auth          ◐ manual  gpt-6-sol · medium               saved ≈ $0.84 (31%) vs gpt-6.1-sol · high
 ▎  api · fix/retry          ↑ high    gpt-6.1-sol · high               ▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇  1 reply per cell
-▎  infra · main             ● on      gpt-6-sol · medium      Context  █░░░░░░░░░ 16%  44.6K / 272K
+▎  infra · main             ● on      gpt-6-sol · medium      Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol
 ▎  reflex · main            ○ waiting for the first prompt    Cache    98% last reply · 97% session
 ▎                                                             Look     context guard kept 2 steps on a larger window than the
 ▎                                                                      policy chose · see Policy

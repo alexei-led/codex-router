@@ -132,7 +132,7 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		{"strip glyphs tell the tiers apart", func(*route.Snapshot) {}, TabSessions, []string{"▃▃▃▃▃▅▅▅▅▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇"}, nil},
 		{"costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabSessions, []string{"cost ≈ $0.29 (11%)"}, []string{"saved"}},
 		{"prices missing", func(s *route.Snapshot) { s.Stats.RoutedUSD, s.Stats.BaselineUSD = 0, 0 }, TabSessions, []string{`savings need "prices" in the config`}, nil},
-		{"context and cache", func(*route.Snapshot) {}, TabSessions, []string{"Context  █░░░░░░░░░ 16%  44.6K / 272K", "Cache  98% last reply · 97% session"}, nil},
+		{"context and cache", func(*route.Snapshot) {}, TabSessions, []string{"Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol", "Cache  98% last reply · 97% session"}, nil},
 		{"no last reply reading", func(s *route.Snapshot) { s.Stats.LastInputTokens = 0 }, TabSessions, []string{"Cache  97% this session"}, []string{"last reply"}},
 		{"window unknown", func(s *route.Snapshot) { s.Window = 0 }, TabSessions, []string{"window unknown"}, nil},
 		{"every finding on a line of its own", func(*route.Snapshot) {}, TabSessions,

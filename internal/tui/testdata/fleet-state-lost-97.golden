@@ -16,7 +16,7 @@ api · feat/auth                                                                
  Pin      micro   low   medium   high                                              next turn only
  Session  48 replies · 9 switches · saved ≈ $0.84 (31%) vs gpt-6.1-sol · high
           ▃▃▃▃▃▅▅▅▅▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇  1 reply per cell
- Context  █░░░░░░░░░ 16%  44.6K / 272K      Cache  98% last reply · 97% session
+ Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol      Cache  98% last reply · 97% session
  Look     state lost: saved pause, pin and preset unreadable; routing paused until resume · P
           resumes the home
           context guard kept 2 steps on a larger window than the policy chose · see Policy
