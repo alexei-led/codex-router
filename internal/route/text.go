@@ -42,6 +42,8 @@ func whyText(d Decision, cfg config.Config, tokens int) string {
 		return fmt.Sprintf("context fit: ~%s tokens need a larger window", kilo(tokens))
 	case policy.ReasonOutOfGroup:
 		return "route outside " + d.Original.Model + "'s compatibility group; request kept"
+	case policy.ReasonNoClassifier:
+		return "classifier off; request keeps Codex's model"
 	case policy.ReasonError:
 		return "classifier failed; this turn is not routed"
 	case ReasonActivityUp, ReasonActivityDown:

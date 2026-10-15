@@ -409,8 +409,20 @@ func TestNoClassifierForwardsEverything(t *testing.T) {
 	e := New(Deps{Config: testConfig(), Catalog: store})
 	rw, ok := e.Decide(context.Background(), req(medium, userMsg(secretPrompt)), meta("th", "t1"))
 	wantUnchanged(t, rw, ok)
-	if !e.Snapshot().ClassifierOff {
+	s := e.Snapshot()
+	if !s.ClassifierOff {
 		t.Error("snapshot does not say the classifier is off")
+	}
+	if s.Last == nil || s.Last.Reason != policy.ReasonNoClassifier || s.Last.Why != "classifier off; request keeps Codex's model" {
+		t.Errorf("last decision = %+v", s.Last)
+	}
+	if s.Classifier.Failures != 0 || s.Classifier.LastError != "" {
+		t.Errorf("classifier health = %+v, want no failure", s.Classifier)
+	}
+	for _, f := range s.Worth {
+		if f.Kind == FindingClassifier {
+			t.Errorf("finding %+v counts the off classifier as failing", f)
+		}
 	}
 }
 

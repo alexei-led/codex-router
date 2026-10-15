@@ -42,6 +42,7 @@ const (
 	ReasonOutOfGroup       Reason = "out-of-group"
 	ReasonPassthrough      Reason = "passthrough"
 	ReasonError            Reason = "error"
+	ReasonNoClassifier     Reason = "classifier-off"
 )
 
 // Estimate explains a switch bar: the tax it priced, the bar, the support
