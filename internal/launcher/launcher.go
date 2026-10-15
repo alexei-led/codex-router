@@ -26,13 +26,11 @@ import (
 	"github.com/alexei-led/codex-router/internal/route"
 )
 
-// Names inside the runtime dir and the provider the app-server is started with.
+// Names inside the runtime dir and the app-server's env.
 const (
 	RuntimeDirName = "codex-router"
 	AppSocketName  = "app.sock"
 	PortFileName   = "proxy.port"
-	ProviderID     = "router"
-	ProviderName   = "router"
 	// EnvToken holds the proxy's per-session token in the app-server's env.
 	// Codex sends it as proxy.HeaderToken through env_http_headers, so the
 	// value never appears in argv, which other uids can read.
@@ -104,9 +102,9 @@ func (o Options) getenv(key string) string {
 // the proxy token; Codex leaves the header out when the variable is unset.
 func ProviderOverrides(port int) []string {
 	return []string{
-		"model_provider=" + ProviderID,
+		"model_provider=" + proxy.ProviderID,
 		fmt.Sprintf(`model_providers.%s={name="%s", base_url="http://%s:%d/v1", wire_api="responses", requires_openai_auth=true, env_http_headers={"%s"="%s"}}`,
-			ProviderID, ProviderName, proxy.LoopbackHost, port, proxy.HeaderToken, EnvToken),
+			proxy.ProviderID, proxy.ProviderName, proxy.LoopbackHost, port, proxy.HeaderToken, EnvToken),
 	}
 }
 
