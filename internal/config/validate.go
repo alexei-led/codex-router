@@ -106,8 +106,8 @@ func (c Config) validatePrices() error {
 }
 
 func (c Config) validateClassifiers() error {
-	if _, ok := c.Classifiers[c.Classifier]; !ok {
-		return fmt.Errorf("classifier: %q is not in classifiers", c.Classifier)
+	if _, ok := c.Classifiers[c.Classifier]; !ok && c.Classifier != ClassifierOff {
+		return fmt.Errorf("classifier: %q is not in classifiers or %q", c.Classifier, ClassifierOff)
 	}
 	for _, name := range sortedKeys(c.Classifiers) {
 		cl := c.Classifiers[name]

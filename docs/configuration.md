@@ -6,7 +6,8 @@ How the file is read:
 
 - A missing file means the defaults below. Keys you omit keep their default.
 - Objects such as `policy`, `context` and `cache` merge field by field.
-- A map entry you name (a tier, an activity, a classifier, a price) replaces the default entry whole.
+- A map entry you name (a tier, an activity, a price) replaces the default entry whole.
+- A `classifiers` entry changes only the fields it names, over the entry of the same name. Set a field to `""` to clear it.
 - Unknown keys, trailing data and invalid values are errors. The router then runs plain `codex` with one line that says why.
 - `$XDG_CONFIG_HOME` is used only when it is an absolute path.
 - Edits apply to the next session. In a home set up with `codex-router setup`, they apply when its brain and edge restart (see [Check and restart the services](user-guide.md#check-and-restart-the-services)). The panel changes only the preset, and only for the running sessions of one Codex home. A preset picked in the panel for a set-up home outlives a brain restart and wins over `preset` here.
@@ -48,7 +49,7 @@ The prices are placeholders: use the list prices you want estimates against. Bec
 | `prices`      | map model to price                | none                                 | List prices in USD per million tokens. Optional.                                                |
 | `policy`      | object                            | see below                            | Switching thresholds.                                                                           |
 | `preset`      | `thrifty`, `balanced`, `quality`  | `balanced`                           | Overrides some policy fields. See [presets](#presets).                                          |
-| `classifier`  | string                            | `jev`                                | Key of the active entry in `classifiers`.                                                       |
+| `classifier`  | string                            | `jev`                                | Key of the active entry in `classifiers`, or `off`.                                             |
 | `classifiers` | map name to classifier            | `jev`, `ollama`                      | Classifier endpoints.                                                                           |
 | `context`     | object                            | `recentTurns 6`, `maxTextChars 1200` | What the classifier sees.                                                                       |
 | `cache`       | object                            | `ttlMs 300000`, `warmMarginMs 30000` | Prompt-cache warmth rule.                                                                       |
@@ -139,9 +140,17 @@ Defaults:
 | `jev`    | `system-one` | `https://api.typesafe.ai/v1/systemone` | `jev-1.13.0` | `TYPESAFE_API_KEY` | 1500 ms |
 | `ollama` | `ollama`     | `http://127.0.0.1:11434/api/chat`      | `qwen3.5:9b` | none               | 5000 ms |
 
-To use another service that speaks one of the two protocols, add an entry and set `classifier` to its name. When `keyEnv` names a variable that is unset, the classifier is off for the session (logged), the router still runs, and pins work.
+To use another service that speaks one of the two protocols, add an entry with every field and set `classifier` to its name. When `keyEnv` names a variable that is unset, the classifier is off for the session (logged), the router still runs, and pins work.
 
-The brain (`codex-router setup`) runs under launchd or systemd and does not see your shell's env. Point `envFile` at a file that holds the key, for example `"envFile": "~/.config/codex-router/.env"` with the line `TYPESAFE_API_KEY=...`. Rules:
+`"classifier": "off"` turns the classifier off on purpose: no prompt or dialogue leaves the machine, and only pins and the context guard change the model.
+
+The brain (`codex-router setup`) runs under launchd or systemd and does not see your shell's env. Point `envFile` at a file that holds the key. The other fields keep their defaults:
+
+```json
+{ "classifiers": { "jev": { "envFile": "~/.config/codex-router/.env" } } }
+```
+
+The file holds the line `TYPESAFE_API_KEY=...`. The same works for `codex-router` sessions, so the key need not be in your shell. Rules:
 
 - The env var wins over the file. The file is read only when the variable is unset.
 - Lines are `KEY=value` or `export KEY=value`. Quotes (`'…'`, `"…"`, no escapes) are allowed. A line that starts with `#` is a comment, and so is ` #…` after an unquoted value. Only the `keyEnv` key is read, the last assignment wins, and nothing from the file goes into the process env.

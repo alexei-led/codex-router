@@ -71,6 +71,9 @@ func launcherCwd() func(string) string {
 // classifier's envFile. A named key found in neither turns it off: the
 // router still runs and pins still work. The reason never holds the key.
 func newClassifier(cfg config.Config, getenv func(string) string) (classifier.Asker, string) {
+	if cfg.Classifier == config.ClassifierOff {
+		return nil, "classifier is off in the config"
+	}
 	cc, ok := cfg.Classifiers[cfg.Classifier]
 	if !ok {
 		return nil, "no classifier configured"

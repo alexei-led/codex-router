@@ -117,10 +117,11 @@ A missing file means the defaults. Keys that you leave out keep their defaults. 
 
 The classifier scores each new turn. Only the active one is called. It gets the clipped prompt and recent dialogue, never your Codex credentials.
 
-| Classifier      | Where text goes       | Setup                                                                   |
-| --------------- | --------------------- | ----------------------------------------------------------------------- |
-| `jev` (default) | `api.typesafe.ai`     | `export TYPESAFE_API_KEY=...`                                           |
-| `ollama`        | stays on your machine | `ollama pull qwen3.5:9b`, then `{"classifier": "ollama"}` in the config |
+| Classifier      | Where text goes       | Setup                                                                                   |
+| --------------- | --------------------- | --------------------------------------------------------------------------------------- |
+| `jev` (default) | `api.typesafe.ai`     | `export TYPESAFE_API_KEY=...`                                                           |
+| `ollama`        | stays on your machine | `ollama pull qwen3.5:9b`, then `{"classifier": "ollama"}` in the config                 |
+| `off`           | nothing is sent       | `{"classifier": "off"}` in the config; only pins and the context guard change the model |
 
 When the key variable is unset, the classifier is off for the session. The panel shows `Jev off`, requests keep their model, and pins still work. To send less text to a hosted classifier, lower [`context`](configuration.md#context).
 

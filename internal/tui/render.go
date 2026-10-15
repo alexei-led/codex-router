@@ -665,7 +665,7 @@ func (c *canvas) classifier(s route.Snapshot) {
 	}
 	c.add(col(color, mark), plain(" "+classifierName(s)))
 	if s.ClassifierOff {
-		c.add(col(colorWarn, "off"), dim(" · no key or endpoint; requests keep their model unless pinned"))
+		c.add(col(colorWarn, "off"), dim(" · no key, or off in the config; requests keep their model unless pinned"))
 		return
 	}
 	if h.Latency > 0 {

@@ -91,6 +91,14 @@ type Policy struct {
 	ContextFill           float64 `json:"contextFill"`
 }
 
+// ClassifierOff as Config.Classifier turns the classifier off: no prompt
+// leaves the machine, and only pins and the context guard change the model.
+const ClassifierOff = "off"
+
+// Classifiers maps a name to a classifier. A config file's entry is decoded
+// over the entry of the same name, so it names only the fields it changes.
+type Classifiers map[string]Classifier
+
 // Classifier describes one classifier endpoint. API names the wire adapter
 // ("system-one" or "ollama"). KeyEnv names the environment variable holding
 // the bearer key; empty means no key. EnvFile is a dotenv file (absolute or
@@ -132,7 +140,7 @@ type Config struct {
 	Policy      Policy                      `json:"policy"`
 	Preset      Preset                      `json:"preset"`
 	Classifier  string                      `json:"classifier"`
-	Classifiers map[string]Classifier       `json:"classifiers"`
+	Classifiers Classifiers                 `json:"classifiers"`
 	Context     Context                     `json:"context"`
 	Cache       Cache                       `json:"cache"`
 	Proxy       Proxy                       `json:"proxy"`
