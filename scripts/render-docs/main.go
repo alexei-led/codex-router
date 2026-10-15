@@ -249,7 +249,7 @@ func sampleSnapshot() route.Snapshot {
 		Last:            &last,
 		Recent:          recent,
 		Classifier:      classifier.Health{Latency: 412 * time.Millisecond},
-		ClassifierLabel: "Jev", ClassifierMedian: 388 * time.Millisecond,
+		ClassifierLabel: "Jev", ClassifierModel: "jev-1.13.0", ClassifierMedian: 388 * time.Millisecond,
 		Routes: cfg.Routes,
 		Group:  catalog.Group{CompHash: "9f3c1a7e"},
 		Policy: cfg.Effective(),

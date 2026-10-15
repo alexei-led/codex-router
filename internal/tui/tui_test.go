@@ -51,10 +51,10 @@ func fixture() route.Snapshot {
 		ThreadID: "th", At: at(18, 42), Mode: route.ModeOn, Preset: config.PresetBalanced,
 		Baseline: sol61, Footer: sol61, FooterSynced: true,
 		Last: &last, Recent: []route.Decision{earlier, last},
-		Classifier: classifier.Health{Latency: 412 * time.Millisecond}, ClassifierLabel: "Jev", ClassifierMedian: 388 * time.Millisecond,
+		Classifier: classifier.Health{Latency: 412 * time.Millisecond}, ClassifierLabel: "Jev", ClassifierModel: "jev-1.13.0", ClassifierMedian: 388 * time.Millisecond,
 		Routes:  map[config.Tier]config.Route{config.TierHigh: sol61, config.TierMedium: sol, config.TierLow: luna, config.TierMicro: micro},
 		Group:   catalog.Group{CompHash: "3000"},
-		Blocked: []string{"gpt-5.5: comp_hash 2911, no Lite"},
+		Blocked: []string{"gpt-5.5"},
 		Policy: config.Policy{UpgradeVotes: 2, DowngradeVotes: 2, EscalationHoldTurns: 2, MinDwellRequests: 8, ReviewEveryRequests: 6,
 			UpgradeBase: 0.65, JumpConfidence: 0.85, DowngradeMass: 0.7, ActivityMass: 0.6},
 		Stats: route.Stats{
@@ -107,11 +107,49 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		{"manual holds", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabNow, []string{"◐ manual", "picked with /model"}, nil},
 		{"paused", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabNow, []string{"○ paused", "unchanged"}, nil},
 		{"pinned", func(s *route.Snapshot) { p := config.TierLow; s.Pin = &p }, TabNow, []string{"▌low", "pinned"}, nil},
-		{"classifier paused", func(s *route.Snapshot) { s.Classifier.PausedUntil = s.At.Add(time.Minute) }, TabClassifier, []string{"○ Jev", "forwarded unchanged"}, nil},
-		{"classifier off header", func(s *route.Snapshot) { s.ClassifierOff = true }, TabNow, []string{"Jev off"}, nil},
-		{"classifier off tab", func(s *route.Snapshot) { s.ClassifierOff = true }, TabClassifier, []string{"○ Jev", "keep their model unless pinned"}, nil},
-		{"footer not synced", func(s *route.Snapshot) { s.FooterSynced = false }, TabNow, []string{"footer not synced"}, nil},
-		{"empty session", func(s *route.Snapshot) { s.Stats = route.Stats{}; s.Last = nil }, TabNow, []string{"no routed replies yet", "no routed request yet"}, nil},
+		{"classifier paused", func(s *route.Snapshot) {
+			s.Classifier = classifier.Health{Failures: 3, LastError: "http 503", PausedUntil: s.At.Add(42 * time.Second)}
+		}, TabClassifier, []string{"○ Jev · jev-1.13.0", "last error: http 503", "resumes in 42s", "forwarded unchanged"}, nil},
+		{"classifier failing", func(s *route.Snapshot) { s.Classifier = classifier.Health{Failures: 1, LastError: "timeout"} },
+			TabClassifier, []string{"◉ Jev", "consecutive failures 1", "last error: timeout"}, []string{"resumes in"}},
+		{"classifier never called", func(s *route.Snapshot) { s.Classifier, s.ClassifierMedian = classifier.Health{}, 0 },
+			TabClassifier, []string{"ready · no calls yet"}, []string{"latency", "failures"}},
+		{"classifier unnamed", func(s *route.Snapshot) { s.ClassifierLabel, s.ClassifierModel = "", "" }, TabClassifier, []string{"◉ Classifier\n"}, nil},
+		{"classifier off header", func(s *route.Snapshot) { s.ClassifierOff = true }, TabNow,
+			[]string{"◉ pins only · gpt-6.1-sol high · Jev off"}, []string{"◉ on"}},
+		{"classifier off tab", func(s *route.Snapshot) { s.ClassifierOff, s.ClassifierOffReason = true, "TYPESAFE_API_KEY is not set" }, TabClassifier,
+			[]string{"○ Jev · jev-1.13.0", "off · TYPESAFE_API_KEY is not set", "only pins (p) and the context guard change it"}, []string{"latency"}},
+		{"classifier off tab without a name", func(s *route.Snapshot) { s.ClassifierOff, s.ClassifierLabel, s.ClassifierModel = true, "", "" }, TabClassifier,
+			[]string{"○ Classifier\n", "off\n"}, nil},
+		{"classifier off next turn", func(s *route.Snapshot) { s.ClassifierOff, s.Last = true, nil }, TabNow,
+			[]string{"classifier off · requests keep gpt-6.1-sol unless pinned (p)"}, []string{"no routed request yet"}},
+		{"classifier off policy", func(s *route.Snapshot) { s.ClassifierOff = true }, TabPolicy,
+			[]string{"no effect while the classifier is off"}, []string{"c preset"}},
+		{"classifier on policy", func(*route.Snapshot) {}, TabPolicy, []string{"c preset · q quit"}, []string{"no effect"}},
+		{"header shows the footer route", func(*route.Snapshot) {}, TabNow, []string{"ROUTING ◉ on · gpt-6.1-sol high · Jev ready\n"}, []string{"footer synced", "412 ms ·"}},
+		{"footer not synced", func(s *route.Snapshot) { s.FooterSynced = false }, TabNow, []string{"Jev ready · footer not synced", "not synced yet"}, nil},
+		{"footer in sync", func(*route.Snapshot) {}, TabNow, []string{"footer shows gpt-6.1-sol · high · in sync"}, []string{"thread/settings", "update"}},
+		{"unknown reason code", func(s *route.Snapshot) { s.Last.Why, s.Last.Reason = "", "mystery" }, TabNow,
+			[]string{"reason not shown by this panel version"}, []string{"mystery"}},
+		{"known reason code", func(s *route.Snapshot) { s.Last.Why, s.Last.Reason = "", policy.ReasonDowngradeHeld }, TabNow,
+			[]string{"waiting to go down"}, []string{"downgrade-held"}},
+		{"routes avoid internal names", func(*route.Snapshot) {}, TabRoutes,
+			[]string{"gpt-6.1-sol's compatibility group", "gpt-5.5 · outside gpt-6.1-sol's compatibility group", "escalate: same test failure twice"},
+			[]string{"comp_hash", "3000", "escalation\n"}},
+		{"routes group unknown", func(s *route.Snapshot) { s.Group = catalog.Group{} }, TabRoutes, []string{"compatibility group unknown"}, nil},
+		{"kept decision", func(s *route.Snapshot) {
+			kept := route.Decision{Tier: config.TierMicro, Route: s.Baseline, Original: s.Baseline, Reason: policy.ReasonNoClassifier, At: at(18, 40)}
+			s.Recent, s.Last = append(s.Recent, kept), &kept
+		}, TabRoutes, []string{"18:40 kept gpt-6.1-sol · high", "classifier off; request keeps Codex's model"}, []string{"▌micro gpt-6.1-sol"}},
+		{"kept decision next turn", func(s *route.Snapshot) {
+			s.Last = &route.Decision{Tier: config.TierMicro, Route: s.Baseline, Original: s.Baseline, Reason: policy.ReasonError, At: at(18, 40)}
+		}, TabNow, []string{"Next turn  kept  gpt-6.1-sol · high"}, []string{"▌micro"}},
+		{"empty session", func(s *route.Snapshot) { s.Stats = route.Stats{}; s.Last = nil }, TabNow,
+			[]string{"no routed replies yet", "no routed request yet"}, []string{"Cache", "no replies yet"}},
+		{"empty session usage", func(s *route.Snapshot) { s.Stats = route.Stats{} }, TabUsage,
+			[]string{"no replies yet"}, []string{"cache reuse", "savings need", "prices"}},
+		{"prices missing", func(s *route.Snapshot) { s.Stats.RoutedUSD, s.Stats.BaselineUSD = 0, 0 }, TabUsage,
+			[]string{`savings need "prices" in the config`}, []string{"list-price baseline"}},
 		{"routing costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabUsage, []string{"Routing cost"}, nil},
 		{"tier the answer left out", func(s *route.Snapshot) { delete(s.Last.Reading.Tiers, config.TierMicro) }, TabNow, []string{"low 9%", "micro —"}, nil},
 		{"uncertain activity answer", func(s *route.Snapshot) { s.Last.Reading.Activity, s.Last.Reading.ActivityP = "uncertain", 0.5 }, TabNow, []string{"uncertain 50%"}, nil},
@@ -914,4 +952,44 @@ func TestEndedExitCancelsWhenTheSessionReturns(t *testing.T) {
 
 func renderPlain(s route.Snapshot, tab Tab, width int) string {
 	return render(view{snap: s, tab: tab, width: width})
+}
+
+func TestKeyHintsFollowTheState(t *testing.T) {
+	one := lockedFixture()
+	one.focus = one.homes[0].sessions[0].ID
+	paused := lockedFixture()
+	for i := range paused.homes[0].sessions {
+		paused.homes[0].sessions[i].Mode = route.ModePaused
+	}
+	paused.focus = paused.homes[0].sessions[0].ID
+	many := fleetFixture()
+	one.homes[0].sessions = one.homes[0].sessions[:1]
+	manual := fixture()
+	manual.Mode = route.ModeManual
+	off := fixture()
+	off.ClassifierOff = true
+	tests := []struct {
+		name string
+		v    view
+		want string
+	}{
+		{"several sessions", view{snap: fixture(), tab: TabNow, fleet: &many}, "[ ] session · 0 list · 1-5 tabs · p pin next · space pause · P pause home · q quit"},
+		{"one session hides the session keys", view{snap: fixture(), tab: TabNow, fleet: &one}, "0 list · 1-5 tabs · p pin next · space pause · P pause home · q quit"},
+		{"manual resumes", view{snap: manual, tab: TabNow, fleet: &many}, "[ ] session · 0 list · 1-5 tabs · p pin next · space resume · P pause home · q quit"},
+		{"a paused home resumes", view{snap: fixture(), tab: TabNow, fleet: &paused}, "0 list · 1-5 tabs · p pin next · space pause · P resume home · q quit"},
+		{"policy offers presets before quit", view{snap: fixture(), tab: TabPolicy, fleet: &many}, "[ ] session · 0 list · 1-5 tabs · p pin next · space pause · P pause home · c preset · q quit"},
+		{"policy without a classifier", view{snap: off, tab: TabPolicy, fleet: &many}, "[ ] session · 0 list · 1-5 tabs · p pin next · space pause · P pause home · q quit"},
+		{"sessions tab acts on the focused session", view{snap: fixture(), tab: TabSessions, fleet: &many}, "↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause focused · P pause focused home · q quit"},
+		{"locked panel", view{snap: fixture(), tab: TabNow, fleet: &one, locked: true}, "1-5 tabs · p pin next · space pause · P pause home · q quit"},
+		{"disconnected keeps navigation only", view{snap: fixture(), tab: TabNow, fleet: &many, disconnected: true}, "[ ] session · 0 list · 1-5 tabs · q quit"},
+		{"no sessions", view{tab: TabNow, fleet: &fleetState{}}, "q quit"},
+		{"bare snapshot", view{snap: manual, tab: TabNow}, "1-5 tabs · tab next · p pin next · space resume · q quit"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := strings.Join(keyHints(tt.v), " · "); got != tt.want {
+				t.Errorf("hints\n got %s\nwant %s", got, tt.want)
+			}
+		})
+	}
 }

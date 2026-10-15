@@ -1,5 +1,5 @@
 ◂ ● work · api · feat/auth ◐  ● work · api · fix/retry ↑ …                 ▸ 3/5
-ROUTING ◉ on · Jev ready · 412 ms · footer synced
+ROUTING ◉ on · gpt-6.1-sol high · Jev ready
 
  Sessions 0 [Now 1] Routes 2  Policy 3  Classifier 4  Usage 5 
 
@@ -21,8 +21,9 @@ WORTH A LOOK · this session
   routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group ·
   Routes 2
 
-Codex      footer shows gpt-6.1-sol · high · synced via thread/settings/update
+Codex      footer shows gpt-6.1-sol · high · in sync
 Context    ███░░░░░░░░░░░░░░░░░ 16%  ~44.6K / 272K · fit guard: smallest window
 Cache      98% reused on the last reply · 97% this session · $ at list price
 
-[ ] session · 0 list · 1-5 tabs · p pin · space pause · P pause home · q quit
+[ ] session · 0 list · 1-5 tabs · p pin next · space pause · P pause home
+q quit

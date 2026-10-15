@@ -16,8 +16,8 @@
   <text x="749.2" y="28.0" fill="#878787" xml:space="preserve"> ▸ 1/5</text>
   <text x="16.0" y="47.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
   <text x="78.4" y="47.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
-  <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
-  <text x="273.4" y="47.0" fill="#878787" xml:space="preserve"> · footer synced</text>
+  <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · gpt-6.1-sol high</text>
+  <text x="257.8" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready</text>
   <text x="16.0" y="85.0" fill="#878787" xml:space="preserve"> Sessions 0 </text>
   <rect x="109.6" y="71.0" width="54.6" height="19" fill="#87afff"/>
   <text x="109.6" y="85.0" fill="#14171f" xml:space="preserve">[Now 1]</text>
@@ -107,10 +107,10 @@
   <text x="16.0" y="408.0" fill="#d0d0d0" xml:space="preserve">  context guard kept 3 steps on a larger window than the policy chose · Routes 2</text>
   <text x="16.0" y="446.0" fill="#d0d0d0" xml:space="preserve">Codex      footer shows </text>
   <text x="203.2" y="446.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
-  <text x="343.6" y="446.0" fill="#878787" xml:space="preserve"> · synced via thread/settings/update</text>
+  <text x="343.6" y="446.0" fill="#878787" xml:space="preserve"> · in sync</text>
   <text x="16.0" y="465.0" fill="#d0d0d0" xml:space="preserve">Context    ██░░░░░░░░░░░░░░░░░░ 10%  </text>
   <text x="304.6" y="465.0" fill="#878787" xml:space="preserve">~91K / 828K · fit guard: smallest window</text>
   <text x="16.0" y="484.0" fill="#d0d0d0" xml:space="preserve">Cache      97% reused on the last reply</text>
   <text x="320.2" y="484.0" fill="#878787" xml:space="preserve"> · 64% this session · $ at list price</text>
-  <text x="16.0" y="522.0" fill="#878787" xml:space="preserve">[ ] session · 0 list · 1-5 tabs · p pin · space pause · P pause home · q quit</text>
+  <text x="16.0" y="522.0" fill="#878787" xml:space="preserve">[ ] session · 0 list · 1-5 tabs · p pin next · space pause · P pause home · q quit</text>
 </svg>

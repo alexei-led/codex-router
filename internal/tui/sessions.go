@@ -355,8 +355,11 @@ func uptime(d time.Duration) string {
 // which the home line above already shows.
 func sessionRow(s fleetSession, h fleetHome, cols sessionCols, cursor, focus bool) []seg {
 	marker := plain("  ")
-	if cursor {
+	switch {
+	case cursor:
 		marker = col(colorAccent, "▸ ")
+	case focus:
+		marker = col(colorAccent, "● ")
 	}
 	label := plain(pad(strings.TrimPrefix(s.Label, h.home.Name+" · "), cols.session))
 	if focus {
