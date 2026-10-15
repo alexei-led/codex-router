@@ -25,5 +25,7 @@ api · feat/auth                                                  work · aaaaaa
           see Policy
           routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group
           · see Policy
+ Recent   18:41  high   gpt-6.1-sol · high · same test failure twice, edit in b…
+          18:38  medium gpt-6-sol · medium · moved up a tier
 
 ↑↓ select · tab views · q quit · ? help

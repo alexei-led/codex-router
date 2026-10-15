@@ -95,6 +95,7 @@ func (c *canvas) detail(v view) {
 	c.sessionRows(s)
 	c.contextRows(s)
 	c.look(s)
+	c.recent(s)
 }
 
 // band is the decision: the state chip, the activity and the route, the
@@ -313,5 +314,25 @@ func (c *canvas) look(s route.Snapshot) {
 			lead = label("Look")
 		}
 		c.wrapped(lead, text, plain(""))
+	}
+}
+
+// recentShown bounds the Recent block.
+const recentShown = 5
+
+// recent lists the last decisions, newest first, so each turn in the strip
+// can be traced to its route and reason.
+func (c *canvas) recent(s route.Snapshot) {
+	for n := 0; n < recentShown && n < len(s.Recent); n++ {
+		d := s.Recent[len(s.Recent)-1-n]
+		lead := plain(strings.Repeat(" ", labelWidth))
+		if n == 0 {
+			lead = label("Recent")
+		}
+		mark := col(tierRole[d.Tier], fmt.Sprintf("%-7s", d.Tier))
+		if slices.Contains(keptReasons, d.Reason) {
+			mark = dim(fmt.Sprintf("%-7s", "kept"))
+		}
+		c.add(lead, dim(d.At.Format("15:04")+"  "), mark, plain(routeText(d.Route)), dim(sep+whyOf(d)))
 	}
 }
