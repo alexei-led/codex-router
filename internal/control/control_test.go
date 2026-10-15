@@ -12,6 +12,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/config"
@@ -147,12 +148,32 @@ func nextList(t *testing.T, c *Client) []route.SessionInfo {
 	}
 }
 
+func eventually(t *testing.T, what string, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for %s", what)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
 func quiet[T any](t *testing.T, ch <-chan T, what string) {
 	t.Helper()
 	select {
 	case v := <-ch:
 		t.Fatalf("unexpected %s: %+v", what, v)
 	case <-time.After(4 * PublishInterval):
+	}
+}
+
+func idle[T any](t *testing.T, ch <-chan T, what string) {
+	t.Helper()
+	select {
+	case v := <-ch:
+		t.Fatalf("unexpected %s: %+v", what, v)
+	default:
 	}
 }
 
@@ -171,7 +192,6 @@ func closes[T any](t *testing.T, ch <-chan T, what string) {
 	}
 }
 
-// raw is a protocol-level client for checking server lines.
 type raw struct {
 	conn net.Conn
 	r    *bufio.Reader
@@ -208,7 +228,6 @@ func (r *raw) read(t *testing.T) Message {
 	return m
 }
 
-// readReply skips pushed lines up to the next ack or error.
 func (r *raw) readReply(t *testing.T) Message {
 	t.Helper()
 	for {
@@ -239,13 +258,39 @@ func TestListenSocketMode(t *testing.T) {
 	}
 }
 
-func TestListenRejectsLiveSocket(t *testing.T) {
-	_, path := startServer(t, newHandler())
-	if s, err := Listen(path, newHandler()); err == nil {
-		_ = s.Close()
-		t.Fatal("second Listen on a live socket succeeded")
+func TestListenRefuses(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T) string
+	}{
+		{"a live socket", func(t *testing.T) string {
+			_, path := startServer(t, newHandler())
+			return path
+		}},
+		{"a dir open to others", func(t *testing.T) string {
+			path := sockPath(t)
+			if err := os.Chmod(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			return path
+		}},
+		{"a regular file", func(t *testing.T) string {
+			path := sockPath(t)
+			if err := os.WriteFile(path, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			return path
+		}},
 	}
-	dial(t, path)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := tc.setup(t)
+			if s, err := Listen(path, newHandler()); err == nil {
+				_ = s.Close()
+				t.Fatal("Listen succeeded")
+			}
+		})
+	}
 }
 
 func TestListenReplacesStaleSocket(t *testing.T) {
@@ -285,7 +330,7 @@ func TestHandshake(t *testing.T) {
 	if l := nextList(t, c); len(l) != 1 || l[0].ID != sid("a") {
 		t.Fatalf("first sessions list = %+v", l)
 	}
-	quiet(t, c.Snapshots(), "snapshot before subscribe")
+	idle(t, c.Snapshots(), "snapshot before subscribe")
 }
 
 func TestHandshakeRejected(t *testing.T) {
@@ -315,36 +360,43 @@ func TestHandshakeRejected(t *testing.T) {
 	}
 }
 
-func TestDialReportsRejectedHello(t *testing.T) {
-	path := sockPath(t)
-	ln, err := net.Listen("unix", path)
-	if err != nil {
-		t.Fatal(err)
+func TestDialFails(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T) string
+		want  string
+	}{
+		{"missing socket", sockPath, "dial control socket"},
+		{"rejected hello", func(t *testing.T) string {
+			path := sockPath(t)
+			ln, err := net.Listen("unix", path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = ln.Close() })
+			go func() {
+				conn, err := ln.Accept()
+				if err != nil {
+					return
+				}
+				defer func() { _ = conn.Close() }()
+				_, _ = bufio.NewReader(conn).ReadBytes('\n')
+				_, _ = conn.Write([]byte(`{"type":"error","error":"unsupported protocol 2, want 3"}` + "\n"))
+			}()
+			return path
+		}, "unsupported protocol 2, want 3"},
 	}
-	t.Cleanup(func() { _ = ln.Close() })
-	go func() {
-		conn, err := ln.Accept()
-		if err != nil {
-			return
-		}
-		defer func() { _ = conn.Close() }()
-		_, _ = bufio.NewReader(conn).ReadBytes('\n')
-		_, _ = conn.Write([]byte(`{"type":"error","error":"unsupported protocol 2, want 3"}` + "\n"))
-	}()
-	c, err := Dial(path)
-	if err == nil {
-		_ = c.Close()
-		t.Fatal("Dial accepted a rejected hello")
-	}
-	if !strings.Contains(err.Error(), "unsupported protocol 2, want 3") {
-		t.Fatalf("err = %v", err)
-	}
-}
-
-func TestDialMissingSocketFails(t *testing.T) {
-	if c, err := Dial(sockPath(t)); err == nil {
-		_ = c.Close()
-		t.Fatal("Dial to a missing socket succeeded")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := Dial(tc.setup(t))
+			if err == nil {
+				_ = c.Close()
+				t.Fatal("Dial succeeded")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
 	}
 }
 
@@ -360,8 +412,13 @@ func TestSessionsPushedOnChangeOnly(t *testing.T) {
 	if l := nextList(t, c); len(l) != 2 || l[1].ID != sid("b") {
 		t.Fatalf("list = %+v, want a and b", l)
 	}
+
 	s.Publish(route.Snapshot{ThreadID: "a"})
-	quiet(t, c.Sessions(), "unchanged sessions list")
+	h.set(func(h *fakeHandler) { h.sessions = append(h.sessions, route.SessionInfo{ID: sid("c")}) })
+	s.Publish(route.Snapshot{ThreadID: "a"})
+	if l := nextList(t, c); len(l) != 3 {
+		t.Fatalf("list after an unchanged publish = %+v, want the next change with a, b and c", l)
+	}
 }
 
 func TestSubscriptionSwitch(t *testing.T) {
@@ -369,35 +426,40 @@ func TestSubscriptionSwitch(t *testing.T) {
 	h.replies["a"], h.replies["b"] = 1, 2
 	s, path := startServer(t, h)
 	c := dial(t, path)
+	snap := func(thread string, replies int) route.Snapshot {
+		return route.Snapshot{ThreadID: thread, Seq: uint64(replies), Stats: route.Stats{Replies: replies}}
+	}
+	wantNext := func(thread string, replies int) {
+		t.Helper()
+		if got := next(t, c); got.ThreadID != thread || got.Stats.Replies != replies {
+			t.Fatalf("snapshot = %s/%d, want %s/%d", got.ThreadID, got.Stats.Replies, thread, replies)
+		}
+	}
 
 	if err := c.Subscribe(sid("a")); err != nil {
 		t.Fatal(err)
 	}
-	if snap := next(t, c); snap.ThreadID != "a" || snap.Stats.Replies != 1 {
-		t.Fatalf("after subscribe a: %+v", snap)
-	}
-	s.Publish(route.Snapshot{ThreadID: "b", Stats: route.Stats{Replies: 20}})
-	quiet(t, c.Snapshots(), "snapshot of an unsubscribed session")
+	wantNext("a", 1)
+	s.Publish(snap("b", 20))
+	s.Publish(snap("a", 10))
+	wantNext("a", 10)
 
-	s.Publish(route.Snapshot{ThreadID: "a", Stats: route.Stats{Replies: 10}})
 	if err := c.Subscribe(sid("b")); err != nil {
 		t.Fatal(err)
 	}
-	if snap := next(t, c); snap.ThreadID != "b" || snap.Stats.Replies != 2 {
-		t.Fatalf("after subscribe b: %+v", snap)
-	}
-	s.Publish(route.Snapshot{ThreadID: "a", Stats: route.Stats{Replies: 11}})
-	quiet(t, c.Snapshots(), "snapshot of the old session")
-	s.Publish(route.Snapshot{ThreadID: "b", Stats: route.Stats{Replies: 21}})
-	if snap := next(t, c); snap.Stats.Replies != 21 {
-		t.Fatalf("pushed b: %+v", snap)
-	}
+	wantNext("b", 2)
+	s.Publish(snap("a", 11))
+	s.Publish(snap("b", 21))
+	wantNext("b", 21)
 
 	if err := c.Subscribe(""); err != nil {
 		t.Fatal(err)
 	}
-	s.Publish(route.Snapshot{ThreadID: "b", Stats: route.Stats{Replies: 22}})
-	quiet(t, c.Snapshots(), "snapshot after unsubscribe")
+	s.Publish(snap("b", 22))
+	if err := c.Send(route.Command{Op: route.OpSnapshot}); err != nil {
+		t.Fatal(err)
+	}
+	idle(t, c.Snapshots(), "snapshot after unsubscribe")
 }
 
 func TestSubscribeRejectsForeignSession(t *testing.T) {
@@ -523,7 +585,11 @@ func TestSendMatchesAckByIDWithTwoInFlight(t *testing.T) {
 	<-entered
 	fast := make(chan error, 1)
 	go func() { fast <- c.Send(route.Command{Op: route.OpPin, Session: sid("th"), Tier: "bad"}) }()
-	time.Sleep(20 * time.Millisecond) // let the second command reach the wire
+	eventually(t, "both commands in flight", func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return len(c.pending) == 2
+	})
 	close(release)
 
 	if err := <-slow; err != nil {
@@ -550,11 +616,11 @@ func TestSnapshotOp(t *testing.T) {
 		t.Fatal("snapshot op reached the handler")
 	}
 
-	idle := dial(t, path)
-	if err := idle.Send(route.Command{Op: route.OpSnapshot}); err != nil {
+	unsubscribed := dial(t, path)
+	if err := unsubscribed.Send(route.Command{Op: route.OpSnapshot}); err != nil {
 		t.Fatalf("snapshot op without a subscription: %v", err)
 	}
-	quiet(t, idle.Snapshots(), "snapshot without a subscription")
+	idle(t, unsubscribed.Snapshots(), "snapshot without a subscription")
 }
 
 func TestSendErrors(t *testing.T) {
@@ -624,47 +690,39 @@ func TestSlowClientDoesNotBlockOthers(t *testing.T) {
 	}
 }
 
-func TestChannelsCloseAfterServerCloses(t *testing.T) {
-	s, path := startServer(t, newHandler())
-	c := subscribed(t, path, "th")
-	_ = s.Close()
-	closes(t, c.Snapshots(), "Snapshots")
-	closes(t, c.Sessions(), "Sessions")
+func TestChannelsCloseWhenTheLinkEnds(t *testing.T) {
+	cases := []struct {
+		name string
+		end  func(s *Server, c *Client)
+	}{
+		{"server closes", func(s *Server, _ *Client) { _ = s.Close() }},
+		{"client closes", func(_ *Server, c *Client) { _ = c.Close() }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, path := startServer(t, newHandler())
+			c := subscribed(t, path, "th")
+			tc.end(s, c)
+			closes(t, c.Snapshots(), "Snapshots")
+			closes(t, c.Sessions(), "Sessions")
+		})
+	}
 }
 
 func TestSendWhileDisconnected(t *testing.T) {
 	s, path := startServer(t, newHandler())
 	c := dial(t, path)
 	_ = s.Close()
-	deadline := time.Now().Add(3 * time.Second)
-	for {
-		err := c.Send(route.Command{Op: route.OpPause})
-		if errors.Is(err, ErrDisconnected) {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("Send error = %v, want ErrDisconnected", err)
-		}
-		time.Sleep(10 * time.Millisecond)
+	closes(t, c.Snapshots(), "Snapshots")
+
+	if err := c.Send(route.Command{Op: route.OpPause}); !errors.Is(err, ErrDisconnected) {
+		t.Fatalf("Send error = %v, want ErrDisconnected", err)
 	}
 	if err := c.Subscribe(sid("th")); !errors.Is(err, ErrDisconnected) {
 		t.Fatalf("Subscribe error = %v, want ErrDisconnected", err)
 	}
 }
 
-func TestCloseClosesChannels(t *testing.T) {
-	_, path := startServer(t, newHandler())
-	c := dial(t, path)
-	_ = c.Close()
-	closes(t, c.Snapshots(), "Snapshots")
-	closes(t, c.Sessions(), "Sessions")
-}
-
-// dropped reports whether the server closed r's connection within d. Lines
-// the server pushed first are skipped.
-// dropped reports whether the server closed the connection within d. Linux
-// resets a unix socket closed with unread data in it, so ECONNRESET counts
-// as a close too; a timeout does not.
 func (r *raw) dropped(d time.Duration) bool {
 	_ = r.conn.SetReadDeadline(time.Now().Add(d))
 	for {
@@ -675,58 +733,45 @@ func (r *raw) dropped(d time.Duration) bool {
 }
 
 func TestSilentClientIsDroppedAfterHelloTimeout(t *testing.T) {
-	t.Parallel()
-	_, path := startServer(t, newHandler())
-	silent := rawDial(t, path)
+	synctest.Test(t, func(t *testing.T) {
+		s := &Server{
+			h: newHandler(), hello: testHello, wake: make(chan struct{}, 1), done: make(chan struct{}),
+			clients: map[*serverConn]struct{}{}, pending: map[string]route.Snapshot{},
+		}
+		edge, serverEnd := net.Pipe()
+		c := &serverConn{conn: serverEnd, notify: make(chan struct{}, 1), done: make(chan struct{})}
+		s.clients[c] = struct{}{}
+		s.wg.Add(1)
+		go s.serve(c)
 
-	start := time.Now()
-	if !silent.dropped(helloTimeout + 3*time.Second) {
-		t.Fatal("a client that never said hello was not dropped")
-	}
-	if took := time.Since(start); took < helloTimeout/2 {
-		t.Errorf("dropped after %v, before the hello timeout %v", took, helloTimeout)
-	}
-	subscribed(t, path, "th")
+		start := time.Now()
+		silent := &raw{conn: edge, r: bufio.NewReader(edge)}
+		if !silent.dropped(2 * helloTimeout) {
+			t.Fatal("a client that never said hello was not dropped")
+		}
+		if took := time.Since(start); took != helloTimeout {
+			t.Errorf("dropped after %v, want the hello timeout %v", took, helloTimeout)
+		}
+		_ = edge.Close()
+		s.wg.Wait()
+	})
 }
 
-func TestDialToASilentServerFailsWithinHelloTimeout(t *testing.T) {
-	t.Parallel()
-	path := sockPath(t)
-	ln, err := net.Listen("unix", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var conns []net.Conn
-	var mu sync.Mutex
-	go func() {
-		for {
-			c, err := ln.Accept()
-			if err != nil {
-				return
-			}
-			mu.Lock()
-			conns = append(conns, c)
-			mu.Unlock()
-		}
-	}()
-	t.Cleanup(func() {
-		_ = ln.Close()
-		mu.Lock()
-		defer mu.Unlock()
-		for _, c := range conns {
-			_ = c.Close()
-		}
-	})
+func TestHandshakeWithASilentServerFailsAtHelloTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client, serverEnd := net.Pipe()
+		go func() { _, _ = io.Copy(io.Discard, serverEnd) }()
 
-	start := time.Now()
-	c, err := Dial(path)
-	if err == nil {
-		_ = c.Close()
-		t.Fatal("Dial to a server that never answers hello succeeded")
-	}
-	if took := time.Since(start); took > helloTimeout+3*time.Second {
-		t.Errorf("Dial took %v, want about the hello timeout %v", took, helloTimeout)
-	}
+		start := time.Now()
+		if _, _, err := handshake(client); err == nil {
+			t.Fatal("handshake with a server that never answers succeeded")
+		}
+		if took := time.Since(start); took != helloTimeout {
+			t.Errorf("handshake failed after %v, want the hello timeout %v", took, helloTimeout)
+		}
+		_ = client.Close()
+		_ = serverEnd.Close()
+	})
 }
 
 func TestOversizedLineDropsOnlyThatClient(t *testing.T) {
@@ -736,7 +781,7 @@ func TestOversizedLineDropsOnlyThatClient(t *testing.T) {
 	big := rawDial(t, path)
 	big.hello(t)
 
-	// The server stops reading at maxLine and closes; a later write may fail.
+	_ = big.conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
 	_, _ = big.conn.Write([]byte(strings.Repeat("x", maxLine+1) + "\n"))
 
 	if !big.dropped(3 * time.Second) {
