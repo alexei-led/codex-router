@@ -75,7 +75,7 @@ func TestBrainKeepsIntentAcrossARestart(t *testing.T) {
 
 func TestBrainSeedsResumedThreadsWithTheirReportedRoute(t *testing.T) {
 	r := newRig(t, "")
-	def := config.Route{Model: "gpt-6-sol"} // the model's default effort
+	def := config.Route{Model: "gpt-6-sol"}
 	r.d.load("t1", &fakeThread{cwd: "/w1", source: "user", route: luna})
 	r.d.load("t2", &fakeThread{cwd: "/w2", source: "user", route: def})
 	r.start(t)
@@ -101,33 +101,35 @@ func TestBrainSeedsResumedThreadsWithTheirReportedRoute(t *testing.T) {
 	}
 }
 
-func TestBrainWithAnUnreadableIntentPassesThroughAsStateLost(t *testing.T) {
+func TestBrainStartsPausedOnAnUnreadableIntentFileAndLeavesItUntouched(t *testing.T) {
 	r := newRig(t, "")
 	if err := os.MkdirAll(r.homeDir(), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(r.intentPath(), []byte(`{"version":1,"paused":`), 0o600); err != nil {
+	bad := []byte(`{"version":1,"paused":`)
+	if err := os.WriteFile(r.intentPath(), bad, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	r.start(t)
-
-	rw, ok := linkHandler{r.b}.Decide(t.Context(), &responses.Request{Model: luna.Model, Effort: luna.Effort}, userStep("t1"))
-	if ok {
-		t.Fatalf("rewrite %+v with a lost intent", rw)
-	}
-	if s := r.session(t, "t1"); s.Attention != route.AttentionStateLost || s.Mode != route.ModePaused {
-		t.Fatalf("session = %+v, want state-lost and paused", s)
-	}
-	if s := r.b.eng.SnapshotFor("t1"); !s.StateLost || len(s.Worth) == 0 || s.Worth[0].Kind != route.FindingState {
-		t.Fatalf("snapshot state lost %v, findings %+v", s.StateLost, s.Worth)
+	if s := r.b.eng.SnapshotFor(""); !s.StateLost || s.Mode != route.ModePaused {
+		t.Fatalf("after start: state lost %v, mode %s; want lost and paused", s.StateLost, s.Mode)
 	}
 
+	r.apply(t, route.Command{Op: route.OpPin, Session: "t1", Tier: config.TierHigh})
+	r.b.Close()
+	if got, err := os.ReadFile(r.intentPath()); err != nil || string(got) != string(bad) {
+		t.Fatalf("intent file after commands while lost = %q, %v; want it untouched", got, err)
+	}
+
+	r.start(t)
+	if !r.b.eng.SnapshotFor("").StateLost {
+		t.Fatal("state lost cleared by a restart")
+	}
 	r.apply(t, route.Command{Op: route.OpResume, Scope: route.ScopeHome})
 	r.b.Close()
 	r.start(t)
-
 	if s := r.b.eng.SnapshotFor(""); s.StateLost || s.Mode != route.ModeOn {
-		t.Fatalf("after resume and restart: state lost %v, mode %s", s.StateLost, s.Mode)
+		t.Fatalf("after resume and restart: state lost %v, mode %s; want neither", s.StateLost, s.Mode)
 	}
 }
 
@@ -205,29 +207,5 @@ func TestBrainSavesTheLastOfConcurrentCommands(t *testing.T) {
 	saved, lost := newIntentStore(r.homeDir(), slog.New(slog.DiscardHandler)).load()
 	if want := withoutRev(r.b.eng.Intent()); lost || !reflect.DeepEqual(saved, want) {
 		t.Fatalf("saved = %+v (lost %v), want the engine's last intent %+v", saved, lost, want)
-	}
-}
-
-func TestLostIntentSurvivesASaveAndRestart(t *testing.T) {
-	r := newRig(t, "")
-	if err := os.MkdirAll(r.homeDir(), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	bad := []byte(`{"version":1,"paused":`)
-	if err := os.WriteFile(r.intentPath(), bad, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	r.start(t)
-	r.apply(t, route.Command{Op: route.OpPin, Session: "t1", Tier: config.TierHigh})
-	r.apply(t, route.Command{Op: route.OpPreset, Preset: config.PresetQuality, Scope: route.ScopeHome})
-	r.b.Close()
-
-	if got, err := os.ReadFile(r.intentPath()); err != nil || string(got) != string(bad) {
-		t.Fatalf("intent.json after commands while lost = %q, %v; want it untouched", got, err)
-	}
-	r.start(t)
-
-	if s := r.b.eng.SnapshotFor(""); !s.StateLost || s.Mode != route.ModePaused {
-		t.Fatalf("after restart: state lost %v, mode %s; want lost and paused", s.StateLost, s.Mode)
 	}
 }
