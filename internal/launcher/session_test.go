@@ -151,7 +151,7 @@ func TestNewClassifier(t *testing.T) {
 		{"envFile under ~/", withFile("~/home.env"), map[string]string{"HOME": dir}, true, ""},
 		{"env wins over envFile", withFile(missing), map[string]string{"TYPESAFE_API_KEY": "k"}, true, ""},
 		{"envFile shared", withFile(shared), nil, false,
-			"TYPESAFE_API_KEY is not set; envFile " + shared + ": readable by group or others; chmod 600 it"},
+			"TYPESAFE_API_KEY is not set; envFile " + shared + ": open to group or others; chmod 600 it"},
 		{"envFile without key", withFile(noKey), nil, false,
 			"TYPESAFE_API_KEY is not set; envFile " + noKey + ": TYPESAFE_API_KEY: key not in file"},
 		{"envFile missing", withFile(missing), nil, false,
