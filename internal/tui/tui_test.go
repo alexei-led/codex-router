@@ -143,7 +143,7 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		}, TabRoutes, []string{"18:40 kept gpt-6.1-sol · high", "classifier off; request keeps Codex's model"}, []string{"▌micro gpt-6.1-sol"}},
 		{"kept decision next turn", func(s *route.Snapshot) {
 			s.Last = &route.Decision{Tier: config.TierMicro, Route: s.Baseline, Original: s.Baseline, Reason: policy.ReasonError, At: at(18, 40)}
-		}, TabNow, []string{"Next turn  kept  gpt-6.1-sol · high"}, []string{"▌micro"}},
+		}, TabNow, []string{"Next turn  kept  gpt-6.1-sol · high"}, []string{"▌micro", "▶"}},
 		{"empty session", func(s *route.Snapshot) { s.Stats = route.Stats{}; s.Last = nil }, TabNow,
 			[]string{"no routed replies yet", "no routed request yet"}, []string{"Cache", "no replies yet"}},
 		{"empty session usage", func(s *route.Snapshot) { s.Stats = route.Stats{} }, TabUsage,
