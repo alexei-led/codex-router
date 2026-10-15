@@ -54,7 +54,6 @@ func TestToSVGEscapesAndStyles(t *testing.T) {
 		`fill="#ff0000" font-weight="700"`,
 		"<title id=\"title\">T &lt;1&gt;</title>",
 		"D &amp; more",
-		// Reverse video: the foreground color becomes the background rect.
 		`fill="#0087ff"/>`,
 		`fill="` + canvasBG + `" xml:space="preserve"> go </text>`,
 	} {

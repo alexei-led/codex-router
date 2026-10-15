@@ -10,7 +10,7 @@ import (
 const imagesDir = "../../docs/images"
 
 func TestRenderMatchesTheCommittedImages(t *testing.T) {
-	t.Setenv("PATH", t.TempDir()) // no rsvg-convert: SVGs only
+	t.Setenv("PATH", t.TempDir())
 	out := t.TempDir()
 	if err := render(out, filepath.Join(imagesDir, "src", "codex-footer.txt"), filepath.Join(imagesDir, "src", "codex-session.txt")); err != nil {
 		t.Fatal(err)
