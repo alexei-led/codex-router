@@ -2,6 +2,7 @@ BINARY := codex-router
 CMD := ./cmd/codex-router
 BIN_DIR := .bin
 DIST_DIR := dist
+PLUGIN_MANIFEST := plugins/codex-router/.codex-plugin/plugin.json
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -X main.version=$(VERSION)
@@ -54,6 +55,15 @@ fmt-check: ## verify Go formatting
 .PHONY: tools
 tools: ## install pinned golangci-lint
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
+.PHONY: release-check
+release-check: ## check that VERSION (vX.Y.Z) matches the Codex plugin's version
+	@want="$(VERSION)"; want="$${want#v}"; \
+	got=$$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' $(PLUGIN_MANIFEST)); \
+	if [ "$$got" != "$$want" ]; then \
+		printf 'plugin version %s does not match release %s: set "version" to %s in %s\n' "$$got" "$(VERSION)" "$$want" $(PLUGIN_MANIFEST) >&2; \
+		exit 1; \
+	fi
 
 .PHONY: release-build
 release-build: clean-dist ## cross-build codex-router-<os>-<arch> and checksums.txt into dist/

@@ -399,7 +399,7 @@ CODEX_HOME=~/.codex-work codex plugin add codex-router@codex-router
 - **Sandbox.** The skill runs `codex-router ctl`, which talks to the router over a local socket. Codex's sandbox blocks that, so Codex asks to run the command outside the sandbox. Approve it.
 - **Remove.** `codex plugin remove codex-router@codex-router`, then `codex plugin marketplace remove codex-router`, with the same `CODEX_HOME`.
 
-It was tested live from a local checkout (`codex plugin marketplace add <checkout path>`). Adding it from GitHub is not verified yet.
+The plugin's version matches the codex-router release it ships with. It was tested live from a local checkout and installed from GitHub.
 
 ### Check and restart the services
 

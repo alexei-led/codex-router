@@ -30,6 +30,8 @@ jobs:
             printf 'tag must point to a commit on main: %s\n' "$GITHUB_REF_NAME" >&2
             exit 1
           fi
+      - name: Require the plugin version to match the tag
+        run: make release-check VERSION="$GITHUB_REF_NAME"
       - name: Test with race detector
         run: make test
   build:
