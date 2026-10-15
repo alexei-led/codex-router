@@ -117,12 +117,13 @@ func newE2EClassifier(t *testing.T) *e2eClassifier {
 // e2e is a started session (real proxy, engine, control socket, fake
 // app-server child) with a fake upstream and classifier behind it.
 type e2e struct {
-	h   *harness
-	s   *session
-	up  *e2eUpstream
-	cls *e2eClassifier
-	ctl *control.Client
-	url string
+	h        *harness
+	s        *session
+	up       *e2eUpstream
+	cls      *e2eClassifier
+	ctl      *control.Client
+	url      string
+	barriers int
 	// token is what the app-server got in EnvToken; Codex sends it as
 	// proxy.HeaderToken.
 	token string
@@ -274,20 +275,49 @@ func (e *e2e) command(t *testing.T, c route.Command) {
 	}
 }
 
-// writes waits for n settings writes and returns them.
-func (e *e2e) writes(t *testing.T, n int) []json.RawMessage {
+// writes returns the settings writes made so far for the test thread. The
+// writer drains its queue in order, so once a write for another thread has
+// landed, every write enqueued before this call is on record.
+func (e *e2e) writes(t *testing.T) []json.RawMessage {
 	t.Helper()
+	e.barriers++
+	sentinel := fmt.Sprintf("barrier-%d", e.barriers)
+	e.s.writer.Enqueue(sentinel, config.Route{Model: sentinel, Effort: config.EffortLow})
 	deadline := time.Now().Add(e2eWait)
 	for {
-		got := e.h.recorded(t, "update")
-		if len(got) >= n || time.Now().After(deadline) {
-			if len(got) != n {
-				t.Fatalf("settings writes = %d, want %d", len(got), n)
+		var own []json.RawMessage
+		landed := false
+		for _, w := range e.h.recorded(t, "update") {
+			var p struct {
+				ThreadID string `json:"threadId"`
 			}
-			return got
+			if err := json.Unmarshal(w, &p); err != nil {
+				t.Fatal(err)
+			}
+			switch p.ThreadID {
+			case fakeThread:
+				own = append(own, w)
+			case sentinel:
+				landed = true
+			}
+		}
+		if landed {
+			return own
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for the barrier write %q", sentinel)
 		}
 		time.Sleep(e2ePoll)
 	}
+}
+
+func (e *e2e) wantWrites(t *testing.T, n int) []json.RawMessage {
+	t.Helper()
+	got := e.writes(t)
+	if len(got) != n {
+		t.Fatalf("settings writes = %d (%s), want %d", len(got), got, n)
+	}
+	return got
 }
 
 func (e *e2e) wantRoutes(t *testing.T, want ...config.Route) {
@@ -349,7 +379,7 @@ func TestE2EThreeToolTurnClassifiesOnceAndPinsEveryStep(t *testing.T) {
 	if snap.Stats.Switches != 1 || snap.Stats.ByTier[config.TierLow] != 5 {
 		t.Errorf("stats = %d switches, by tier %v; want 1 switch and 5 low replies", snap.Stats.Switches, snap.Stats.ByTier)
 	}
-	if got := e.writes(t, 1); !strings.Contains(string(got[0]), `"model":"`+routedRoute.Model+`"`) {
+	if got := e.wantWrites(t, 1); !strings.Contains(string(got[0]), `"model":"`+routedRoute.Model+`"`) {
 		t.Errorf("settings write = %s, want the routed model", got[0])
 	}
 	e.eventually(t, "footer synced to the route", func(s route.Snapshot) bool {
@@ -406,7 +436,7 @@ func TestE2ESubagentRequestIsForwardedUnchanged(t *testing.T) {
 	if snap := e.snapshot(t); snap.Stats.Switches != 0 {
 		t.Errorf("switches = %d, want 0", snap.Stats.Switches)
 	}
-	e.writes(t, 0)
+	e.wantWrites(t, 0)
 }
 
 func TestE2ECompactionMidTurnKeepsTheTurnsRoute(t *testing.T) {
@@ -422,7 +452,7 @@ func TestE2ECompactionMidTurnKeepsTheTurnsRoute(t *testing.T) {
 		t.Errorf("classifier calls = %d, want 1", n)
 	}
 	e.eventually(t, "footer synced", func(s route.Snapshot) bool { return s.FooterSynced && s.Footer == routedRoute })
-	e.writes(t, 1)
+	e.wantWrites(t, 1)
 }
 
 func TestE2EManualModelPickStopsRoutingUntilResume(t *testing.T) {
@@ -454,7 +484,7 @@ func TestE2EManualModelPickStopsRoutingUntilResume(t *testing.T) {
 	e.mustPost(t, onPick("turn-2"))
 	e.wantRoutes(t, routedRoute, manualRoute)
 	e.wantForwardedVerbatim(t, 1, onPick("turn-2"))
-	e.writes(t, 2) // the router's first route plus the manual pick, nothing since
+	e.wantWrites(t, 2)
 	if n := e.cls.calls.Load(); n != 1 {
 		t.Errorf("classifier calls while manual = %d, want 1", n)
 	}
@@ -512,8 +542,7 @@ func TestE2EClassifierDownForwardsUnchangedAndPausesAfterThreeFailures(t *testin
 	if snap.Stats.Switches != 0 {
 		t.Errorf("switches = %d, want 0", snap.Stats.Switches)
 	}
-	// The engine may restate the native route once; it never writes another.
-	for _, w := range e.h.recorded(t, "update") {
+	for _, w := range e.writes(t) {
 		if strings.Contains(string(w), routedRoute.Model) {
 			t.Errorf("settings write %s moved the footer off the native route", w)
 		}
