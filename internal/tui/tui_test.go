@@ -107,10 +107,9 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		{"header, unnamed classifier", func(s *route.Snapshot) { s.ClassifierLabel = "" }, TabSessions, []string{"classifier ready"}, nil},
 		{"band of a decision", func(*route.Snapshot) {}, TabSessions,
 			[]string{" HIGH  debug → gpt-6.1-sol · high", "↑ same test failure twice, edit in between", "       Jev high 18% · no classifier needed"}, nil},
-		{"evidence against the bar", func(s *route.Snapshot) { s.Last.Reason = policy.ReasonUpgrade }, TabSessions, []string{"Jev high 18% < 65%"}, nil},
-		{"evidence above the bar", func(s *route.Snapshot) {
-			s.Last.Reason, s.Last.Reading.Tiers[config.TierHigh] = policy.ReasonUpgrade, 0.99
-		}, TabSessions, []string{"Jev high 99% ≥ 65%"}, nil},
+		{"evidence names the tier's share without a bar", func(s *route.Snapshot) {
+			s.Last.Reason, s.Last.Reading.Tiers[config.TierHigh] = policy.ReasonDowngradePending, 0.38
+		}, TabSessions, []string{"Jev high 38%"}, []string{"Jev high 38% <", "Jev high 38% ≥"}},
 		{"manual holds", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabSessions, []string{"MANUAL", "picked with /model", "space resumes"}, []string{"HIGH"}},
 		{"paused", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabSessions, []string{"PAUSED", "unchanged"}, []string{"HIGH"}},
 		{"state lost", func(s *route.Snapshot) { s.Mode, s.StateLost = route.ModePaused, true }, TabSessions, []string{"STATE LOST", "P resumes the home"}, []string{"PAUSED"}},
