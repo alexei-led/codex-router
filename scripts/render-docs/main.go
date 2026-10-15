@@ -4,9 +4,10 @@
 //
 //	go run ./scripts/render-docs
 //
-// It writes one SVG per TUI tab, one for the all-sessions panel (top bar and
-// Sessions tab), one for the panel locked to a session and one for the Codex footer capture, and a PNG beside each
-// when rsvg-convert is on PATH. The data is made up; it matches the
+// It writes one SVG per TUI tab and one for the Sessions tab, as the panel
+// shows them with every session (top bar included), one for the panel locked
+// to a session, one for the Codex footer capture and the README split, and a
+// PNG beside each when rsvg-convert is on PATH. The data is made up; it matches the
 // debugging session described in docs/user-guide.md.
 package main
 
@@ -59,23 +60,24 @@ func render(out, footerPath, sessionPath string) error {
 		return err
 	}
 	snap := sampleSnapshot()
+	homes, sessions := sampleFleet(snap)
+	fleet := tui.FleetView{Homes: homes, Sessions: sessions, Brains: sampleBrains(homes), Focus: sessions[0].ID, Snap: snap, Width: panelWidth}
 	for _, tab := range tui.Tabs {
-		name := "router-tui-" + string(tab)
-		svg := toSVG(parseANSI(tui.Render(snap, tab, panelWidth)), "codex-router panel, "+string(tab)+" tab", tabDescriptions[tab])
-		if err := write(out, name, svg); err != nil {
+		fleet.Tab = tab
+		svg := toSVG(parseANSI(tui.RenderFleetView(fleet)), "codex-router panel, "+string(tab)+" tab", tabDescriptions[tab])
+		if err := write(out, "router-tui-"+string(tab), svg); err != nil {
 			return err
 		}
 	}
-	homes, sessions := sampleFleet(snap)
 	const sessionsDesc = "codex-router tui with every running session. Top bar: the focused session first, then the others, each with its home's dot and a mark for sessions that need a look, and the focus position 1 of 5. Sessions tab: two Codex homes. The default home has three codex-router runs. The work home is set up and has a brain that has run for 2 hours. Each home line has its replies, switches and saving, then one row per session with its state, route, routed replies by tier and last switch."
-	fleet := tui.FleetView{Homes: homes, Sessions: sessions, Brains: sampleBrains(homes), Focus: sessions[0].ID, Snap: snap, Tab: tui.TabSessions, Width: sessionsWidth}
-	svg := toSVG(parseANSI(tui.RenderFleetView(fleet)), "codex-router panel, Sessions tab", sessionsDesc)
-	if err := write(out, "router-tui-sessions", svg); err != nil {
+	fleet.Tab, fleet.Width = tui.TabSessions, sessionsWidth
+	if err := write(out, "router-tui-sessions", toSVG(parseANSI(tui.RenderFleetView(fleet)), "codex-router panel, Sessions tab", sessionsDesc)); err != nil {
 		return err
 	}
 	fleet.Tab, fleet.Width, fleet.Locked = tui.TabNow, panelWidth, true
+	locked := tui.RenderFleetView(fleet)
 	const lockedDesc = "codex-router tui --session, locked to one session. A single header line names the session, default · codex-router · main, with its home's dot and its id. There is no top bar and no Sessions tab. Below it the Now tab shows the turn that moved up to gpt-6.1-sol high after the same tool failure repeated."
-	if err := write(out, "router-tui-locked", toSVG(parseANSI(tui.RenderFleetView(fleet)), "codex-router panel locked to one session", lockedDesc)); err != nil {
+	if err := write(out, "router-tui-locked", toSVG(parseANSI(locked), "codex-router panel locked to one session", lockedDesc)); err != nil {
 		return err
 	}
 	text, err := os.ReadFile(footerPath)
@@ -87,18 +89,18 @@ func render(out, footerPath, sessionPath string) error {
 	if err := write(out, "codex-footer", toSVG(lines, "Codex footer showing the routed model", footerDesc)); err != nil {
 		return err
 	}
-	return renderSplit(out, sessionPath, snap)
+	return renderSplit(out, sessionPath, locked)
 }
 
-// renderSplit draws the README picture: Codex on the left, the panel's Now
-// tab on the right, as two panes of one terminal.
-func renderSplit(out, sessionPath string, snap route.Snapshot) error {
+// renderSplit draws the README picture: Codex on the left, the panel locked
+// to that session on the right, as two panes of one terminal.
+func renderSplit(out, sessionPath, panel string) error {
 	text, err := os.ReadFile(sessionPath)
 	if err != nil {
 		return err
 	}
 	left := parseANSI(strings.TrimRight(string(text), "\n ") + "\n")
-	right := parseANSI(tui.Render(snap, tui.TabNow, panelWidth))
+	right := parseANSI(panel)
 	const desc = "A terminal split. Left: Codex runs a Go test that fails twice with an edit in between, and its footer shows GPT-6.1-Sol high. Right: the codex-router panel says this turn moved from gpt-6-sol medium to gpt-6.1-sol high because the same tool failure repeated, shows the classifier's tier and activity reading, the session's routed replies by tier, the estimated saving, and that the footer is synced."
 	return write(out, "codex-router-split", toSVG(sideBySide(left, right), "Codex and the codex-router panel side by side", desc))
 }

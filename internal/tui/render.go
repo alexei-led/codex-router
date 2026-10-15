@@ -63,8 +63,8 @@ func button(label string, on bool) seg {
 }
 
 // view is everything render needs; render is pure over it. Fleet is nil
-// for a bare snapshot (Render): no top bar, no session line, no Sessions
-// tab. Height 0 means unknown: the Sessions tab does not scroll.
+// only in tests that render a bare snapshot: no top bar, no session line, no
+// Sessions tab. Height 0 means unknown: the Sessions tab does not scroll.
 type view struct {
 	snap         route.Snapshot
 	tab          Tab
@@ -76,17 +76,6 @@ type view struct {
 	fleet        *fleetState
 	locked       bool
 	cursor       string // Sessions tab selection, "" for the focus
-}
-
-// Render draws the panel for a snapshot with ANSI colors. Output depends only
-// on its arguments.
-func Render(s route.Snapshot, tab Tab, width int) string {
-	return render(view{snap: s, tab: tab, width: width, styled: true})
-}
-
-// RenderPlain draws the same panel without ANSI escapes.
-func RenderPlain(s route.Snapshot, tab Tab, width int) string {
-	return render(view{snap: s, tab: tab, width: width})
 }
 
 type canvas struct {

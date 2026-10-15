@@ -1,50 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 726 503" width="726" height="503" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 812 522" width="812" height="522" role="img" aria-labelledby="title desc">
   <title id="title">codex-router panel, usage tab</title>
   <desc id="desc">Usage tab: requests, switches, cache reuse, list-price estimate against the baseline model, and counts by tier and activity.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
-  <rect width="726" height="503" rx="8" fill="#14171f"/>
-  <rect x="0.5" y="0.5" width="725" height="502" rx="8" fill="none" stroke="#2e3340"/>
-  <text x="16.0" y="28.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
-  <text x="78.4" y="28.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
-  <text x="109.6" y="28.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
-  <text x="273.4" y="28.0" fill="#878787" xml:space="preserve"> · footer synced</text>
-  <text x="16.0" y="66.0" fill="#878787" xml:space="preserve"> Now 1 </text>
-  <text x="70.6" y="66.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
-  <text x="148.6" y="66.0" fill="#878787" xml:space="preserve"> Policy 3 </text>
-  <text x="226.6" y="66.0" fill="#878787" xml:space="preserve"> Classifier 4 </text>
-  <rect x="335.8" y="52.0" width="70.2" height="19" fill="#87afff"/>
-  <text x="335.8" y="66.0" fill="#14171f" xml:space="preserve">[Usage 5]</text>
-  <text x="16.0" y="104.0" fill="#878787" xml:space="preserve">USAGE</text>
-  <text x="55.0" y="104.0" fill="#878787" xml:space="preserve"> · this session</text>
-  <text x="16.0" y="123.0" fill="#d0d0d0" xml:space="preserve">requests 144 · switches 19 · cache reuse 64%</text>
-  <text x="16.0" y="142.0" fill="#d0d0d0" xml:space="preserve">Routing saved </text>
-  <text x="125.2" y="142.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
-  <text x="226.6" y="142.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6-sol · medium</text>
-  <text x="398.2" y="142.0" fill="#878787" xml:space="preserve"> · switch writes 612K tokens</text>
-  <text x="16.0" y="161.0" fill="#878787" xml:space="preserve">list-price estimate $4.12 vs $5.30 all-gpt-6-sol · medium (plan billing is limits, not $)</text>
-  <text x="16.0" y="199.0" fill="#878787" xml:space="preserve">BY TIER</text>
-  <text x="16.0" y="218.0" fill="#d75f87" xml:space="preserve">high    </text>
-  <text x="78.4" y="218.0" fill="#d0d0d0" xml:space="preserve">24</text>
-  <text x="16.0" y="237.0" fill="#d7af5f" xml:space="preserve">medium  </text>
-  <text x="78.4" y="237.0" fill="#d0d0d0" xml:space="preserve">76</text>
-  <text x="16.0" y="256.0" fill="#5fafd7" xml:space="preserve">low     </text>
-  <text x="78.4" y="256.0" fill="#d0d0d0" xml:space="preserve">36</text>
-  <text x="16.0" y="275.0" fill="#5fd7af" xml:space="preserve">micro   </text>
-  <text x="78.4" y="275.0" fill="#d0d0d0" xml:space="preserve">8</text>
-  <text x="16.0" y="313.0" fill="#878787" xml:space="preserve">BY ACTIVITY</text>
-  <text x="16.0" y="332.0" fill="#d7875f" xml:space="preserve">code      </text>
-  <text x="94.0" y="332.0" fill="#d0d0d0" xml:space="preserve">53</text>
-  <text x="16.0" y="351.0" fill="#d7875f" xml:space="preserve">debug     </text>
-  <text x="94.0" y="351.0" fill="#d0d0d0" xml:space="preserve">38</text>
-  <text x="16.0" y="370.0" fill="#d7875f" xml:space="preserve">explore   </text>
-  <text x="94.0" y="370.0" fill="#d0d0d0" xml:space="preserve">27</text>
-  <text x="16.0" y="389.0" fill="#d7875f" xml:space="preserve">plan      </text>
-  <text x="94.0" y="389.0" fill="#d0d0d0" xml:space="preserve">9</text>
-  <text x="16.0" y="408.0" fill="#d7875f" xml:space="preserve">review    </text>
-  <text x="94.0" y="408.0" fill="#d0d0d0" xml:space="preserve">7</text>
-  <text x="16.0" y="427.0" fill="#d7875f" xml:space="preserve">ops       </text>
-  <text x="94.0" y="427.0" fill="#d0d0d0" xml:space="preserve">6</text>
-  <text x="16.0" y="446.0" fill="#d7875f" xml:space="preserve">docs      </text>
-  <text x="94.0" y="446.0" fill="#d0d0d0" xml:space="preserve">4</text>
-  <text x="16.0" y="484.0" fill="#878787" xml:space="preserve">1-5 tabs · tab next · p pin next · space pause/resume · q quit</text>
+  <rect width="812" height="522" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="811" height="521" rx="8" fill="none" stroke="#2e3340"/>
+  <text x="16.0" y="28.0" fill="#878787" xml:space="preserve">◂ </text>
+  <text x="31.6" y="28.0" fill="#87afff" xml:space="preserve">● </text>
+  <text x="47.2" y="28.0" fill="#87afff" font-weight="700" xml:space="preserve">default · codex-router · main</text>
+  <text x="273.4" y="28.0" fill="#ffaf00" xml:space="preserve"> ↑</text>
+  <text x="304.6" y="28.0" fill="#87afff" xml:space="preserve">● </text>
+  <text x="320.2" y="28.0" fill="#d0d0d0" xml:space="preserve">default · codex-router · fix/hook</text>
+  <text x="593.2" y="28.0" fill="#87afff" xml:space="preserve">● </text>
+  <text x="608.8" y="28.0" fill="#d0d0d0" xml:space="preserve">default · notes</text>
+  <text x="725.8" y="28.0" fill="#ffaf00" xml:space="preserve"> ‖</text>
+  <text x="749.2" y="28.0" fill="#878787" xml:space="preserve"> ▸ 1/5</text>
+  <text x="16.0" y="47.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
+  <text x="78.4" y="47.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
+  <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
+  <text x="273.4" y="47.0" fill="#878787" xml:space="preserve"> · footer synced</text>
+  <text x="16.0" y="85.0" fill="#878787" xml:space="preserve"> Sessions 0 </text>
+  <text x="109.6" y="85.0" fill="#878787" xml:space="preserve"> Now 1 </text>
+  <text x="164.2" y="85.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
+  <text x="242.2" y="85.0" fill="#878787" xml:space="preserve"> Policy 3 </text>
+  <text x="320.2" y="85.0" fill="#878787" xml:space="preserve"> Classifier 4 </text>
+  <rect x="429.4" y="71.0" width="70.2" height="19" fill="#87afff"/>
+  <text x="429.4" y="85.0" fill="#14171f" xml:space="preserve">[Usage 5]</text>
+  <text x="16.0" y="123.0" fill="#878787" xml:space="preserve">USAGE</text>
+  <text x="55.0" y="123.0" fill="#878787" xml:space="preserve"> · this session</text>
+  <text x="16.0" y="142.0" fill="#d0d0d0" xml:space="preserve">requests 144 · switches 19 · cache reuse 64%</text>
+  <text x="16.0" y="161.0" fill="#d0d0d0" xml:space="preserve">Routing saved </text>
+  <text x="125.2" y="161.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
+  <text x="226.6" y="161.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6-sol · medium</text>
+  <text x="398.2" y="161.0" fill="#878787" xml:space="preserve"> · switch writes 612K tokens</text>
+  <text x="16.0" y="180.0" fill="#878787" xml:space="preserve">list-price estimate $4.12 vs $5.30 all-gpt-6-sol · medium (plan billing is limits, not $)</text>
+  <text x="16.0" y="218.0" fill="#878787" xml:space="preserve">BY TIER</text>
+  <text x="16.0" y="237.0" fill="#d75f87" xml:space="preserve">high    </text>
+  <text x="78.4" y="237.0" fill="#d0d0d0" xml:space="preserve">24</text>
+  <text x="16.0" y="256.0" fill="#d7af5f" xml:space="preserve">medium  </text>
+  <text x="78.4" y="256.0" fill="#d0d0d0" xml:space="preserve">76</text>
+  <text x="16.0" y="275.0" fill="#5fafd7" xml:space="preserve">low     </text>
+  <text x="78.4" y="275.0" fill="#d0d0d0" xml:space="preserve">36</text>
+  <text x="16.0" y="294.0" fill="#5fd7af" xml:space="preserve">micro   </text>
+  <text x="78.4" y="294.0" fill="#d0d0d0" xml:space="preserve">8</text>
+  <text x="16.0" y="332.0" fill="#878787" xml:space="preserve">BY ACTIVITY</text>
+  <text x="16.0" y="351.0" fill="#d7875f" xml:space="preserve">code      </text>
+  <text x="94.0" y="351.0" fill="#d0d0d0" xml:space="preserve">53</text>
+  <text x="16.0" y="370.0" fill="#d7875f" xml:space="preserve">debug     </text>
+  <text x="94.0" y="370.0" fill="#d0d0d0" xml:space="preserve">38</text>
+  <text x="16.0" y="389.0" fill="#d7875f" xml:space="preserve">explore   </text>
+  <text x="94.0" y="389.0" fill="#d0d0d0" xml:space="preserve">27</text>
+  <text x="16.0" y="408.0" fill="#d7875f" xml:space="preserve">plan      </text>
+  <text x="94.0" y="408.0" fill="#d0d0d0" xml:space="preserve">9</text>
+  <text x="16.0" y="427.0" fill="#d7875f" xml:space="preserve">review    </text>
+  <text x="94.0" y="427.0" fill="#d0d0d0" xml:space="preserve">7</text>
+  <text x="16.0" y="446.0" fill="#d7875f" xml:space="preserve">ops       </text>
+  <text x="94.0" y="446.0" fill="#d0d0d0" xml:space="preserve">6</text>
+  <text x="16.0" y="465.0" fill="#d7875f" xml:space="preserve">docs      </text>
+  <text x="94.0" y="465.0" fill="#d0d0d0" xml:space="preserve">4</text>
+  <text x="16.0" y="503.0" fill="#878787" xml:space="preserve">[ ] session · 0 list · 1-5 tabs · p pin · space pause · P pause home · q quit</text>
 </svg>
