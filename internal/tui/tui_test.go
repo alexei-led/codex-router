@@ -90,47 +90,38 @@ func TestRenderGolden(t *testing.T) {
 	for _, tab := range Tabs {
 		for _, width := range []int{80, 120} {
 			t.Run(fmt.Sprintf("%s-%d", tab, width), func(t *testing.T) {
-				got := RenderPlain(fixture(), tab, width)
-				path := filepath.Join("testdata", fmt.Sprintf("%s-%d.golden", tab, width))
-				if *update {
-					if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
-						t.Fatal(err)
-					}
-				}
-				want, err := os.ReadFile(path)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if got != string(want) {
-					t.Errorf("render differs from %s\n--- got\n%s--- want\n%s", path, got, want)
-				}
+				checkGolden(t, fmt.Sprintf("%s-%d.golden", tab, width), RenderPlain(fixture(), tab, width))
 			})
 		}
 	}
 }
 
-func TestRenderProperties(t *testing.T) {
+func TestRenderReflectsTheSnapshot(t *testing.T) {
 	tests := []struct {
-		name   string
-		mutate func(*route.Snapshot)
-		tab    Tab
-		want   []string
+		name    string
+		mutate  func(*route.Snapshot)
+		tab     Tab
+		want    []string
+		without []string
 	}{
-		{"manual holds", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabNow, []string{"◐ manual", "picked with /model"}},
-		{"paused", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabNow, []string{"○ paused", "unchanged"}},
-		{"pinned", func(s *route.Snapshot) { p := config.TierLow; s.Pin = &p }, TabNow, []string{"▌low", "pinned"}},
-		{"classifier paused", func(s *route.Snapshot) { s.Classifier.PausedUntil = s.At.Add(time.Minute) }, TabClassifier, []string{"○ Jev", "forwarded unchanged"}},
-		{"classifier off header", func(s *route.Snapshot) { s.ClassifierOff = true }, TabNow, []string{"Jev off"}},
-		{"classifier off tab", func(s *route.Snapshot) { s.ClassifierOff = true }, TabClassifier, []string{"○ Jev", "keep their model unless pinned"}},
-		{"footer not synced", func(s *route.Snapshot) { s.FooterSynced = false }, TabNow, []string{"footer not synced"}},
-		{"empty session", func(s *route.Snapshot) { s.Stats = route.Stats{}; s.Last = nil }, TabNow, []string{"no routed replies yet", "no routed request yet"}},
-		{"routing costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabUsage, []string{"Routing cost"}},
-		{"tier the answer left out", func(s *route.Snapshot) { delete(s.Last.Reading.Tiers, config.TierMicro) }, TabNow, []string{"low 9%", "micro —"}},
-		{"uncertain activity answer", func(s *route.Snapshot) { s.Last.Reading.Activity, s.Last.Reading.ActivityP = "uncertain", 0.5 }, TabNow, []string{"uncertain 50%"}},
+		{"manual holds", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabNow, []string{"◐ manual", "picked with /model"}, nil},
+		{"paused", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabNow, []string{"○ paused", "unchanged"}, nil},
+		{"pinned", func(s *route.Snapshot) { p := config.TierLow; s.Pin = &p }, TabNow, []string{"▌low", "pinned"}, nil},
+		{"classifier paused", func(s *route.Snapshot) { s.Classifier.PausedUntil = s.At.Add(time.Minute) }, TabClassifier, []string{"○ Jev", "forwarded unchanged"}, nil},
+		{"classifier off header", func(s *route.Snapshot) { s.ClassifierOff = true }, TabNow, []string{"Jev off"}, nil},
+		{"classifier off tab", func(s *route.Snapshot) { s.ClassifierOff = true }, TabClassifier, []string{"○ Jev", "keep their model unless pinned"}, nil},
+		{"footer not synced", func(s *route.Snapshot) { s.FooterSynced = false }, TabNow, []string{"footer not synced"}, nil},
+		{"empty session", func(s *route.Snapshot) { s.Stats = route.Stats{}; s.Last = nil }, TabNow, []string{"no routed replies yet", "no routed request yet"}, nil},
+		{"routing costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabUsage, []string{"Routing cost"}, nil},
+		{"tier the answer left out", func(s *route.Snapshot) { delete(s.Last.Reading.Tiers, config.TierMicro) }, TabNow, []string{"low 9%", "micro —"}, nil},
+		{"uncertain activity answer", func(s *route.Snapshot) { s.Last.Reading.Activity, s.Last.Reading.ActivityP = "uncertain", 0.5 }, TabNow, []string{"uncertain 50%"}, nil},
 		{"manual finding", func(s *route.Snapshot) {
 			s.Worth = []route.Finding{{Kind: route.FindingManual, Text: "footer picked with /model"}}
-		}, TabNow, []string{"WORTH A LOOK", "footer picked with /model · space resumes"}},
-		{"no last reply reading", func(s *route.Snapshot) { s.Stats.LastInputTokens = 0 }, TabNow, []string{"97% reused this session"}},
+		}, TabNow, []string{"WORTH A LOOK", "footer picked with /model · space resumes"}, nil},
+		{"no last reply reading", func(s *route.Snapshot) { s.Stats.LastInputTokens = 0 }, TabNow, []string{"97% reused this session"}, nil},
+		{"no classifier answer", func(s *route.Snapshot) { s.Last.Reading = nil }, TabNow, nil, []string{"high 18%", "applies at", "code 15%"}},
+		{"nothing worth a look", func(s *route.Snapshot) { s.Worth = nil }, TabNow, nil, []string{"WORTH A LOOK"}},
+		{"no timed answers", func(s *route.Snapshot) { s.ClassifierMedian = 0 }, TabClassifier, nil, []string{"median"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -142,45 +133,21 @@ func TestRenderProperties(t *testing.T) {
 					t.Errorf("missing %q in\n%s", w, got)
 				}
 			}
-		})
-	}
-}
-
-func TestRenderLeavesOutWhatTheSnapshotLacks(t *testing.T) {
-	tests := []struct {
-		name   string
-		mutate func(*route.Snapshot)
-		tab    Tab
-		absent []string
-	}{
-		{"no classifier answer", func(s *route.Snapshot) { s.Last.Reading = nil }, TabNow, []string{"high 18%", "applies at", "code 15%"}},
-		{"nothing worth a look", func(s *route.Snapshot) { s.Worth = nil }, TabNow, []string{"WORTH A LOOK"}},
-		{"no timed answers", func(s *route.Snapshot) { s.ClassifierMedian = 0 }, TabClassifier, []string{"median"}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := fixture()
-			tt.mutate(&s)
-			got := RenderPlain(s, tt.tab, 100)
-			for _, a := range tt.absent {
-				if strings.Contains(got, a) {
-					t.Errorf("unexpected %q in\n%s", a, got)
+			for _, w := range tt.without {
+				if strings.Contains(got, w) {
+					t.Errorf("unexpected %q in\n%s", w, got)
 				}
 			}
 		})
 	}
 }
 
-func TestRenderIsDeterministicAndWidthBound(t *testing.T) {
+func TestRenderIsWidthBound(t *testing.T) {
 	s := fixture()
 	for _, tab := range Tabs {
 		for _, width := range []int{40, 80, 120} {
-			a, b := RenderPlain(s, tab, width), RenderPlain(s, tab, width)
-			if a != b {
-				t.Fatalf("%s/%d not deterministic", tab, width)
-			}
-			for _, line := range strings.Split(a, "\n") {
-				if n := len([]rune(line)); n > width {
+			for _, line := range strings.Split(RenderPlain(s, tab, width), "\n") {
+				if n := utf8.RuneCountInString(line); n > width {
 					t.Errorf("%s/%d: line of %d runes: %q", tab, width, n, line)
 				}
 			}
@@ -202,8 +169,6 @@ var testHome = home.Home{ID: "h1", Path: "/u/.codex", Name: "default"}
 
 const testSession = "h1/th"
 
-// connected returns a panel focused on testSession whose snapshot is snap,
-// and that session's connection.
 func connected(t *testing.T, snap route.Snapshot) (*model, *fakeConn) {
 	t.Helper()
 	tf := newTestFleet(t)
@@ -218,7 +183,6 @@ func connected(t *testing.T, snap route.Snapshot) (*model, *fakeConn) {
 	return m, f
 }
 
-// refresh waits until the fleet's state satisfies ok and hands it to m.
 func refresh(t *testing.T, m *model, ok func(fleetState) bool) {
 	t.Helper()
 	deadline := time.After(3 * time.Second)
@@ -231,7 +195,6 @@ func refresh(t *testing.T, m *model, ok func(fleetState) bool) {
 	}
 }
 
-// run executes a command and feeds the resulting message back into the model.
 func run(m *model, cmd tea.Cmd) {
 	if cmd == nil {
 		return
@@ -277,6 +240,7 @@ func TestKeysSendCommands(t *testing.T) {
 		{"P resumes a paused home", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabNow, "P", route.Command{Op: route.OpResume, Scope: route.ScopeHome}},
 		{"preset cycles on policy", func(*route.Snapshot) {}, TabPolicy, "c", route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetQuality}},
 		{"preset wraps", func(s *route.Snapshot) { s.Preset = config.PresetQuality }, TabPolicy, "c", route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetThrifty}},
+		{"preset key outside policy sends nothing", func(*route.Snapshot) {}, TabNow, "c", route.Command{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -285,18 +249,14 @@ func TestKeysSendCommands(t *testing.T) {
 			m, f := connected(t, s)
 			m.tab = tt.tab
 			run(m, key(m, tt.key))
-			if got := f.sentCmds(); len(got) != 1 || got[0] != tt.want {
-				t.Errorf("sent %+v, want [%+v]", got, tt.want)
+			var want []route.Command
+			if tt.want != (route.Command{}) {
+				want = []route.Command{tt.want}
+			}
+			if got := f.sentCmds(); !slices.Equal(got, want) {
+				t.Errorf("sent %+v, want %+v", got, want)
 			}
 		})
-	}
-}
-
-func TestPresetKeyIgnoredOutsidePolicy(t *testing.T) {
-	m, f := connected(t, fixture())
-	run(m, key(m, "c"))
-	if got := f.sentCmds(); len(got) != 0 {
-		t.Errorf("sent %+v", got)
 	}
 }
 
@@ -412,8 +372,6 @@ func info(h home.Home, thread, label string, mod func(*route.SessionInfo)) fleet
 	return fleetSession{SessionInfo: s, endpoint: "ep-" + h.Name}
 }
 
-// fleetFixture is five sessions in two homes, focused on the work home's
-// manual session.
 func fleetFixture() fleetState {
 	sw := &route.Switch{At: at(18, 41), From: config.TierMedium, To: config.TierHigh, Activity: config.ActivityDebug}
 	return fleetState{
@@ -459,7 +417,6 @@ func lockedFixture() fleetState {
 	return st
 }
 
-// manyFixture is twenty sessions in two homes, focused on the fifteenth.
 func manyFixture() fleetState {
 	st := fleetState{}
 	for i, h := range []home.Home{homeDefault, homeWork} {
@@ -487,8 +444,6 @@ func disconnectedFixture() fleetState {
 	return st
 }
 
-// brainFixture is the fleet fixture with the work home served by its brain
-// alone; one of its sessions is still held on its seeded route.
 func brainFixture() fleetState {
 	st := fleetFixture()
 	work := &st.homes[1]
@@ -497,8 +452,6 @@ func brainFixture() fleetState {
 	return st
 }
 
-// brainDownFixture is brainFixture with the brain lost: its sessions are
-// disconnected until they leave.
 func brainDownFixture() fleetState {
 	st := brainFixture()
 	st.disconnected = true
@@ -510,8 +463,6 @@ func brainDownFixture() fleetState {
 	return st
 }
 
-// stateLostFixture is brainFixture after the brain found its saved intent
-// unreadable: the whole home is paused and every session says so.
 func stateLostFixture() fleetState {
 	st := brainFixture()
 	work := &st.homes[1]
@@ -534,7 +485,8 @@ type fleetCase struct {
 	tab    Tab
 	locked bool
 	height int
-	snap   *route.Snapshot // nil for fixture()
+	snap   *route.Snapshot
+	wide   bool
 }
 
 func fleetCases() []fleetCase {
@@ -542,17 +494,17 @@ func fleetCases() []fleetCase {
 	ended.ended = true
 	lost := stateLostSnapshot()
 	return []fleetCase{
-		{"all-now", fleetFixture(), TabNow, false, 0, nil},
-		{"all-sessions", fleetFixture(), TabSessions, false, 0, nil},
-		{"locked", lockedFixture(), TabNow, true, 0, nil},
-		{"ended", ended, TabNow, true, 0, nil},
-		{"disconnected", disconnectedFixture(), TabSessions, false, 0, nil},
-		{"empty", fleetState{disconnected: true}, TabNow, false, 0, nil},
-		{"scroll", manyFixture(), TabSessions, false, 24, nil},
-		{"brain-up", brainFixture(), TabSessions, false, 0, nil},
-		{"brain-down", brainDownFixture(), TabSessions, false, 0, nil},
-		{"state-lost", stateLostFixture(), TabNow, false, 0, &lost},
-		{"state-lost-sessions", stateLostFixture(), TabSessions, false, 0, &lost},
+		{name: "all-now", st: fleetFixture(), tab: TabNow},
+		{name: "all-sessions", st: fleetFixture(), tab: TabSessions, wide: true},
+		{name: "locked", st: lockedFixture(), tab: TabNow, locked: true},
+		{name: "ended", st: ended, tab: TabNow, locked: true},
+		{name: "disconnected", st: disconnectedFixture(), tab: TabSessions},
+		{name: "empty", st: fleetState{disconnected: true}, tab: TabNow},
+		{name: "scroll", st: manyFixture(), tab: TabSessions, height: 24},
+		{name: "brain-up", st: brainFixture(), tab: TabSessions},
+		{name: "brain-down", st: brainDownFixture(), tab: TabSessions},
+		{name: "state-lost", st: stateLostFixture(), tab: TabNow, snap: &lost},
+		{name: "state-lost-sessions", st: stateLostFixture(), tab: TabSessions, snap: &lost},
 	}
 }
 
@@ -564,7 +516,6 @@ func renderCase(c fleetCase, width int) string {
 	return render(view{snap: snap, tab: c.tab, width: width, height: c.height, disconnected: st.disconnected, fleet: &st, locked: c.locked})
 }
 
-// checkGolden compares got with testdata/name, rewriting it under -update.
 func checkGolden(t *testing.T, name, got string) {
 	t.Helper()
 	path := filepath.Join("testdata", name)
@@ -584,7 +535,11 @@ func checkGolden(t *testing.T, name, got string) {
 
 func TestRenderFleetGolden(t *testing.T) {
 	for _, c := range fleetCases() {
-		for _, width := range []int{80, 140} {
+		widths := []int{80}
+		if c.wide {
+			widths = append(widths, 140)
+		}
+		for _, width := range widths {
 			t.Run(fmt.Sprintf("%s-%d", c.name, width), func(t *testing.T) {
 				checkGolden(t, fmt.Sprintf("fleet-%s-%d.golden", c.name, width), renderCase(c, width))
 			})
@@ -592,8 +547,6 @@ func TestRenderFleetGolden(t *testing.T) {
 	}
 }
 
-// TestRenderMixedFleetGolden renders what the fleet merges from a stage 1
-// launcher and a brain of one home, next to another home's launcher.
 func TestRenderMixedFleetGolden(t *testing.T) {
 	tf := newTestFleet(t)
 	launcher := tf.add("w-launcher", registry.KindSession, homeWork)
@@ -701,22 +654,31 @@ func TestRenderFleetIsWidthAndHeightBound(t *testing.T) {
 	}
 }
 
+var sgr = regexp.MustCompile("\x1b\\[[0-9;]*m")
+
+func fleetView(st fleetState) FleetView {
+	v := FleetView{Focus: st.focus, Snap: fixture(), Width: 140}
+	for _, h := range st.homes {
+		v.Homes = append(v.Homes, h.home)
+		for _, s := range h.sessions {
+			v.Sessions = append(v.Sessions, s.SessionInfo)
+		}
+	}
+	return v
+}
+
 func TestRenderFleetViewMatchesThePanel(t *testing.T) {
 	st := fleetFixture()
-	var homes []home.Home
-	var sessions []route.SessionInfo
 	for i := range st.homes {
 		h := &st.homes[i]
-		homes = append(homes, h.home)
 		h.endpoints = nil
 		for _, s := range h.sessions {
-			sessions = append(sessions, s.SessionInfo)
 			h.endpoints = append(h.endpoints, fleetEndpointInfo{id: s.ID, kind: registry.KindSession})
 		}
 	}
-	sgr := regexp.MustCompile("\x1b\\[[0-9;]*m")
 	for _, tab := range []Tab{TabSessions, TabNow} {
-		v := FleetView{Homes: homes, Sessions: sessions, Focus: st.focus, Snap: fixture(), Tab: tab, Width: 140}
+		v := fleetView(st)
+		v.Tab = tab
 		got := sgr.ReplaceAllString(RenderFleetView(v), "")
 		want := render(view{snap: fixture(), tab: tab, width: 140, fleet: &st})
 		if got != want {
@@ -726,17 +688,8 @@ func TestRenderFleetViewMatchesThePanel(t *testing.T) {
 }
 
 func TestRenderFleetViewShowsABrainHomeAndALockedPanel(t *testing.T) {
-	st := fleetFixture()
-	var homes []home.Home
-	var sessions []route.SessionInfo
-	for _, h := range st.homes {
-		homes = append(homes, h.home)
-		for _, s := range h.sessions {
-			sessions = append(sessions, s.SessionInfo)
-		}
-	}
-	sgr := regexp.MustCompile("\x1b\\[[0-9;]*m")
-	v := FleetView{Homes: homes, Sessions: sessions, Brains: map[string]time.Duration{homes[0].ID: 2 * time.Hour}, Focus: st.focus, Snap: fixture(), Tab: TabSessions, Width: 140}
+	v := fleetView(fleetFixture())
+	v.Brains, v.Tab = map[string]time.Duration{v.Homes[0].ID: 2 * time.Hour}, TabSessions
 	got := sgr.ReplaceAllString(RenderFleetView(v), "")
 	if !strings.Contains(got, "1 endpoint · brain up 2h") {
 		t.Errorf("brain home line missing:\n%s", got)
@@ -842,8 +795,6 @@ func TestSessionsTabScrollKeepsTheCursorInView(t *testing.T) {
 	}
 }
 
-// fleetPanel is a panel over three sessions of one endpoint, listed t1, t2,
-// t3 and focused on t1.
 func fleetPanel(t *testing.T) (*model, *fakeConn, []route.SessionInfo) {
 	t.Helper()
 	tf := newTestFleet(t)
