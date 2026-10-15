@@ -40,8 +40,6 @@ var (
 	manualRoute = config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
 )
 
-// e2eUpstream is the fake ChatGPT backend: it records what each POST asked
-// for and answers with a completed SSE stream, or cuts it after one item.
 type e2eUpstream struct {
 	*httptest.Server
 	cut    atomic.Bool
@@ -88,8 +86,6 @@ func (u *e2eUpstream) seen() []config.Route {
 	return append([]config.Route(nil), u.routes...)
 }
 
-// e2eClassifier answers in the system-one wire format, always picking
-// e2eRoutedTo.
 type e2eClassifier struct {
 	*httptest.Server
 	calls atomic.Int32
@@ -114,8 +110,6 @@ func newE2EClassifier(t *testing.T) *e2eClassifier {
 	return c
 }
 
-// e2e is a started session (real proxy, engine, control socket, fake
-// app-server child) with a fake upstream and classifier behind it.
 type e2e struct {
 	h        *harness
 	s        *session
@@ -124,9 +118,7 @@ type e2e struct {
 	ctl      *control.Client
 	url      string
 	barriers int
-	// token is what the app-server got in EnvToken; Codex sends it as
-	// proxy.HeaderToken.
-	token string
+	token    string
 }
 
 func newE2E(t *testing.T) *e2e {
@@ -137,7 +129,6 @@ func newE2E(t *testing.T) *e2e {
 	cc := cfg.Classifiers[cfg.Classifier]
 	cc.KeyEnv, cc.Endpoint = e2eKeyEnv, e.cls.URL
 	cfg.Classifiers[cfg.Classifier] = cc
-	// Background reviews would add classifier calls to a long turn.
 	cfg.Policy.ReviewEveryRequests = 0
 	e.h.opts.Config = cfg
 	e.h.opts.Upstream = e.up.URL + "/backend-api/codex"
@@ -166,8 +157,6 @@ func newE2E(t *testing.T) *e2e {
 	return e
 }
 
-// startToken returns the token the fake app-server recorded at start; start
-// returns only after the app-server answered initialize, so it is there.
 func (e *e2e) startToken(t *testing.T) string {
 	t.Helper()
 	starts := e.h.recorded(t, "start")
@@ -188,7 +177,7 @@ type request struct {
 	kind     string
 	subagent string
 	step     int
-	route    config.Route // the thread's settings; zero is nativeRoute
+	route    config.Route
 }
 
 func (r request) body() []byte {
@@ -207,7 +196,6 @@ func (r request) metadata() string {
 		fakeThread, r.turn, r.kind)
 }
 
-// post sends one request through the proxy and drains the reply.
 func (e *e2e) post(t *testing.T, r request) (int, error) {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, e.url, bytes.NewReader(r.body()))
@@ -241,7 +229,6 @@ func (e *e2e) snapshot(t *testing.T) route.Snapshot {
 	if err := e.ctl.Send(route.Command{Op: route.OpSnapshot}); err != nil {
 		t.Fatal(err)
 	}
-	// The snapshot is written before the ack, so it is the newest queued.
 	var snap route.Snapshot
 	for {
 		select {
@@ -252,7 +239,6 @@ func (e *e2e) snapshot(t *testing.T) route.Snapshot {
 	}
 }
 
-// eventually polls the control snapshot until ok holds.
 func (e *e2e) eventually(t *testing.T, what string, ok func(route.Snapshot) bool) route.Snapshot {
 	t.Helper()
 	deadline := time.Now().Add(e2eWait)
@@ -275,9 +261,6 @@ func (e *e2e) command(t *testing.T, c route.Command) {
 	}
 }
 
-// writes returns the settings writes made so far for the test thread. The
-// writer drains its queue in order, so once a write for another thread has
-// landed, every write enqueued before this call is on record.
 func (e *e2e) writes(t *testing.T) []json.RawMessage {
 	t.Helper()
 	e.barriers++
@@ -340,8 +323,6 @@ func (e *e2e) wantRoutes(t *testing.T, want ...config.Route) {
 	}
 }
 
-// wantForwardedVerbatim checks upstream request i carries exactly the bytes
-// and turn metadata the client sent.
 func (e *e2e) wantForwardedVerbatim(t *testing.T, i int, r request) {
 	t.Helper()
 	e.up.mu.Lock()
@@ -460,10 +441,6 @@ func TestE2EManualModelPickStopsRoutingUntilResume(t *testing.T) {
 	e.mustPost(t, turnReq("turn-1", 1))
 	e.eventually(t, "footer synced", func(s route.Snapshot) bool { return s.FooterSynced && s.Footer == routedRoute })
 
-	// What Codex's /model does: a settings write the router did not make.
-	// The fake app-server has one connection, so the write goes through the
-	// router's own client; the engine still sees an unexpected settings
-	// update, which is what marks it foreign.
 	ctx, cancel := context.WithTimeout(context.Background(), e2eWait)
 	defer cancel()
 	pick := appserver.Settings{Model: manualRoute.Model, Effort: manualRoute.Effort}
@@ -475,7 +452,6 @@ func TestE2EManualModelPickStopsRoutingUntilResume(t *testing.T) {
 		t.Errorf("footer = %+v, want the picked route %+v", snap.Footer, manualRoute)
 	}
 
-	// Codex now runs its turns on the pick.
 	onPick := func(turn string) request {
 		r := turnReq(turn, 1)
 		r.route = manualRoute

@@ -47,7 +47,6 @@ func (b *syncBuffer) String() string {
 	return b.buf.String()
 }
 
-// upstream is the fake ChatGPT backend.
 type upstream struct {
 	*httptest.Server
 	mu     sync.Mutex
@@ -91,7 +90,6 @@ func (u *upstream) seen() (models, auth []string) {
 	return slices.Clone(u.models), slices.Clone(u.auth)
 }
 
-// shortTempDir keeps unix socket paths under the 104-byte macOS limit.
 func shortTempDir(t *testing.T) string {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "crt")
@@ -105,7 +103,7 @@ func shortTempDir(t *testing.T) string {
 type harness struct {
 	opts    Options
 	base    string
-	state   string // XDG_STATE_HOME: the registry lives under it
+	state   string
 	records string
 	stderr  *syncBuffer
 	logs    *syncBuffer
@@ -203,7 +201,6 @@ func (h *harness) assertRuntimeRemoved(t *testing.T) {
 	}
 }
 
-// registered lists the registry under the harness's state dir.
 func (h *harness) registered(t *testing.T) []registry.Endpoint {
 	t.Helper()
 	root, err := registry.Root(h.opts.getenv)
@@ -598,7 +595,6 @@ func TestSettingsWriterDedupesAndRewritesAfterManualPick(t *testing.T) {
 	}
 }
 
-// gatedAPI holds each settings write until the test releases it.
 type gatedAPI struct {
 	*fakeAPI
 	started chan struct{}

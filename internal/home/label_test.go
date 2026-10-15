@@ -20,7 +20,6 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-// repo lays out a minimal non-bare repo at dir/name with HEAD set to head.
 func repo(t *testing.T, dir, name, head string) string {
 	t.Helper()
 	top := filepath.Join(dir, name)
@@ -28,8 +27,6 @@ func repo(t *testing.T, dir, name, head string) string {
 	return top
 }
 
-// worktree lays out a linked worktree of main at dir/name the way
-// `git worktree add` does: an absolute gitdir and a relative commondir.
 func worktree(t *testing.T, main, dir, name, head string) string {
 	t.Helper()
 	gitDir := filepath.Join(main, ".git", "worktrees", name)

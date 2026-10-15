@@ -313,7 +313,7 @@ func TestPruneRemovesOnlyADeadUnchangedEntry(t *testing.T) {
 }
 
 func TestAlive(t *testing.T) {
-	dir, err := os.MkdirTemp("", "reg") // short path: macOS caps unix sockets at 104 bytes
+	dir, err := os.MkdirTemp("", "reg")
 	if err != nil {
 		t.Fatal(err)
 	}

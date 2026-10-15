@@ -123,8 +123,6 @@ func TestWindowUnknownWhenFieldsMissing(t *testing.T) {
 	}
 }
 
-// The live /models body omits effective_context_window_percent; Codex then
-// uses 95, and so must the guard.
 func TestWindowDefaultsPercentLikeCodex(t *testing.T) {
 	c, err := catalog.Parse([]byte(`{"models":[{"slug":"a","context_window":272000}]}`))
 	if err != nil {
@@ -211,16 +209,16 @@ func TestCacheWatchReloadsAChangedCacheAtMostEveryCheckPeriod(t *testing.T) {
 		}
 	}
 
-	check(false, false, "") // no file yet
+	check(false, false, "")
 	write("gpt-a", now)
-	check(false, false, "") // looked a moment ago
+	check(false, false, "")
 	now = now.Add(catalog.CacheCheckEvery)
 	check(true, false, "gpt-a")
 
 	now = now.Add(catalog.CacheCheckEvery)
-	check(false, false, "gpt-a") // unchanged
+	check(false, false, "gpt-a")
 
-	write("gpt-b", now) // same size, newer mtime
+	write("gpt-b", now)
 	now = now.Add(catalog.CacheCheckEvery)
 	check(true, false, "gpt-b")
 
@@ -228,7 +226,7 @@ func TestCacheWatchReloadsAChangedCacheAtMostEveryCheckPeriod(t *testing.T) {
 		t.Fatal(err)
 	}
 	now = now.Add(catalog.CacheCheckEvery)
-	check(false, true, "gpt-b") // a broken file keeps the last catalog
+	check(false, true, "gpt-b")
 	now = now.Add(catalog.CacheCheckEvery)
-	check(false, false, "gpt-b") // and is not read again until it changes
+	check(false, false, "gpt-b")
 }

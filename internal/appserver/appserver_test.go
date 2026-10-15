@@ -49,8 +49,6 @@ func serveWebSocket(ln net.Listener, accept func(Conn)) func() {
 	return func() { _ = srv.Close() }
 }
 
-// fakeServer scripts the app-server side from the test goroutine: inbound
-// messages arrive on in, replies go out through conn.
 type fakeServer struct {
 	t      *testing.T
 	path   string
@@ -193,7 +191,6 @@ func connect(t *testing.T, tr transport) (API, *fakeServer) {
 	return api, srv
 }
 
-// stuckConn is a Conn whose writes never complete; reads come from in.
 type stuckConn struct {
 	in        chan []byte
 	writing   chan struct{}
@@ -618,7 +615,6 @@ func TestStuckWriteClosesConnectionAfterWriteTimeout(t *testing.T) {
 	})
 }
 
-// recordingConn hands each write's context to the test.
 type recordingConn struct {
 	*stuckConn
 	ctxs chan context.Context
@@ -629,8 +625,6 @@ func (c recordingConn) Write(ctx context.Context, msg []byte) error {
 	return c.stuckConn.Write(ctx, msg)
 }
 
-// coder/websocket closes the connection when a write's context ends, even
-// after the message went out, so the caller's ctx must never reach the write.
 func TestCallerCancelDoesNotReachTheWrite(t *testing.T) {
 	conn := recordingConn{stuckConn: newStuckConn(), ctxs: make(chan context.Context, 1)}
 	api := dial(t, "unused", dialerFunc(func(context.Context, string) (Conn, error) { return conn, nil }))

@@ -120,8 +120,6 @@ type harness struct {
 	logs *syncBuffer
 }
 
-// startProxy runs a proxy against upstreamURL and, on cleanup, fails the test
-// if any secret, prompt or answer text reached the log.
 func startProxy(t *testing.T, upstreamURL string, opts ...func(*Options)) harness {
 	t.Helper()
 	logs := &syncBuffer{}
@@ -445,9 +443,6 @@ func TestUpstreamFailureBeforeResponseIsNotRetried(t *testing.T) {
 	}
 }
 
-// dyingUpstream answers the first request on each connection and closes the
-// connection after reading the second one, so the second request reached
-// upstream but got no response.
 type dyingUpstream struct {
 	ln    net.Listener
 	reqs  atomic.Int32
@@ -1053,7 +1048,7 @@ func TestListenBindsLoopbackOnly(t *testing.T) {
 }
 
 func TestListenerMustBeLoopbackTCP(t *testing.T) {
-	short, err := os.MkdirTemp("", "px") // a unix socket path must stay short on macOS
+	short, err := os.MkdirTemp("", "px")
 	if err != nil {
 		t.Fatal(err)
 	}

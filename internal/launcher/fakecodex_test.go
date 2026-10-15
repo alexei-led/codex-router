@@ -28,8 +28,6 @@ import (
 	"github.com/alexei-led/codex-router/internal/route"
 )
 
-// The test binary doubles as a fake `codex` when envFake is set: the
-// launcher runs it as the app-server and as `codex --remote`.
 const (
 	envFake          = "CODEX_ROUTER_FAKE_CODEX"
 	envRecord        = "CODEX_ROUTER_FAKE_RECORD"
@@ -45,8 +43,6 @@ const (
 	exitOnTerm     = 9
 )
 
-// fakeSignals prints "ready", then the name of every signal it gets, and
-// exits with exitOnTerm on SIGTERM.
 func fakeSignals() int {
 	sigs := make(chan os.Signal, 4)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGTERM)
@@ -194,8 +190,6 @@ func fakeRemote(addr string, args []string) int {
 	return code
 }
 
-// recordedToken returns the proxy token the fake app-server was started with:
-// in real Codex the app-server makes the proxy calls, here the remote does.
 func recordedToken() string {
 	f, err := os.Open(os.Getenv(envRecord))
 	if err != nil {
@@ -215,9 +209,6 @@ func recordedToken() string {
 	return ""
 }
 
-// driveTurn pins the next turn to low over the control socket, runs one
-// three-step turn through the proxy, and waits until the footer shows the
-// pinned route.
 func driveTurn(rt string) error {
 	ctl, err := control.Dial(os.Getenv(control.EnvSocket))
 	if err != nil {
@@ -281,7 +272,6 @@ func call(method, url, token string, body []byte) error {
 
 func stepBody(step int) []byte { return stepBodyOn(nativeRoute, step) }
 
-// stepBodyOn is stepBody from a thread whose settings are on r.
 func stepBodyOn(r config.Route, step int) []byte {
 	items := []string{`{"type":"message","role":"user","content":[{"type":"input_text","text":"fix the retry test"}]}`}
 	for i := 1; i < step; i++ {
