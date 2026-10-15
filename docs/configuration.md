@@ -41,20 +41,20 @@ The prices are placeholders: use the list prices you want estimates against. Bec
 
 ## Fields
 
-| Field         | Type                              | Default                              | Meaning                                                                                         |
-| ------------- | --------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `baseline`    | tier                              | `medium`                             | Tier of the route used when no thread model is known, and the target of the upward context fix. |
-| `routes`      | map tier to route                 | see below                            | Model and effort per tier. All four tiers must exist.                                           |
-| `activities`  | map activity to map tier to route | `debug` at `medium`                  | Per-activity override of a tier's route. Optional.                                              |
-| `prices`      | map model to price                | none                                 | List prices in USD per million tokens. Optional.                                                |
-| `policy`      | object                            | see below                            | Switching thresholds.                                                                           |
-| `preset`      | `thrifty`, `balanced`, `quality`  | `balanced`                           | Overrides some policy fields. See [presets](#presets).                                          |
-| `classifier`  | string                            | `jev`                                | Key of the active entry in `classifiers`, or `off`.                                             |
-| `classifiers` | map name to classifier            | `jev`, `ollama`                      | Classifier endpoints.                                                                           |
-| `context`     | object                            | `recentTurns 6`, `maxTextChars 1200` | What the classifier sees.                                                                       |
-| `cache`       | object                            | `ttlMs 300000`, `warmMarginMs 30000` | Prompt-cache warmth rule.                                                                       |
-| `proxy`       | object                            | `port 0`                             | Proxy listener.                                                                                 |
-| `codexBin`    | string                            | `codex` on `PATH`                    | The Codex executable. Optional.                                                                 |
+| Field         | Type                              | Default                                                      | Meaning                                                                                         |
+| ------------- | --------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `baseline`    | tier                              | `medium`                                                     | Tier of the route used when no thread model is known, and the target of the upward context fix. |
+| `routes`      | map tier to route                 | see below                                                    | Model and effort per tier. All four tiers must exist.                                           |
+| `activities`  | map activity to map tier to route | `debug` at `medium`                                          | Per-activity override of a tier's route. Optional.                                              |
+| `prices`      | map model to price                | none                                                         | List prices in USD per million tokens. Optional.                                                |
+| `policy`      | object                            | see below                                                    | Switching thresholds.                                                                           |
+| `preset`      | `thrifty`, `balanced`, `quality`  | `balanced`                                                   | Overrides some policy fields. See [presets](#presets).                                          |
+| `classifier`  | string                            | `jev`                                                        | Key of the active entry in `classifiers`, or `off`.                                             |
+| `classifiers` | map name to classifier            | `jev`, `clef`, `clef-flash`, `clef-omni`, `openai`, `ollama` | Classifier endpoints.                                                                           |
+| `context`     | object                            | `recentTurns 6`, `maxTextChars 1200`                         | What the classifier sees.                                                                       |
+| `cache`       | object                            | `ttlMs 300000`, `warmMarginMs 30000`                         | Prompt-cache warmth rule.                                                                       |
+| `proxy`       | object                            | `port 0`                                                     | Proxy listener.                                                                                 |
+| `codexBin`    | string                            | `codex` on `PATH`                                            | The Codex executable. Optional.                                                                 |
 
 Tiers, weakest first: `micro`, `low`, `medium`, `high`. Activities: `code`, `debug`, `explore`, `plan`, `review`, `ops`, `docs`. Efforts: `low`, `medium`, `high`, `xhigh`.
 
@@ -123,41 +123,47 @@ The preset values are chosen for direction, not tuned on data.
 
 Each entry:
 
-| Field       | Type   | Meaning                                                                                                |
-| ----------- | ------ | ------------------------------------------------------------------------------------------------------ |
-| `label`     | string | Name shown in the panel.                                                                               |
-| `api`       | string | Wire adapter: `system-one` or `ollama`.                                                                |
-| `endpoint`  | string | URL the request is posted to. Required.                                                                |
-| `model`     | string | Model name sent to the endpoint. Required.                                                             |
-| `keyEnv`    | string | Name of the env var holding the bearer key. Empty means no key. The key itself is never in the config. |
-| `envFile`   | string | Dotenv file read for the `keyEnv` key when the env var is unset. Absolute or `~/` path. Default empty. |
-| `timeoutMs` | int    | Total deadline for one ask, with up to two attempts inside it (min 1).                                 |
+| Field       | Type   | Meaning                                                                                                 |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| `label`     | string | Name shown in the panel.                                                                                |
+| `api`       | string | Wire adapter: `system-one`, `openai-decisions` or `ollama`.                                             |
+| `endpoint`  | string | URL the request is posted to. May hold `{NAME}` placeholders. Required.                                 |
+| `model`     | string | Model name sent to the endpoint. Required.                                                              |
+| `keyEnv`    | string | Name of the env var holding the bearer key. Empty means no key. The key itself is never in the config.  |
+| `envFile`   | string | Dotenv file read for the `keyEnv` key and each placeholder when the env var is unset. Absolute or `~/`. |
+| `timeoutMs` | int    | Total deadline for one ask, with up to two attempts inside it (min 1).                                  |
 
 Defaults:
 
-| Name     | `api`        | Endpoint                               | Model        | `keyEnv`           | Timeout |
-| -------- | ------------ | -------------------------------------- | ------------ | ------------------ | ------- |
-| `jev`    | `system-one` | `https://api.typesafe.ai/v1/systemone` | `jev-1.13.0` | `TYPESAFE_API_KEY` | 1500 ms |
-| `ollama` | `ollama`     | `http://127.0.0.1:11434/api/chat`      | `qwen3.5:9b` | none               | 5000 ms |
+| Name         | `api`              | Endpoint                                                                                                 | Model        | `keyEnv`               | Timeout |
+| ------------ | ------------------ | -------------------------------------------------------------------------------------------------------- | ------------ | ---------------------- | ------- |
+| `jev`        | `system-one`       | `https://api.typesafe.ai/v1/systemone`                                                                   | `jev-1.13.0` | `TYPESAFE_API_KEY`     | 1500 ms |
+| `clef`       | `system-one`       | `https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/clef`       | `clef`       | `CLOUDFLARE_API_TOKEN` | 3000 ms |
+| `clef-flash` | `system-one`       | `https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/clef-flash` | `clef-flash` | `CLOUDFLARE_API_TOKEN` | 3000 ms |
+| `clef-omni`  | `system-one`       | `https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/clef-omni`  | `clef-omni`  | `CLOUDFLARE_API_TOKEN` | 3000 ms |
+| `openai`     | `openai-decisions` | `https://api.openai.com/v1/decisions`                                                                    | `gpt-6-luna` | `OPENAI_API_KEY`       | 3000 ms |
+| `ollama`     | `ollama`           | `http://127.0.0.1:11434/api/chat`                                                                        | `qwen3.5:9b` | none                   | 5000 ms |
 
-To use another service that speaks one of the two protocols, add an entry with every field and set `classifier` to its name. When `keyEnv` names a variable that is unset, the classifier is off for the session (logged), the router still runs, and pins work.
+To use another service that speaks one of the three protocols, add an entry with every field and set `classifier` to its name. When `keyEnv` names a variable that is unset, the classifier is off for the session (logged), the router still runs, and pins work.
+
+An `endpoint` may hold `{NAME}` placeholders, where `NAME` is upper case letters, digits and `_`, starting with a letter. Each is filled from the env var `NAME`, else from `envFile`, and is URL path-escaped. The Clef entries use `{CLOUDFLARE_ACCOUNT_ID}`, your Cloudflare account ID. A placeholder with no value turns the classifier off, logged as `<NAME> is not set`. A malformed placeholder is a config error.
 
 `"classifier": "off"` turns the classifier off on purpose: no prompt or dialogue leaves the machine, and only pins and the context guard change the model.
 
-The brain (`codex-router setup`) runs under launchd or systemd and does not see your shell's env. Point `envFile` at a file that holds the key. The other fields keep their defaults:
+The brain (`codex-router setup`) runs under launchd or systemd and does not see your shell's env. Point `envFile` at a file that holds the key, and the account ID for Clef. The other fields keep their defaults:
 
 ```json
 { "classifiers": { "jev": { "envFile": "~/.config/codex-router/.env" } } }
 ```
 
-The file holds the line `TYPESAFE_API_KEY=...`. The same works for `codex-router` sessions, so the key need not be in your shell. Rules:
+The file holds the line `TYPESAFE_API_KEY=...`. One file can hold several keys and the Cloudflare account ID (`CLOUDFLARE_API_TOKEN=...`, `CLOUDFLARE_ACCOUNT_ID=...`, `OPENAI_API_KEY=...`); each classifier reads only its own. The same works for `codex-router` sessions, so the key need not be in your shell. Rules:
 
 - The env var wins over the file. The file is read only when the variable is unset.
-- Lines are `KEY=value` or `export KEY=value`. Quotes (`'…'`, `"…"`, no escapes) are allowed. A line that starts with `#` is a comment, and so is ` #…` after an unquoted value. Only the `keyEnv` key is read, the last assignment wins, and nothing from the file goes into the process env.
+- Lines are `KEY=value` or `export KEY=value`. Quotes (`'…'`, `"…"`, no escapes) are allowed. A line that starts with `#` is a comment, and so is ` #…` after an unquoted value. Only the `keyEnv` key and the endpoint placeholders are read, the last assignment wins, and nothing from the file goes into the process env.
 - The file must be private: any group or other permission (`0640`, `0604`, even `0620`) is refused with a log line naming it (`chmod 600` it). A missing file, a missing key or an empty value turns the classifier off, logged as above.
 - The key is never logged or printed.
 
-Only the active classifier is called. It receives the clipped prompt and recent dialogue (`context`), never headers or your Codex credentials, and only the `keyEnv` key as its bearer token. With `jev` that text goes to `api.typesafe.ai`. With `ollama` it stays on your machine.
+Only the active classifier is called. It receives the clipped prompt and recent dialogue (`context`), never headers or your Codex credentials, and only the `keyEnv` key as its bearer token. With `jev` that text goes to `api.typesafe.ai`, with the Clef entries to `api.cloudflare.com`, with `openai` to `api.openai.com`. With `ollama` it stays on your machine.
 
 Failure rules for every adapter: two attempts per ask inside `timeoutMs`; three failures in a row pause the classifier for 60 s, during which turns are forwarded unrouted. One ask runs at a time; another waits for it. A missing key and a cancelled call do not count as failures. The router also gives up a decision shortly after `timeoutMs` (plus 200 ms) and forwards the request.
 
@@ -186,13 +192,13 @@ If you set `model_context_window` in `~/.codex/config.toml`, Codex sizes its con
 
 ## Environment
 
-| Variable                                                         | Used for                                                                                                                                                                                                                                                                                             |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CODEX_ROUTER_CONFIG`                                            | Config path.                                                                                                                                                                                                                                                                                         |
-| the classifier's `keyEnv` (`TYPESAFE_API_KEY`)                   | Classifier bearer key.                                                                                                                                                                                                                                                                               |
-| `CODEX_HOME`                                                     | Where `models_cache.json` is read from, read-only (default `~/.codex`). Also the session's home in the panel, and the default `--home` of `setup`, `service` and `ctl`.                                                                                                                              |
-| `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_RUNTIME_DIR`, `TMPDIR` | Config, logs, session registry and runtime dir locations; `XDG_CONFIG_HOME` also places the systemd user units, and `TMPDIR` holds a brain's sockets when the state dir path is too long. Services do not see them, so `codex-router setup` writes the config path and the state dir into the units. |
-| `CODEX_ROUTER_CONTROL`                                           | Set by the launcher for Codex and the hook: the session's control socket.                                                                                                                                                                                                                            |
-| `CODEX_ROUTER_BIN`                                               | The binary the Codex plugin runs, before the one `codex-router setup` recorded in `<home>/codex-router.env` and before `PATH`.                                                                                                                                                                       |
-| `CODEX_THREAD_ID`                                                | Set by Codex for its shell commands. `codex-router ctl` acts on that thread's session.                                                                                                                                                                                                               |
-| `LISTEN_PID`, `LISTEN_FDS`, `LISTEN_FDNAMES`                     | Set by systemd for the edge: the provider port's socket.                                                                                                                                                                                                                                             |
+| Variable                                                                                                    | Used for                                                                                                                                                                                                                                                                                             |
+| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CODEX_ROUTER_CONFIG`                                                                                       | Config path.                                                                                                                                                                                                                                                                                         |
+| the classifier's `keyEnv` (`TYPESAFE_API_KEY`) and endpoint `{NAME}` placeholders (`CLOUDFLARE_ACCOUNT_ID`) | Classifier bearer key and endpoint values.                                                                                                                                                                                                                                                           |
+| `CODEX_HOME`                                                                                                | Where `models_cache.json` is read from, read-only (default `~/.codex`). Also the session's home in the panel, and the default `--home` of `setup`, `service` and `ctl`.                                                                                                                              |
+| `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_RUNTIME_DIR`, `TMPDIR`                                            | Config, logs, session registry and runtime dir locations; `XDG_CONFIG_HOME` also places the systemd user units, and `TMPDIR` holds a brain's sockets when the state dir path is too long. Services do not see them, so `codex-router setup` writes the config path and the state dir into the units. |
+| `CODEX_ROUTER_CONTROL`                                                                                      | Set by the launcher for Codex and the hook: the session's control socket.                                                                                                                                                                                                                            |
+| `CODEX_ROUTER_BIN`                                                                                          | The binary the Codex plugin runs, before the one `codex-router setup` recorded in `<home>/codex-router.env` and before `PATH`.                                                                                                                                                                       |
+| `CODEX_THREAD_ID`                                                                                           | Set by Codex for its shell commands. `codex-router ctl` acts on that thread's session.                                                                                                                                                                                                               |
+| `LISTEN_PID`, `LISTEN_FDS`, `LISTEN_FDNAMES`                                                                | Set by systemd for the edge: the provider port's socket.                                                                                                                                                                                                                                             |

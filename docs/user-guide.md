@@ -120,10 +120,14 @@ The classifier scores each new turn. Only the active one is called. It gets the 
 | Classifier      | Where text goes       | Setup                                                                                   |
 | --------------- | --------------------- | --------------------------------------------------------------------------------------- |
 | `jev` (default) | `api.typesafe.ai`     | `export TYPESAFE_API_KEY=...`                                                           |
+| `clef`          | `api.cloudflare.com`  | `export CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=...`, `{"classifier": "clef"}`   |
+| `clef-flash`    | `api.cloudflare.com`  | same as `clef`, with `{"classifier": "clef-flash"}`                                     |
+| `clef-omni`     | `api.cloudflare.com`  | same as `clef`, with `{"classifier": "clef-omni"}`                                      |
+| `openai`        | `api.openai.com`      | `export OPENAI_API_KEY=...`, `{"classifier": "openai"}`                                 |
 | `ollama`        | stays on your machine | `ollama pull qwen3.5:9b`, then `{"classifier": "ollama"}` in the config                 |
 | `off`           | nothing is sent       | `{"classifier": "off"}` in the config; only pins and the context guard change the model |
 
-When the key variable is unset, the classifier is off for the session. The panel shows `Jev off`, requests keep their model, and pins still work. To send less text to a hosted classifier, lower [`context`](configuration.md#context).
+When a key variable or the Cloudflare account ID is unset, the classifier is off for the session. The panel shows `Jev off`, requests keep their model, and pins still work. To send less text to a hosted classifier, lower [`context`](configuration.md#context).
 
 ### Common changes
 
@@ -234,14 +238,14 @@ The footer lists only the keys that work now: `space` reads `pause` or `resume`,
 
 The mouse works too, with the left button:
 
-| Click on                            | Action                                                           |
-| ----------------------------------- | ---------------------------------------------------------------- |
-| a tab label, including `Sessions`   | show that tab                                                    |
-| a session in the top bar            | focus it                                                         |
-| a row on the Sessions tab           | select it; click the selected row again to focus it and open Now |
-| a tier in **Pin next** (Now)        | pin the next turn to that tier; click the pinned tier to unpin   |
-| a preset button (Policy)            | set that preset for the focused session's home                   |
-| the wheel on the Sessions tab       | move the selection                                               |
+| Click on                          | Action                                                           |
+| --------------------------------- | ---------------------------------------------------------------- |
+| a tab label, including `Sessions` | show that tab                                                    |
+| a session in the top bar          | focus it                                                         |
+| a row on the Sessions tab         | select it; click the selected row again to focus it and open Now |
+| a tier in **Pin next** (Now)      | pin the next turn to that tier; click the pinned tier to unpin   |
+| a preset button (Policy)          | set that preset for the focused session's home                   |
+| the wheel on the Sessions tab     | move the selection                                               |
 
 The wheel does nothing on other tabs. A click that only focuses the terminal window does nothing.
 
