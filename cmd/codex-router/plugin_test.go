@@ -24,12 +24,8 @@ import (
 	"github.com/alexei-led/codex-router/internal/setup"
 )
 
-// envTestBinary makes the test binary run as codex-router, so the plugin's
-// scripts can call it.
 const envTestBinary = "CODEX_ROUTER_TEST_AS_BINARY"
 
-// noRaceExitSleep stops a -race test binary from sleeping 1 s at exit, which
-// is the race detector's, not the hook's, latency.
 const noRaceExitSleep = "GORACE=atexit_sleep_ms=0"
 
 func TestMain(m *testing.M) {
@@ -90,9 +86,6 @@ type hooksFile struct {
 	} `json:"hooks"`
 }
 
-// decodeStrict decodes the JSON file at path into v, rejecting fields v
-// does not know, so a typo in a manifest fails here rather than being
-// ignored by Codex.
 func decodeStrict(t *testing.T, path string, v any) {
 	t.Helper()
 	b, err := os.ReadFile(path)
@@ -106,8 +99,6 @@ func decodeStrict(t *testing.T, path string, v any) {
 	}
 }
 
-// pluginPath resolves a manifest path, which Codex requires to start with
-// "./" and to stay inside root, and checks that it exists.
 func pluginPath(t *testing.T, root, rel string) string {
 	t.Helper()
 	clean, ok := strings.CutPrefix(rel, "./")
@@ -121,15 +112,11 @@ func pluginPath(t *testing.T, root, rel string) string {
 	return p
 }
 
-// codexHookEvents are the hook events Codex 0.162.1 knows.
 var codexHookEvents = []string{
 	"PreToolUse", "PermissionRequest", "PostToolUse", "PreCompact", "PostCompact", "SessionStart",
 	"SessionEnd", "UserPromptSubmit", "SubagentStart", "SubagentStop", "Stop", "Interrupt",
 }
 
-// hookCommand is the shape of every hook command: sh, a script under
-// $PLUGIN_ROOT, and plain arguments. It works in sh, bash, zsh and fish,
-// whichever $SHELL Codex runs it with.
 var hookCommand = regexp.MustCompile(`^sh "\$PLUGIN_ROOT/([^"]+)"((?: [a-z]+)*)$`)
 
 func readHooks(t *testing.T) (hooksFile, map[string][]hookHandler) {
@@ -204,9 +191,6 @@ func TestPluginManifests(t *testing.T) {
 	}
 }
 
-// checkSkill checks a skill's SKILL.md frontmatter as Codex parses it, that
-// the wrapper it names exists, and that every ctl subcommand it names is one
-// codex-router knows.
 func checkSkill(t *testing.T, dir string) {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
@@ -248,6 +232,7 @@ func checkSkill(t *testing.T, dir string) {
 }
 
 func TestPluginShipsScriptsOnly(t *testing.T) {
+	var scripts []string
 	err := filepath.WalkDir(pluginDir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
@@ -255,9 +240,7 @@ func TestPluginShipsScriptsOnly(t *testing.T) {
 		switch filepath.Ext(p) {
 		case ".json", ".md":
 		case ".sh":
-			if out, err := exec.Command("sh", "-n", p).CombinedOutput(); err != nil {
-				t.Errorf("%s: sh -n: %v %s", p, err, out)
-			}
+			scripts = append(scripts, p)
 		default:
 			t.Errorf("%s: the plugin ships no binary or other file", p)
 		}
@@ -266,11 +249,30 @@ func TestPluginShipsScriptsOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(scripts) == 0 {
+		t.Fatal("the plugin ships no script")
+	}
+	var all bytes.Buffer
+	for _, p := range scripts {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		all.Write(b)
+		all.WriteByte('\n')
+	}
+	check := exec.Command("sh", "-n")
+	check.Stdin = &all
+	if out, err := check.CombinedOutput(); err != nil {
+		for _, p := range scripts {
+			if out, err := exec.Command("sh", "-n", p).CombinedOutput(); err != nil {
+				t.Errorf("%s: sh -n: %v %s", p, err, out)
+			}
+		}
+		t.Fatalf("sh -n: %v %s", err, out)
+	}
 }
 
-// hookEnv is a minimal env for running the plugin's scripts: the test binary
-// as codex-router, a temp HOME, and PATH with fake launchctl and systemctl
-// in front.
 func hookEnv(t *testing.T, codexHome, fakeBin string) []string {
 	t.Helper()
 	bin, err := os.Executable()
@@ -295,10 +297,6 @@ func TestPluginHooksReturnFastWithServicesDown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Fake launchctl and systemctl: every unit is down, and starting one
-	// blocks on a FIFO the test holds until it releases it. The log shows
-	// what ran, so the test needs no clock: a hook that waited for the start
-	// would never return.
 	fakeBin := t.TempDir()
 	fifo := filepath.Join(t.TempDir(), "release")
 	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
@@ -308,13 +306,13 @@ func TestPluginHooksReturnFastWithServicesDown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	release := sync.OnceFunc(func() {
-		_, _ = hold.WriteString(strings.Repeat("\n", 64))
+	release := sync.OnceFunc(func() { _, _ = hold.WriteString(strings.Repeat("\n", 64)) })
+	t.Cleanup(func() {
+		release()
 		_ = hold.Close()
 	})
-	t.Cleanup(release)
 	smLog := filepath.Join(t.TempDir(), "service-manager.log")
-	fake := "#!/bin/sh\necho \"$0 $*\" >>" + smLog + "\ncase \"$*\" in\n*print*|*is-active*) echo inactive; exit 3 ;;\nesac\nread _ <>" + fifo + "\n"
+	fake := "#!/bin/sh\necho \"$0 $*\" >>" + smLog + "\ncase \"$*\" in\n*print*|*is-active*) echo inactive; exit 3 ;;\nesac\nread _ <>" + fifo + "\necho " + doneMark + " >>" + smLog + "\n"
 	for _, name := range []string{"launchctl", "systemctl"} {
 		if err := os.WriteFile(filepath.Join(fakeBin, name), []byte(fake), 0o700); err != nil {
 			t.Fatal(err)
@@ -334,45 +332,54 @@ func TestPluginHooksReturnFastWithServicesDown(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	units := len(mgr.Status(t.Context(), h.ID))
 
 	_, byEvent := readHooks(t)
-	for _, event := range []string{"SessionStart", "UserPromptSubmit", "Stop"} {
-		t.Run(event, func(t *testing.T) {
-			// The timeout only stops a hang from stalling the suite.
-			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
-			defer cancel()
-			cmd := exec.CommandContext(ctx, "sh", "-c", byEvent[event][0].Command)
-			cmd.Env = append(slices.Clone(env), "PLUGIN_ROOT="+abs)
-			cmd.Stdin = strings.NewReader(`{"session_id":"t-1","hook_event_name":"` + event + `","cwd":"/"}`)
-			var stdout bytes.Buffer
-			cmd.Stdout = &stdout
-			if err := cmd.Run(); err != nil {
-				t.Fatalf("hook: %v", err)
-			}
-			if event != "SessionStart" && strings.TrimSpace(stdout.String()) != "{}" {
-				t.Errorf("hook stdout %q, want {}", stdout.String())
-			}
-		})
-	}
-	// The detached service ensure still runs: it starts the down units, and
-	// is still blocked in the fake service manager while the hooks have
-	// already returned.
+	t.Run("hooks", func(t *testing.T) {
+		for _, event := range []string{"SessionStart", "UserPromptSubmit", "Stop"} {
+			t.Run(event, func(t *testing.T) {
+				t.Parallel()
+				ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+				defer cancel()
+				cmd := exec.CommandContext(ctx, "sh", "-c", byEvent[event][0].Command)
+				cmd.Env = append(slices.Clone(env), "PLUGIN_ROOT="+abs)
+				cmd.Stdin = strings.NewReader(`{"session_id":"t-1","hook_event_name":"` + event + `","cwd":"/"}`)
+				var stdout bytes.Buffer
+				cmd.Stdout = &stdout
+				if err := cmd.Run(); err != nil {
+					t.Fatalf("hook: %v", err)
+				}
+				if event != "SessionStart" && strings.TrimSpace(stdout.String()) != "{}" {
+					t.Errorf("hook stdout %q, want {}", stdout.String())
+				}
+			})
+		}
+	})
+
 	start := "bootstrap"
 	if runtime.GOOS == "linux" {
 		start = "start --no-block"
 	}
-	deadline := time.Now().Add(30 * time.Second)
+	waitForLog(t, smLog, "the units started", func(log string) bool { return strings.Contains(log, start) })
+	release()
+	waitForLog(t, smLog, "every start to finish", func(log string) bool { return strings.Count(log, doneMark) >= units })
+}
+
+const doneMark = "start-finished"
+
+func waitForLog(t *testing.T, path, what string, ok func(string) bool) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Minute)
 	for {
-		b, _ := os.ReadFile(smLog)
-		if strings.Contains(string(b), start) {
-			break
+		b, _ := os.ReadFile(path)
+		if ok(string(b)) {
+			return
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("service ensure did not start the units; service manager log:\n%s", b)
+			t.Fatalf("timed out waiting for %s; service manager log:\n%s", what, b)
 		}
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 	}
-	release()
 }
 
 func TestPluginWrapperFindsTheRouter(t *testing.T) {
@@ -380,7 +387,6 @@ func TestPluginWrapperFindsTheRouter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The plugin as Codex installs it: <home>/plugins/cache/<marketplace>/<plugin>/<version>.
 	codexHome := t.TempDir()
 	installed := filepath.Join(codexHome, "plugins", "cache", "codex-router", "codex-router", "0.1.0")
 	if err := os.CopyFS(installed, os.DirFS(pluginDir)); err != nil {
