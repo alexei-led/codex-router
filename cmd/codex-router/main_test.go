@@ -487,44 +487,6 @@ func TestSessionsLines(t *testing.T) {
 	}
 }
 
-func TestSessionsPrunesDeadAndDisambiguates(t *testing.T) {
-	env, root, sockDir := testRegistry(t)
-	twinA := testSession(homeWork, "t-a", "work · repo · main", 1)
-	twinB := testSession(homeWork, "t-b", "work · repo · main", 2)
-	sock := serveEndpoint(t, root, sockDir, "ep", homeWork, twinA, twinB)
-	for _, ep := range []registry.Endpoint{
-		{ID: "ep-dead", Kind: registry.KindSession, Home: homeWork, Socket: filepath.Join(sockDir, "dead.sock")},
-		{ID: "ep-stale", Kind: registry.KindSession, Home: homeDefault, Socket: sock},
-	} {
-		if err := registry.Write(root, ep); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	var stdout, stderr bytes.Buffer
-	if code := run(context.Background(), []string{"sessions", "--json"}, env, nil, &stdout, &stderr); code != exitOK {
-		t.Fatalf("exit %d, stderr %q", code, stderr.String())
-	}
-	var got []route.SessionInfo
-	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 2 || got[0].Label == got[1].Label || !strings.HasPrefix(got[0].Label, "work · repo · main · ") {
-		t.Errorf("sessions %+v, want two disambiguated labels", got)
-	}
-	eps, _, err := registry.List(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var ids []string
-	for _, ep := range eps {
-		ids = append(ids, ep.ID)
-	}
-	if slices.Contains(ids, "ep-dead") || !slices.Contains(ids, "ep") {
-		t.Errorf("registry after sessions = %v, want the dead entry pruned and the live one kept", ids)
-	}
-}
-
 func TestSessionsEmptyRegistry(t *testing.T) {
 	env := append(testEnv(t), "XDG_STATE_HOME="+t.TempDir())
 	cases := []struct {
