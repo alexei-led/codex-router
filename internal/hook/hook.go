@@ -28,8 +28,9 @@ type Output struct {
 // MessagePrefix starts every line; Codex renders it as "↳ Hook · router: …".
 const MessagePrefix = "router: "
 
-// Timeout bounds the whole hook run, registry lookup and socket included.
-const Timeout = 200 * time.Millisecond
+// Timeout bounds the whole hook run, registry lookup and socket included. It
+// is a var so tests can widen it for slow hosts or shorten it for stalls.
+var Timeout = 200 * time.Millisecond
 
 // Run reads one hook input from stdin, finds the endpoint that routes its
 // thread, asks it for that thread's snapshot and writes
