@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/config"
@@ -21,7 +22,6 @@ var (
 	homeDefault = home.Home{ID: "bbbbbbbbbbbb", Path: "/u/.codex", Name: "default"}
 )
 
-// fakeConn stands in for a control.Client; tests feed its channels.
 type fakeConn struct {
 	hello    control.Hello
 	updates  chan route.Snapshot
@@ -64,7 +64,6 @@ func (f *fakeConn) Close() error {
 	return nil
 }
 
-// lose drops the connection the way control.Client does: both channels close.
 func (f *fakeConn) lose() {
 	f.lost.Do(func() {
 		close(f.sessions)
@@ -96,15 +95,13 @@ func (f *fakeConn) isClosed() bool {
 	return f.closed
 }
 
-// testFleet is a fleet over a fake registry and fake connections, with a
-// clock the test moves.
 type testFleet struct {
 	*fleet
 	t *testing.T
 
 	mu      sync.Mutex
 	entries []registry.Endpoint
-	conns   map[string]*fakeConn // by endpoint id; a missing one fails to dial
+	conns   map[string]*fakeConn
 	all     []*fakeConn
 	pruned  []string
 	clock   time.Time
@@ -159,7 +156,6 @@ func (tf *testFleet) advance(d time.Duration) {
 	tf.clock = tf.clock.Add(d)
 }
 
-// add registers endpoint id of h and returns the connection its next dial gets.
 func (tf *testFleet) add(id, kind string, h home.Home) *fakeConn {
 	tf.mu.Lock()
 	defer tf.mu.Unlock()
@@ -172,7 +168,6 @@ func (tf *testFleet) add(id, kind string, h home.Home) *fakeConn {
 	return c
 }
 
-// started sets the start time in endpoint id's registry entry.
 func (tf *testFleet) started(id string, at time.Time) {
 	tf.mu.Lock()
 	defer tf.mu.Unlock()
@@ -195,7 +190,6 @@ func (tf *testFleet) prunedIDs() []string {
 	return slices.Clone(tf.pruned)
 }
 
-// settle waits until the fleet's state satisfies ok.
 func (tf *testFleet) settle(ok func(fleetState) bool) fleetState {
 	tf.t.Helper()
 	deadline := time.After(3 * time.Second)
@@ -365,47 +359,59 @@ func TestFleetInitialFocusWaitsForEveryEndpoint(t *testing.T) {
 }
 
 func TestFleetLockedModeIgnoresOtherSessions(t *testing.T) {
-	tf := newTestFleet(t)
-	tf.cwd = "/r"
-	locked := session(homeDefault, "t-locked", "/q", at(18, 1))
-	tf.locked = locked.ID
-	e1 := tf.add("e1", registry.KindSession, homeWork)
-	e2 := tf.add("e2", registry.KindSession, homeDefault)
-	tf.poll()
+	synctest.Test(t, func(t *testing.T) {
+		tf := newTestFleet(t)
+		tf.cwd = "/r"
+		locked := session(homeDefault, "t-locked", "/q", at(18, 1))
+		tf.locked = locked.ID
+		e1 := tf.add("e1", registry.KindSession, homeWork)
+		e2 := tf.add("e2", registry.KindSession, homeDefault)
+		tf.poll()
 
-	other := session(homeWork, "t-other", "/r", at(18, 30))
-	e1.sessions <- []route.SessionInfo{other}
-	e2.sessions <- []route.SessionInfo{locked}
-	st := tf.settleCount(1)
-	if got := flat(st)[0].ID; got != locked.ID || st.focus != locked.ID {
-		t.Fatalf("listed %s, focus %s; want only %s", got, st.focus, locked.ID)
-	}
-	tf.settle(func(fleetState) bool { return len(e2.subs()) == 1 })
-	if len(e1.subs()) != 0 || e2.subs()[0] != locked.ID {
-		t.Errorf("subscribed e1 %v, e2 %v", e1.subs(), e2.subs())
-	}
+		e1.sessions <- []route.SessionInfo{session(homeWork, "t-other", "/r", at(18, 30))}
+		e2.sessions <- []route.SessionInfo{locked}
+		synctest.Wait()
 
-	e2.sessions <- nil
-	st = tf.settleCount(0)
-	if st.focus != locked.ID {
-		t.Errorf("locked focus moved to %q", st.focus)
-	}
+		st := tf.state()
+		if got := ids(flat(st)); !slices.Equal(got, []string{locked.ID}) || st.focus != locked.ID {
+			t.Fatalf("listed %v, focus %s; want only %s", got, st.focus, locked.ID)
+		}
+		if got := e1.subs(); len(got) != 0 {
+			t.Errorf("e1 subscribed %v, want none", got)
+		}
+		if got := e2.subs(); !slices.Equal(got, []string{locked.ID}) {
+			t.Errorf("e2 subscribed %v, want [%s]", got, locked.ID)
+		}
+
+		e2.sessions <- nil
+		synctest.Wait()
+		st = tf.state()
+		if len(flat(st)) != 0 || st.focus != locked.ID {
+			t.Errorf("after the locked session left: %d listed, focus %q; want 0, %s", len(flat(st)), st.focus, locked.ID)
+		}
+	})
 }
 
 func TestFleetTakesSnapshotsOfTheFocusOnly(t *testing.T) {
-	tf := newTestFleet(t)
-	e := tf.add("e1", registry.KindSession, homeWork)
-	tf.poll()
-	s := session(homeWork, "t1", "/r", at(18, 1))
-	e.sessions <- []route.SessionInfo{s}
-	tf.settle(func(fleetState) bool { return slices.Equal(e.subs(), []string{s.ID}) })
+	synctest.Test(t, func(t *testing.T) {
+		tf := newTestFleet(t)
+		e := tf.add("e1", registry.KindSession, homeWork)
+		tf.poll()
+		s := session(homeWork, "t1", "/r", at(18, 1))
+		e.sessions <- []route.SessionInfo{s}
+		synctest.Wait()
 
-	e.updates <- route.Snapshot{ThreadID: "t2", Seq: 1}
-	e.updates <- route.Snapshot{ThreadID: "t1", Seq: 2}
-	st := tf.settle(func(st fleetState) bool { return st.snap != nil })
-	if st.snap.ThreadID != "t1" {
-		t.Errorf("snapshot of %q", st.snap.ThreadID)
-	}
+		e.updates <- route.Snapshot{ThreadID: "t2", Seq: 1}
+		synctest.Wait()
+		if st := tf.state(); st.snap != nil {
+			t.Fatalf("snapshot of another thread taken: %+v", st.snap)
+		}
+		e.updates <- route.Snapshot{ThreadID: "t1", Seq: 2}
+		synctest.Wait()
+		if st := tf.state(); st.snap == nil || st.snap.Seq != 2 {
+			t.Errorf("snapshot = %+v, want the focused thread's, seq 2", st.snap)
+		}
+	})
 }
 
 func TestFleetEndpointLossAndReturn(t *testing.T) {
@@ -561,7 +567,6 @@ func TestFleetHeartbeatGoesToTheFocusedEndpoint(t *testing.T) {
 	}
 }
 
-// endpointHandler is a control.Handler serving fixed sessions.
 type endpointHandler struct {
 	hello    control.Hello
 	sessions []route.SessionInfo
