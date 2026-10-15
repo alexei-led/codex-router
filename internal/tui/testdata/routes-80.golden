@@ -1,18 +1,18 @@
-ROUTING ◉ on · Jev ready · 412 ms · footer synced
+ROUTING ◉ on · gpt-6.1-sol high · Jev ready
 
  Now 1 [Routes 2] Policy 3  Classifier 4  Usage 5 
 
-ROUTES · group comp_hash 3000
+ROUTES · gpt-6.1-sol's compatibility group
 high    gpt-6.1-sol · high
 medium  gpt-6-sol · medium
 low     gpt-6-luna · medium
 micro   gpt-6-luna · low
 
 BLOCKED
-gpt-5.5: comp_hash 2911, no Lite
+gpt-5.5 · outside gpt-6.1-sol's compatibility group
 
 RECENT
-18:41 ▌high gpt-6.1-sol · high  debug  escalation
-18:38 ▌medium gpt-6-sol · medium  debug  upgrade
+18:41 ▌high gpt-6.1-sol · high  debug  escalate: same test failure twice, edit …
+18:38 ▌medium gpt-6-sol · medium  debug  moved up a tier
 
-1-5 tabs · tab next · p pin next · space pause/resume · q quit
+1-5 tabs · tab next · p pin next · space pause · q quit

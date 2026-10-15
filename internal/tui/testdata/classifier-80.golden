@@ -1,11 +1,11 @@
-ROUTING ◉ on · Jev ready · 412 ms · footer synced
+ROUTING ◉ on · gpt-6.1-sol high · Jev ready
 
  Now 1  Routes 2  Policy 3 [Classifier 4] Usage 5 
 
 CLASSIFIER
-◉ Jev
+◉ Jev · jev-1.13.0
 last latency 412 ms
 median 388 ms · recent answers
 consecutive failures 0
 
-1-5 tabs · tab next · p pin next · space pause/resume · q quit
+1-5 tabs · tab next · p pin next · space pause · q quit

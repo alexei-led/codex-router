@@ -12,6 +12,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/policy"
 	"github.com/alexei-led/codex-router/internal/route"
 )
 
@@ -136,24 +137,57 @@ func layout(v view) (string, []zone) {
 	return strings.Join(c.out, "\n") + "\n", c.zones
 }
 
-// keyHints lists the keys the view takes, most useful first.
+// keyHints lists the keys that work in view v, most useful first: with no
+// session only quit, while disconnected only the keys that move around.
 func keyHints(v view) []string {
+	st := v.fleet
+	quit := hint(keys.Quit, "")
+	if st != nil && (st.ended || st.focus == "") {
+		return []string{quit}
+	}
+	nav := st != nil && !v.locked
+	onList := v.tab == TabSessions && nav
 	var h []string
-	switch {
-	case v.fleet == nil:
-		h = []string{hint(keys.TabNum, ""), hint(keys.Next, ""), hint(keys.Pin, "pin next"), hint(keys.Toggle, "pause/resume")}
-	case v.locked:
-		h = []string{hint(keys.TabNum, ""), hint(keys.Pin, "pin next"), hint(keys.Toggle, ""), hint(keys.Home, "")}
-	case v.tab == TabSessions:
-		h = []string{hint(keys.Up, ""), hint(keys.Enter, ""), hint(keys.Session, ""), hint(keys.TabNum, ""), hint(keys.Toggle, ""), hint(keys.Home, "")}
-	default:
-		h = []string{hint(keys.Session, ""), hint(keys.List, ""), hint(keys.TabNum, ""), hint(keys.Pin, ""), hint(keys.Toggle, ""), hint(keys.Home, "")}
+	if onList {
+		h = append(h, hint(keys.Up, ""), hint(keys.Enter, ""))
 	}
-	h = append(h, hint(keys.Quit, ""))
-	if v.tab == TabPolicy {
-		h = append(h, hint(keys.Preset, ""))
+	if nav && len(st.all()) > 1 {
+		h = append(h, hint(keys.Session, ""))
 	}
-	return h
+	if nav && !onList {
+		h = append(h, hint(keys.List, ""))
+	}
+	h = append(h, hint(keys.TabNum, ""))
+	if st == nil {
+		h = append(h, hint(keys.Next, ""))
+	}
+	if !v.disconnected {
+		focused := ""
+		if onList {
+			focused = " focused"
+		} else {
+			h = append(h, hint(keys.Pin, "pin next"))
+		}
+		toggle := "pause"
+		if toggleCommand("", v.snap.Mode).Op == route.OpResume {
+			toggle = "resume"
+		}
+		h = append(h, hint(keys.Toggle, toggle+focused))
+		if st != nil {
+			home := "pause home"
+			if st.homeResumes() {
+				home = "resume home"
+			}
+			if onList {
+				home = strings.Replace(home, "home", "focused home", 1)
+			}
+			h = append(h, hint(keys.Home, home))
+		}
+		if v.tab == TabPolicy && !v.snap.ClassifierOff {
+			h = append(h, hint(keys.Preset, ""))
+		}
+	}
+	return append(h, quit)
 }
 
 // packHints joins hints with " · " into as few lines of width as fit.
@@ -276,13 +310,16 @@ func (c *canvas) header(v view) {
 		segs = append(segs, col(colorWarn, "◐ manual"))
 	case s.Mode == route.ModePaused:
 		segs = append(segs, col(colorDim, "○ paused"))
+	case s.ClassifierOff:
+		segs = append(segs, col(colorWarn, "◉ pins only"))
 	default:
 		segs = append(segs, col(colorOK, "◉ on"))
 	}
+	if f := s.Footer; f.Model != "" {
+		segs = append(segs, dim(" · "+strings.TrimSpace(f.Model+" "+string(f.Effort))))
+	}
 	segs = append(segs, dim(" · "+classifierStatus(s)))
-	if s.FooterSynced {
-		segs = append(segs, dim(" · footer synced"))
-	} else {
+	if !s.FooterSynced {
 		segs = append(segs, col(colorWarn, " · footer not synced"))
 	}
 	c.add(segs...)
@@ -325,8 +362,6 @@ func classifierStatus(s route.Snapshot) string {
 		return classifierName(s) + " off"
 	case classifierPaused(s):
 		return fmt.Sprintf("%s paused until %s", classifierName(s), h.PausedUntil.Format("15:04:05"))
-	case h.Latency > 0:
-		return fmt.Sprintf("%s ready · %d ms", classifierName(s), h.Latency.Milliseconds())
 	default:
 		return classifierName(s) + " ready"
 	}
@@ -346,11 +381,7 @@ func (c *canvas) now(s route.Snapshot) {
 	c.nextTurn(s)
 	if d := s.Last; d != nil {
 		c.row("Activity", activitySegs(d, s.Policy.ActivityMass)...)
-		why := d.Why
-		if why == "" {
-			why = string(d.Reason)
-		}
-		c.wrapped(fmt.Sprintf("%-*s", labelWidth, "Why"), why, plain(""))
+		c.wrapped(fmt.Sprintf("%-*s", labelWidth, "Why"), whyOf(*d), plain(""))
 		if d.Support != "" {
 			c.wrapped(strings.Repeat(" ", labelWidth), d.Support, dim(""))
 		}
@@ -359,13 +390,61 @@ func (c *canvas) now(s route.Snapshot) {
 	c.session(s)
 	c.worth(s.Worth)
 	c.blank()
-	sync := "synced via thread/settings/update"
+	sync := "in sync"
 	if !s.FooterSynced {
 		sync = "not synced yet"
 	}
 	c.row("Codex", plain("footer shows "), bold(routeText(s.Footer)), dim(" · "+sync))
 	c.contextRow(s)
 	c.cacheRow(s)
+}
+
+// keptReasons are the decisions that leave Codex's own model in place. Their
+// tier is the engine's guess for that model, so the panel does not show it.
+var keptReasons = []policy.Reason{policy.ReasonError, policy.ReasonNoClassifier, policy.ReasonPassthrough, policy.ReasonOutOfGroup}
+
+// decisionTier is the tier mark of d, or a dim `kept` when d left the
+// request alone.
+func decisionTier(d route.Decision) seg {
+	if slices.Contains(keptReasons, d.Reason) {
+		return dim("kept")
+	}
+	return tierSeg(d.Tier)
+}
+
+// reasonText says what a reason code means, for decisions that carry no why.
+var reasonText = map[policy.Reason]string{
+	policy.ReasonEscalation:       "escalated after a repeated failure",
+	policy.ReasonHold:             "holding the escalated tier",
+	policy.ReasonNoAdvice:         "no classifier answer; kept the tier",
+	policy.ReasonUncertain:        "classifier unsure; kept the tier",
+	policy.ReasonSameTier:         "classifier agrees with the tier",
+	policy.ReasonUpgrade:          "moved up a tier",
+	policy.ReasonJump:             "moved up a tier",
+	policy.ReasonUpgradePending:   "waiting to go up: needs more support",
+	policy.ReasonDowngrade:        "moved down a tier",
+	policy.ReasonDowngradeHeld:    "waiting to go down: no passed check yet",
+	policy.ReasonDowngradePending: "waiting to go down: needs more support",
+	policy.ReasonPinned:           "pinned for this turn",
+	policy.ReasonPaused:           "routing paused",
+	policy.ReasonManual:           "model picked with /model",
+	policy.ReasonFit:              "context needs a larger window",
+	policy.ReasonOutOfGroup:       "route outside the compatibility group; request kept",
+	policy.ReasonPassthrough:      "request kept",
+	policy.ReasonError:            "classifier failed; request kept",
+	policy.ReasonNoClassifier:     "classifier off; request keeps Codex's model",
+}
+
+// whyOf is d's reason in words: the engine's text, else a sentence for its
+// code, else a plain fallback for a code this panel does not know.
+func whyOf(d route.Decision) string {
+	if d.Why != "" {
+		return d.Why
+	}
+	if t, ok := reasonText[d.Reason]; ok {
+		return t
+	}
+	return "reason not shown by this panel version"
 }
 
 func (c *canvas) nextTurn(s route.Snapshot) {
@@ -382,11 +461,13 @@ func (c *canvas) nextTurn(s route.Snapshot) {
 		if d.MidTurn {
 			label = "This turn"
 		}
-		segs := []seg{tierSeg(d.Tier), plain("  "), bold(routeText(d.Route))}
+		segs := []seg{decisionTier(*d), plain("  "), bold(routeText(d.Route))}
 		if d.Rewritten {
 			segs = append(segs, dim("  base "+routeText(d.Original)))
 		}
 		c.row(label, segs...)
+	case s.ClassifierOff:
+		c.row("Next turn", dim("classifier off · requests keep "+s.Baseline.Model+" unless pinned (p)"))
 	default:
 		c.row("Next turn", dim("no routed request yet · baseline "+routeText(s.Baseline)))
 	}
@@ -502,7 +583,7 @@ func (c *canvas) session(s route.Snapshot) {
 
 func savedSegs(st route.Stats, baseline config.Route) []seg {
 	if st.BaselineUSD <= 0 {
-		return []seg{dim("no list-price baseline yet")}
+		return []seg{dim(`savings need "prices" in the config`)}
 	}
 	diff := st.BaselineUSD - st.RoutedUSD
 	pct := int(abs(diff)/st.BaselineUSD*100 + 0.5)
@@ -553,7 +634,6 @@ func (c *canvas) contextRow(s route.Snapshot) {
 func (c *canvas) cacheRow(s route.Snapshot) {
 	st := s.Stats
 	if st.Replies == 0 {
-		c.row("Cache", dim("no replies yet"))
 		return
 	}
 	if st.LastInputTokens <= 0 {
@@ -617,7 +697,7 @@ func tierLabel(t config.Tier) seg {
 }
 
 func (c *canvas) routes(s route.Snapshot) {
-	c.add(dim("ROUTES"), dim(" · group "+groupText(s)))
+	c.add(dim("ROUTES"), dim(" · "+groupText(s)))
 	for _, t := range tierOrder {
 		c.add(tierLabel(t), plain(routeText(s.Routes[t])))
 	}
@@ -626,7 +706,7 @@ func (c *canvas) routes(s route.Snapshot) {
 		c.add(dim("none"))
 	}
 	for _, b := range s.Blocked {
-		c.add(dim(b))
+		c.add(plain(b), dim(" · outside "+s.Baseline.Model+"'s compatibility group"))
 	}
 	c.section("RECENT")
 	if len(s.Recent) == 0 {
@@ -635,20 +715,16 @@ func (c *canvas) routes(s route.Snapshot) {
 	start := max(len(s.Recent)-recentRows, 0)
 	for i := len(s.Recent) - 1; i >= start; i-- {
 		d := s.Recent[i]
-		c.add(plain(d.At.Format(timeLayout)+" "), tierSeg(d.Tier), plain(" "+routeText(d.Route)+"  "), col(colorActivity, string(d.Activity)), dim("  "+string(d.Reason)))
+		c.add(plain(d.At.Format(timeLayout)+" "), decisionTier(d), plain(" "+routeText(d.Route)+"  "), col(colorActivity, string(d.Activity)), dim("  "+whyOf(d)))
 	}
 }
 
 func groupText(s route.Snapshot) string {
 	g := s.Group
 	if g.CompHash == "" {
-		return "unknown"
+		return "compatibility group unknown"
 	}
-	out := "comp_hash " + g.CompHash
-	if g.Lite {
-		out += " · lite"
-	}
-	return out
+	return s.Baseline.Model + "'s compatibility group"
 }
 
 func (c *canvas) policy(s route.Snapshot) {
@@ -660,6 +736,9 @@ func (c *canvas) policy(s route.Snapshot) {
 		segs = append(segs, b)
 	}
 	c.add(segs...)
+	if s.ClassifierOff {
+		c.add(col(colorWarn, "no effect while the classifier is off"))
+	}
 	p := s.Policy
 	c.section("THRESHOLDS")
 	c.add(plain(fmt.Sprintf("votes to move up %d · down %d · escalation hold %d turns", p.UpgradeVotes, p.DowngradeVotes, p.EscalationHoldTurns)))
@@ -675,9 +754,25 @@ func (c *canvas) classifier(s route.Snapshot) {
 	if classifierPaused(s) || s.ClassifierOff {
 		mark, color = "○", colorWarn
 	}
-	c.add(col(color, mark), plain(" "+classifierName(s)))
+	title := "Classifier"
+	if s.ClassifierLabel != "" {
+		title = s.ClassifierLabel
+	}
+	if s.ClassifierModel != "" {
+		title += " · " + s.ClassifierModel
+	}
+	c.add(col(color, mark), plain(" "+title))
 	if s.ClassifierOff {
-		c.add(col(colorWarn, "off"), dim(" · no key, or off in the config; requests keep their model unless pinned"))
+		segs := []seg{col(colorWarn, "off")}
+		if s.ClassifierOffReason != "" {
+			segs = append(segs, plain(" · "+s.ClassifierOffReason))
+		}
+		c.add(segs...)
+		c.add(dim("requests keep Codex's model; only pins (p) and the context guard change it"))
+		return
+	}
+	if h.Latency == 0 && h.Failures == 0 && h.LastError == "" && s.ClassifierMedian == 0 && !classifierPaused(s) {
+		c.add(plain("ready"), dim(" · no calls yet"))
 		return
 	}
 	if h.Latency > 0 {
@@ -687,16 +782,25 @@ func (c *canvas) classifier(s route.Snapshot) {
 		c.add(plain(fmt.Sprintf("median %d ms", s.ClassifierMedian.Milliseconds())), dim(" · recent answers"))
 	}
 	c.add(plain(fmt.Sprintf("consecutive failures %d", h.Failures)))
+	if h.LastError != "" {
+		c.add(plain("last error: "), col(colorWarn, h.LastError))
+	}
 	if classifierPaused(s) {
-		c.add(col(colorWarn, "paused until "+h.PausedUntil.Format("15:04:05")), dim(" · requests are forwarded unchanged"))
+		secs := int(math.Ceil(h.PausedUntil.Sub(s.At).Seconds()))
+		c.add(col(colorWarn, "paused until "+h.PausedUntil.Format("15:04:05")), dim(fmt.Sprintf(" · resumes in %ds", secs)))
+		c.add(dim("requests are forwarded unchanged"))
 	}
 }
 
 func (c *canvas) usage(s route.Snapshot) {
 	st := s.Stats
 	c.add(dim("USAGE"), dim(" · this session"))
-	c.add(plain(fmt.Sprintf("requests %d · switches %d · cache reuse %d%%", st.Replies, st.Switches, st.CacheReusePct)))
-	c.add(savedSegs(st, s.Baseline)...)
+	if st.Replies == 0 {
+		c.add(dim("no replies yet"))
+	} else {
+		c.add(plain(fmt.Sprintf("requests %d · switches %d · cache reuse %d%%", st.Replies, st.Switches, st.CacheReusePct)))
+		c.add(savedSegs(st, s.Baseline)...)
+	}
 	if st.BaselineUSD > 0 {
 		c.add(dim(fmt.Sprintf("list-price estimate $%.2f vs $%.2f all-%s (plan billing is limits, not $)", st.RoutedUSD, st.BaselineUSD, routeText(s.Baseline))))
 	}

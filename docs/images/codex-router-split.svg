@@ -11,8 +11,8 @@
   <text x="468.4" y="47.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="491.8" y="47.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
   <text x="554.2" y="47.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
-  <text x="585.4" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
-  <text x="749.2" y="47.0" fill="#878787" xml:space="preserve"> · footer synced</text>
+  <text x="585.4" y="47.0" fill="#878787" xml:space="preserve"> · gpt-6.1-sol high</text>
+  <text x="733.6" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready</text>
   <text x="468.4" y="66.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="468.4" y="85.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <rect x="491.8" y="71.0" width="54.6" height="19" fill="#87afff"/>
@@ -146,7 +146,7 @@
   <text x="468.4" y="446.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="491.8" y="446.0" fill="#d0d0d0" xml:space="preserve">Codex      footer shows </text>
   <text x="679.0" y="446.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
-  <text x="819.4" y="446.0" fill="#878787" xml:space="preserve"> · synced via thread/settings/update</text>
+  <text x="819.4" y="446.0" fill="#878787" xml:space="preserve"> · in sync</text>
   <text x="16.0" y="465.0" fill="#11a8cd" xml:space="preserve">›</text>
   <text x="31.6" y="465.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">Ask Codex to do anything</text>
   <text x="468.4" y="465.0" fill="#2e3340" xml:space="preserve"> │ </text>

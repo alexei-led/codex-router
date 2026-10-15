@@ -1,5 +1,5 @@
 ◂ ● work · api · feat/auth ◐  ● work · api · fix/retry ? …                 ▸ 3/5
-ROUTING ◉ on · Jev ready · 412 ms · footer synced
+ROUTING ◉ on · gpt-6.1-sol high · Jev ready
 
 [Sessions 0] Now 1  Routes 2  Policy 3  Classifier 4  Usage 5 
 
@@ -14,5 +14,5 @@ SESSIONS · 5 sessions in 2 homes
   api · fix/retry                           ? unknown       gpt-6.1-sol · high
   infra · main                              ◉ on            gpt-6-sol · medium
 
-↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause · P pause home
-q quit
+↑↓ select · enter focus · [ ] session · 1-5 tabs · space pause focused
+P pause focused home · q quit

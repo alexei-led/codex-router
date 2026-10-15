@@ -16,8 +16,8 @@
   <text x="749.2" y="28.0" fill="#878787" xml:space="preserve"> ▸ 1/5</text>
   <text x="16.0" y="47.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
   <text x="78.4" y="47.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
-  <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
-  <text x="273.4" y="47.0" fill="#878787" xml:space="preserve"> · footer synced</text>
+  <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · gpt-6.1-sol high</text>
+  <text x="257.8" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready</text>
   <text x="16.0" y="85.0" fill="#878787" xml:space="preserve"> Sessions 0 </text>
   <text x="109.6" y="85.0" fill="#878787" xml:space="preserve"> Now 1 </text>
   <text x="164.2" y="85.0" fill="#878787" xml:space="preserve"> Routes 2 </text>
@@ -35,5 +35,5 @@
   <text x="16.0" y="218.0" fill="#d0d0d0" xml:space="preserve">min dwell 8 requests · review every 4 requests</text>
   <text x="16.0" y="237.0" fill="#d0d0d0" xml:space="preserve">upgrade bar 0.75 · jump confidence 0.95 · downgrade mass 0.90</text>
   <text x="16.0" y="256.0" fill="#878787" xml:space="preserve">on router error: forward the original request</text>
-  <text x="16.0" y="294.0" fill="#878787" xml:space="preserve">[ ] session · 0 list · 1-5 tabs · p pin · space pause · P pause home · q quit · c preset</text>
+  <text x="16.0" y="294.0" fill="#878787" xml:space="preserve">[ ] session · 0 list · 1-5 tabs · p pin next · space pause · P pause home · c preset · q quit</text>
 </svg>

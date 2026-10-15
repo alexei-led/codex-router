@@ -16,8 +16,8 @@
   <text x="749.2" y="28.0" fill="#878787" xml:space="preserve"> ▸ 1/5</text>
   <text x="16.0" y="47.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">ROUTING</text>
   <text x="78.4" y="47.0" fill="#5fd7af" xml:space="preserve">◉ on</text>
-  <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready · 412 ms</text>
-  <text x="273.4" y="47.0" fill="#878787" xml:space="preserve"> · footer synced</text>
+  <text x="109.6" y="47.0" fill="#878787" xml:space="preserve"> · gpt-6.1-sol high</text>
+  <text x="257.8" y="47.0" fill="#878787" xml:space="preserve"> · Jev ready</text>
   <text x="16.0" y="85.0" fill="#878787" xml:space="preserve"> Sessions 0 </text>
   <text x="109.6" y="85.0" fill="#878787" xml:space="preserve"> Now 1 </text>
   <rect x="164.2" y="71.0" width="78.0" height="19" fill="#87afff"/>
@@ -26,7 +26,7 @@
   <text x="320.2" y="85.0" fill="#878787" xml:space="preserve"> Classifier 4 </text>
   <text x="429.4" y="85.0" fill="#878787" xml:space="preserve"> Usage 5 </text>
   <text x="16.0" y="123.0" fill="#878787" xml:space="preserve">ROUTES</text>
-  <text x="62.8" y="123.0" fill="#878787" xml:space="preserve"> · group comp_hash 9f3c1a7e</text>
+  <text x="62.8" y="123.0" fill="#878787" xml:space="preserve"> · gpt-6-sol's compatibility group</text>
   <text x="16.0" y="142.0" fill="#d75f87" xml:space="preserve">high    </text>
   <text x="78.4" y="142.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · high</text>
   <text x="16.0" y="161.0" fill="#d7af5f" xml:space="preserve">medium  </text>
@@ -42,31 +42,31 @@
   <text x="62.8" y="313.0" fill="#d75f87" xml:space="preserve">▌high</text>
   <text x="101.8" y="313.0" fill="#d0d0d0" xml:space="preserve"> gpt-6.1-sol · high  </text>
   <text x="265.6" y="313.0" fill="#d7875f" xml:space="preserve">debug</text>
-  <text x="304.6" y="313.0" fill="#878787" xml:space="preserve">  escalation</text>
+  <text x="304.6" y="313.0" fill="#878787" xml:space="preserve">  escalated after a repeated failure</text>
   <text x="16.0" y="332.0" fill="#d0d0d0" xml:space="preserve">18:41 </text>
   <text x="62.8" y="332.0" fill="#d7af5f" xml:space="preserve">▌medium</text>
   <text x="117.4" y="332.0" fill="#d0d0d0" xml:space="preserve"> gpt-6-sol · high  </text>
   <text x="265.6" y="332.0" fill="#d7875f" xml:space="preserve">debug</text>
-  <text x="304.6" y="332.0" fill="#878787" xml:space="preserve">  same-tier</text>
+  <text x="304.6" y="332.0" fill="#878787" xml:space="preserve">  classifier agrees with the tier</text>
   <text x="16.0" y="351.0" fill="#d0d0d0" xml:space="preserve">18:40 </text>
   <text x="62.8" y="351.0" fill="#d7af5f" xml:space="preserve">▌medium</text>
   <text x="117.4" y="351.0" fill="#d0d0d0" xml:space="preserve"> gpt-6-sol · high  </text>
   <text x="265.6" y="351.0" fill="#d7875f" xml:space="preserve">debug</text>
-  <text x="304.6" y="351.0" fill="#878787" xml:space="preserve">  same-tier</text>
+  <text x="304.6" y="351.0" fill="#878787" xml:space="preserve">  classifier agrees with the tier</text>
   <text x="16.0" y="370.0" fill="#d0d0d0" xml:space="preserve">18:38 </text>
   <text x="62.8" y="370.0" fill="#d7af5f" xml:space="preserve">▌medium</text>
   <text x="117.4" y="370.0" fill="#d0d0d0" xml:space="preserve"> gpt-6-sol · high  </text>
   <text x="265.6" y="370.0" fill="#d7875f" xml:space="preserve">debug</text>
-  <text x="304.6" y="370.0" fill="#878787" xml:space="preserve">  same-tier</text>
+  <text x="304.6" y="370.0" fill="#878787" xml:space="preserve">  classifier agrees with the tier</text>
   <text x="16.0" y="389.0" fill="#d0d0d0" xml:space="preserve">18:38 </text>
   <text x="62.8" y="389.0" fill="#d7af5f" xml:space="preserve">▌medium</text>
   <text x="117.4" y="389.0" fill="#d0d0d0" xml:space="preserve"> gpt-6-sol · high  </text>
   <text x="265.6" y="389.0" fill="#d7875f" xml:space="preserve">debug</text>
-  <text x="304.6" y="389.0" fill="#878787" xml:space="preserve">  upgrade</text>
+  <text x="304.6" y="389.0" fill="#878787" xml:space="preserve">  moved up a tier</text>
   <text x="16.0" y="408.0" fill="#d0d0d0" xml:space="preserve">18:36 </text>
   <text x="62.8" y="408.0" fill="#5fafd7" xml:space="preserve">▌low</text>
   <text x="94.0" y="408.0" fill="#d0d0d0" xml:space="preserve"> gpt-6-luna · medium  </text>
   <text x="265.6" y="408.0" fill="#d7875f" xml:space="preserve">explore</text>
-  <text x="320.2" y="408.0" fill="#878787" xml:space="preserve">  downgrade</text>
-  <text x="16.0" y="446.0" fill="#878787" xml:space="preserve">[ ] session · 0 list · 1-5 tabs · p pin · space pause · P pause home · q quit</text>
+  <text x="320.2" y="408.0" fill="#878787" xml:space="preserve">  moved down a tier</text>
+  <text x="16.0" y="446.0" fill="#878787" xml:space="preserve">[ ] session · 0 list · 1-5 tabs · p pin next · space pause · P pause home · q quit</text>
 </svg>

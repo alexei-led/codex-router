@@ -298,14 +298,23 @@ func (m *model) homeCommand(cmd route.Command) tea.Cmd {
 // a home whose sessions are all paused one by one gets a resume that keeps
 // those session pauses; space resumes each.
 func (m *model) homeToggle() route.Command {
-	s, _ := m.st.focused()
-	h, _ := m.st.homeOf(s.Home)
+	if m.st.homeResumes() {
+		return route.Command{Op: route.OpResume}
+	}
+	return route.Command{Op: route.OpPause}
+}
+
+// homeResumes reports whether P resumes the focused home: every session of
+// it is paused.
+func (s fleetState) homeResumes() bool {
+	f, _ := s.focused()
+	h, _ := s.homeOf(f.Home)
 	for _, x := range h.sessions {
 		if x.Mode != route.ModePaused {
-			return route.Command{Op: route.OpPause}
+			return false
 		}
 	}
-	return route.Command{Op: route.OpResume}
+	return true
 }
 
 // pinCycle walks session's pin through none, high, medium, low, micro, none.
