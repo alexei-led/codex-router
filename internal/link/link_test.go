@@ -18,6 +18,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/catalog"
@@ -54,13 +55,12 @@ type observeCall struct {
 	status int
 }
 
-// fakeBrain answers rw (when ok) to every decide. slow makes a decide wait
-// for its context; hold, when set, blocks every observe until closed.
 type fakeBrain struct {
-	rw   responses.Rewrite
-	ok   bool
-	slow atomic.Bool
-	hold chan struct{}
+	rw      responses.Rewrite
+	ok      bool
+	slow    map[string]bool
+	expired chan struct{}
+	hold    chan struct{}
 
 	mu       sync.Mutex
 	decides  []decideCall
@@ -72,8 +72,12 @@ func (b *fakeBrain) Decide(ctx context.Context, req *responses.Request, m respon
 	b.mu.Lock()
 	b.decides = append(b.decides, decideCall{meta: m, body: req.Body(), hasDeadline: hasDeadline})
 	b.mu.Unlock()
-	if b.slow.Load() {
+	if b.slow[m.TurnID] {
 		<-ctx.Done()
+		select {
+		case b.expired <- struct{}{}:
+		default:
+		}
 	}
 	return b.rw, b.ok
 }
@@ -116,7 +120,20 @@ func (c *clock) add(d time.Duration) {
 	c.t = c.t.Add(d)
 }
 
-// sockPath is a socket path in a fresh 0700 dir, short enough for macOS.
+func turn(id string) responses.Meta {
+	m := stepMeta
+	m.TurnID = id
+	return m
+}
+
+func slowTurns(ids ...string) map[string]bool {
+	slow := map[string]bool{}
+	for _, id := range ids {
+		slow[id] = true
+	}
+	return slow
+}
+
 func sockPath(t *testing.T) string {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "lk")
@@ -263,7 +280,7 @@ func TestDecideNoRewrite(t *testing.T) {
 	path := sockPath(t)
 	brain := &fakeBrain{}
 	startBrain(t, path, homeA, brain)
-	c := newClient(t, path, homeA, time.Second)
+	c := newClient(t, path, homeA, 0)
 
 	if _, ok := c.Decide(context.Background(), parse(t, smallBody), stepMeta); ok {
 		t.Fatal("Decide rewrote though the brain said none")
@@ -285,13 +302,12 @@ func TestBrainDownPassesThroughAtOnce(t *testing.T) {
 	if took := time.Since(start); took > 5*DialTimeout {
 		t.Fatalf("Decide took %v with no brain", took)
 	}
-	c.Observe(stepMeta, "m", responses.Usage{}, 200) // must not block or panic
+	c.Observe(stepMeta, "m", responses.Usage{}, 200)
 }
 
 func TestBrainSlowPassesThroughAtDeadline(t *testing.T) {
 	path := sockPath(t)
-	brain := &fakeBrain{rw: toLow, ok: true}
-	brain.slow.Store(true)
+	brain := &fakeBrain{rw: toLow, ok: true, slow: slowTurns(stepMeta.TurnID)}
 	startBrain(t, path, homeA, brain)
 	c := newClient(t, path, homeA, 100*time.Millisecond)
 
@@ -306,62 +322,99 @@ func TestBrainSlowPassesThroughAtDeadline(t *testing.T) {
 
 func TestBreakerSkipsSlowBrainUntilCooldown(t *testing.T) {
 	path := sockPath(t)
-	brain := &fakeBrain{rw: toLow, ok: true}
-	brain.slow.Store(true)
+	brain := &fakeBrain{rw: toLow, ok: true, slow: slowTurns(stepMeta.TurnID)}
 	startBrain(t, path, homeA, brain)
-	c := newClient(t, path, homeA, 50*time.Millisecond)
+	c := newClient(t, path, homeA, 100*time.Millisecond)
 	clk := &clock{t: time.Unix(1_000_000, 0)}
 	c.now = clk.now
 	req := parse(t, smallBody)
+	if !c.Up(t.Context()) {
+		t.Fatal("link not up")
+	}
 
 	for range FailuresToOpen {
 		if _, ok := c.Decide(context.Background(), req, stepMeta); ok {
 			t.Fatal("slow brain rewrote")
 		}
 	}
-	eventually(t, "slow decides", func() bool { return len(brain.calls()) == FailuresToOpen })
-	brain.slow.Store(false)
-
-	if _, ok := c.Decide(context.Background(), req, stepMeta); ok {
+	if _, ok := c.Decide(context.Background(), req, turn("tu-open")); ok {
 		t.Fatal("open breaker rewrote")
-	}
-	if n := len(brain.calls()); n != FailuresToOpen {
-		t.Fatalf("open breaker reached the brain: %d decides", n)
 	}
 
 	clk.add(BreakerCooldown)
-	if rw, ok := c.Decide(context.Background(), req, stepMeta); !ok || rw != toLow {
-		t.Fatalf("after cooldown Decide = %+v, %v", rw, ok)
+	if rw, ok := c.Decide(context.Background(), req, turn("tu-after")); !ok || rw != toLow {
+		t.Fatalf("after cooldown Decide = %+v, %v; want %+v, true", rw, ok, toLow)
+	}
+	if slices.ContainsFunc(brain.calls(), func(d decideCall) bool { return d.meta.TurnID == "tu-open" }) {
+		t.Error("the open breaker let a decide reach the brain")
 	}
 }
 
-func TestLateDecideIsNotAnswered(t *testing.T) {
+func TestCancelledCallerDoesNotOpenBreaker(t *testing.T) {
 	path := sockPath(t)
-	brain := &fakeBrain{rw: toLow, ok: true}
-	brain.slow.Store(true)
+	brain := &fakeBrain{rw: toLow, ok: true, slow: slowTurns(stepMeta.TurnID)}
 	startBrain(t, path, homeA, brain)
-	conn := rawEdge(t, path)
-
-	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(replyMargin + 50*time.Millisecond)}, smallBody); err != nil {
-		t.Fatal(err)
-	}
-	eventually(t, "late decide", func() bool { return len(brain.calls()) == 1 })
-	time.Sleep(100 * time.Millisecond)
-	brain.slow.Store(false)
-	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 2, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(time.Second)}, smallBody); err != nil {
-		t.Fatal(err)
+	c := newClient(t, path, homeA, 10*time.Second)
+	req := parse(t, smallBody)
+	if !c.Up(t.Context()) {
+		t.Fatal("link not up")
 	}
 
-	h, _, err := ReadFrame(conn)
-	if err != nil || h.ID != 2 || h.Type != TypeRewrite {
-		t.Fatalf("first reply = %+v, %v; want only the answer to decide 2", h, err)
+	for range FailuresToOpen {
+		ctx, cancel := context.WithCancel(context.Background())
+		stop := time.AfterFunc(20*time.Millisecond, cancel)
+		if _, ok := c.Decide(ctx, req, stepMeta); ok {
+			t.Fatal("slow brain rewrote")
+		}
+		stop.Stop()
+		cancel()
+	}
+
+	if rw, ok := c.Decide(context.Background(), req, turn("tu-after")); !ok || rw != toLow {
+		t.Fatalf("Decide = %+v, %v; want %+v, true", rw, ok, toLow)
+	}
+}
+
+func TestStaleDecideIsNotAnswered(t *testing.T) {
+	cases := []struct {
+		name     string
+		deadline time.Duration
+		reached  int
+	}{
+		{"expired before it arrived", -time.Second, 1},
+		{"expires inside the handler", replyMargin + 50*time.Millisecond, 2},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := sockPath(t)
+			brain := &fakeBrain{rw: toLow, ok: true, slow: slowTurns(stepMeta.TurnID), expired: make(chan struct{}, 1)}
+			srv := startBrain(t, path, homeA, brain)
+			conn := rawEdge(t, path)
+			stale := Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(tc.deadline)}
+			if err := WriteFrame(conn, stale, smallBody); err != nil {
+				t.Fatal(err)
+			}
+			if tc.reached == 2 {
+				eventually(t, "the handler to give up", func() bool { return len(brain.expired) == 1 })
+			}
+
+			fresh := turn("tu-2")
+			if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 2, Meta: &fresh, DeadlineUnixMs: deadlineIn(time.Second)}, smallBody); err != nil {
+				t.Fatal(err)
+			}
+			if h, _, err := ReadFrame(conn); err != nil || h.ID != 2 || h.Type != TypeRewrite {
+				t.Fatalf("first reply = %+v, %v; want only the rewrite for decide 2", h, err)
+			}
+			_ = srv.Close()
+			if n := len(brain.calls()); n != tc.reached {
+				t.Errorf("handler saw %d decides, want %d", n, tc.reached)
+			}
+		})
 	}
 }
 
 func deadlineIn(d time.Duration) int64 { return time.Now().Add(d).UnixMilli() }
 
-// rawEdge dials the brain and says hello, for tests that write frames
-// themselves.
 func rawEdge(t *testing.T, path string) net.Conn {
 	t.Helper()
 	conn, err := net.Dial("unix", path)
@@ -386,7 +439,6 @@ const engineCatalog = `{"models":[
   "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"}]}
 ]}`
 
-// slowAsker advises the low tier after delay, unless its context ends first.
 type slowAsker struct {
 	delay time.Duration
 	calls atomic.Int32
@@ -449,16 +501,11 @@ func TestDecideDeadlineCoversTransitAndParse(t *testing.T) {
 			startBrain(t, path, homeA, eng)
 			conn := rawEdge(t, path)
 
-			deadline := deadlineIn(wait)
-			time.Sleep(tc.transit)
-			if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadline}, body); err != nil {
+			if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(wait - tc.transit)}, body); err != nil {
 				t.Fatal(err)
 			}
-			// Once the classifier runs, the thread's next turn waits for this
-			// decide to end.
 			eventually(t, "the classifier call", func() bool { return asker.calls.Load() == 1 })
-			next := stepMeta
-			next.TurnID = "tu-2"
+			next := turn("tu-2")
 			if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 2, Meta: &next, DeadlineUnixMs: deadlineIn(wait)}, body); err != nil {
 				t.Fatal(err)
 			}
@@ -478,28 +525,6 @@ func TestDecideDeadlineCoversTransitAndParse(t *testing.T) {
 				t.Fatalf("decisions = %+v, want a switch to gpt-6-luna first", ds)
 			}
 		})
-	}
-}
-
-func TestExpiredDecideNeverReachesTheHandler(t *testing.T) {
-	path := sockPath(t)
-	brain := &fakeBrain{rw: toLow, ok: true}
-	srv := startBrain(t, path, homeA, brain)
-	conn := rawEdge(t, path)
-
-	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(-time.Second)}, smallBody); err != nil {
-		t.Fatal(err)
-	}
-	if err := WriteFrame(conn, Header{Type: TypeDecide, ID: 2, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(time.Second)}, smallBody); err != nil {
-		t.Fatal(err)
-	}
-	if h, _, err := ReadFrame(conn); err != nil || h.ID != 2 {
-		t.Fatalf("first reply = %+v, %v; want only the answer to decide 2", h, err)
-	}
-	_ = srv.Close()
-
-	if n := len(brain.calls()); n != 1 {
-		t.Fatalf("handler saw %d decides, want only the one in time", n)
 	}
 }
 
@@ -609,7 +634,7 @@ func TestObserveQueueFullDoesNotBlock(t *testing.T) {
 	}
 }
 
-func TestListenSocketRules(t *testing.T) {
+func TestListenSocketMode(t *testing.T) {
 	path := sockPath(t)
 	startBrain(t, path, homeA, &fakeBrain{})
 	fi, err := os.Stat(path)
@@ -619,29 +644,79 @@ func TestListenSocketRules(t *testing.T) {
 	if fi.Mode().Perm() != SocketMode {
 		t.Fatalf("socket mode %v, want %v", fi.Mode().Perm(), SocketMode)
 	}
-	if _, err := Listen(path, homeA, &fakeBrain{}, nil); err == nil {
-		t.Fatal("Listen took over a live socket")
-	}
+}
 
-	open := sockPath(t)
-	if err := os.Chmod(filepath.Dir(open), 0o755); err != nil {
+func staleSocket(t *testing.T) string {
+	t.Helper()
+	path := sockPath(t)
+	ln, err := net.Listen("unix", path)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Listen(open, homeA, &fakeBrain{}, nil); err == nil {
-		t.Fatal("Listen accepted a dir open to others")
-	}
+	ln.(*net.UnixListener).SetUnlinkOnClose(false)
+	_ = ln.Close()
+	return path
+}
 
-	file := sockPath(t)
-	if err := os.WriteFile(file, nil, 0o600); err != nil {
-		t.Fatal(err)
+func TestListenRefuses(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T) string
+	}{
+		{"a live socket", func(t *testing.T) string {
+			path := sockPath(t)
+			startBrain(t, path, homeA, &fakeBrain{})
+			return path
+		}},
+		{"a dir open to others", func(t *testing.T) string {
+			path := sockPath(t)
+			if err := os.Chmod(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			return path
+		}},
+		{"a regular file", func(t *testing.T) string {
+			path := sockPath(t)
+			if err := os.WriteFile(path, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			return path
+		}},
+		{"a directory", func(t *testing.T) string {
+			path := sockPath(t)
+			if err := os.Mkdir(path, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			return path
+		}},
 	}
-	if _, err := Listen(file, homeA, &fakeBrain{}, nil); err == nil {
-		t.Fatal("Listen replaced a regular file")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := tc.setup(t)
+			_, err := os.Lstat(path)
+			existed := err == nil
+			if s, err := Listen(path, homeA, &fakeBrain{}, nil); err == nil {
+				_ = s.Close()
+				t.Fatal("Listen succeeded")
+			}
+			if _, err := os.Lstat(path); (err == nil) != existed {
+				t.Errorf("Lstat after Listen = %v, existed before: %v", err, existed)
+			}
+		})
 	}
 }
 
-// sniff relays unix connections from front to back and records every byte
-// the edge sends.
+func TestListenReplacesStaleSocket(t *testing.T) {
+	path := staleSocket(t)
+	brain := &fakeBrain{rw: toLow, ok: true}
+	startBrain(t, path, homeA, brain)
+	c := newClient(t, path, homeA, time.Second)
+
+	if rw, ok := c.Decide(context.Background(), parse(t, smallBody), stepMeta); !ok || rw != toLow {
+		t.Fatalf("Decide = %+v, %v; want %+v, true", rw, ok, toLow)
+	}
+}
+
 type sniff struct {
 	mu   sync.Mutex
 	sent bytes.Buffer
@@ -747,7 +822,6 @@ func TestLinkFramesCarryOnlyTheAccountHash(t *testing.T) {
 	}
 }
 
-// silentBrain accepts connections and never answers; accepts counts them.
 func silentBrain(t *testing.T, path string) *atomic.Int32 {
 	t.Helper()
 	ln, err := net.Listen("unix", path)
@@ -802,7 +876,6 @@ func TestHelloStallIsBoundedAndBacksOff(t *testing.T) {
 	}
 	wg.Wait()
 
-	// Serialized dials would take callers * DialTimeout.
 	for i, d := range took {
 		if d > DialTimeout+time.Second {
 			t.Errorf("caller %d waited %v on a silent brain, want about %v", i, d, DialTimeout)
@@ -828,8 +901,7 @@ func TestHelloStallIsBoundedAndBacksOff(t *testing.T) {
 
 func TestBrainClosingMidDecideReturnsAtOnce(t *testing.T) {
 	path := sockPath(t)
-	brain := &fakeBrain{rw: toLow, ok: true}
-	brain.slow.Store(true)
+	brain := &fakeBrain{rw: toLow, ok: true, slow: slowTurns(stepMeta.TurnID)}
 	srv := startBrain(t, path, homeA, brain)
 	c := newClient(t, path, homeA, 30*time.Second)
 
@@ -853,37 +925,153 @@ func TestBrainClosingMidDecideReturnsAtOnce(t *testing.T) {
 	}
 }
 
-func TestSilentClientIsDroppedAfterHelloTimeout(t *testing.T) {
-	t.Parallel()
-	path := sockPath(t)
-	startBrain(t, path, homeA, &fakeBrain{rw: toLow, ok: true})
-	silent, err := net.Dial("unix", path)
-	if err != nil {
-		t.Fatal(err)
+func TestDecideBehindABusyConnPassesThrough(t *testing.T) {
+	cases := []struct {
+		name         string
+		timeout      time.Duration
+		queueObserve bool
+		closeClient  bool
+	}{
+		{"write waits past the deadline", 150 * time.Millisecond, false, false},
+		{"flush waits past the deadline", 150 * time.Millisecond, true, false},
+		{"client closes during the flush", 30 * time.Second, true, true},
 	}
-	t.Cleanup(func() { _ = silent.Close() })
-	_ = silent.SetReadDeadline(time.Now().Add(helloTimeout + 3*time.Second))
-
-	start := time.Now()
-	for {
-		if _, _, err := ReadFrame(silent); err != nil {
-			if !errors.Is(err, io.EOF) {
-				t.Fatalf("silent client's read = %v, want the server to close it", err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := sockPath(t)
+			brain := &fakeBrain{rw: toLow, ok: true}
+			startBrain(t, path, homeA, brain)
+			c := newClient(t, path, homeA, tc.timeout)
+			if !c.Up(t.Context()) {
+				t.Fatal("link not up")
 			}
-			break
-		}
-	}
-	if took := time.Since(start); took < helloTimeout/2 {
-		t.Errorf("dropped after %v, before the hello timeout %v", took, helloTimeout)
-	}
-	c := newClient(t, path, homeA, time.Second)
-	if rw, ok := c.Decide(context.Background(), parse(t, smallBody), stepMeta); !ok || rw != toLow {
-		t.Fatalf("a real client after the drop got %+v, %v", rw, ok)
+			c.mu.Lock()
+			cc := c.conn
+			c.mu.Unlock()
+			cc.wsem <- struct{}{}
+			if tc.queueObserve {
+				c.Observe(stepMeta, "m", responses.Usage{}, 200)
+				eventually(t, "the writer to take the observe", func() bool { return len(c.observes) == 0 })
+			}
+
+			done := make(chan bool, 1)
+			go func() {
+				_, ok := c.Decide(context.Background(), parse(t, smallBody), stepMeta)
+				done <- ok
+			}()
+			if tc.closeClient {
+				eventually(t, "the decide to queue behind the observe", func() bool { return len(c.observes) == 1 })
+				_ = c.Close()
+			}
+
+			select {
+			case ok := <-done:
+				if ok {
+					t.Error("Decide rewrote though it could not be written")
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("Decide kept waiting behind the busy conn")
+			}
+			if n := len(brain.calls()); n != 0 {
+				t.Errorf("brain got %d decides, want 0", n)
+			}
+		})
 	}
 }
 
-// frameLog is a brain that says hello, answers every decide with none and
-// records each frame's type and turn in arrival order.
+func TestClosedClientPassesThrough(t *testing.T) {
+	path := sockPath(t)
+	startBrain(t, path, homeA, &fakeBrain{rw: toLow, ok: true})
+	c := newClient(t, path, homeA, time.Second)
+	if !c.Up(t.Context()) {
+		t.Fatal("link not up")
+	}
+
+	for range 2 {
+		if err := c.Close(); err != nil {
+			t.Fatalf("Close = %v", err)
+		}
+	}
+	if _, ok := c.Decide(context.Background(), parse(t, smallBody), stepMeta); ok {
+		t.Error("closed client rewrote")
+	}
+	if c.Up(context.Background()) {
+		t.Error("closed client is up")
+	}
+}
+
+type panicBrain struct{ fakeBrain }
+
+func (*panicBrain) Decide(context.Context, *responses.Request, responses.Meta) (responses.Rewrite, bool) {
+	panic("boom")
+}
+
+func (*panicBrain) Observe(responses.Meta, string, responses.Usage, int) { panic("boom") }
+
+func TestBadFramesDoNotBreakTheConnection(t *testing.T) {
+	cases := []struct {
+		name    string
+		handler Handler
+		frame   Header
+		body    []byte
+		reply   string
+		next    string
+	}{
+		{"decide without meta", &fakeBrain{rw: toLow, ok: true}, Header{Type: TypeDecide, ID: 1}, smallBody, TypeNone, TypeRewrite},
+		{"decide with an unparseable body", &fakeBrain{rw: toLow, ok: true}, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta}, []byte("not json"), TypeNone, TypeRewrite},
+		{"decide that panics the handler", &panicBrain{}, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta}, smallBody, TypeNone, TypeNone},
+		{"observe without meta", &fakeBrain{rw: toLow, ok: true}, Header{Type: TypeObserve}, nil, "", TypeRewrite},
+		{"observe that panics the handler", &panicBrain{}, Header{Type: TypeObserve, Meta: &stepMeta, Usage: &responses.Usage{}}, nil, "", TypeNone},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := sockPath(t)
+			startBrain(t, path, homeA, tc.handler)
+			conn := rawEdge(t, path)
+			if err := WriteFrame(conn, tc.frame, tc.body); err != nil {
+				t.Fatal(err)
+			}
+			if tc.frame.Type == TypeDecide {
+				if h, _, err := ReadFrame(conn); err != nil || h.ID != 1 || h.Type != tc.reply {
+					t.Fatalf("reply = %+v, %v; want %s for decide 1", h, err, tc.reply)
+				}
+			}
+
+			next := Header{Type: TypeDecide, ID: 2, Meta: &stepMeta, DeadlineUnixMs: deadlineIn(time.Second)}
+			if err := WriteFrame(conn, next, smallBody); err != nil {
+				t.Fatal(err)
+			}
+			if h, _, err := ReadFrame(conn); err != nil || h.ID != 2 || h.Type != tc.next {
+				t.Fatalf("reply to the next decide = %+v, %v; want %s", h, err, tc.next)
+			}
+		})
+	}
+}
+
+func TestSilentClientIsDroppedAfterHelloTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		s := &Server{homeID: homeA, h: &fakeBrain{}, log: slog.Default(), ctx: ctx, cancel: cancel, conns: map[net.Conn]struct{}{}}
+		edge, brainEnd := net.Pipe()
+		s.wg.Add(1)
+		go s.serve(brainEnd)
+
+		start := time.Now()
+		h, _, err := ReadFrame(edge)
+		if err != nil || h.Type != TypeError {
+			t.Fatalf("first frame = %+v, %v; want an error before the close", h, err)
+		}
+		if _, _, err := ReadFrame(edge); !errors.Is(err, io.EOF) {
+			t.Fatalf("read after the error = %v, want EOF", err)
+		}
+		if took := time.Since(start); took != helloTimeout {
+			t.Errorf("dropped after %v, want the hello timeout %v", took, helloTimeout)
+		}
+		cancel()
+		s.wg.Wait()
+	})
+}
+
 type frameLog struct {
 	mu     sync.Mutex
 	frames []string
@@ -941,22 +1129,17 @@ func TestDecideIsWrittenAfterTheObservesQueuedBeforeIt(t *testing.T) {
 	c.mu.Lock()
 	cc := c.conn
 	c.mu.Unlock()
-	cc.wsem <- struct{}{} // the conn is busy: observes queue up behind it
-	meta := func(turn string) responses.Meta {
-		m := stepMeta
-		m.TurnID = turn
-		return m
-	}
-	c.Observe(meta("tu-1"), "m", responses.Usage{InputTokens: 1}, 200)
+	cc.wsem <- struct{}{}
+	c.Observe(turn("tu-1"), "m", responses.Usage{InputTokens: 1}, 200)
 	eventually(t, "the writer to take the first observe", func() bool { return len(c.observes) == 0 })
-	c.Observe(meta("tu-2"), "m", responses.Usage{InputTokens: 1}, 200)
+	c.Observe(turn("tu-2"), "m", responses.Usage{InputTokens: 1}, 200)
 
 	decided := make(chan struct{})
 	go func() {
 		defer close(decided)
-		c.Decide(context.Background(), parse(t, smallBody), meta("tu-3"))
+		c.Decide(context.Background(), parse(t, smallBody), turn("tu-3"))
 	}()
-	time.Sleep(50 * time.Millisecond) // let the decide reach the conn
+	eventually(t, "the decide to queue behind the observes", func() bool { return len(c.observes) == 2 })
 	<-cc.wsem
 	<-decided
 
