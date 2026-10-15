@@ -930,7 +930,7 @@ func TestEmptyTokenDisablesCheckAndStripsHeader(t *testing.T) {
 }
 
 func writeChunked(w io.Writer, n int) {
-	chunk := bytes.Repeat([]byte("a"), 1<<20)
+	chunk := bytes.Repeat([]byte("a"), 1<<10)
 	for n > 0 {
 		c := chunk[:min(n, len(chunk))]
 		if _, err := fmt.Fprintf(w, "%x\r\n%s\r\n", len(c), c); err != nil {
@@ -941,6 +941,10 @@ func writeChunked(w io.Writer, n int) {
 	_, _ = io.WriteString(w, "0\r\n\r\n")
 }
 
+const testBodyCap = 4 << 10
+
+func withBodyCap(o *Options) { o.maxBody = testBodyCap }
+
 func TestBodyOverCapIs413(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -949,19 +953,19 @@ func TestBodyOverCapIs413(t *testing.T) {
 	}{
 		{
 			name:  "declared content length",
-			frame: fmt.Sprintf("Content-Length: %d", MaxBodyBytes+1),
-			body:  func(io.Writer) {},
+			frame: fmt.Sprintf("Content-Length: %d", testBodyCap+1),
+			body:  func(w io.Writer) { _, _ = w.Write(bytes.Repeat([]byte("a"), testBodyCap+1)) },
 		},
 		{
 			name:  "chunked without content length",
 			frame: "Transfer-Encoding: chunked",
-			body:  func(w io.Writer) { writeChunked(w, MaxBodyBytes+1) },
+			body:  func(w io.Writer) { writeChunked(w, testBodyCap+1) },
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			up := sseUpstream(t, evCompleted)
-			h := startProxy(t, up.url())
+			h := startProxy(t, up.url(), withBodyCap)
 
 			conn, err := net.Dial("tcp", strings.TrimPrefix(h.base, "http://"))
 			if err != nil {
@@ -991,16 +995,22 @@ func TestBodyOverCapIs413(t *testing.T) {
 
 func TestBodyAtCapIsForwarded(t *testing.T) {
 	up := sseUpstream(t, evCompleted)
-	h := startProxy(t, up.url())
-	body := bytes.Repeat([]byte("a"), MaxBodyBytes)
+	h := startProxy(t, up.url(), withBodyCap)
+	body := bytes.Repeat([]byte("a"), testBodyCap)
 
 	resp, _ := postResponses(t, h, body)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status = %d, want 200", resp.StatusCode)
 	}
-	if n := len(up.last(t).body); n != MaxBodyBytes {
-		t.Errorf("upstream got %d bytes, want %d", n, MaxBodyBytes)
+	if n := len(up.last(t).body); n != testBodyCap {
+		t.Errorf("upstream got %d bytes, want %d", n, testBodyCap)
+	}
+}
+
+func TestDefaultBodyCap(t *testing.T) {
+	if got := New(Options{}).maxBody; got != MaxBodyBytes {
+		t.Errorf("default body cap = %d, want %d", got, MaxBodyBytes)
 	}
 }
 

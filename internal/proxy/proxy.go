@@ -87,6 +87,7 @@ type Options struct {
 	OnCatalog     func(catalog.Catalog)
 	Logger        *slog.Logger
 	DecideTimeout time.Duration
+	maxBody       int64 // tests only; 0 means MaxBodyBytes
 }
 
 // Server is the loopback proxy. Call Listen, then Serve.
@@ -97,6 +98,7 @@ type Server struct {
 	timeout  time.Duration
 	upstream *url.URL
 	ln       net.Listener
+	maxBody  int64
 }
 
 // New returns a Server; nothing is bound until Listen.
@@ -109,7 +111,11 @@ func New(o Options) *Server {
 	if timeout <= 0 {
 		timeout = DefaultDecideTimeout
 	}
-	return &Server{opts: o, log: log, client: upstreamClient(o.Client), timeout: timeout}
+	maxBody := o.maxBody
+	if maxBody <= 0 {
+		maxBody = MaxBodyBytes
+	}
+	return &Server{opts: o, log: log, client: upstreamClient(o.Client), timeout: timeout, maxBody: maxBody}
 }
 
 var errRedirect = errors.New("proxy: upstream redirect refused")

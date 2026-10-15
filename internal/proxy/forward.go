@@ -33,12 +33,12 @@ var hopHeaders = []string{
 
 func (s *Server) handleResponses(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
-	if r.ContentLength > MaxBodyBytes {
+	if r.ContentLength > s.maxBody {
 		s.log.Warn("body-too-large", "bytes", r.ContentLength)
 		http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
 		return
 	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, MaxBodyBytes))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, s.maxBody))
 	if err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
