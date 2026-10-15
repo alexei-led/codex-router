@@ -14,7 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
@@ -204,17 +204,19 @@ func run(m *model, cmd tea.Cmd) {
 	}
 }
 
-var namedKeys = map[string]tea.KeyType{
-	"tab": tea.KeyTab, "shift+tab": tea.KeyShiftTab, "up": tea.KeyUp, "down": tea.KeyDown, "enter": tea.KeyEnter,
+var namedKeys = map[string]rune{
+	"tab": tea.KeyTab, "up": tea.KeyUp, "down": tea.KeyDown, "enter": tea.KeyEnter, " ": tea.KeySpace,
 }
 
-func key(m *model, s string) tea.Cmd {
-	k := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
-	if s == " " {
-		k = tea.KeyMsg{Type: tea.KeySpace, Runes: []rune(" ")}
-	}
-	if t, ok := namedKeys[s]; ok {
-		k = tea.KeyMsg{Type: t}
+func press(m *model, s string) tea.Cmd {
+	k := tea.KeyPressMsg{Text: s, Code: []rune(s)[0]}
+	if s == "shift+tab" {
+		k = tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
+	} else if c, ok := namedKeys[s]; ok {
+		k = tea.KeyPressMsg{Code: c}
+		if c == tea.KeySpace {
+			k.Text = " "
+		}
 	}
 	_, cmd := m.Update(k)
 	return cmd
@@ -248,7 +250,7 @@ func TestKeysSendCommands(t *testing.T) {
 			tt.setup(&s)
 			m, f := connected(t, s)
 			m.tab = tt.tab
-			run(m, key(m, tt.key))
+			run(m, press(m, tt.key))
 			var want []route.Command
 			if tt.want != (route.Command{}) {
 				want = []route.Command{tt.want}
@@ -282,7 +284,7 @@ func TestTabKeys(t *testing.T) {
 				m.f.locked = testSession
 			}
 			for _, k := range tt.keys {
-				key(m, k)
+				press(m, k)
 			}
 			if m.tab != tt.want {
 				t.Errorf("tab = %s, want %s", m.tab, tt.want)
@@ -293,7 +295,7 @@ func TestTabKeys(t *testing.T) {
 
 func TestQuitKey(t *testing.T) {
 	m, _ := connected(t, fixture())
-	cmd := key(m, "q")
+	cmd := press(m, "q")
 	if cmd == nil {
 		t.Fatal("no quit command")
 	}
@@ -304,18 +306,18 @@ func TestQuitKey(t *testing.T) {
 
 func TestDisconnectedHeaderBlocksCommands(t *testing.T) {
 	m, f := connected(t, fixture())
-	if strings.Contains(m.View(), "disconnected") {
+	if strings.Contains(m.View().Content, "disconnected") {
 		t.Fatal("connected view says disconnected")
 	}
 	f.lose()
 	refresh(t, m, func(st fleetState) bool { return st.disconnected })
-	view := m.View()
+	view := m.View().Content
 	for _, w := range []string{"✕ disconnected", "retrying", "last snapshot 18:42:00"} {
 		if !strings.Contains(view, w) {
 			t.Errorf("view missing %q", w)
 		}
 	}
-	if k := key(m, "p"); k != nil || !strings.Contains(m.View(), "command not sent") || len(f.sentCmds()) != 0 {
+	if k := press(m, "p"); k != nil || !strings.Contains(m.View().Content, "command not sent") || len(f.sentCmds()) != 0 {
 		t.Error("command went out while disconnected")
 	}
 }
@@ -323,10 +325,10 @@ func TestDisconnectedHeaderBlocksCommands(t *testing.T) {
 func TestPanelWithoutSessionsWaits(t *testing.T) {
 	m := newModel(newTestFleet(t).fleet)
 	m.Update(fleetMsg{})
-	if v := m.View(); !strings.Contains(v, "no sessions") || strings.Contains(v, "disconnected") {
+	if v := m.View().Content; !strings.Contains(v, "no sessions") || strings.Contains(v, "disconnected") {
 		t.Errorf("view:\n%s", v)
 	}
-	if k := key(m, "P"); k != nil || !strings.Contains(m.View(), "command not sent") {
+	if k := press(m, "P"); k != nil || !strings.Contains(m.View().Content, "command not sent") {
 		t.Error("home command without a focus")
 	}
 }
@@ -334,9 +336,9 @@ func TestPanelWithoutSessionsWaits(t *testing.T) {
 func TestRejectedCommandShowsNotice(t *testing.T) {
 	m, f := connected(t, fixture())
 	f.setErr(errors.New("unknown tier"))
-	run(m, key(m, "p"))
-	if m.st.disconnected || !strings.Contains(m.View(), "command failed: unknown tier") {
-		t.Errorf("view:\n%s", m.View())
+	run(m, press(m, "p"))
+	if m.st.disconnected || !strings.Contains(m.View().Content, "command failed: unknown tier") {
+		t.Errorf("view:\n%s", m.View().Content)
 	}
 }
 
@@ -827,7 +829,7 @@ func TestBracketKeysMoveTheFocus(t *testing.T) {
 		t.Run(strings.Join(tt.keys, ""), func(t *testing.T) {
 			m, e, ss := fleetPanel(t)
 			for _, k := range tt.keys {
-				run(m, key(m, k))
+				run(m, press(m, k))
 			}
 			want := ss[tt.want].ID
 			refresh(t, m, func(st fleetState) bool { return st.focus == want })
@@ -840,11 +842,11 @@ func TestBracketKeysMoveTheFocus(t *testing.T) {
 
 func TestSessionsTabSelectsTheFocus(t *testing.T) {
 	m, _, ss := fleetPanel(t)
-	key(m, "0")
-	key(m, "up")
-	key(m, "down")
-	key(m, "down")
-	key(m, "down")
+	press(m, "0")
+	press(m, "up")
+	press(m, "down")
+	press(m, "down")
+	press(m, "down")
 	if m.cursor != ss[2].ID {
 		t.Fatalf("cursor %s, want %s", m.cursor, ss[2].ID)
 	}
@@ -853,7 +855,7 @@ func TestSessionsTabSelectsTheFocus(t *testing.T) {
 	if got := render(v); !strings.Contains(got, "▸ c ") {
 		t.Errorf("cursor row not marked:\n%s", got)
 	}
-	run(m, key(m, "enter"))
+	run(m, press(m, "enter"))
 	if m.tab != TabNow {
 		t.Errorf("tab = %s", m.tab)
 	}
@@ -864,12 +866,12 @@ func TestLockedPanelIgnoresSessionKeys(t *testing.T) {
 	m, e, ss := fleetPanel(t)
 	m.f.locked = ss[0].ID
 	for _, k := range []string{"]", "[", "0", "down", "enter"} {
-		run(m, key(m, k))
+		run(m, press(m, k))
 	}
 	if m.tab != TabNow || m.st.focus != ss[0].ID || len(e.subs()) != 1 {
 		t.Errorf("tab %s, focus %s, subscribed %v", m.tab, m.st.focus, e.subs())
 	}
-	if v := m.View(); strings.Contains(v, "◂") || strings.Contains(v, "Sessions 0") {
+	if v := m.View().Content; strings.Contains(v, "◂") || strings.Contains(v, "Sessions 0") {
 		t.Errorf("locked view shows the session bar:\n%s", v)
 	}
 }
@@ -890,8 +892,8 @@ func TestEndedPanelQuits(t *testing.T) {
 
 	e.sessions <- nil
 	refresh(t, m, func(st fleetState) bool { return st.ended })
-	if !m.ending || !strings.Contains(m.View(), "■ ended") {
-		t.Fatalf("ending %v, view:\n%s", m.ending, m.View())
+	if !m.ending || !strings.Contains(m.View().Content, "■ ended") {
+		t.Fatalf("ending %v, view:\n%s", m.ending, m.View().Content)
 	}
 	_, cmd := m.Update(endedMsg{})
 	if cmd == nil {

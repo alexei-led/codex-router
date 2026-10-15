@@ -6,6 +6,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/charmbracelet/colorprofile"
+
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/registry"
@@ -85,7 +87,10 @@ func RenderFleetView(v FleetView) string {
 		}
 		st.homes = append(st.homes, g)
 	}
-	return render(view{snap: v.Snap, tab: v.Tab, width: v.Width, styled: true, fleet: &st, locked: v.Locked})
+	var b strings.Builder
+	w := colorprofile.Writer{Forward: &b, Profile: colorprofile.ANSI256}
+	w.WriteString(render(view{snap: v.Snap, tab: v.Tab, width: v.Width, styled: true, fleet: &st, locked: v.Locked}))
+	return b.String()
 }
 
 // all lists every session, home by home, in display order.

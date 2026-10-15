@@ -5,7 +5,8 @@ import (
 	"slices"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
@@ -94,56 +95,55 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.err != nil:
 			m.notice = "command failed: " + msg.err.Error()
 		}
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m, m.key(msg)
 	}
 	return m, nil
 }
 
-func (m *model) key(k tea.KeyMsg) tea.Cmd {
+func (m *model) key(k tea.KeyPressMsg) tea.Cmd {
 	all := m.f.locked == ""
 	tabs := tabsFor(all)
-	switch s := k.String(); s {
-	case "q", "ctrl+c":
+	switch {
+	case key.Matches(k, keys.Quit):
 		return tea.Quit
-	case "1", "2", "3", "4", "5":
-		m.tab = Tabs[s[0]-'1']
-	case "0":
+	case key.Matches(k, keys.TabNum):
+		m.tab = Tabs[k.String()[0]-'1']
+	case key.Matches(k, keys.List):
 		if all {
 			m.tab, m.cursor = TabSessions, m.st.focus
 		}
-	case "tab":
+	case key.Matches(k, keys.Next):
 		m.tab = tabs[(m.tabIndex(tabs)+1)%len(tabs)]
-	case "shift+tab":
+	case key.Matches(k, keys.Prev):
 		m.tab = tabs[(m.tabIndex(tabs)+len(tabs)-1)%len(tabs)]
-	case "[":
+	case key.Matches(k, keys.Session):
 		if all {
-			return m.step(-1)
-		}
-	case "]":
-		if all {
+			if k.String() == "[" {
+				return m.step(-1)
+			}
 			return m.step(1)
 		}
-	case "up":
+	case key.Matches(k, keys.Up):
 		if m.tab == TabSessions {
 			m.moveCursor(-1)
 		}
-	case "down":
+	case key.Matches(k, keys.Down):
 		if m.tab == TabSessions {
 			m.moveCursor(1)
 		}
-	case "enter":
+	case key.Matches(k, keys.Enter):
 		if m.tab == TabSessions && m.cursor != "" {
 			m.tab = TabNow
 			return m.focusOn(m.cursor)
 		}
-	case "p":
+	case key.Matches(k, keys.Pin):
 		return m.command(pinCycle(m.st.focus, m.snap().Pin))
-	case " ":
+	case key.Matches(k, keys.Toggle):
 		return m.command(toggleCommand(m.st.focus, m.snap().Mode))
-	case "P":
+	case key.Matches(k, keys.Home):
 		return m.homeCommand(m.homeToggle())
-	case "c":
+	case key.Matches(k, keys.Preset):
 		if m.tab == TabPolicy {
 			return m.homeCommand(route.Command{Op: route.OpPreset, Preset: nextPreset(m.snap().Preset)})
 		}
@@ -274,7 +274,11 @@ func nextPreset(cur config.Preset) config.Preset {
 	return Presets[0]
 }
 
-func (m *model) View() string { return render(m.view()) }
+func (m *model) View() tea.View {
+	v := tea.NewView(render(m.view()))
+	v.AltScreen = true
+	return v
+}
 
 func (m *model) view() view {
 	return view{

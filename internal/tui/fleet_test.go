@@ -508,9 +508,9 @@ func TestFleetHomeCommandsReachEveryEndpointOfTheFocusedHome(t *testing.T) {
 
 	m := newModel(tf.fleet)
 	m.Update(fleetMsg{})
-	run(m, key(m, "P"))
+	run(m, press(m, "P"))
 	m.tab = TabPolicy
-	run(m, key(m, "c"))
+	run(m, press(m, "c"))
 
 	want := []route.Command{
 		{Op: route.OpPause, Scope: route.ScopeHome},
