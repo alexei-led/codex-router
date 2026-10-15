@@ -90,7 +90,7 @@ func TestRenderGolden(t *testing.T) {
 	for _, tab := range Tabs {
 		for _, width := range []int{80, 120} {
 			t.Run(fmt.Sprintf("%s-%d", tab, width), func(t *testing.T) {
-				checkGolden(t, fmt.Sprintf("%s-%d.golden", tab, width), RenderPlain(fixture(), tab, width))
+				checkGolden(t, fmt.Sprintf("%s-%d.golden", tab, width), renderPlain(fixture(), tab, width))
 			})
 		}
 	}
@@ -127,7 +127,7 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := fixture()
 			tt.mutate(&s)
-			got := RenderPlain(s, tt.tab, 100)
+			got := renderPlain(s, tt.tab, 100)
 			for _, w := range tt.want {
 				if !strings.Contains(got, w) {
 					t.Errorf("missing %q in\n%s", w, got)
@@ -146,7 +146,7 @@ func TestRenderIsWidthBound(t *testing.T) {
 	s := fixture()
 	for _, tab := range Tabs {
 		for _, width := range []int{40, 80, 120} {
-			for _, line := range strings.Split(RenderPlain(s, tab, width), "\n") {
+			for _, line := range strings.Split(renderPlain(s, tab, width), "\n") {
 				if n := utf8.RuneCountInString(line); n > width {
 					t.Errorf("%s/%d: line of %d runes: %q", tab, width, n, line)
 				}
@@ -157,10 +157,10 @@ func TestRenderIsWidthBound(t *testing.T) {
 
 func TestPlainHasNoEscapesAndStyledDoes(t *testing.T) {
 	s := fixture()
-	if strings.Contains(RenderPlain(s, TabNow, 100), "\x1b") {
+	if strings.Contains(renderPlain(s, TabNow, 100), "\x1b") {
 		t.Error("plain render contains ANSI")
 	}
-	if !strings.Contains(Render(s, TabNow, 100), "\x1b[") {
+	if !strings.Contains(render(view{snap: s, tab: TabNow, width: 100, styled: true}), "\x1b[") {
 		t.Error("styled render has no ANSI")
 	}
 }
@@ -908,4 +908,8 @@ func TestEndedExitCancelsWhenTheSessionReturns(t *testing.T) {
 	if _, cmd := m.Update(endedMsg{}); cmd != nil {
 		t.Error("quit although the session is back")
 	}
+}
+
+func renderPlain(s route.Snapshot, tab Tab, width int) string {
+	return render(view{snap: s, tab: tab, width: width})
 }
