@@ -114,10 +114,11 @@ func endpointSessions(ep registry.Endpoint) (control.Hello, []route.SessionInfo,
 
 // Resolve returns the sessions query names under the first rule that
 // matches any: an exact session or thread id; a session or thread id
-// prefix; an exact label; a label suffix starting at a separator. Label
-// rules try the shown label and the one before disambiguation, so a label
-// that several sessions share names all of them. One match resolves;
-// several are ambiguous.
+// prefix; an exact label; a label suffix starting at a separator; a label
+// prefix ending at a separator, such as the home name. Label rules try the
+// shown label and the one before disambiguation, so a label that several
+// sessions share names all of them. One match resolves; several are
+// ambiguous.
 func Resolve(sessions []Session, query string) []Session {
 	rules := []func(Session) bool{
 		func(s Session) bool { return s.ID == query || s.ThreadID == query },
@@ -127,6 +128,9 @@ func Resolve(sessions []Session, query string) []Session {
 		func(s Session) bool { return s.Label == query || s.base == query },
 		func(s Session) bool {
 			return strings.HasSuffix(s.Label, home.LabelSep+query) || strings.HasSuffix(s.base, home.LabelSep+query)
+		},
+		func(s Session) bool {
+			return strings.HasPrefix(s.Label, query+home.LabelSep) || strings.HasPrefix(s.base, query+home.LabelSep)
 		},
 	}
 	for _, match := range rules {
