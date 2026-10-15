@@ -193,19 +193,42 @@ It prints one line per session: id, home, label, mode and route, in the panel's 
 codex-router tui [--session ID|LABEL] [--socket PATH] [--no-mouse]
 ```
 
-Without flags, the panel shows every running session of every home. The top bar lists them, the focused session first, then the rest in list order, with the focus position on the right (`▸ 1/5`). Each session has its home's colored dot, and a mark when it needs a look: `◐` manual hold, `‖` paused, `↑` escalation, `?` unknown (a restarted brain holds the session's route until its next reply), `!` state lost (the brain could not read its saved pause, pin and preset, so the home is paused until `P` resumes it). The panel first focuses the session whose directory is the panel's directory or the closest one above it, else the most recently active session. Tabs 1-5 show the focused session.
+Without flags, the panel shows every running session of every home. It has three views, named in the header and cycled with `tab` and `shift+tab`: **Sessions**, **Policy** and **Usage**. A line at the bottom lists the keys that work now, and `?` opens a help overlay with all of them.
 
-**Sessions** (`0`) lists every session, grouped by home:
+The panel first selects the session whose directory is the panel's directory or the closest one above it, else the most recently active session. The selected session is the one every view shows and every key acts on.
 
-![Router panel, Sessions tab with the top bar: the default home runs three codex-router sessions, the work home is set up and shows a brain up for 2 hours](images/router-tui-sessions.svg)
+**Sessions** answers one question: which model is each session using right now, why, and should you step in? The list is on top and the selected session's detail below it, on one screen:
 
-- **Home line**: the number of routers (endpoints) serving the home. In the picture, `default` has three `codex-router` runs, and `work` is [set up](#route-a-whole-home-setup), so its one endpoint is the home's brain (`brain up 2h`). A brain that is down shows `brain down: default model`, and Codex's requests pass through unchanged. The line also shows how many other routers are lost, and the totals of its sessions: replies, switches, and the saving when `prices` is set. A brain that goes down stays on the line until it is back. Its sessions leave after 10 s.
-- **Rows**: the label without the home, the state (`on`, `paused`, `manual`, `escalation`, `unknown`, `state lost`, `disconnected`), the route, the last 24 routed replies colored by tier with the reply count, and the last switch. Below 100 columns the panel drops the replies and last switch columns.
-- `↑` `↓` move the selection, and `enter` focuses that session and opens Now. A long list scrolls. `●` marks the focused session when the selection is elsewhere. On this tab `space` and `P` act on the focused session, not on the selection.
+![Router panel, Sessions view: five sessions in two Codex homes, and the detail of the selected one](images/router-tui-sessions.svg)
 
-`--session` locks the panel to one session: no top bar and no Sessions tab, only a header line `● home · repo · branch  <id>`. Keys `[`, `]` and `0` do nothing there.
+- **Header**: the totals, and the focused home's classifier state: `Jev ready`, `○ Jev off`, or `✕ Jev unreachable · resumes in 42s` while the classifier is paused after failures.
+- **Home line**: the home's name, and `brain up 2h` when the home is [set up](#route-a-whole-home-setup). A brain that is down shows `brain down: default model`, and Codex's requests pass through unchanged. The line also counts routers that are lost. A brain that goes down stays on the line until it is back. Its sessions leave after 10 s.
+- **Rows**: the label without the home, the state, the model and effort in use, a sparkline of the last 10 routed replies, and the time of the last switch with `↑` or `↓`. The sparkline `▁▃▅▇` means micro, low, medium, high, so it reads without color. A narrow panel drops columns from the right.
+- **State** always has a glyph: `● on`, `↑ high` (a repeated failure holds a higher tier), `‖ paused`, `◐ manual` (you picked a model with `/model`), `? unknown` (a restarted brain holds the route until the next reply), `! state lost` (the brain could not read its saved pause, pin and preset, so the home is paused until `P` resumes it), `✕ disconnected`.
+- **`○ waiting for the first prompt`**: a router is running, but its Codex has not sent a prompt yet. It has no session to select. It shows under its home with the directory it was started in, or `brain` for a home's brain.
+- **Detail**: the tier chip with the activity and the route (`HIGH  debug → gpt-6.1-sol · high`), the reason at the right edge, and below it the evidence: the classifier's answer for the tier against the policy's bar (`Jev high 99% ≥ 75%`) and the engine's own support text. With the classifier off the chip reads `PINS ONLY` and the evidence line gives the exact reason, for example the unset key variable. Other chips: `KEPT` (a decision that left Codex's model in place), `PAUSED`, `MANUAL`, `STATE LOST`.
+- **Pin** buttons, one per tier. `▶` marks the tier in use and the pinned tier is reversed. **Session**: replies, switches, the estimated saving against the baseline (it needs `prices`) and the strip of routed replies, one cell per `N` replies. **Context** and **Cache**: how full the smallest window is and prompt-cache reuse. **Look**: things to act on, each naming where you change it.
 
-![Router panel locked to one session with codex-router tui --session: one header line with the session's label and id, then the Now tab](images/router-tui-locked.svg)
+From 120 columns the list sits on the left and the detail on the right, with an accent bar `▎` on the side that has the focus:
+
+![Router panel, Sessions view side by side at 130 columns](images/router-tui-sessions-wide.svg)
+
+**Policy** merges the preset, the classifier and the routes of each tier:
+
+![Router panel, Policy view: the preset buttons with balanced marked, the classifier, the route of each tier and the switching thresholds](images/router-tui-policy.svg)
+
+- **Preset**: `thrifty`, `balanced`, `quality`. It applies to every session of the selected session's home. While the classifier is off, it says `no effect while the classifier is off`.
+- **Classifier**: the name and model, the median latency and the failure count; when it is paused, `✕ Jev unreachable · resumes in 42s` with the last error (`timeout`, `http 503`, `bad response`; never the key). With no calls yet it says `ready · no calls yet`. When it is off: `○ off · <reason> · requests keep Codex's model; only pins change it`.
+- **Routes**: the model and effort of each tier, the model whose compatibility group they must share, and the models blocked because they are outside it.
+- **Switching**: the votes and bars for going up and down, and the minimum dwell.
+
+**Usage** shows the estimated saving as one sentence against the baseline, a ledger (replies, switches, cache reuse, the last switch), and replies by tier and activity as block bars. Plan billing counts usage, not dollars, so the dollar figure is only an estimate.
+
+![Router panel, Usage view: the saving against the baseline, the ledger, and replies by tier and activity as bars](images/router-tui-usage.svg)
+
+`--session` locks the panel to one session: no list, only that session's detail, plus Policy and Usage. Keys `[`, `]`, `↑` and `↓` do nothing there.
+
+![Router panel locked to one session with codex-router tui --session: the detail of one session fills the screen](images/router-tui-locked.svg)
 
 Use it in a split next to Codex, so the panel always shows that one session. When that session's router exits, the panel shows `ended` and closes 3 s later. A session served by a brain never ends this way: a restarted brain lists it again at its next prompt, so the panel shows `disconnected` meanwhile. The value can be:
 
@@ -221,82 +244,55 @@ The first rule with any match decides. A label shared by several sessions matche
 
 When a router goes away, its sessions show `disconnected`, and leave the list 10 s later. If the router comes back, the panel dials it again. With no session at all, the header reads `no sessions` and the panel waits. Quitting the panel does not affect any session.
 
-| Key                | Action                                                                         |
-| ------------------ | ------------------------------------------------------------------------------ |
-| `[`, `]`           | previous, next session (all sessions only)                                     |
-| `0`                | Sessions tab (all sessions only)                                               |
-| `1`–`5`            | Now, Routes, Policy, Classifier, Usage                                         |
-| `tab`, `shift+tab` | next, previous tab                                                             |
-| `↑`, `↓`, `enter`  | on the Sessions tab: select a session, focus it                                |
-| `p`                | pin the focused session's next turn: none → high → medium → low → micro → none |
-| `space`            | pause the focused session, or resume it                                        |
-| `P`                | pause every session of the focused session's home, or resume them              |
-| `c` (Policy tab)   | next preset for the focused session's home: thrifty, balanced, quality         |
-| `q`, `ctrl+c`      | quit the panel                                                                 |
+| Key                | Action                                                                                          |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| `↑` `↓`, `j` `k`   | select the previous, next session (Sessions view)                                               |
+| `enter`            | open the selected session's detail alone; side by side, move the focus to the detail            |
+| `esc`              | close the help or a popover, else go back from the detail                                       |
+| `[`, `]`           | previous, next session (all sessions only)                                                      |
+| `tab`, `shift+tab` | next, previous view; side by side, the list and the detail are two stops on Sessions            |
+| `p`                | open the pin popover: `1 micro  2 low  3 medium  4 high  0 none`, for the selected session      |
+| `space`            | pause the selected session, or resume it                                                        |
+| `P`                | pause every session of the selected session's home, or resume them                              |
+| `s` (Policy)       | open the preset popover: `1 thrifty  2 balanced  3 quality`, for the selected session's home    |
+| `?`                | show or hide the help overlay                                                                   |
+| `q`, `ctrl+c`      | quit the panel                                                                                  |
 
-The footer lists only the keys that work now: `space` reads `pause` or `resume`, `[ ]` is hidden with one session, and `c` shows only on Policy while the classifier is on.
+The footer lists only the keys that work now and ends with `? help`: `space` reads `pause` or `resume`, `↑↓` is hidden with one session, and `s` shows only on Policy while the classifier is on. While a popover or the help is open, the footer lists only the keys that work there.
 
 The mouse works too, with the left button:
 
-| Click on                          | Action                                                           |
-| --------------------------------- | ---------------------------------------------------------------- |
-| a tab label, including `Sessions` | show that tab                                                    |
-| a session in the top bar          | focus it                                                         |
-| a row on the Sessions tab         | select it; click the selected row again to focus it and open Now |
-| a tier in **Pin next** (Now)      | pin the next turn to that tier; click the pinned tier to unpin   |
-| a preset button (Policy)          | set that preset for the focused session's home                   |
-| the wheel on the Sessions tab     | move the selection                                               |
+| Click on                       | Action                                                                      |
+| ------------------------------ | --------------------------------------------------------------------------- |
+| a view name                    | show that view                                                              |
+| a row of the list              | select it; click the selected row again to open it, as `enter` does         |
+| a tier button in **Pin**       | pin the next turn to that tier; click the pinned tier to unpin              |
+| a preset button (Policy)       | set that preset for the home                                                |
+| a choice in a popover          | pick it; a click outside closes the popover                                 |
+| a key in the footer, `? help`  | do what that key does                                                       |
+| the wheel over the list        | move the selection                                                          |
 
-The wheel does nothing on other tabs. A click that only focuses the terminal window does nothing.
+A click that only focuses the terminal window does nothing. The panel takes the mouse, so the terminal's own text selection is off. Hold `Shift` (Option on macOS Terminal.app and iTerm2) while you drag to select text anyway. Or run `codex-router tui --no-mouse` to leave the mouse to the terminal: keys work as before, and clicks do nothing.
 
-The panel takes the mouse, so the terminal's own text selection is off. Hold `Shift` (Option on macOS Terminal.app and iTerm2) while you drag to select text anyway. Or run `codex-router tui --no-mouse` to leave the mouse to the terminal: keys work as before, and clicks do nothing.
+![Router panel, pin popover: a box under the pin row offers a tier for each number key](images/router-tui-popover.svg)
 
-The header shows the focused session's mode, the model the footer shows, the classifier state, and `footer not synced` when the footer lags:
+An action the router accepted shows a short confirmation at the bottom right for 2.5 s, for example `pinned high for the next turn`. A failure stays on the screen as a line under the footer.
 
-- `◉ on`: routing is active.
-- `◉ pins only`: routing is on but the classifier is off, so only pins (`p`) and the context guard change the model.
-- `◐ manual`: you picked a model with `/model`, and routing holds it until `space`.
-- `‖ paused` (`○ paused` in the header): requests pass through unchanged.
+The panel asks the terminal for its background color and uses a light or a dark palette to match. Every state also has a glyph, so the panel reads with `NO_COLOR` set.
 
-**Now** shows the current decision and the session so far:
-
-![Router panel, Now tab](images/router-tui-now.svg)
-
-- **Next turn**, or **This turn** while a turn runs: the tier, the model and effort, and the model that Codex sent (`base`) when it was rewritten.
-- **Activity**: the classifier's activity and probability, the two likeliest alternatives, and the probability at which an activity route applies.
-- **Why**: the policy's reason, and the support it weighed against its bar.
-- **Pin next**: one button per tier with the classifier's support. `▶` marks the tier in use.
-- **Session**: routed replies as a strip colored by tier, counts by tier and activity, the last switch, and the estimated saving against the baseline route. The saving needs `prices`.
-- **Worth a look**: things to act on, each naming the tab where you change it. Examples: the classifier is paused or failing, a manual hold, the context guard kept a larger window, or cache reuse is low after switches.
-- **Codex**, **Context**, **Cache**: what the footer shows, how full the smallest window is, and prompt-cache reuse.
-
-**Routes** lists each tier's route, the model whose compatibility group they must share, models blocked because they are outside it, and the last six decisions with their reason. A decision that left Codex's own model in place (classifier off or failed) shows `kept` in place of a tier.
-
-![Routes tab](images/router-tui-routes.svg)
-
-**Policy** shows the presets and the thresholds in effect. `c` picks the next preset, and a click on a button sets it. While the classifier is off, the tab says `no effect while the classifier is off`.
-
-![Policy tab: the preset buttons with balanced selected, and the thresholds in effect](images/router-tui-policy.svg)
-
-**Classifier** shows its name and model, state, latency, failures, the last error (`timeout`, `http 503`, `bad response`; never the key), and while it is paused, when it resumes. With no calls yet it says `ready · no calls yet`. When it is off, it shows `off` and the reason, such as the unset key variable.
-
-![Classifier tab: Jev ready, last and median latency, no failures](images/router-tui-classifier.svg)
-
-**Usage** shows requests, switches, cache reuse, the list-price estimate for this session, and replies by tier and activity. Plan billing counts usage, not dollars, so the dollar figure is only an estimate.
-
-![Usage tab: requests, switches, cache reuse, the estimated saving, and replies by tier and activity](images/router-tui-usage.svg)
+![Router panel, help overlay: every key, grouped](images/router-tui-help.svg)
 
 ### Pin, pause, preset
 
-- **Pin** (`p`): the focused session's next turn runs on that tier for all its steps, and the classifier is not asked. The turn uses up the pin. Other sessions are not affected.
-- **Pause** (`space`): every request of the focused session goes out on Codex's own model, unchanged, and its footer goes back to it.
+- **Pin** (`p`, then a number): the selected session's next turn runs on that tier for all its steps, and the classifier is not asked. The turn uses up the pin. Other sessions are not affected.
+- **Pause** (`space`): every request of the selected session goes out on Codex's own model, unchanged, and its footer goes back to it.
 - **Resume** (`space` again): routing of that session continues. Resume also clears its manual hold.
-- **Pause home** (`P`): pauses every running session of the focused session's home, and no other home. When all of them are paused, `P` resumes the home: that clears the manual holds there, but keeps the sessions you paused with `space` paused. Resume those with `space`.
-- **Preset** (`c` on the Policy tab): applies at once to every running session of the focused session's home, until they exit. A set-up home's brain keeps it across restarts. The config file is not changed.
+- **Pause home** (`P`): pauses every running session of the selected session's home, and no other home. When all of them are paused, `P` resumes the home: that clears the manual holds there, but keeps the sessions you paused with `space` paused. Resume those with `space`.
+- **Preset** (`s` on Policy, then a number, or a click): applies at once to every running session of the selected session's home, until they exit. A set-up home's brain keeps it across restarts. The config file is not changed.
 
 ### Pick a model yourself
 
-A `/model` pick in Codex starts a manual hold for that session. The panel shows `◐ manual`, and requests keep your model until you focus the session and press `space` in the panel. If you do not want Codex to save the model to its config, use the session-only choice in Codex's picker.
+A `/model` pick in Codex starts a manual hold for that session. The panel shows `◐ manual`, and requests keep your model until you select the session and press `space` in the panel. If you do not want Codex to save the model to its config, use the session-only choice in Codex's picker.
 
 ### What the router leaves alone
 
@@ -472,8 +468,8 @@ Undo backs `config.toml` up, removes the marked blocks, then stops and removes t
 | Symptom                                                                 | Cause and fix                                                                                                                                                                                                                                                                                    |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `codex-router: <reason>; running plain codex`                           | The config is invalid, or a startup step failed. The reason names it. Fix the config, or check `codex --version` and the session log.                                                                                                                                                            |
-| Panel says `pins only` or `Jev off`; the model never changes            | The Classifier tab names the reason; usually the classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session. A brain does not see your shell: set the classifier's `envFile`, then restart the brain.                                          |
-| Panel says `paused until …`                                             | The classifier failed 3 times in a row and pauses for 60 s. The Classifier tab shows the last error. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                                                                                         |
+| Panel says `PINS ONLY` or `Jev off`; the model never changes            | The Policy view names the reason; usually the classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session. A brain does not see your shell: set the classifier's `envFile`, then restart the brain.                                          |
+| Panel says `paused until …`                                             | The classifier failed 3 times in a row and pauses for 60 s. The Policy view shows the last error. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                                                                                         |
 | `footer not synced`                                                     | Settings writes to the app-server are pending or failed. Routing still works. If it persists, your Codex version may not support the sync (see [Codex versions](#codex-versions)).                                                                                                               |
 | Panel says `no sessions`; `codex-router sessions` prints nothing        | No session is registered for your user under this state dir. Start a session, or use the same `XDG_STATE_HOME` (or none) in the panel's shell as in the session's shell.                                                                                                                         |
 | `codex-router: the panel will not list this session: …`                 | The router could not write its registry entry, usually because the registry dir is not a private directory of yours (mode `0700`). The session routes as usual.                                                                                                                                  |
