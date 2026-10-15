@@ -138,7 +138,29 @@ func TestNewClassifier(t *testing.T) {
 	shared := keyFile("shared.env", "TYPESAFE_API_KEY=from-file\n", 0o644)
 	noKey := keyFile("nokey.env", "OTHER=x\n", 0o600)
 	keyFile("home.env", "TYPESAFE_API_KEY=from-file\n", 0o600)
+	cfAccount := keyFile("cf-account.env", "CLOUDFLARE_ACCOUNT_ID=acct\n", 0o600)
+	cfBoth := keyFile("cf-both.env", "CLOUDFLARE_API_TOKEN=t\nCLOUDFLARE_ACCOUNT_ID=acct\n", 0o600)
+	openaiFile := keyFile("openai.env", "OPENAI_API_KEY=k\n", 0o600)
 	missing := filepath.Join(dir, "missing.env")
+	withClassifier := func(name string) config.Config {
+		cfg := config.Default()
+		cfg.Classifier = name
+		return cfg
+	}
+	withEnvFile := func(name, path string) config.Config {
+		cfg := withClassifier(name)
+		cc := cfg.Classifiers[name]
+		cc.EnvFile = path
+		cfg.Classifiers[name] = cc
+		return cfg
+	}
+	withEndpoint := func(endpoint string) config.Config {
+		cfg := config.Default()
+		cc := cfg.Classifiers[cfg.Classifier]
+		cc.Endpoint = endpoint
+		cfg.Classifiers[cfg.Classifier] = cc
+		return cfg
+	}
 	cases := []struct {
 		name       string
 		cfg        config.Config
@@ -157,6 +179,20 @@ func TestNewClassifier(t *testing.T) {
 			"TYPESAFE_API_KEY is not set; envFile " + noKey + ": TYPESAFE_API_KEY: key not in file"},
 		{"envFile missing", withFile(missing), nil, false,
 			"TYPESAFE_API_KEY is not set; envFile open " + missing + ": no such file or directory"},
+		{"clef account and token in env", withClassifier("clef"), map[string]string{"CLOUDFLARE_API_TOKEN": "t", "CLOUDFLARE_ACCOUNT_ID": "a"}, true, ""},
+		{"clef account in envFile", withEnvFile("clef", cfAccount), map[string]string{"CLOUDFLARE_API_TOKEN": "t"}, true, ""},
+		{"clef token and account in envFile", withEnvFile("clef-omni", cfBoth), nil, true, ""},
+		{"clef account missing", withClassifier("clef"), map[string]string{"CLOUDFLARE_API_TOKEN": "t"}, false, "CLOUDFLARE_ACCOUNT_ID is not set"},
+		{"clef token missing wins", withClassifier("clef"), nil, false, "CLOUDFLARE_API_TOKEN is not set"},
+		{"clef account not in envFile", withEnvFile("clef-flash", noKey), map[string]string{"CLOUDFLARE_API_TOKEN": "t"}, false,
+			"CLOUDFLARE_ACCOUNT_ID is not set; envFile " + noKey + ": CLOUDFLARE_ACCOUNT_ID: key not in file"},
+		{"clef account envFile shared", withEnvFile("clef", shared), map[string]string{"CLOUDFLARE_API_TOKEN": "t"}, false,
+			"CLOUDFLARE_ACCOUNT_ID is not set; envFile " + shared + ": open to group or others; chmod 600 it"},
+		{"openai key set", withClassifier("openai"), map[string]string{"OPENAI_API_KEY": "k"}, true, ""},
+		{"openai key missing", withClassifier("openai"), nil, false, "OPENAI_API_KEY is not set"},
+		{"openai key from envFile", withEnvFile("openai", openaiFile), nil, true, ""},
+		{"bad placeholder", withEndpoint("https://x/{acct}"), map[string]string{"TYPESAFE_API_KEY": "k"}, false,
+			"endpoint placeholder {acct}: name must match ^[A-Z][A-Z0-9_]*$"},
 		{"no key needed", func() config.Config { c := config.Default(); c.Classifier = "ollama"; return c }(), nil, true, ""},
 		{"not configured", unknown, nil, false, "no classifier configured"},
 		{"off", func() config.Config { c := config.Default(); c.Classifier = config.ClassifierOff; return c }(),

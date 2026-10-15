@@ -47,6 +47,30 @@
   "preset": "balanced",
   "classifier": "jev",
   "classifiers": {
+    "clef": {
+      "label": "Clef",
+      "api": "system-one",
+      "endpoint": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/clef",
+      "model": "clef",
+      "keyEnv": "CLOUDFLARE_API_TOKEN",
+      "timeoutMs": 3000
+    },
+    "clef-flash": {
+      "label": "Clef Flash",
+      "api": "system-one",
+      "endpoint": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/clef-flash",
+      "model": "clef-flash",
+      "keyEnv": "CLOUDFLARE_API_TOKEN",
+      "timeoutMs": 3000
+    },
+    "clef-omni": {
+      "label": "Clef Omni",
+      "api": "system-one",
+      "endpoint": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/clef-omni",
+      "model": "clef-omni",
+      "keyEnv": "CLOUDFLARE_API_TOKEN",
+      "timeoutMs": 3000
+    },
     "jev": {
       "label": "Jev",
       "api": "system-one",
@@ -61,6 +85,14 @@
       "endpoint": "http://127.0.0.1:11434/api/chat",
       "model": "qwen3.5:9b",
       "timeoutMs": 5000
+    },
+    "openai": {
+      "label": "OpenAI",
+      "api": "openai-decisions",
+      "endpoint": "https://api.openai.com/v1/decisions",
+      "model": "gpt-6-luna",
+      "keyEnv": "OPENAI_API_KEY",
+      "timeoutMs": 3000
     }
   },
   "context": {
