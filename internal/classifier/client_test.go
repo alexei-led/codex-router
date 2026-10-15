@@ -354,17 +354,19 @@ func TestStatusCodes(t *testing.T) {
 		steps    []func(*http.Request) (*http.Response, error)
 		err      error
 		requests int
+		lastErr  string
 	}{
-		{"unauthorized", steps(status(http.StatusUnauthorized)), ErrAuth, 1},
-		{"forbidden", steps(status(http.StatusForbidden)), ErrAuth, 1},
-		{"not found", steps(status(http.StatusNotFound)), ErrHTTP, 1},
-		{"transient twice", steps(status(http.StatusBadGateway), status(http.StatusTooManyRequests)), ErrHTTP, 2},
-		{"transient then ok", steps(status(http.StatusInternalServerError), reply200(jevAnswer)), nil, 2},
-		{"refused twice", steps(refused), ErrUnreachable, 2},
-		{"refused then ok", steps(refused, reply200(jevAnswer)), nil, 2},
-		{"not json", steps(reply200("PRIVATE_PROMPT")), ErrMalformed, 1},
-		{"unknown choice", steps(reply200(`{"answers":{"route":{"type":"choice","choice":"PRIVATE","probabilities":{}}}}`)), ErrMalformed, 1},
-		{"oversized answer", steps(reply200(jevAnswer + strings.Repeat(" ", MaxAnswerChars))), ErrMalformed, 1},
+		{"unauthorized", steps(status(http.StatusUnauthorized)), ErrAuth, 1, "http 401"},
+		{"forbidden", steps(status(http.StatusForbidden)), ErrAuth, 1, "http 403"},
+		{"not found", steps(status(http.StatusNotFound)), ErrHTTP, 1, "http 404"},
+		{"transient twice", steps(status(http.StatusBadGateway), status(http.StatusServiceUnavailable)), ErrHTTP, 2, "http 503"},
+		{"transient then ok", steps(status(http.StatusInternalServerError), reply200(jevAnswer)), nil, 2, ""},
+		{"refused twice", steps(refused), ErrUnreachable, 2, "unreachable"},
+		{"refused then ok", steps(refused, reply200(jevAnswer)), nil, 2, ""},
+		{"timeout", steps(untilCancelled), ErrTimeout, 1, "timeout"},
+		{"not json", steps(reply200("PRIVATE_PROMPT")), ErrMalformed, 1, "bad response"},
+		{"unknown choice", steps(reply200(`{"answers":{"route":{"type":"choice","choice":"PRIVATE","probabilities":{}}}}`)), ErrMalformed, 1, "bad response"},
+		{"oversized answer", steps(reply200(jevAnswer + strings.Repeat(" ", MaxAnswerChars))), ErrMalformed, 1, "bad response"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
@@ -383,6 +385,9 @@ func TestStatusCodes(t *testing.T) {
 				}
 				if c.Health().Failures != wantFailures {
 					t.Errorf("failures = %d, want %d", c.Health().Failures, wantFailures)
+				}
+				if got := c.Health().LastError; got != tc.lastErr {
+					t.Errorf("last error = %q, want %q", got, tc.lastErr)
 				}
 			})
 		})
@@ -429,7 +434,7 @@ func TestThreeFailuresPauseThenOneSuccessResumes(t *testing.T) {
 		if rec.count() != FailuresToPause {
 			t.Errorf("requests = %d, want %d", rec.count(), FailuresToPause)
 		}
-		if h := c.Health(); h.Failures != FailuresToPause || !h.PausedUntil.Equal(time.Now().Add(PauseDuration)) {
+		if h := c.Health(); h.Failures != FailuresToPause || !h.PausedUntil.Equal(time.Now().Add(PauseDuration)) || h.LastError != "http 401" {
 			t.Errorf("health = %+v", h)
 		}
 
@@ -437,7 +442,7 @@ func TestThreeFailuresPauseThenOneSuccessResumes(t *testing.T) {
 		if _, err := c.Ask(t.Context(), smallInput); err != nil {
 			t.Fatalf("after the pause err = %v", err)
 		}
-		if h := c.Health(); h.Failures != 0 || !h.PausedUntil.IsZero() {
+		if h := c.Health(); h.Failures != 0 || !h.PausedUntil.IsZero() || h.LastError != "" {
 			t.Errorf("health = %+v, want reset", h)
 		}
 	})

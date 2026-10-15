@@ -98,6 +98,9 @@ func (e *Engine) SnapshotFor(threadID string) Snapshot {
 // the health itself and the findings worth a look.
 func (e *Engine) withHealth(s Snapshot) Snapshot {
 	s.Classifier, s.ClassifierOff = e.health(), e.ask == nil
+	if s.ClassifierOff {
+		s.ClassifierOffReason = e.askOff
+	}
 	s.Worth = worth(s)
 	return s
 }
@@ -146,6 +149,7 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 		Baseline:         cfg.RouteFor(cfg.Baseline, ""),
 		FooterSynced:     true,
 		ClassifierLabel:  cfg.Classifiers[cfg.Classifier].Label,
+		ClassifierModel:  cfg.Classifiers[cfg.Classifier].Model,
 		ClassifierMedian: median(e.latencies),
 		Routes:           maps.Clone(cfg.Routes),
 		Policy:           cfg.Effective(),

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/route"
 )
 
 func TestWaitCodexForwardsTermAndHupAndDropsIntAndQuit(t *testing.T) {
@@ -167,6 +168,31 @@ func TestNewClassifier(t *testing.T) {
 			asker, reason := newClassifier(tc.cfg, func(k string) string { return tc.env[k] })
 			if on := asker != nil; on != tc.wantOn || reason != tc.wantReason {
 				t.Errorf("newClassifier = on %v, %q; want on %v, %q", on, reason, tc.wantOn, tc.wantReason)
+			}
+		})
+	}
+}
+
+func TestRouterDepsCarryTheReasonTheClassifierIsOff(t *testing.T) {
+	tests := []struct {
+		name   string
+		off    bool
+		env    []string
+		reason string
+	}{
+		{"key unset", true, nil, "TYPESAFE_API_KEY is not set"},
+		{"key set", false, []string{"TYPESAFE_API_KEY=k"}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			env := append([]string{"HOME=" + dir, "CODEX_HOME=" + dir}, tt.env...)
+			d, _ := RouterDeps(Options{Config: config.Default(), Env: env}, slog.New(slog.DiscardHandler))
+			if (d.Classifier == nil) != tt.off || d.ClassifierOffReason != tt.reason {
+				t.Errorf("classifier nil %v, reason %q", d.Classifier == nil, d.ClassifierOffReason)
+			}
+			if got := route.New(d).SnapshotFor(""); got.ClassifierOff != tt.off || got.ClassifierOffReason != tt.reason {
+				t.Errorf("snapshot off %v reason %q", got.ClassifierOff, got.ClassifierOffReason)
 			}
 		})
 	}

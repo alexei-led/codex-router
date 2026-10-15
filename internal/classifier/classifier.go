@@ -65,6 +65,10 @@ type Health struct {
 	Failures    int
 	PausedUntil time.Time
 	Latency     time.Duration
+	// LastError is why the last call failed, as a short code such as
+	// "timeout" or "http 503". Never the key or a response body. Empty after
+	// a success.
+	LastError string
 }
 
 // Code is a classifier failure reason.
