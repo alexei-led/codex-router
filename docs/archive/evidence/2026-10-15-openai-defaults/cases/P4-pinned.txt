@@ -1,0 +1,53 @@
+## P4-pinned (keep) endpoint=f82146cf thread=01a14089-382a-7ca0-8887-cf97b15ebc74
+prompt: Quick one: print the first line of go.mod. Nothing else.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ HIGH  gpt-6.1-sol · xhigh                                       pinned to high for this turn
+ Pin      micro   low   medium  ▶high                                          next turn only
+ Session  23 replies · 4 switches · cost ≈ $0.52 (1172%) vs gpt-6-luna · low
+          ▇▇▇▇▇▇▇▇▇▇▇▇▁▁▁▁▅▅▅▅▅▇▇  1 reply per cell
+ Context  ██░░░░░░░░ 24%  116.6K / 475K gpt-6.1-sol      Cache  99% last reply · 83% session
+ Recent   20:18  high   gpt-6.1-sol · xhigh · pinned to high for this turn · +1 steps
+          20:17  medium gpt-6.1-sol · medium · up to medium · +4 steps
+          20:11  micro  gpt-6-luna · low · classifier agrees with micro · +1 steps
+          20:11  micro  gpt-6-luna · low · down to micro · +1 steps
+          20:11  high   gpt-6.1-sol · xhigh · waiting to go down: needs more support · +1 st…
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:18:52 0cdaf1 s0 high - pinned gpt-6.1-sol xhigh rw
+20:18:57 0cdaf1 s1 high - continue gpt-6.1-sol xhigh rw
+### codex
+    + 21 lines (⌃t to expand)                                                                
+ 
+• Added Mean with empty-slice errors and overflow-safe averaging for finite values. Added
+  table-driven tests covering normal, extreme, and tiny values.
+ 
+  Requested test passed: exit_code=0.
+ 
+↳ Hook · router: medium · code → gpt-6.1-sol · medium · same turn
+ 
+  Worked for 1m 12s • 20:18                                                                  
+ 
+ 
+› Quick one: print the first line of go.mod. Nothing else.
+ 
+ 
+• Explored
+  └ Read go.mod
+    + Show details                                                                           
+ 
+• module github.com/alexei-led/codex-router
+ 
+↳ Hook · router: high → gpt-6.1-sol · xhigh · same turn
+ 
+  Worked for 9s • 20:19                                                                      
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol xhigh · 828K window · Context 90% left · +40 -0 · Ready · 274K used · Design c…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

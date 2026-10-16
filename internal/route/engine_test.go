@@ -158,7 +158,22 @@ type harness struct {
 	cat    *catalog.Store
 }
 
-func testConfig() config.Config { return config.Default() }
+// testConfig is the defaults with a fixed three-model layout and no prices,
+// so the engine tests exercise switch mechanics, not the shipped routes.
+func testConfig() config.Config {
+	c := config.Default()
+	c.Routes = map[config.Tier]config.Route{
+		config.TierHigh:   high,
+		config.TierMedium: medium,
+		config.TierLow:    low,
+		config.TierMicro:  {Model: "gpt-6-luna", Effort: config.EffortLow},
+	}
+	c.Activities = map[config.Activity]map[config.Tier]config.Route{
+		config.ActivityDebug: {config.TierMedium: debug},
+	}
+	c.Prices = nil
+	return c
+}
 
 func newHarness(t *testing.T, cfg config.Config, opts ...func(*Deps)) *harness {
 	t.Helper()

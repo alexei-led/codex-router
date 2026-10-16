@@ -1,0 +1,12 @@
+B3-luna-1 gap=3s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-luna-2 gap=0s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-lunahi-1 gap=4s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-lunahi-2 gap=0s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-sol-1 gap=4s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-sol-2 gap=1s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-solmed-1 gap=1s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-solmed-2 gap=1s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-solmed-3 gap=34s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-solmed-3 gap=52s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-solmed-3 gap=52s hidden_exit=0 hidden_ran_pass=1 own-pass
+B3-solmed-3 gap=52s hidden_exit=0 hidden_ran_pass=1 own-pass

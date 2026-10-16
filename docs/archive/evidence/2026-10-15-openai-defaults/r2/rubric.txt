@@ -1,0 +1,10 @@
+1. States that the tax is currently counted in uncached tokens and that both bars use pivots in tokens (upgradePivotTokens, downgradePivotTokens) through a share/ratio term.
+2. Prices the tax with per-model prices: the uncached versus cached input price of the models involved, relative to staying on the current model.
+3. Handles models without a configured price (fallback to token mode, or disable USD mode).
+4. Addresses that ChatGPT plan billing is usage limits rather than dollars, so token mode may still be right for some users; makes the unit configurable or justifies the choice.
+5. Defines new USD pivot config fields or defaults, with validation.
+6. Covers backward compatibility or migration for existing configs that set the token pivot fields.
+7. Notes the price asymmetry: moving to a cheap model writes cheap tokens and moving to an expensive model writes expensive tokens, so the bars should differ by direction.
+8. Mentions cache write pricing or the long-context price tier above 272K input tokens as a pricing detail.
+9. Gives a concrete test plan covering policy bars, the engine or ledger tax, and config defaults/validation.
+10. Covers the user-visible side: panel or log text that shows the tax (for example "switch ≈ Nk uncached tokens") and the Estimate fields.

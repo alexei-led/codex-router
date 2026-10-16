@@ -60,7 +60,7 @@ Everything after the router's own flags goes to Codex unchanged. Use `--` when a
 
 ```sh
 codex-router resume --last
-codex-router --config ./router.json -- --model gpt-6-sol
+codex-router --config ./router.json -- --model gpt-6.1-sol
 ```
 
 In this mode, Codex refuses `-s` and `-a` together with `resume` ("Permission overrides are not supported when resuming a remote task"). Drop those flags when you resume.
@@ -133,21 +133,50 @@ When a key variable or the Cloudflare account ID is unset, the classifier is off
 
 ```json
 {
-  "routes": { "low": { "model": "gpt-6-luna", "effort": "low" } },
-  "preset": "thrifty",
-  "prices": {
-    "gpt-6-luna": { "input": 0.5, "cachedInput": 0.05, "output": 3 },
-    "gpt-6-sol": { "input": 2.5, "cachedInput": 0.25, "output": 15 }
-  }
+  "routes": { "low": { "model": "gpt-6-luna", "effort": "medium" } },
+  "preset": "thrifty"
 }
 ```
 
 - **`routes`**: the model and effort for each tier. Keep all models in one compatibility group. The defaults are in one group.
 - **`preset`**: `thrifty` moves up reluctantly and down readily. `quality` does the reverse. `balanced` (the default) uses `policy` as written.
-- **`prices`**: list prices in USD per million tokens. They are needed only for the savings estimate in the panel. The values above are placeholders.
+- **`prices`**: list prices in USD per million tokens, for the savings estimate in the panel. The defaults cover `gpt-6.1-sol` and `gpt-6-luna`; add one for any other model you route to.
 - **`activities`**: a different route for an activity at a tier. The default sends `debug` at `medium` to high effort.
 
 The [configuration reference](configuration.md) has every field and its default.
+
+### Choose models and efforts
+
+The defaults, and why:
+
+| Tier   | Route                  | Why                                                                                |
+| ------ | ---------------------- | ---------------------------------------------------------------------------------- |
+| micro  | `gpt-6-luna · medium`  | Short answers. Luna at `low` is weak at agentic work (DeepSWE 2.4%), so not lower. |
+| low    | `gpt-6-luna · high`    | Matched Sol on every bounded task below at 5–10% of the cost.                      |
+| medium | `gpt-6.1-sol · medium` | Long, multi-step work, where public benchmarks show a wide gap to Luna.            |
+| high   | `gpt-6.1-sol · high`   | `xhigh` cost more, ran slower and planned no better.                               |
+
+`debug` at `medium` goes to `gpt-6.1-sol · high`. Effort changes on one model keep the cache, so moving between `medium` and `high` is free.
+
+Measured on 2026-10-16: `codex exec`, one fixture per task, 3 runs each, graded by tests or a fixed key; plans scored blind by `gpt-6.1-sol · high` against a 10-point rubric. Pass rate and mean list-price cost per run:
+
+| Task                                 | Luna medium | Luna high   | Luna xhigh  | Sol low    | Sol medium | Sol high   | Sol xhigh  |
+| ------------------------------------ | ----------- | ----------- | ----------- | ---------- | ---------- | ---------- | ---------- |
+| review: find 5 planted defects       | 87% $0.006  | 100% $0.009 | 100% $0.014 | 100% $0.12 | 100% $0.16 | 100% $0.20 | 100% $0.25 |
+| debug: 2 bugs from a symptom + tests | 100% $0.013 | 100% $0.020 | 100% $0.034 | 100% $0.16 | 100% $0.28 | 100% $0.44 | 100% $0.51 |
+| ops: fix vet, build and Makefile     | 100% $0.009 | 100% $0.008 | 100% $0.011 | 100% $0.11 | 100% $0.15 | 100% $0.16 | 100% $0.18 |
+| code: new effort + hidden tests      | 100% $0.009 | 100% $0.011 | 100% $0.016 | 100% $0.12 | 100% $0.17 | 100% $0.21 | 100% $0.28 |
+| explore: 14 facts from the code      | 95% $0.007  | 100% $0.008 | 100% $0.012 | 100% $0.10 | 100% $0.12 | —          | —          |
+| plan: design doc, rubric score       | 63% $0.010  | 73% $0.015  | 60% $0.031  | 70% $0.19  | 73% $0.27  | 73% $0.43  | 60% $0.47  |
+
+These tasks are bounded: one fixture, minutes of work. They do not show long sessions, large context or open design. Public benchmarks do: on Terminal-Bench, SRE Bench and Bug Hunt, Sol leads Luna by a wide margin, and Luna invents more facts when it answers from memory.
+
+To change the trade-off:
+
+- **Spend less:** set `routes.medium` to `gpt-6-luna · high`, or use the `thrifty` preset. Expect weaker long-running and design work.
+- **Spend more on small turns:** set `routes.low` to `gpt-6.1-sol · low`. 8–14 times the cost of the default; it did no better on the tasks above.
+- **Per activity:** add `activities` entries, for example `{"plan": {"medium": {"effort": "high"}}}`. A route on another model costs cache on each move, so prefer effort-only overrides.
+- **Keep `xhigh` for a pin**, for one hard turn, rather than a tier.
 
 ### `model_context_window`
 
@@ -244,33 +273,33 @@ The first rule with any match decides. A label shared by several sessions matche
 
 When a router goes away, its sessions show `disconnected`, and leave the list 10 s later. If the router comes back, the panel dials it again. With no session at all, the header reads `no sessions` and the panel waits. Quitting the panel does not affect any session.
 
-| Key                | Action                                                                                          |
-| ------------------ | ----------------------------------------------------------------------------------------------- |
-| `↑` `↓`, `j` `k`   | select the previous, next session (Sessions view)                                               |
-| `enter`            | open the selected session's detail alone; side by side, move the focus to the detail            |
-| `esc`              | close the help or a popover, else go back from the detail                                       |
-| `[`, `]`           | previous, next session (all sessions only)                                                      |
-| `tab`, `shift+tab` | next, previous view; side by side, the list and the detail are two stops on Sessions            |
-| `p`                | open the pin popover: `1 micro  2 low  3 medium  4 high  0 none`, for the selected session      |
-| `space`            | pause the selected session, or resume it                                                        |
-| `P`                | pause every session of the selected session's home, or resume them                              |
-| `s` (Policy)       | open the preset popover: `1 thrifty  2 balanced  3 quality`, for the selected session's home    |
-| `?`                | show or hide the help overlay                                                                   |
-| `q`, `ctrl+c`      | quit the panel                                                                                  |
+| Key                | Action                                                                                       |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| `↑` `↓`, `j` `k`   | select the previous, next session (Sessions view)                                            |
+| `enter`            | open the selected session's detail alone; side by side, move the focus to the detail         |
+| `esc`              | close the help or a popover, else go back from the detail                                    |
+| `[`, `]`           | previous, next session (all sessions only)                                                   |
+| `tab`, `shift+tab` | next, previous view; side by side, the list and the detail are two stops on Sessions         |
+| `p`                | open the pin popover: `1 micro  2 low  3 medium  4 high  0 none`, for the selected session   |
+| `space`            | pause the selected session, or resume it                                                     |
+| `P`                | pause every session of the selected session's home, or resume them                           |
+| `s` (Policy)       | open the preset popover: `1 thrifty  2 balanced  3 quality`, for the selected session's home |
+| `?`                | show or hide the help overlay                                                                |
+| `q`, `ctrl+c`      | quit the panel                                                                               |
 
 The footer lists only the keys that work now and ends with `? help`: `space` reads `pause` or `resume`, `↑↓` is hidden with one session, and `s` shows only on Policy while the classifier is on. While a popover or the help is open, the footer lists only the keys that work there.
 
 The mouse works too, with the left button:
 
-| Click on                       | Action                                                                      |
-| ------------------------------ | --------------------------------------------------------------------------- |
-| a view name                    | show that view                                                              |
-| a row of the list              | select it; click the selected row again to open it, as `enter` does         |
-| a tier button in **Pin**       | pin the next turn to that tier; click the pinned tier to unpin              |
-| a preset button (Policy)       | set that preset for the home                                                |
-| a choice in a popover          | pick it; a click outside closes the popover                                 |
-| a key in the footer, `? help`  | do what that key does                                                       |
-| the wheel over the list        | move the selection                                                          |
+| Click on                      | Action                                                              |
+| ----------------------------- | ------------------------------------------------------------------- |
+| a view name                   | show that view                                                      |
+| a row of the list             | select it; click the selected row again to open it, as `enter` does |
+| a tier button in **Pin**      | pin the next turn to that tier; click the pinned tier to unpin      |
+| a preset button (Policy)      | set that preset for the home                                        |
+| a choice in a popover         | pick it; a click outside closes the popover                         |
+| a key in the footer, `? help` | do what that key does                                               |
+| the wheel over the list       | move the selection                                                  |
 
 A click that only focuses the terminal window does nothing. The panel takes the mouse, so the terminal's own text selection is off. Hold `Shift` (Option on macOS Terminal.app and iTerm2) while you drag to select text anyway. Or run `codex-router tui --no-mouse` to leave the mouse to the terminal: keys work as before, and clicks do nothing.
 
@@ -468,8 +497,8 @@ Undo backs `config.toml` up, removes the marked blocks, then stops and removes t
 | Symptom                                                                 | Cause and fix                                                                                                                                                                                                                                                                                    |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `codex-router: <reason>; running plain codex`                           | The config is invalid, or a startup step failed. The reason names it. Fix the config, or check `codex --version` and the session log.                                                                                                                                                            |
-| Panel says `PINS ONLY` or `Jev off`; the model never changes            | The Policy view names the reason; usually the classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session. A brain does not see your shell: set the classifier's `envFile`, then restart the brain.                                          |
-| Panel says `paused until …`                                             | The classifier failed 3 times in a row and pauses for 60 s. The Policy view shows the last error. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                                                                                         |
+| Panel says `PINS ONLY` or `Jev off`; the model never changes            | The Policy view names the reason; usually the classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session. A brain does not see your shell: set the classifier's `envFile`, then restart the brain.                                             |
+| Panel says `paused until …`                                             | The classifier failed 3 times in a row and pauses for 60 s. The Policy view shows the last error. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                                                                                            |
 | `footer not synced`                                                     | Settings writes to the app-server are pending or failed. Routing still works. If it persists, your Codex version may not support the sync (see [Codex versions](#codex-versions)).                                                                                                               |
 | Panel says `no sessions`; `codex-router sessions` prints nothing        | No session is registered for your user under this state dir. Start a session, or use the same `XDG_STATE_HOME` (or none) in the panel's shell as in the session's shell.                                                                                                                         |
 | `codex-router: the panel will not list this session: …`                 | The router could not write its registry entry, usually because the registry dir is not a private directory of yours (mode `0700`). The session routes as usual.                                                                                                                                  |

@@ -1,0 +1,52 @@
+## F2-3 (keep) endpoint=990bc892 thread=01a1409c-12a5-7c12-929e-34dba103750f
+prompt: Unrelated quick question: what does the -run flag of go test do? One sentence. Do not run anything.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MEDIUM  explore → gpt-6.1-sol · medium                        hold: escalation holds 2 turns
+         Jev medium 0% · Jev gave micro 99%
+ Pin      micro   low  ▶medium   high                                          next turn only
+ Session  7 replies · 2 switches · saved ≈ $0.06 (47%) vs gpt-6.1-sol · medium
+          ▃▃▃▃▃▅▅  1 reply per cell
+ Context  ░░░░░░░░░░ 7%  37.6K / 475K gpt-6.1-sol      Cache  84% last reply · 67% session
+ Recent   20:29  medium gpt-6.1-sol · medium · hold: escalation holds 2 turns
+          20:29  medium gpt-6.1-sol · medium · escalate: same tool failure twice, edit in be…
+          20:29  low    gpt-6-luna · medium · classifier agrees with low · +2 steps
+          20:28  low    gpt-6-luna · medium · down to low · +1 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:29:31 21336e s0 medium explore hold gpt-6.1-sol medium 
+### codex
+    exit_code=1
+    + 3 lines (⌃t to expand)                                                                 
+ 
+• --- FAIL: TestAdd (0.00s)
+      labfix_test.go:9: Add(2, 3) = -1, want 5
+  FAIL
+  FAIL  github.com/alexei-led/codex-router/internal/labfix      0.263s
+  FAIL
+  exit_code=1
+ 
+↳ Hook · router: medium · ops → gpt-6.1-sol · medium · escalate: same tool failure twice,
+edit in between
+ 
+  Worked for 17s • 20:29                                                                     
+ 
+ 
+› Unrelated quick question: what does the -run flag of go test do? One sentence. Do not run
+  anything.
+ 
+ 
+• The -run flag filters tests by a regular expression, so -run TestAdd runs tests whose names
+  match TestAdd.
+ 
+  Worked for 4s • 20:29                                                                      
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol medium · 828K window · Context 98% left · +40 -0 · Ready · 56.5K used · Run Te…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

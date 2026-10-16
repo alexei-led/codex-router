@@ -1,0 +1,15 @@
+package cost
+
+import (
+	"testing"
+
+	"github.com/alexei-led/codex-router/internal/responses"
+)
+
+func TestHiddenPrefixIsWholeInput(t *testing.T) {
+	l := NewLedger(fiveMin)
+	l.Observe("th", luna, responses.Usage{InputTokens: 100_000, CachedInputTokens: 90_000}, t0)
+	if got := l.SwitchTax("th", sol, 100_000, t0); got != 100_000 {
+		t.Fatalf("SwitchTax = %d, want 100000: the cached prefix is the whole input", got)
+	}
+}

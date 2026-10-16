@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 601 161" width="601" height="161" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 617 161" width="617" height="161" role="img" aria-labelledby="title desc">
   <title id="title">Codex footer showing the routed model</title>
-  <desc id="desc">The Codex terminal UI while a turn runs. The footer line shows the model the router chose for the turn, GPT-6-Sol with medium effort, next to the branch, the context window and the remaining context.</desc>
+  <desc id="desc">The Codex terminal UI while a turn runs. The footer line shows the model the router chose for the turn, GPT-6.1-Sol with medium effort, next to the branch, the context window and the remaining context.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
-  <rect width="601" height="161" rx="8" fill="#14171f"/>
-  <rect x="0.5" y="0.5" width="600" height="160" rx="8" fill="none" stroke="#2e3340"/>
+  <rect width="617" height="161" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="616" height="160" rx="8" fill="none" stroke="#2e3340"/>
   <text x="16.0" y="28.0" fill="#d0d0d0" xml:space="preserve">• Working (8s • esc to interrupt)</text>
   <text x="16.0" y="85.0" fill="#d0d0d0" xml:space="preserve">› Ask Codex to do anything</text>
-  <text x="16.0" y="123.0" fill="#d0d0d0" xml:space="preserve">  GPT-6-Sol medium · feat/phase2-impl · 828K window · Context 98% left ·…</text>
+  <text x="16.0" y="123.0" fill="#d0d0d0" xml:space="preserve">  GPT-6.1-Sol medium · feat/phase2-impl · 828K window · Context 98% left ·…</text>
   <text x="16.0" y="142.0" fill="#d0d0d0" xml:space="preserve">  ? for shortcuts                              ⚠ 5 warnings · f2 to view</text>
 </svg>

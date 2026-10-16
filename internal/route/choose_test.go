@@ -8,8 +8,8 @@ import (
 )
 
 func TestCompareRoutes(t *testing.T) {
-	cfg := config.Default()
-	priced := config.Default()
+	cfg := testConfig()
+	priced := testConfig()
 	priced.Prices = map[string]config.Price{"gpt-6-luna": {Output: 10}, "gpt-6-sol": {Output: 4}}
 	tests := []struct {
 		name    string
@@ -39,7 +39,7 @@ func TestCompareRoutes(t *testing.T) {
 }
 
 func TestChooseActivity(t *testing.T) {
-	cfg := config.Default()
+	cfg := testConfig()
 	p := cfg.Effective()
 	atMedium := running{tier: config.TierMedium, route: medium}
 	onDebug := running{tier: config.TierMedium, activity: config.ActivityDebug, route: debug}
@@ -82,7 +82,7 @@ func TestChooseActivity(t *testing.T) {
 }
 
 func TestCellForModel(t *testing.T) {
-	cfg := config.Default()
+	cfg := testConfig()
 	cfg.Activities[config.ActivityPlan] = map[config.Tier]config.Route{config.TierHigh: {Model: "gpt-7"}}
 	tests := []struct {
 		route    config.Route

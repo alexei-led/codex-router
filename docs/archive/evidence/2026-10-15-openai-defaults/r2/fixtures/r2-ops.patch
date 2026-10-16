@@ -1,0 +1,50 @@
+From 71741724e60a8f33f87faef3339da2b11be0ab7a Mon Sep 17 00:00:00 2001
+From: Alexei Ledenev <alexei.led@gmail.com>
+Date: Thu, 15 Oct 2026 21:51:18 +0300
+Subject: [PATCH] chore: tidy
+
+---
+ Makefile                         | 2 +-
+ internal/listen/launchd_other.go | 2 +-
+ internal/statedir/statedir.go    | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 394d5b2..b55cb3d 100644
+--- a/Makefile
++++ b/Makefile
+@@ -8,7 +8,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+ LDFLAGS := -X main.version=$(VERSION)
+ 
+ # Windows is not a target: the launcher uses Setpgid and syscall.Kill.
+-PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
++PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm46
+ 
+ # Pinned so a tool release nobody chose cannot change a verdict. Bump deliberately.
+ GOLANGCI_LINT_VERSION := v2.14.0
+diff --git a/internal/listen/launchd_other.go b/internal/listen/launchd_other.go
+index 2a3ea0d..957d91b 100644
+--- a/internal/listen/launchd_other.go
++++ b/internal/listen/launchd_other.go
+@@ -5,4 +5,4 @@ package listen
+ import "net"
+ 
+ // launchd exists only on macOS.
+-func launchd(string) (net.Listener, error) { return nil, ErrNotActivated }
++func launchd(string) (net.Listener, error) { return nil, ErrNotActive }
+diff --git a/internal/statedir/statedir.go b/internal/statedir/statedir.go
+index 13fb9dc..4a23d24 100644
+--- a/internal/statedir/statedir.go
++++ b/internal/statedir/statedir.go
+@@ -83,7 +83,7 @@ func ReadPort(dir string) (int, error) {
+ 	}
+ 	p, err := strconv.Atoi(strings.TrimSpace(string(b)))
+ 	if err != nil || p < 1 || p > 65535 {
+-		return 0, fmt.Errorf("%s does not hold a port", path)
++		return 0, fmt.Errorf("%d does not hold a port", path)
+ 	}
+ 	return p, nil
+ }
+-- 
+2.56.0
+

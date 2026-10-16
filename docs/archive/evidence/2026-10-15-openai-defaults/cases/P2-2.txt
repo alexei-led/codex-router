@@ -1,0 +1,51 @@
+## P2-2 (keep) endpoint=f82146cf thread=01a14089-382a-7ca0-8887-cf97b15ebc74
+prompt: New small task: print the first line of go.mod. Nothing else.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ HIGH  ops → gpt-6.1-sol · xhigh                       waiting to go down: needs more support
+       Jev high 0% · Jev gave cheaper tiers 100% (needs 93%)
+ Pin      micro   low   medium  ▶high                                          next turn only
+ Session  12 replies · 1 switch · cost ≈ $0.24 (1539%) vs gpt-6-luna · low
+          ▇▇▇▇▇▇▇▇▇▇▇▇  1 reply per cell
+ Context  ██░░░░░░░░ 20%  96.8K / 475K gpt-6.1-sol      Cache  99% last reply · 88% session
+ Recent   20:11  high   gpt-6.1-sol · xhigh · waiting to go down: needs more support · +1 st…
+          20:10  high   gpt-6.1-sol · xhigh · classifier agrees with high · +10 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:11:28 1955b8 s0 high ops downgrade-pending gpt-6.1-sol xhigh 
+20:11:31 1955b8 s1 high ops continue gpt-6.1-sol xhigh 
+### codex
+    withhold automatic loss credit.
+ 
+  • Latency: async classification alone does not establish p99 < 2 ms. Fact extraction,
+    locks, cancellation waits, persistence, snapshots, and sinks must also fit the budget.
+ 
+  Treat 2 ms as the SLO for the complete routing call, including contention—not just the pure
+  function. Acceptance should measure that distribution with 10% timeouts and bursts,
+  alongside invariants for retries, rolling windows, and pin races.
+ 
+  No files edited or checks run; latency remains unverified.
+ 
+  Worked for 3m 4s • 20:11                                                                   
+ 
+ 
+› New small task: print the first line of go.mod. Nothing else.
+ 
+ 
+• Explored
+  └ Read go.mod
+    + Show details                                                                           
+ 
+• module github.com/alexei-led/codex-router
+ 
+  Worked for 7s • 20:11                                                                      
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol xhigh · 828K window · Context 91% left · +40 -0 · Ready · 79.5K used · Design …
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

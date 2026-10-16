@@ -16,9 +16,9 @@ func TestDefaultRoutesMatchPlan(t *testing.T) {
 	c := Default()
 	want := map[Tier]Route{
 		TierHigh:   {Model: "gpt-6.1-sol", Effort: EffortHigh},
-		TierMedium: {Model: "gpt-6-sol", Effort: EffortMedium},
-		TierLow:    {Model: "gpt-6-luna", Effort: EffortMedium},
-		TierMicro:  {Model: "gpt-6-luna", Effort: EffortLow},
+		TierMedium: {Model: "gpt-6.1-sol", Effort: EffortMedium},
+		TierLow:    {Model: "gpt-6-luna", Effort: EffortHigh},
+		TierMicro:  {Model: "gpt-6-luna", Effort: EffortMedium},
 	}
 	if !reflect.DeepEqual(c.Routes, want) {
 		t.Errorf("routes = %+v, want %+v", c.Routes, want)
@@ -26,7 +26,7 @@ func TestDefaultRoutesMatchPlan(t *testing.T) {
 	if c.Baseline != TierMedium {
 		t.Errorf("baseline = %q, want medium", c.Baseline)
 	}
-	if got := c.RouteFor(TierMedium, ActivityDebug); got != (Route{Model: "gpt-6-sol", Effort: EffortHigh}) {
+	if got := c.RouteFor(TierMedium, ActivityDebug); got != (Route{Model: "gpt-6.1-sol", Effort: EffortHigh}) {
 		t.Errorf("debug@medium = %+v", got)
 	}
 	if err := c.Validate(); err != nil {
@@ -332,7 +332,7 @@ func TestRouteFor(t *testing.T) {
 	c := Default()
 	c.Activities = map[Activity]map[Tier]Route{
 		ActivityCode:   {TierLow: {Model: "gpt-6-sol"}},
-		ActivityReview: {TierLow: {Effort: EffortHigh}},
+		ActivityReview: {TierLow: {Effort: EffortLow}},
 		ActivityOps:    {TierMedium: {Model: "gpt-6-luna", Effort: EffortLow}},
 	}
 	cases := []struct {
@@ -340,11 +340,11 @@ func TestRouteFor(t *testing.T) {
 		act  Activity
 		want Route
 	}{
-		{TierLow, ActivityCode, Route{Model: "gpt-6-sol", Effort: EffortMedium}},
-		{TierLow, ActivityReview, Route{Model: "gpt-6-luna", Effort: EffortHigh}},
+		{TierLow, ActivityCode, Route{Model: "gpt-6-sol", Effort: EffortHigh}},
+		{TierLow, ActivityReview, Route{Model: "gpt-6-luna", Effort: EffortLow}},
 		{TierMedium, ActivityOps, Route{Model: "gpt-6-luna", Effort: EffortLow}},
 		{TierHigh, ActivityCode, Route{Model: "gpt-6.1-sol", Effort: EffortHigh}},
-		{TierLow, ActivityUncertain, Route{Model: "gpt-6-luna", Effort: EffortMedium}},
+		{TierLow, ActivityUncertain, Route{Model: "gpt-6-luna", Effort: EffortHigh}},
 	}
 	for _, tc := range cases {
 		if got := c.RouteFor(tc.tier, tc.act); got != tc.want {

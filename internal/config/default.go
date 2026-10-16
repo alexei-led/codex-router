@@ -10,21 +10,35 @@ const (
 	// cloudflareEndpoint is the Workers AI run URL of the Clef models; the
 	// account comes from CLOUDFLARE_ACCOUNT_ID.
 	cloudflareEndpoint = "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/"
+	modelSol           = "gpt-6.1-sol"
+	modelLuna          = "gpt-6-luna"
 )
 
-// Default returns the built-in configuration: the four gpt-6 models that share
-// one compatibility group (plan D2), classifier Jev with Clef, OpenAI and a local Ollama option.
+// Default returns the built-in configuration, classifier Jev with Clef,
+// OpenAI and a local Ollama option. Routes use two models of one
+// compatibility group (plan D2): gpt-6-luna for micro and low, gpt-6.1-sol
+// for medium and high. Codex caches per model, not per effort, so only a
+// move between the two models costs cache. Tuned on live routing tests and
+// benchmarks on 2026-10-15/16: Luna at high effort matched Sol on bounded
+// review, debug, ops, code, explore and plan tasks at 5-10% of the list
+// cost; xhigh on either model cost more and planned no better than high.
 func Default() Config {
 	return Config{
 		Baseline: TierMedium,
 		Routes: map[Tier]Route{
-			TierHigh:   {Model: "gpt-6.1-sol", Effort: EffortHigh},
-			TierMedium: {Model: "gpt-6-sol", Effort: EffortMedium},
-			TierLow:    {Model: "gpt-6-luna", Effort: EffortMedium},
-			TierMicro:  {Model: "gpt-6-luna", Effort: EffortLow},
+			TierHigh:   {Model: modelSol, Effort: EffortHigh},
+			TierMedium: {Model: modelSol, Effort: EffortMedium},
+			TierLow:    {Model: modelLuna, Effort: EffortHigh},
+			TierMicro:  {Model: modelLuna, Effort: EffortMedium},
 		},
 		Activities: map[Activity]map[Tier]Route{
-			ActivityDebug: {TierMedium: {Model: "gpt-6-sol", Effort: EffortHigh}},
+			ActivityDebug: {TierMedium: {Model: modelSol, Effort: EffortHigh}},
+		},
+		// OpenAI list prices, USD per million tokens, from the model cards
+		// verified 2026-09-30 (Sol 6.1, up to 272K input) and 2026-09-23 (Luna).
+		Prices: map[string]Price{
+			modelSol:  {Input: 2, CachedInput: 0.1, Output: 10},
+			modelLuna: {Input: 0.1, CachedInput: 0.01, Output: 0.5},
 		},
 		Policy: Policy{
 			UpgradeVotes:          2,

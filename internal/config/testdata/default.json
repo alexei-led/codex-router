@@ -7,23 +7,35 @@
     },
     "low": {
       "model": "gpt-6-luna",
-      "effort": "medium"
+      "effort": "high"
     },
     "medium": {
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "effort": "medium"
     },
     "micro": {
       "model": "gpt-6-luna",
-      "effort": "low"
+      "effort": "medium"
     }
   },
   "activities": {
     "debug": {
       "medium": {
-        "model": "gpt-6-sol",
+        "model": "gpt-6.1-sol",
         "effort": "high"
       }
+    }
+  },
+  "prices": {
+    "gpt-6-luna": {
+      "input": 0.1,
+      "cachedInput": 0.01,
+      "output": 0.5
+    },
+    "gpt-6.1-sol": {
+      "input": 2,
+      "cachedInput": 0.1,
+      "output": 10
     }
   },
   "policy": {

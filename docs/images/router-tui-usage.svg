@@ -18,8 +18,8 @@
   <text x="632.2" y="66.0" fill="#878787" xml:space="preserve">default · 3fa9c0d1</text>
   <text x="16.0" y="85.0" fill="#d0d0d0" xml:space="preserve"> Usage      Routing saved </text>
   <text x="218.8" y="85.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
-  <text x="320.2" y="85.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6-sol · medium</text>
-  <text x="109.6" y="104.0" fill="#878787" xml:space="preserve">list-price estimate $4.12 vs $5.30 all-gpt-6-sol · medium</text>
+  <text x="320.2" y="85.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6.1-sol · medium</text>
+  <text x="109.6" y="104.0" fill="#878787" xml:space="preserve">list-price estimate $4.12 vs $5.30 all-gpt-6.1-sol · medium</text>
   <text x="109.6" y="123.0" fill="#878787" xml:space="preserve">plan billing is limits, not $</text>
   <text x="16.0" y="161.0" fill="#d0d0d0" xml:space="preserve"> Ledger     144 replies since 18:02</text>
   <text x="289.0" y="161.0" fill="#878787" xml:space="preserve"> · </text>

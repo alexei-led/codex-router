@@ -1,0 +1,54 @@
+B1 luna gpt-6-luna/high run=1 rc=0 pass secs=27 in/cached/out/reason=126721 106240 867 206
+B1 sol gpt-6.1-sol/low run=1 rc=0 pass secs=35 in/cached/out/reason=109210 86784 713 0
+B1 luna gpt-6-luna/high run=2 rc=0 pass secs=28 in/cached/out/reason=152418 130560 923 285
+B1 sol gpt-6.1-sol/low run=2 rc=0 pass secs=29 in/cached/out/reason=96947 77696 651 0
+B1 luna gpt-6-luna/high run=3 rc=0 pass secs=20 in/cached/out/reason=113893 96000 779 144
+B1 sol gpt-6.1-sol/low run=3 rc=0 pass secs=28 in/cached/out/reason=97005 70784 645 0
+B2 luna gpt-6-luna/high run=1 rc=0 pass secs=26 in/cached/out/reason=89271 75776 591 204
+B2 sol gpt-6.1-sol/medium run=1 rc=0 pass secs=33 in/cached/out/reason=138667 120960 405 9
+B2 luna gpt-6-luna/high run=2 rc=0 pass secs=27 in/cached/out/reason=135389 116224 758 255
+B2 sol gpt-6.1-sol/medium run=2 rc=0 pass secs=29 in/cached/out/reason=138970 114048 401 0
+B2 luna gpt-6-luna/high run=3 rc=0 pass secs=24 in/cached/out/reason=134569 114176 573 183
+B2 sol gpt-6.1-sol/medium run=3 rc=0 pass secs=22 in/cached/out/reason=115708 98048 388 11
+B3 luna gpt-6-luna/medium run=1 rc=0 build=ok hidden_fails=0/30 secs=39 in/cached/out/reason=158878 133632 2415 252
+B3 sol gpt-6.1-sol/low run=1 rc=0 build=ok hidden_fails=0/30 secs=60 in/cached/out/reason=106430 76928 2058 56
+B3 lunahi gpt-6-luna/high run=1 rc=0 build=ok hidden_fails=0/30 secs=68 in/cached/out/reason=215971 188416 3803 1313
+B3 luna gpt-6-luna/medium run=2 rc=0 build=ok hidden_fails=0/30 secs=48 in/cached/out/reason=158298 134656 2678 402
+B3 solmed gpt-6.1-sol/medium run=1 rc=0 build=ok hidden_fails=0/30 secs=97 in/cached/out/reason=195060 141312 2867 276
+B3 sol gpt-6.1-sol/low run=2 rc=0 build=ok hidden_fails=0/30 secs=65 in/cached/out/reason=125564 84992 2315 46
+B3 luna gpt-6-luna/medium run=3 rc=0 build=ok hidden_fails=0/30 secs=46 in/cached/out/reason=167732 139520 2365 234
+B3 lunahi gpt-6-luna/high run=2 rc=0 build=ok hidden_fails=0/30 secs=67 in/cached/out/reason=246023 218880 4319 1636
+B3 solmed gpt-6.1-sol/medium run=2 rc=0 build=ok hidden_fails=0/30 secs=69 in/cached/out/reason=127116 105600 2827 136
+B3 sol gpt-6.1-sol/low run=3 rc=0 build=ok hidden_fails=0/30 secs=54 in/cached/out/reason=96729 69632 2170 56
+B3 lunahi gpt-6-luna/high run=3 rc=0 build=ok hidden_fails=0/30 secs=55 in/cached/out/reason=253279 228864 4233 1424
+B3 solmed gpt-6.1-sol/medium run=3 rc=0 build=ok hidden_fails=0/30 secs=58 in/cached/out/reason=98887 71040 2314 107
+B4 luna gpt-6-luna/medium run=1 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=27 in/cached/out/reason=238801 201984 879 0
+B4 lunahi gpt-6-luna/high run=1 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=27 in/cached/out/reason=195070 157184 985 274
+B4 luna gpt-6-luna/medium run=2 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=23 in/cached/out/reason=198771 169216 997 124
+B4 solmed gpt-6.1-sol/high run=1 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=52 in/cached/out/reason=274665 228352 1334 220
+B4 lunahi gpt-6-luna/high run=2 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=25 in/cached/out/reason=155097 131584 1056 320
+B4 sol gpt-6.1-sol/medium run=1 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=56 in/cached/out/reason=322440 277120 949 35
+B4 lunahi gpt-6-luna/high run=3 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=27 in/cached/out/reason=193285 175360 1137 241
+B4 sol gpt-6.1-sol/medium run=2 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=35 in/cached/out/reason=167131 130944 756 25
+B4 luna gpt-6-luna/medium run=3 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=58 in/cached/out/reason=272407 240384 1075 187
+B4 solmed gpt-6.1-sol/high run=2 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=59 in/cached/out/reason=304745 269312 1176 98
+B4 solmed gpt-6.1-sol/high run=3 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=38 in/cached/out/reason=214975 167680 1107 68
+B4 sol gpt-6.1-sol/medium run=3 rc=0 tests=pass testfiles=untouched fix=exact files=internal/policy/policy.go, secs=65 in/cached/out/reason=295196 247936 1042 60
+B5 luna gpt-6-luna/medium run=1 rc=0 tests=pass regression=added-test fix=exact files=internal/cost/cost.go, secs=37 in/cached/out/reason=269676 237568 1377 236
+B5 luna gpt-6-luna/medium run=2 rc=0 tests=pass regression=added-test fix=exact files=internal/cost/cost.go, secs=31 in/cached/out/reason=256604 228352 1103 119
+B5 sol gpt-6.1-sol/medium run=1 rc=0 tests=pass regression=added-test fix=exact files=internal/cost/cost.go, secs=72 in/cached/out/reason=328516 296192 1647 81
+B5 lunahi gpt-6-luna/high run=1 rc=0 tests=pass regression=added-test fix=exact files=internal/cost/cost.go, secs=81 in/cached/out/reason=626984 570880 4038 1491
+B5 solmed gpt-6.1-sol/high run=1 rc=0 tests=pass regression=added-test fix=exact files=internal/cost/cost.go,internal/route/engine_test.go, secs=92 in/cached/out/reason=462011 417024 2657 371
+B5 luna gpt-6-luna/medium run=3 rc=0 tests=pass regression=added-test fix=exact files=internal/cost/cost.go, secs=31 in/cached/out/reason=326148 288512 1252 171
+B5 sol gpt-6.1-sol/medium run=2 rc=0 tests=pass regression=added-test fix=exact files=internal/cost/cost.go, secs=67 in/cached/out/reason=248323 208384 1572 120
+B5 lunahi gpt-6-luna/high run=2 rc=0 tests=pass regression=added-test fix=differs files=internal/cost/cost.go, secs=87 in/cached/out/reason=410194 370944 2506 868
+B5 solmed gpt-6.1-sol/high run=2 rc=0 tests=pass regression=added-test fix=exact files=internal/cost/cost.go,internal/route/engine_test.go, secs=79 in/cached/out/reason=323303 275968 2581 202
+B5 sol gpt-6.1-sol/medium run=3 rc=0 tests=pass regression=added-test fix=exact files=internal/cost/cost.go, secs=69 in/cached/out/reason=283932 253440 1544 80
+B5 lunahi gpt-6-luna/high run=3 rc=0 tests=pass regression=added-test fix=differs files=internal/cost/cost.go, secs=55 in/cached/out/reason=387408 346368 2211 825
+B5 solmed gpt-6.1-sol/high run=3 rc=0 tests=pass regression=added-test fix=exact files=internal/cost/cost.go,internal/route/engine_test.go, secs=97 in/cached/out/reason=424217 387328 2748 454
+B5v2 sol gpt-6.1-sol/medium run=1 rc=0 own-pass hidden-pass regression=has-test/catches-bug fix=exact files=internal/cost/cost.go,internal/cost/cost_test.go, secs=50 in/cached/out/reason=232234 203264 1291 73
+B5v2 luna gpt-6-luna/medium run=1 rc=0 own-pass hidden-pass regression=has-test/catches-bug fix=exact files=internal/cost/cost.go,internal/cost/cost_test.go, secs=71 in/cached/out/reason=300089 265984 1555 244
+B5v2 luna gpt-6-luna/medium run=2 rc=0 own-pass hidden-pass regression=has-test/catches-bug fix=exact files=internal/cost/cost.go,internal/cost/cost_test.go, secs=37 in/cached/out/reason=270755 250880 1301 205
+B5v2 sol gpt-6.1-sol/medium run=2 rc=0 own-pass hidden-pass regression=has-test/catches-bug fix=exact files=internal/cost/cost.go,internal/cost/cost_test.go, secs=73 in/cached/out/reason=300988 271488 2011 103
+B5v2 luna gpt-6-luna/medium run=3 rc=0 own-pass hidden-pass regression=has-test/catches-bug fix=exact files=internal/cost/cost.go,internal/cost/cost_test.go, secs=40 in/cached/out/reason=332411 300288 1348 177
+B5v2 sol gpt-6.1-sol/medium run=3 rc=0 own-pass hidden-pass regression=has-test/catches-bug fix=exact files=internal/cost/cost.go,internal/cost/cost_test.go,internal/route/engine_test.go, secs=93 in/cached/out/reason=378095 339328 1982 102

@@ -1,0 +1,77 @@
+From ffcadf7d61f068312e3046afff06a09f77291ea8 Mon Sep 17 00:00:00 2001
+From: Alexei Ledenev <alexei.led@gmail.com>
+Date: Thu, 15 Oct 2026 21:46:53 +0300
+Subject: [PATCH] cost, policy: simplify helpers
+
+---
+ internal/cost/cost.go     |  6 ++----
+ internal/policy/policy.go | 12 ++++++------
+ 2 files changed, 8 insertions(+), 10 deletions(-)
+
+diff --git a/internal/cost/cost.go b/internal/cost/cost.go
+index a36f4b1..df2357a 100644
+--- a/internal/cost/cost.go
++++ b/internal/cost/cost.go
+@@ -75,13 +75,11 @@ func (l *Ledger) SwitchTax(thread, candidate string, tokens int, now time.Time)
+ 	}
+ 	stay, _ := l.warmPrefix(thread, current, now)
+ 	move, _ := l.warmPrefix(thread, candidate, now)
+-	return max(0, min(stay, tokens)-min(move, tokens))
++	return min(stay, tokens) - min(move, tokens)
+ }
+ 
+ // Forget drops a thread's entries, for a caller evicting the thread.
+ func (l *Ledger) Forget(thread string) {
+-	l.mu.Lock()
+-	defer l.mu.Unlock()
+ 	delete(l.threads, thread)
+ }
+ 
+@@ -89,7 +87,7 @@ func (l *Ledger) Forget(thread string) {
+ // cached input and output (which includes reasoning tokens). An unpriced
+ // model costs 0.
+ func USD(p config.Price, u responses.Usage) float64 {
+-	cached := min(max(0, u.CachedInputTokens), u.InputTokens)
++	cached := max(0, u.CachedInputTokens)
+ 	uncached := u.InputTokens - cached
+ 	return (float64(uncached)*p.Input + float64(cached)*p.CachedInput + float64(u.OutputTokens)*p.Output) / 1e6
+ }
+diff --git a/internal/policy/policy.go b/internal/policy/policy.go
+index 2ad55d1..df56d64 100644
+--- a/internal/policy/policy.go
++++ b/internal/policy/policy.go
+@@ -130,8 +130,8 @@ func Decide(in Input) Result {
+ 	}
+ 
+ 	next.Votes = append(next.Votes, Vote{Tier: choice})
+-	if len(next.Votes) > VotesKept {
+-		next.Votes = next.Votes[len(next.Votes)-VotesKept:]
++	if len(next.Votes) >= VotesKept {
++		next.Votes = next.Votes[len(next.Votes)-VotesKept+1:]
+ 	}
+ 	if rank(choice) == rank(incumbent) {
+ 		return stay(ReasonSameTier, nil)
+@@ -273,16 +273,16 @@ func rank(t config.Tier) int {
+ // neither direction.
+ func massAbove(probs map[classifier.Choice]float64, tier config.Tier) float64 {
+ 	sum := 0.0
+-	for _, t := range config.Tiers[rank(tier)+1:] {
++	for _, t := range config.Tiers[rank(tier):] {
+ 		sum += probs[classifier.Choice(t)]
+ 	}
+ 	return sum
+ }
+ 
+ func massAtOrBelow(probs map[classifier.Choice]float64, tier config.Tier) float64 {
+-	sum := 0.0
++	total := 0.0
+ 	for _, t := range config.Tiers[:rank(tier)+1] {
+-		sum += probs[classifier.Choice(t)]
++		total += probs[classifier.Choice(t)]
+ 	}
+-	return sum
++	return total
+ }
+-- 
+2.56.0
+

@@ -1,0 +1,19 @@
+package route
+
+import (
+	"testing"
+
+	"github.com/alexei-led/codex-router/internal/config"
+)
+
+func TestHiddenMaxOrdersAboveXHigh(t *testing.T) {
+	cfg := config.Default()
+	a := config.Route{Model: cfg.Routes[config.TierHigh].Model, Effort: config.Effort("max")}
+	b := config.Route{Model: a.Model, Effort: config.Effort("xhigh")}
+	if got, ok := compareRoutes(cfg, a, b); got != 1 || !ok {
+		t.Fatalf("compareRoutes(max, xhigh) = %d, %v; want 1, true", got, ok)
+	}
+	if got, ok := compareRoutes(cfg, b, a); got != -1 || !ok {
+		t.Fatalf("compareRoutes(xhigh, max) = %d, %v; want -1, true", got, ok)
+	}
+}

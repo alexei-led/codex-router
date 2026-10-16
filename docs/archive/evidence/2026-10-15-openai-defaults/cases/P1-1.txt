@@ -1,0 +1,50 @@
+## P1-1 (A) endpoint=ff74ec15 thread=01a14087-d942-71e3-8a11-df869dd88448
+prompt: Debug task. Run exactly: go test -tags lab -run TestAdd ./internal/labfix/ ; echo "exit_code=$?" and show the output verbatim. Do not change any files yet.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ LOW  ops → gpt-6-luna · medium                                                 ↓ down to low
+      Jev low 27% · Jev gave cheaper tiers 97% (needs 90%)
+ Pin      micro  ▶low   medium   high                                          next turn only
+ Session  2 replies · 1 switch · saved ≈ $0.04 (95%) vs gpt-6.1-sol · medium
+          ▃▃  1 reply per cell
+ Context  ░░░░░░░░░░ 9%  25.7K / 258.4K gpt-6-luna      Cache  95% last reply · 59% session
+ Recent   20:06  low    gpt-6-luna · medium · down to low · +1 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:06:50 7a3ebd s0 low ops downgrade gpt-6-luna medium rw
+20:06:53 7a3ebd s1 low ops continue gpt-6-luna medium rw
+### codex
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna medium · 828K window · Context 99% left · +40 -0 · Ready · 17.5K used · Run Tes…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

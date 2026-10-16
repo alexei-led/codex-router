@@ -1,0 +1,52 @@
+## C4-medcode (A) endpoint=acfc4caa thread=01a14080-fbad-7dc0-8c56-4c328f1e9ea9
+prompt: Add func Sub(a, b int) int to internal/labfix with a table-driven test TestSub covering negatives and zero. Then run: go test -tags lab -run TestSub ./internal/labfix/ ; echo EXIT=$? and report the EXIT line.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MEDIUM  code → gpt-6.1-sol · medium                   waiting to go down: needs more support
+         Jev medium 15% · Jev gave cheaper tiers 85% (needs 90%)
+ Pin      micro   low  ▶medium   high                                          next turn only
+ Session  4 replies · 0 switches · saved ≈ $0.00 (0%) vs gpt-6.1-sol · medium
+          ▅▅▅▅  1 reply per cell
+ Context  ░░░░░░░░░░ 6%  29.0K / 475K gpt-6.1-sol      Cache  96% last reply · 77% session
+ Recent   19:59  medium gpt-6.1-sol · medium · waiting to go down: needs more support · +3 s…
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+19:59:20 823911 s0 medium code downgrade-pending gpt-6.1-sol medium 
+19:59:27 823911 s1 medium code continue gpt-6.1-sol medium 
+19:59:31 823911 s2 medium code continue gpt-6.1-sol medium 
+19:59:44 823911 s3 medium code continue gpt-6.1-sol medium 
+### codex
+  └ internal/labfix/labfix.go (+5 -0)
+    4 +// Sub returns the difference of a and b.
+    5 +func Sub(a, b int) int {
+    6 +    return a - b
+ 
+  └ internal/labfix/labfix_test.go (+23 -0)
+     7 +func TestSub(t *testing.T) {
+     8 +    cases := []struct {
+     9 +        name       string
+    + Show details                                                                           
+ 
+• Ran gofmt -w internal/labfix/labfix.go internal/labfix/labfix_test.go
+  └ (no output)
+ 
+• Ran go test -tags lab -run TestSub ./internal/labfix/ ; echo EXIT=$?
+  └ ok      github.com/alexei-led/codex-router/internal/labfix    0.628s
+    EXIT=0
+ 
+• Added Sub(a, b int) int and table-driven TestSub covering negatives and zero. Requested
+  test passed.
+ 
+  EXIT=0
+ 
+  Worked for 30s • 19:59                                                                     
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol medium · 828K window · Context 98% left · +40 -0 · Ready · 21.3K used · Add Su…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

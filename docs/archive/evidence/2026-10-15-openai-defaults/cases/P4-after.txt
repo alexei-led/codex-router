@@ -1,0 +1,54 @@
+## P4-after (keep) endpoint=f82146cf thread=01a14089-382a-7ca0-8887-cf97b15ebc74
+prompt: Quick one: print the last line of go.mod. Nothing else.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MEDIUM  explore → gpt-6.1-sol · medium                                      ↓ down to medium
+         Jev medium 0% · Jev gave cheaper tiers 100% (needs 90%)
+ Pin      micro   low  ▶medium   high                                          next turn only
+ Session  25 replies · 5 switches · cost ≈ $0.54 (1169%) vs gpt-6-luna · low
+          ▇▇▇▇▇▇▇▇▇▇▇▇▁▁▁▁▅▅▅▅▅▇▇▅▅  1 reply per cell
+ Context  ██░░░░░░░░ 24%  116.9K / 475K gpt-6.1-sol      Cache  99% last reply · 85% session
+ Recent   20:19  medium gpt-6.1-sol · medium · down to medium · +1 steps
+          20:18  high   gpt-6.1-sol · xhigh · pinned to high for this turn · +1 steps
+          20:17  medium gpt-6.1-sol · medium · up to medium · +4 steps
+          20:11  micro  gpt-6-luna · low · classifier agrees with micro · +1 steps
+          20:11  micro  gpt-6-luna · low · down to micro · +1 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:19:06 09426d s0 medium explore downgrade gpt-6.1-sol medium rw
+20:19:09 09426d s1 medium explore continue gpt-6.1-sol medium rw
+### codex
+ 
+• Explored
+  └ Read go.mod
+    + Show details                                                                           
+ 
+• module github.com/alexei-led/codex-router
+ 
+↳ Hook · router: high → gpt-6.1-sol · xhigh · same turn
+ 
+  Worked for 9s • 20:19                                                                      
+ 
+ 
+› Quick one: print the last line of go.mod. Nothing else.
+ 
+ 
+• Explored
+  └ Read go.mod
+    + Show details                                                                           
+ 
+• )
+ 
+↳ Hook · router: medium · explore → gpt-6.1-sol · medium · same turn
+ 
+  Worked for 5s • 20:19                                                                      
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol medium · 828K window · Context 90% left · +40 -0 · Ready · 279K used · Design …
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

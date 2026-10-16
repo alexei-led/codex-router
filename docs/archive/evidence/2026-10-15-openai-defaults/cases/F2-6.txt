@@ -1,0 +1,53 @@
+## F2-6 (keep) endpoint=990bc892 thread=01a1409c-12a5-7c12-929e-34dba103750f
+prompt: And: what does go mod tidy do? One sentence. Do not run anything.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MICRO  explore → gpt-6-luna · low                                            ↓ down to micro
+        Jev micro 98% · Jev gave cheaper tiers 98% (needs 90%) · switch ≈ 5k uncached tokens
+ Pin     ▶micro   low   medium   high                                          next turn only
+ Session  10 replies · 3 switches · saved ≈ $0.11 (59%) vs gpt-6.1-sol · medium
+          ▃▃▃▃▃▅▅▅▅▁  1 reply per cell
+ Context  █░░░░░░░░░ 14%  38.0K / 258.4K gpt-6-luna      Cache  12% last reply · 68% session
+ Recent   20:30  micro  gpt-6-luna · low · down to micro
+          20:29  medium gpt-6.1-sol · medium · waiting to go down: needs more support
+          20:29  medium gpt-6.1-sol · medium · hold: escalation holds 2 turns
+          20:29  medium gpt-6.1-sol · medium · hold: escalation holds 2 turns
+          20:29  medium gpt-6.1-sol · medium · escalate: same tool failure twice, edit in be…
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:30:04 65360e s0 micro explore downgrade gpt-6-luna low rw
+### codex
+ 
+• go vet analyzes Go code for likely bugs, such as incorrect Printf format strings, that the
+  compiler may accept.
+ 
+  Worked for 4s • 20:29                                                                      
+ 
+ 
+› Last one: what does gofmt -l print? One sentence. Do not run anything.
+ 
+ 
+• gofmt -l prints the names of files whose formatting differs from what gofmt would produce.
+ 
+  Worked for 3s • 20:29                                                                      
+ 
+ 
+› And: what does go mod tidy do? One sentence. Do not run anything.
+ 
+ 
+• go mod tidy adds missing module requirements, removes unused ones, and updates go.sum to
+  match the packages used by the module.
+ 
+↳ Hook · router: micro · explore → gpt-6-luna · low · down to micro
+ 
+  Worked for 3s • 20:30                                                                      
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna low · 828K window · Context 98% left · +40 -0 · Ready · 83.6K used · Run TestAd…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view
