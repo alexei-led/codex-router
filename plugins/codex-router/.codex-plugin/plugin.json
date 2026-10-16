@@ -1,6 +1,6 @@
 {
   "name": "codex-router",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Starts this Codex home's codex-router services at session start, prints a line when the route switches, and lets Codex show, pause, resume or pin the routing of its own session. Needs the codex-router binary and codex-router setup for the home; ships no binary.",
   "keywords": ["routing", "model", "reasoning effort"],
   "skills": "./skills",
