@@ -105,6 +105,47 @@ built-in defaults.
 | No tax on an effort-only change           | Pass. Sol xhigh → medium, bar 90%.                                                                                                                    | P4-after               |
 | Pin                                       | Pass. `pinned` for one turn, no classifier call.                                                                                                      | P4-pinned              |
 
+## Live session on the new defaults (2026-10-16)
+
+The installed build of this branch, the user's own Codex config (start model `gpt-6-luna · high`)
+and `--yolo`, Codex on the left of an agterm split and `codex-router tui` on the right. Each `new`
+case starts a fresh thread in a fresh export of `lab-base`. Driver: `live/live.sh`; captures in
+`live/cases/`.
+
+| Case | Prompt                             | Decision                                                            |
+| ---- | ---------------------------------- | ------------------------------------------------------------------- |
+| L1   | Makefile lint target, one sentence | `downgrade` to micro `luna · medium`, Jev 93% vs 90% (fresh thread) |
+| L2   | list `internal/` packages          | stays low `luna · high`: cheaper 80% < 90%                          |
+| L3   | follow-up: biggest package         | stays low: cheaper 56%                                              |
+| L4   | add `version --json` with a test   | stays low `luna · high`: stronger 51% < 79%; done, tests pass       |
+| L5   | follow-up: fix `-tags lab` failure | `upgrade` to medium `sol · medium`, 95% ≥ 79%; fixed, exit_code=0   |
+| L6   | USD tax design doc                 | `jump` from low to high `sol · high`, Jev 98%                      |
+| L8b  | follow-up: line count              | `downgrade-pending`: cheaper 87% < 94% (Sol warm, Luna cold)        |
+| L9   | review `git show HEAD`             | `upgrade` to medium `sol · medium`, 81% ≥ 75% (fresh thread)        |
+| L10  | `make lint`, one line              | stays low: cheaper 75% < 90%                                        |
+| L11  | "debug" the `-tags lab` failure    | `upgrade` to medium, activity `code`: the debug route did not fire  |
+| L12a | "thanks, that works"               | `uncertain`, keeps medium                                           |
+| L12b | follow-up: which file              | `downgrade-pending`: 90% < 92%                                      |
+| L12c | follow-up: lines changed           | `downgrade-held`: same task, no passed check since the last edit    |
+| L12d | unrelated question                 | `downgrade-pending`: 83% < 92%                                      |
+| L12e | another unrelated question         | `downgrade` to low `luna · high`: second vote, 93% ≥ 92%            |
+
+Findings:
+
+- **A Stop hook that continues a turn makes input typed afterwards a steer.** The user's dev-flow
+  Stop hook ran a prose check on L6's design doc, failed it and kept the turn going with no status
+  timer. L7 and L8 were typed then and joined L6's turn (same turn id), each with a
+  `stream-aborted stage=client` at that moment: Codex cancels the open stream when input arrives
+  mid-turn. This is the likely source of the earlier `stream-aborted` warnings too (not verified
+  for round 1). A finished turn shows `Worked for …`; the driver now waits for it.
+- **The footer's window figure lags one turn.** After a cross-model switch Codex keeps the window
+  of the model the turn started on: Sol at 258K on L11's first turn, Luna at 475K on L12e. The
+  router's context guard uses the routed model's window. The user guide now says so.
+- **The debug route rarely fires.** Jev labelled L5 and L11 `code`, as it labelled round 1's "run
+  the failing test" `ops`.
+- **The panel's baseline is the model Codex sent.** With `gpt-6-luna · high` in Codex's config,
+  medium turns show a cost above baseline (`+1592%`), not a saving.
+
 ## Open items
 
 - **Tax counts tokens, not dollars.** A move to Luna that writes 83k uncached tokens (~$0.008)

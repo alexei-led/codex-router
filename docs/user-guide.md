@@ -188,7 +188,7 @@ If `~/.codex/config.toml` sets `model_context_window`, Codex sizes its context f
 
 ![Codex footer showing the routed model, GPT-6-Sol medium](images/codex-footer.svg)
 
-The footer shows the routed model and effort, for example `GPT-6-Sol medium`. It repaints when the route changes, also while a turn runs. The window and context figures follow the routed model.
+The footer shows the routed model and effort, for example `GPT-6-Sol medium`. It repaints when the route changes, also while a turn runs. The window figure follows the routed model from the next turn: Codex sizes a turn by the model the turn started on.
 
 ### Several sessions and homes
 

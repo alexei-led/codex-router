@@ -1,0 +1,54 @@
+## L3-followup (keep) endpoint=ad377421 thread=01a14570-7784-7960-a60e-a829d7abd09f
+prompt: Which of those packages has the most non-test Go lines? Just the name.
+
+### panel
+codex-router  Jev ready              Sessions  Policy  Usage   ? help
+
+codex-router-live · master                         default · 68a7f567
+ LOW  explore → gpt-6-luna · high
+      waiting to go down: needs more support
+      Jev low 23% · Jev gave cheaper tiers 56% (needs 90%)
+ Pin      micro  ▶low   medium   high                  next turn only
+ Session  6 replies · 0 switches
+          saved ≈ $0.00 (0%) vs gpt-6-luna · high
+          ▃▃▃▃▃▃  1 reply per cell
+ Context  █░░░░░░░░░ 12%  33.4K / 258.4K gpt-6-luna
+ Cache    98% last reply · 81% session
+ Recent   18:59  low    gpt-6-luna · high · waiting to go down: need…
+          18:59  low    gpt-6-luna · high · waiting to go down: need…
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+18:59:46 159799 s0 low explore downgrade-pending gpt-6-luna high 
+18:59:49 159799 s1 low explore continue gpt-6-luna high 
+### codex
+    them.
+ 
+  • setup — Configures or removes routing for a Codex home.
+ 
+  • statedir — Defines the router’s state-directory layout,
+    permissions, and atomic writes.
+ 
+  • tui — Provides the terminal panel for viewing router and session
+    state.
+ 
+  Worked for 23s • 18:59                                             
+ 
+ 
+› Which of those packages has the most non-test Go lines? Just the
+  name.
+ 
+ 
+• Explored
+  └ Search *.go in internal
+    + Show details                                                   
+ 
+• route
+ 
+  Worked for 6s • 18:59                                              
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna high · master · 828K window · Context 98% left · No cha…
+  ? for shortcuts                          ⚠ 6 warnings · f2 to view

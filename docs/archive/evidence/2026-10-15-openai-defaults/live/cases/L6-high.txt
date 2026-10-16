@@ -1,0 +1,62 @@
+## L6-high (new) endpoint=c5614292 thread=01a1457c-1fe0-7263-9b17-12138270c91f
+prompt: Design how codex-router should price the model switch tax in US dollars instead of uncached tokens. Read internal/policy, internal/cost and internal/route first. Compare at least two designs, their risks, migration for existing configs and a test plan. Write it to docs/design-usd-tax.md. No code changes.
+
+### panel
+codex-router  Jev ready              Sessions  Policy  Usage   ? help
+
+codex-router-live · master                         default · 68a7f567
+ HIGH  plan → gpt-6.1-sol · high          classifier agrees with high
+       Jev high 98% · Jev gave high 98%
+ Pin      micro   low   medium  ▶high                  next turn only
+ Session  7 replies · 1 switch
+          cost ≈ $0.14 (1649%) vs gpt-6-luna · high
+          ▇▇▇▇▇▇▇  1 reply per cell
+ Context  █░░░░░░░░░ 16%  77.9K / 475K gpt-6.1-sol
+ Cache    81% last reply · 79% session
+ Recent   19:12  high   gpt-6.1-sol · high · classifier agrees with …
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+19:12:07 a61b7d s0 high plan jump gpt-6.1-sol high rw
+19:12:16 a61b7d s1 high plan continue gpt-6.1-sol high rw
+19:12:23 a61b7d s2 high plan continue gpt-6.1-sol high rw
+19:12:29 a61b7d s3 high plan continue gpt-6.1-sol high rw
+19:12:42 a61b7d s4 high plan continue gpt-6.1-sol high rw
+19:12:48 a61b7d s5 high plan same-tier gpt-6.1-sol high rw
+19:12:58 stream-aborted {'thread': '01a1457c-1fe0-7263-9b17-12138270c91f', 'turn': '01a1457c-213d-74e0-bbf9-7bb1d1a61b7d', 'path': '/v1/responses', 'stage': 'client'}
+19:12:58 a61b7d s6 high plan continue gpt-6.1-sol high rw
+19:13:07 stream-aborted {'thread': '01a1457c-1fe0-7263-9b17-12138270c91f', 'turn': '01a1457c-213d-74e0-bbf9-7bb1d1a61b7d', 'path': '/v1/responses', 'stage': 'client'}
+19:13:07 a61b7d s7 high plan continue gpt-6.1-sol high rw
+19:13:15 a61b7d s8 high plan continue gpt-6.1-sol high rw
+19:13:30 a61b7d s9 high plan continue gpt-6.1-sol high rw
+### codex
+• The current tax measures cache loss relative to staying. It feeds
+  both tier decisions and activity changes. I’m comparing pricing
+  that cache loss in USD with comparing the full next-request input
+  costs; the latter would also penalize model price differences when
+  neither cache is warm.
+ 
+• Ran rg -n 'TaxTokens|SwitchTax|UpgradeBar|supportText|tax|priced|l…
+  └ - If a claim cannot be checked, do not state it as fact.
+    - Report it as `unconfirmed: <claim> — looked in <places>`.
+    - Remove the claim when it is not necessary for the reader.
+    + 89 lines (⌃t to expand)                                        
+ 
+• Explored
+  └ Read engine.go, policy_test.go, snapshot_test.go, config.go, loa…
+         validate.go, default.go
+    + Show details                                                   
+ 
+• Ran cat Makefile; sed -n '1,140p' internal/config/validate.go; rg …
+  └             h.asker.script(answer(tier("medium", 0.99)), answer(…
+                turn := func(i int) responses.Meta {
+                    m := meta("th", fmt.Sprint("t", i+1))
+    + 442 lines (⌃t to expand)                                       
+ 
+• I'm working through how to handle input values above zero and cach…
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol high · master · 258K window · Context 78% left · No ch…
+  ? for shortcuts                          ⚠ 6 warnings · f2 to view
