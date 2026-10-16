@@ -1,0 +1,53 @@
+## L8b-tiny (keep) endpoint=c5614292 thread=01a1457c-1fe0-7263-9b17-12138270c91f
+prompt: How many lines is it? Just the number.
+
+### panel
+codex-router  Jev ready              Sessions  Policy  Usage   ? help
+
+codex-router-live · master                         default · 68a7f567
+ HIGH  explore → gpt-6.1-sol · high
+       waiting to go down: needs more support
+       Jev high 0% · Jev gave cheaper tiers 87% (needs 94%)
+ Pin      micro   low   medium  ▶high                  next turn only
+ Session  13 replies · 1 switch
+          cost ≈ $0.28 (1529%) vs gpt-6-luna · high
+          ▇▇▇▇▇▇▇▇▇▇▇▇▇  1 reply per cell
+ Context  ██░░░░░░░░ 22%  108.9K / 475K gpt-6.1-sol
+ Cache    86% last reply · 89% session
+ Recent   19:17  high   gpt-6.1-sol · high · waiting to go down: nee…
+          19:16  high   gpt-6.1-sol · high · classifier unsure; keep…
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+19:17:02 958ce7 s0 high explore downgrade-pending gpt-6.1-sol high 
+### codex
+ 
+• Ran cat ~/.codex/plugins/cache/alexei-led-cc-thingz/de…
+  └ docs/images/router-tui-popover.png
+    docs/images/router-tui-sessions.png
+    ?? docs/design-usd-tax.md
+    + 110 lines (⌃t to expand)                                       
+ 
+ 
+› What file did you write? Just the path.
+ 
+ 
+• Completed `/root/review_design`
+ 
+• docs/design-usd-tax.md
+ 
+  Worked for 4m 43s • 19:16                                          
+ 
+ 
+› How many lines is it? Just the number.
+ 
+ 
+• 377
+ 
+  Worked for 3s • 19:17                                              
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol high · master · 475K window · Context 82% left · No ch…
+  ? for shortcuts                          ⚠ 6 warnings · f2 to view

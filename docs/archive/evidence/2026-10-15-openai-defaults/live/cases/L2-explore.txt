@@ -1,0 +1,55 @@
+## L2-explore (new) endpoint=ad377421 thread=01a14570-7784-7960-a60e-a829d7abd09f
+prompt: List the Go packages under internal/ with a one-line purpose each. Do not change files.
+
+### panel
+codex-router  Jev ready              Sessions  Policy  Usage   ? help
+
+codex-router-live · master                         default · 68a7f567
+ LOW  explore → gpt-6-luna · high
+      waiting to go down: needs more support
+      Jev low 10% · Jev gave cheaper tiers 80% (needs 90%)
+ Pin      micro  ▶low   medium   high                  next turn only
+ Session  4 replies · 0 switches
+          saved ≈ $0.00 (0%) vs gpt-6-luna · high
+          ▃▃▃▃  1 reply per cell
+ Context  █░░░░░░░░░ 12%  31.9K / 258.4K gpt-6-luna
+ Cache    97% last reply · 72% session
+ Recent   18:59  low    gpt-6-luna · high · waiting to go down: need…
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+18:59:23 c66835 s0 low explore downgrade-pending gpt-6-luna high 
+18:59:27 c66835 s1 low explore continue gpt-6-luna high 
+18:59:31 c66835 s2 low explore continue gpt-6-luna high 
+18:59:36 c66835 s3 low explore continue gpt-6-luna high 
+### codex
+  • registry — Records running router endpoints so clients can
+    discover them.
+ 
+  • responses — Models the request and response fields the router
+    reads or rewrites.
+ 
+  • route — Coordinates classification, policy, model selection, and
+    routing state.
+ 
+  • service — Installs and manages per-home launchd or systemd
+    services.
+ 
+  • sessions — Finds router sessions and selects or sends commands to
+    them.
+ 
+  • setup — Configures or removes routing for a Codex home.
+ 
+  • statedir — Defines the router’s state-directory layout,
+    permissions, and atomic writes.
+ 
+  • tui — Provides the terminal panel for viewing router and session
+    state.
+ 
+• Working (23s • esc to interrupt) · Running hooks
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna high · master · 828K window · Context 98% left · No cha…
+  ? for shortcuts                          ⚠ 6 warnings · f2 to view

@@ -1,0 +1,53 @@
+## L12a-ack (keep) endpoint=ac02f8ee thread=01a14581-14a3-7261-8de5-c32ea57b4b2f
+prompt: thanks, that works
+
+### panel
+codex-router  Jev ready              Sessions  Policy  Usage   ? help
+
+codex-router-live · master                         default · 68a7f567
+ MEDIUM  uncertain → gpt-6.1-sol · medium
+         classifier unsure; keeps medium
+         Jev medium 1% · Jev gave uncertain 66%
+ Pin      micro   low  ▶medium   high                  next turn only
+ Session  7 replies · 1 switch
+          cost ≈ $0.09 (1678%) vs gpt-6-luna · high
+          ▅▅▅▅▅▅▅  1 reply per cell
+ Context  ░░░░░░░░░░ 8%  42.3K / 475K gpt-6.1-sol
+ Cache    63% last reply · 76% session
+ Recent   19:19  medium gpt-6.1-sol · medium · classifier unsure; ke…
+          19:18  medium gpt-6.1-sol · medium · classifier agrees wit…
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+19:19:16 e33629 s0 medium - uncertain gpt-6.1-sol medium 
+### codex
+ 
+  Fixed labfix.go (internal/labfix/labfix.go):
+ 
+  • Add subtracted instead of adding.
+  • Clamp returned hi-1, violating its closed-range contract.
+ 
+  Added regression cases for negative operands, endpoints, and equal
+  bounds.
+ 
+  Verified:
+ 
+  • Package tests → exit_code=0
+  • go test -tags lab ./... → exit_code=0
+  • git diff --check → exit_code=0
+ 
+  Worked for 44s • 19:18                                             
+ 
+ 
+› thanks, that works
+ 
+ 
+• Fixed and verified. Changes are uncommitted.
+ 
+  Worked for 3s • 19:19                                              
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol medium · master · 475K window · Context 95% left · No …
+  ? for shortcuts                          ⚠ 6 warnings · f2 to view

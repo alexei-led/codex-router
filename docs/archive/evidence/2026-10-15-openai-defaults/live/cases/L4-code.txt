@@ -1,0 +1,60 @@
+## L4-code (new) endpoint=32eeb97d thread=01a14575-53ad-7a11-a915-ca00d71f9c22
+prompt: Add a --json flag to `codex-router version` that prints {"version": "<v>"} on one line. Add a test, run the package tests, and update the README usage line if it lists flags.
+
+### panel
+codex-router  Jev ready              Sessions  Policy  Usage   ? help
+
+codex-router-live · master                         default · 68a7f567
+ LOW  code → gpt-6-luna · high   waiting to go up: needs more support
+      Jev low 47% · Jev gave stronger tiers 51% (needs 79%)
+ Pin      micro  ▶low   medium   high                  next turn only
+ Session  10 replies · 0 switches
+          saved ≈ $0.00 (0%) vs gpt-6-luna · high
+          ▃▃▃▃▃▃▃▃▃▃  1 reply per cell
+ Context  █░░░░░░░░░ 19%  50.0K / 258.4K gpt-6-luna
+ Cache    97% last reply · 82% session
+ Recent   19:05  low    gpt-6-luna · high · waiting to go up: needs …
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+19:04:42 17d8e9 s0 low code upgrade-pending gpt-6-luna high 
+19:04:46 17d8e9 s1 low code continue gpt-6-luna high 
+19:04:50 17d8e9 s2 low code continue gpt-6-luna high 
+19:04:53 17d8e9 s3 low code continue gpt-6-luna high 
+19:04:58 17d8e9 s4 low code continue gpt-6-luna high 
+19:05:07 17d8e9 s5 low code upgrade-pending gpt-6-luna high 
+19:05:14 17d8e9 s6 low code continue gpt-6-luna high 
+19:05:23 17d8e9 s7 low code continue gpt-6-luna high 
+19:05:28 17d8e9 s8 low code continue gpt-6-luna high 
+19:05:40 17d8e9 s9 low code continue gpt-6-luna high 
+### codex
+    + Show details                                                   
+ 
+• version --json is implemented in the version subcommand, with
+  compact JSON output and argument validation. The README has no
+  command usage or flags line; the built-in help usage now shows
+  [--json]. I’m formatting and running the command package tests now.
+ 
+• Ran gofmt -w cmd/codex-router/main.go cmd/codex-router/main_test.g…
+  └ ok      github.com/alexei-led/codex-router/cmd/codex-router    4…
+    + 1 line (⌃t to expand)                                          
+ 
+• Ran git diff --check && git diff -- cmd/codex-router/main.go cmd/c…
+  └      cases := []struct {
+     M cmd/codex-router/main.go
+     M cmd/codex-router/main_test.go
+    + 47 lines (⌃t to expand)                                        
+ 
+• Added codex-router version --json, which prints {"version":"dev"}
+  on one line. The built-in help now lists [--json]; README has no
+  usage line or flags list to update.
+ 
+  go test ./cmd/codex-router and git diff --check passed.
+ 
+  Worked for 1m 8s • 19:05                                           
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna high · master · 828K window · Context 97% left · No cha…
+  ? for shortcuts                          ⚠ 6 warnings · f2 to view

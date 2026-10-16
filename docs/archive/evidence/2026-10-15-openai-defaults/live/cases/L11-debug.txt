@@ -1,0 +1,56 @@
+## L11-debug (new) endpoint=ac02f8ee thread=01a14581-14a3-7261-8de5-c32ea57b4b2f
+prompt: The labfix package tests fail when run with -tags lab. Debug it: reproduce the failure, find the root cause in the code, fix it, and confirm with exit_code=N.
+
+### panel
+codex-router  Jev ready              Sessions  Policy  Usage   ? help
+
+codex-router-live · master                         default · 68a7f567
+ MEDIUM  code → gpt-6.1-sol · medium    classifier agrees with medium
+         Jev medium 84% · Jev gave medium 84%
+ Pin      micro   low  ▶medium   high                  next turn only
+ Session  6 replies · 1 switch
+          cost ≈ $0.07 (1650%) vs gpt-6-luna · high
+          ▅▅▅▅▅▅  1 reply per cell
+ Context  ░░░░░░░░░░ 5%  27.1K / 475K gpt-6.1-sol
+ Cache    96% last reply · 80% session
+ Recent   19:18  medium gpt-6.1-sol · medium · classifier agrees wit…
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+19:17:31 59bbed s0 medium code upgrade gpt-6.1-sol medium rw
+19:17:37 59bbed s1 medium code continue gpt-6.1-sol medium rw
+19:17:42 59bbed s2 medium code continue gpt-6.1-sol medium rw
+19:17:57 59bbed s3 medium code continue gpt-6.1-sol medium rw
+19:18:04 59bbed s4 medium code continue gpt-6.1-sol medium rw
+19:18:08 59bbed s5 medium code same-tier gpt-6.1-sol medium rw
+### codex
+ 
+• Ran go test -tags lab ./...
+  └ ok      github.com/alexei-led/codex-router/internal/statedir    …
+    ok      github.com/alexei-led/codex-router/internal/tui    0.735s
+    ok      github.com/alexei-led/codex-router/scripts/render-docs  …
+    + 25 lines (⌃t to expand)                                        
+ 
+• Reproduced: go test -tags lab ./internal/labfix → exit_code=1.
+ 
+  Fixed labfix.go (internal/labfix/labfix.go):
+ 
+  • Add subtracted instead of adding.
+  • Clamp returned hi-1, violating its closed-range contract.
+ 
+  Added regression cases for negative operands, endpoints, and equal
+  bounds.
+ 
+  Verified:
+ 
+  • Package tests → exit_code=0
+  • go test -tags lab ./... → exit_code=0
+  • git diff --check → exit_code=0
+ 
+  Worked for 44s • 19:18                                             
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol medium · master · 258K window · Context 95% left · No …
+  ? for shortcuts                          ⚠ 6 warnings · f2 to view

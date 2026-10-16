@@ -1,0 +1,56 @@
+## L5-debug (keep) endpoint=32eeb97d thread=01a14575-53ad-7a11-a915-ca00d71f9c22
+prompt: go test -tags lab ./internal/labfix/ fails. Find the cause in the code (not the test) and fix it, then rerun that command and show exit_code=N.
+
+### panel
+codex-router  Jev ready              Sessions  Policy  Usage   ? help
+
+codex-router-live · master                         default · 68a7f567
+ MEDIUM  code → gpt-6.1-sol · medium                   ↑ up to medium
+         Jev medium 85% · Jev gave stronger tiers 95% (needs 79%)
+         switch ≈ 40k uncached tokens
+ Pin      micro   low  ▶medium   high                  next turn only
+ Session  14 replies · 1 switch
+          cost ≈ $0.10 (609%) vs gpt-6-luna · high
+          ▃▃▃▃▃▃▃▃▃▃▅▅▅▅  1 reply per cell
+ Context  █░░░░░░░░░ 11%  52.7K / 475K gpt-6.1-sol
+ Cache    98% last reply · 79% session
+ Recent   19:05  medium gpt-6.1-sol · medium · up to medium · +3 ste…
+          19:05  low    gpt-6-luna · high · waiting to go up: needs …
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+19:05:53 cf2d32 s0 medium code upgrade gpt-6.1-sol medium rw
+19:05:59 cf2d32 s1 medium code continue gpt-6.1-sol medium rw
+19:06:03 cf2d32 s2 medium code continue gpt-6.1-sol medium rw
+19:06:12 cf2d32 s3 medium code continue gpt-6.1-sol medium rw
+### codex
+ 
+• Edited internal/labfix/labfix.go (+3 -3)
+     6 -    return a - b
+     6 +    return a + b
+       ⋮
+    + Show details                                                   
+ 
+• Ran go test -tags lab ./internal/labfix/
+  └ ok      github.com/alexei-led/codex-router/internal/labfix    0.…
+    + 1 line (⌃t to expand)                                          
+ 
+• Fixed internal/labfix/labfix.go:
+ 
+  • Add now adds instead of subtracting.
+  • Clamp now returns hi above the upper bound.
+ 
+  Tests unchanged. Reran go test -tags lab ./internal/labfix/:
+  passed.
+ 
+  exit_code=0
+ 
+↳ Hook · router: medium · code → gpt-6.1-sol · medium · same turn
+ 
+  Worked for 23s • 19:06                                             
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol medium · master · 828K window · Context 96% left · No …
+  ? for shortcuts                          ⚠ 6 warnings · f2 to view
