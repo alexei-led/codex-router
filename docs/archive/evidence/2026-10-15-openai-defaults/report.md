@@ -142,7 +142,8 @@ Findings:
   of the model the turn started on: Sol at 258K on L11's first turn, Luna at 475K on L12e. The
   router's context guard uses the routed model's window. The user guide now says so.
 - **The debug route rarely fires.** Jev labelled L5 and L11 `code`, as it labelled round 1's "run
-  the failing test" `ops`.
+  the failing test" `ops`. Fixed in the classifier contract; see
+  [2026-10-16-debug-activity](../2026-10-16-debug-activity/results.md).
 - **The panel's baseline is the model Codex sent.** With `gpt-6-luna · high` in Codex's config,
   medium turns show a cost above baseline (`+1592%`), not a saving.
 
@@ -153,8 +154,9 @@ Findings:
   USD answers a different question. Compare stay-versus-switch cost and plan-limit behaviour
   before changing the policy. Raising `downgradePivotTokens` would relax every model alike.
 - **`stream-aborted stage=client`** on long `gpt-6.1-sol · xhigh` steps (C6, P2-1). The turns
-  completed; the cause is unknown.
-- **Classifier reads "run this failing test" as ops**, not debug (P1-1, F2-1), so the debug
-  route at medium rarely fires from such prompts.
+  completed. The live session shows input typed mid-turn aborts the open stream; whether that was
+  the cause here is not verified.
+- **Classifier reads "run this failing test" as ops**, not debug (P1-1, F2-1). Fixed on 2026-10-16
+  in the classifier contract.
 - **Not measured:** low-tier plan and review quality on Luna, long multi-turn sessions, design
   quality, large context.

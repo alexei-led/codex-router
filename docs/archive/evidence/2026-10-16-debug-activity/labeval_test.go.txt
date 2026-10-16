@@ -1,0 +1,68 @@
+//go:build labeval
+
+package launcher
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/alexei-led/codex-router/internal/classifier"
+	"github.com/alexei-led/codex-router/internal/config"
+)
+
+// go test -tags labeval -run TestLabEvalActivity -v ./internal/launcher/
+// Sends labelled prompts to the configured classifier and prints its activity choice.
+func TestLabEvalActivity(t *testing.T) {
+	path, _ := config.Path()
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	asker, why := newClassifier(cfg, os.Getenv)
+	if asker == nil {
+		t.Fatal(why)
+	}
+	cases := []struct{ want, prompt string }{
+		{"debug", "go test ./internal/retry fails with 'attempt 3: got 400ms, want 800ms'. Find out why and fix it."},
+		{"debug", "The labfix package tests fail when run with -tags lab. Debug it: reproduce the failure, find the root cause in the code, fix it, and confirm with exit_code=N."},
+		{"debug", "go test -tags lab ./internal/labfix/ fails. Find the cause in the code (not the test) and fix it, then rerun that command and show exit_code=N."},
+		{"debug", "Run the failing TestBackoff and fix whatever is wrong."},
+		{"debug", "The proxy panics with a nil pointer dereference in Rewrite under load (stack trace: proxy.go:212 Rewrite). Fix it."},
+		{"debug", "Why does the router keep Sol after an idle period? It should drop to Luna."},
+		{"debug", "TestE2ECompaction is flaky on CI, about 1 in 10 runs. Make it reliable."},
+		{"debug", "make release-build fails for linux/arm64 with 'undefined: syscall.SIGTERM'. Sort it out."},
+		{"code", "Add a --json flag to `codex-router version` that prints {\"version\": \"<v>\"} on one line. Add a test."},
+		{"code", "Rename the parameter sum to total in massAtOrBelow."},
+		{"code", "The retry backoff uses the attempt index instead of attempt-1 as the exponent. Change it to attempt-1 and update the test."},
+		{"code", "Write table-driven tests for ParseSize covering KB, MB and invalid input."},
+		{"ops", "Run make lint and report the result in one line."},
+		{"ops", "Run the tests and commit if they pass."},
+		{"ops", "Push the branch and open a PR."},
+		{"explore", "Which package handles the cache tax? Point me at the function."},
+		{"explore", "Explain how the downgrade bar is computed."},
+		{"review", "Review the latest commit (git show HEAD) for real defects."},
+		{"plan", "Design how the router should price the switch tax in USD instead of tokens. Compare options."},
+		{"docs", "Update the README to describe the new --json flag of the version command."},
+	}
+	hits := 0
+	for i, c := range cases {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		adv, err := asker.Ask(ctx, classifier.Input{Prompt: c.prompt})
+		cancel()
+		got, pDebug, pGot := "-", 0.0, 0.0
+		if err == nil && adv.Activity != nil {
+			got = string(adv.Activity.Choice)
+			pDebug, pGot = adv.Activity.Probabilities[config.ActivityDebug], adv.Activity.Probabilities[adv.Activity.Choice]
+		}
+		mark := "MISS"
+		if got == c.want {
+			mark, hits = "ok", hits+1
+		}
+		fmt.Printf("%2d %-4s want=%-7s got=%-9s p=%.2f debug=%.2f err=%v\n", i+1, mark, c.want, got, pGot, pDebug, err)
+		time.Sleep(300 * time.Millisecond)
+	}
+	fmt.Printf("hits %d/%d\n", hits, len(cases))
+}
