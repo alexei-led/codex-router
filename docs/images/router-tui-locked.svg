@@ -21,8 +21,6 @@
   <text x="16.0" y="104.0" fill="#d0d0d0" xml:space="preserve">       Jev high 18%</text>
   <text x="164.2" y="104.0" fill="#878787" xml:space="preserve"> · </text>
   <text x="187.6" y="104.0" fill="#d0d0d0" xml:space="preserve">no classifier needed</text>
-  <text x="343.6" y="104.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="367.0" y="104.0" fill="#d0d0d0" xml:space="preserve">switch ≈ 38k uncached tokens</text>
   <text x="16.0" y="123.0" fill="#d0d0d0" xml:space="preserve"> Pin     </text>
   <text x="86.2" y="123.0" fill="#5fd7af" xml:space="preserve"> micro  </text>
   <text x="148.6" y="123.0" fill="#5fafd7" xml:space="preserve"> low  </text>
@@ -35,7 +33,7 @@
   <text x="289.0" y="142.0" fill="#878787" xml:space="preserve"> · </text>
   <text x="312.4" y="142.0" fill="#d0d0d0" xml:space="preserve">saved </text>
   <text x="359.2" y="142.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
-  <text x="460.6" y="142.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6-sol · medium</text>
+  <text x="460.6" y="142.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6.1-sol · medium</text>
   <text x="94.0" y="161.0" fill="#d7af5f" xml:space="preserve">▅</text>
   <text x="101.8" y="161.0" fill="#d7af5f" xml:space="preserve">▅</text>
   <text x="109.6" y="161.0" fill="#d7af5f" xml:space="preserve">▅</text>
@@ -88,20 +86,20 @@
   <text x="343.6" y="237.0" fill="#878787" xml:space="preserve"> · escalated after a repeated failure</text>
   <text x="94.0" y="256.0" fill="#878787" xml:space="preserve">18:41  </text>
   <text x="148.6" y="256.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="203.2" y="256.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="328.0" y="256.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="203.2" y="256.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="256.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
   <text x="94.0" y="275.0" fill="#878787" xml:space="preserve">18:40  </text>
   <text x="148.6" y="275.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="203.2" y="275.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="328.0" y="275.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="203.2" y="275.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="275.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
   <text x="94.0" y="294.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="148.6" y="294.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="203.2" y="294.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="328.0" y="294.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="203.2" y="294.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="294.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
   <text x="94.0" y="313.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="148.6" y="313.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="203.2" y="313.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="328.0" y="313.0" fill="#878787" xml:space="preserve"> · moved up a tier</text>
+  <text x="203.2" y="313.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="313.0" fill="#878787" xml:space="preserve"> · moved up a tier</text>
   <text x="16.0" y="351.0" fill="#87afff" font-weight="700" xml:space="preserve">p</text>
   <text x="23.8" y="351.0" fill="#878787" xml:space="preserve"> pin</text>
   <text x="55.0" y="351.0" fill="#878787" xml:space="preserve"> · </text>

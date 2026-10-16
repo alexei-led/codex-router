@@ -1,0 +1,53 @@
+## P2-4 (keep) endpoint=f82146cf thread=01a14089-382a-7ca0-8887-cf97b15ebc74
+prompt: New small task: print the name of the current git branch. Nothing else.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MICRO  ops → gpt-6-luna · low                                   classifier agrees with micro
+        Jev micro 98% · Jev gave micro 98%
+ Pin     ▶micro   low   medium   high                                          next turn only
+ Session  16 replies · 2 switches · cost ≈ $0.24 (901%) vs gpt-6-luna · low
+          ▇▇▇▇▇▇▇▇▇▇▇▇▁▁▁▁  1 reply per cell
+ Context  ███░░░░░░░ 39%  102.2K / 258.4K gpt-6-luna      Cache  99% last reply · 83% session
+ Recent   20:11  micro  gpt-6-luna · low · classifier agrees with micro · +1 steps
+          20:11  micro  gpt-6-luna · low · down to micro · +1 steps
+          20:11  high   gpt-6.1-sol · xhigh · waiting to go down: needs more support · +1 st…
+          20:10  high   gpt-6.1-sol · xhigh · classifier agrees with high · +10 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:11:50 e549da s0 micro ops same-tier gpt-6-luna low 
+20:11:52 e549da s1 micro ops continue gpt-6-luna low 
+### codex
+ 
+› New small task: how many .go files are in internal/labfix? Just the number.
+ 
+ 
+• Explored
+  └ List labfix
+    + Show details                                                                           
+ 
+• 2
+ 
+↳ Hook · router: micro · explore → gpt-6-luna · low · same turn
+ 
+  Worked for 4s • 20:11                                                                      
+ 
+ 
+› New small task: print the name of the current git branch. Nothing else.
+ 
+ 
+• Ran git branch --show-current
+  └ (no output)
+ 
+• HEAD
+ 
+  Worked for 5s • 20:11                                                                      
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna low · 828K window · Context 91% left · +40 -0 · Ready · 164K used · Design clas…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

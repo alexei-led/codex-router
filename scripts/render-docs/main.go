@@ -107,7 +107,7 @@ func render(out, footerPath, sessionPath string) error {
 		return err
 	}
 	lines := parseANSI(strings.TrimRight(string(text), "\n ") + "\n")
-	const footerDesc = "The Codex terminal UI while a turn runs. The footer line shows the model the router chose for the turn, GPT-6-Sol with medium effort, next to the branch, the context window and the remaining context."
+	const footerDesc = "The Codex terminal UI while a turn runs. The footer line shows the model the router chose for the turn, GPT-6.1-Sol with medium effort, next to the branch, the context window and the remaining context."
 	if err := write(out, "codex-footer", toSVG(lines, "Codex footer showing the routed model", footerDesc)); err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func renderSplit(out, sessionPath, panel string) error {
 	}
 	left := parseANSI(strings.TrimRight(string(text), "\n ") + "\n")
 	right := parseANSI(panel)
-	const desc = "A terminal split. Left: Codex runs a Go test that fails twice with an edit in between, and its footer shows GPT-6.1-Sol high. Right: the codex-router panel says this turn moved from gpt-6-sol medium to gpt-6.1-sol high because the same tool failure repeated, shows the classifier's tier and activity reading, the session's routed replies by tier, the estimated saving, and that the footer is synced."
+	const desc = "A terminal split. Left: Codex runs a Go test that fails twice with an edit in between, and its footer shows GPT-6.1-Sol high. Right: the codex-router panel says this turn moved from gpt-6.1-sol medium to gpt-6.1-sol high because the same tool failure repeated, shows the classifier's tier and activity reading, the session's routed replies by tier, the estimated saving, and that the footer is synced."
 	return write(out, "codex-router-split", toSVG(sideBySide(left, right), "Codex and the codex-router panel side by side", desc))
 }
 
@@ -185,7 +185,7 @@ func sampleFleet(snap route.Snapshot) ([]home.Home, []route.SessionInfo) {
 	session := func(h home.Home, thread, label string, mod func(*route.SessionInfo)) route.SessionInfo {
 		s := route.SessionInfo{
 			ID: control.SessionID(h.ID, thread), Home: h.ID, ThreadID: thread, Label: h.Name + " · " + label,
-			Mode: route.ModeOn, Tier: config.TierMedium, Route: config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium},
+			Mode: route.ModeOn, Tier: config.TierMedium, Route: config.Route{Model: "gpt-6.1-sol", Effort: config.EffortMedium},
 			FooterSynced: true,
 		}
 		mod(&s)
@@ -199,13 +199,13 @@ func sampleFleet(snap route.Snapshot) ([]home.Home, []route.SessionInfo) {
 			s.LastActive, s.SavedUSD, s.SpentUSD = at(18, 43), usd(st.BaselineUSD-st.RoutedUSD), usd(st.RoutedUSD)
 		}),
 		session(personal, "019a3c52-0e4d-7a61-8b3f-91c2d7e4a6f3", "codex-router · fix/hook", func(s *route.SessionInfo) {
-			s.Tier, s.Route = config.TierLow, config.Route{Model: "gpt-6-luna", Effort: config.EffortMedium}
+			s.Tier, s.Route = config.TierLow, config.Default().Routes[config.TierLow]
 			s.Replies, s.Switches, s.Strip = 31, 4, tiers("mmmmmmlllllllllllullllll")
 			s.LastSwitch = &route.Switch{At: at(18, 29), From: config.TierMedium, To: config.TierLow, Activity: config.ActivityExplore}
 			s.LastActive, s.SavedUSD, s.SpentUSD = at(18, 40), usd(0.41), usd(0.37)
 		}),
 		session(personal, "019a3b97-5c18-7f02-a6d9-3e0b8c2f7d14", "notes", func(s *route.SessionInfo) {
-			s.Mode, s.Attention, s.Tier, s.Route = route.ModePaused, route.AttentionPaused, config.TierLow, config.Route{Model: "gpt-6-luna", Effort: config.EffortMedium}
+			s.Mode, s.Attention, s.Tier, s.Route = route.ModePaused, route.AttentionPaused, config.TierLow, config.Default().Routes[config.TierLow]
 			s.Replies, s.Strip = 6, tiers("llllll")
 			s.LastActive, s.SavedUSD, s.SpentUSD = at(18, 11), usd(0.05), usd(0.04)
 		}),
@@ -227,10 +227,9 @@ func sampleFleet(snap route.Snapshot) ([]home.Home, []route.SessionInfo) {
 func sampleSnapshot() route.Snapshot {
 	cfg := config.Default()
 	now := at(18, 43)
-	solMed := config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
-	solHigh := config.Route{Model: "gpt-6-sol", Effort: config.EffortHigh}
-	lunaMed := cfg.Routes[config.TierLow]
-	sol61 := cfg.Routes[config.TierHigh]
+	solMed := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortMedium}
+	luna := cfg.Routes[config.TierLow]
+	solHigh := cfg.Routes[config.TierHigh]
 
 	step := func(h, m int, tier config.Tier, act config.Activity, r config.Route, why policy.Reason) route.Decision {
 		return route.Decision{At: at(h, m), Tier: tier, Activity: act, Route: r, Reason: why}
@@ -238,19 +237,19 @@ func sampleSnapshot() route.Snapshot {
 	recent := []route.Decision{
 		step(18, 31, config.TierMedium, config.ActivityCode, solMed, policy.ReasonUpgrade),
 		step(18, 33, config.TierMedium, config.ActivityCode, solMed, policy.ReasonSameTier),
-		step(18, 36, config.TierLow, config.ActivityExplore, lunaMed, policy.ReasonDowngrade),
-		step(18, 38, config.TierMedium, config.ActivityDebug, solHigh, policy.ReasonUpgrade),
-		step(18, 38, config.TierMedium, config.ActivityDebug, solHigh, policy.ReasonSameTier),
-		step(18, 40, config.TierMedium, config.ActivityDebug, solHigh, policy.ReasonSameTier),
-		step(18, 41, config.TierMedium, config.ActivityDebug, solHigh, policy.ReasonSameTier),
-		step(18, 42, config.TierHigh, config.ActivityDebug, sol61, policy.ReasonEscalation),
+		step(18, 36, config.TierLow, config.ActivityExplore, luna, policy.ReasonDowngrade),
+		step(18, 38, config.TierMedium, config.ActivityCode, solMed, policy.ReasonUpgrade),
+		step(18, 38, config.TierMedium, config.ActivityCode, solMed, policy.ReasonSameTier),
+		step(18, 40, config.TierMedium, config.ActivityCode, solMed, policy.ReasonSameTier),
+		step(18, 41, config.TierMedium, config.ActivityCode, solMed, policy.ReasonSameTier),
+		step(18, 42, config.TierHigh, config.ActivityDebug, solHigh, policy.ReasonEscalation),
 	}
 	last := recent[len(recent)-1]
 	last.Original = solMed
 	last.Rewritten = true
 	last.MidTurn = true
 	last.Why = "escalate: same tool failure twice, edit in between"
-	last.Support = "no classifier needed · switch ≈ 38k uncached tokens"
+	last.Support = "no classifier needed"
 	last.Reading = &route.Reading{
 		Tiers:      map[config.Tier]float64{config.TierMicro: 0.02, config.TierLow: 0.09, config.TierMedium: 0.71, config.TierHigh: 0.18},
 		Activity:   config.ActivityDebug,
@@ -277,7 +276,7 @@ func sampleSnapshot() route.Snapshot {
 		Mode:            route.ModeOn,
 		Preset:          cfg.Preset,
 		Baseline:        solMed,
-		Footer:          sol61,
+		Footer:          solHigh,
 		FooterSynced:    true,
 		Last:            &last,
 		Recent:          recent,

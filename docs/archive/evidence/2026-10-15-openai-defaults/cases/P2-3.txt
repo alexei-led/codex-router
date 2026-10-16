@@ -1,0 +1,52 @@
+## P2-3 (keep) endpoint=f82146cf thread=01a14089-382a-7ca0-8887-cf97b15ebc74
+prompt: New small task: how many .go files are in internal/labfix? Just the number.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MICRO  explore → gpt-6-luna · low                                            ↓ down to micro
+        Jev micro 99% · Jev gave cheaper tiers 99% (needs 94%) · switch ≈ 83k uncached tokens
+ Pin     ▶micro   low   medium   high                                          next turn only
+ Session  14 replies · 2 switches · cost ≈ $0.24 (984%) vs gpt-6-luna · low
+          ▇▇▇▇▇▇▇▇▇▇▇▇▁▁  1 reply per cell
+ Context  ███░░░░░░░ 37%  97.0K / 258.4K gpt-6-luna      Cache  98% last reply · 80% session
+ Recent   20:11  micro  gpt-6-luna · low · down to micro · +1 steps
+          20:11  high   gpt-6.1-sol · xhigh · waiting to go down: needs more support · +1 st…
+          20:10  high   gpt-6.1-sol · xhigh · classifier agrees with high · +10 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:11:39 d46d34 s0 micro explore downgrade gpt-6-luna low rw
+20:11:41 d46d34 s1 micro explore continue gpt-6-luna low rw
+### codex
+› New small task: print the first line of go.mod. Nothing else.
+ 
+ 
+• Explored
+  └ Read go.mod
+    + Show details                                                                           
+ 
+• module github.com/alexei-led/codex-router
+ 
+  Worked for 7s • 20:11                                                                      
+ 
+ 
+› New small task: how many .go files are in internal/labfix? Just the number.
+ 
+ 
+• Explored
+  └ List labfix
+    + Show details                                                                           
+ 
+• 2
+ 
+↳ Hook · router: micro · explore → gpt-6-luna · low · same turn
+ 
+  Worked for 4s • 20:11                                                                      
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna low · 828K window · Context 91% left · +40 -0 · Ready · 159K used · Design clas…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

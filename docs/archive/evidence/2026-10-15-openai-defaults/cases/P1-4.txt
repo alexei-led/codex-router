@@ -1,0 +1,53 @@
+## P1-4 (keep) endpoint=ff74ec15 thread=01a14087-d942-71e3-8a11-df869dd88448
+prompt: Unrelated quick question: what does the -run flag of go test do? One sentence. Do not run anything.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MEDIUM  explore → gpt-6.1-sol · medium                        hold: escalation holds 2 turns
+         Jev medium 0% · Jev gave micro 100%
+ Pin      micro   low  ▶medium   high                                          next turn only
+ Session  9 replies · 3 switches · saved ≈ $0.04 (21%) vs gpt-6.1-sol · medium
+          ▃▃▃▃▃▅▅▅▅  1 reply per cell
+ Context  ░░░░░░░░░░ 7%  38.0K / 475K gpt-6.1-sol      Cache  99% last reply · 68% session
+ Recent   20:07  medium gpt-6.1-sol · medium · hold: escalation holds 2 turns
+          20:07  medium gpt-6.1-sol · medium · hold: escalation holds 2 turns · +1 steps
+          20:07  medium gpt-6.1-sol · medium · escalate: same tool failure twice, edit in be…
+          20:07  low    gpt-6.1-sol · low · code at low runs on gpt-6.1-sol · low · +2 steps
+          20:06  low    gpt-6-luna · medium · down to low · +1 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:07:40 83b068 s0 medium explore hold gpt-6.1-sol medium 
+### codex
+• Ran go test -tags lab -run TestAdd ./internal/labfix/ ; echo "exit_code=$?"
+  └ FAIL    github.com/alexei-led/codex-router/internal/labfix    0.186s
+    FAIL
+    exit_code=1
+    + 3 lines (⌃t to expand)                                                                 
+ 
+• --- FAIL: TestAdd (0.00s)
+      labfix_test.go:9: Add(2, 3) = -1, want 5
+  FAIL
+  FAIL  github.com/alexei-led/codex-router/internal/labfix      0.186s
+  FAIL
+  exit_code=1
+ 
+  Worked for 12s • 20:07                                                                     
+ 
+ 
+› Unrelated quick question: what does the -run flag of go test do? One sentence. Do not run
+  anything.
+ 
+ 
+• The -run flag tells go test to run only tests whose names match the supplied regular
+  expression.
+ 
+  Worked for 4s • 20:07                                                                      
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol medium · 828K window · Context 98% left · +40 -0 · Ready · 74.9K used · Run Te…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

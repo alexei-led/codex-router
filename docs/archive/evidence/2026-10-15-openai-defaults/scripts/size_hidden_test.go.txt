@@ -1,0 +1,30 @@
+//go:build grade
+
+package labfix
+
+import "testing"
+
+func TestParseSizeHidden(t *testing.T) {
+	ok := []struct {
+		in   string
+		want int64
+	}{
+		{"0", 0}, {"123", 123}, {" 42 ", 42}, {"1k", 1000}, {"1K", 1000}, {"1kb", 1000},
+		{"1KiB", 1024}, {"1.5k", 1500}, {"0.5 Mi", 524288}, {"2g", 2000000000},
+		{"9007199254740993", 9007199254740993}, {"9223372036854775807", 9223372036854775807},
+		{"9223372036854775807b", 9223372036854775807}, {"3 GiB", 3 << 30}, {"0.001k", 1},
+	}
+	for _, c := range ok {
+		got, err := ParseSize(c.in)
+		if err != nil || got != c.want {
+			t.Errorf("ParseSize(%q) = %d, %v; want %d", c.in, got, err, c.want)
+		}
+	}
+	bad := []string{"", "k", "-1", "+1", "1.5b", "1.0001k", "1.5", "1 2", "1..5k", ".5k", "5.k",
+		"1  k", "1kk", "9223372036854775808", "10000000000g"}
+	for _, in := range bad {
+		if got, err := ParseSize(in); err == nil {
+			t.Errorf("ParseSize(%q) = %d, nil; want error", in, got)
+		}
+	}
+}

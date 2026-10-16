@@ -1,0 +1,60 @@
+## P2-1 (B) endpoint=f82146cf thread=01a14089-382a-7ca0-8887-cf97b15ebc74
+prompt: Design how internal/route should handle a classifier that times out on 10% of turns while keeping decisions pure and p99 under 2 ms, given conflicting goals: switch within one turn of a difficulty change vs at most one cache-losing switch per 10 turns vs pins always win. Compare three designs, pick one, list risks. Do not edit files.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ HIGH  plan → gpt-6.1-sol · xhigh                                 classifier agrees with high
+       Jev high 98% · Jev gave high 98%
+ Pin      micro   low   medium  ▶high                                          next turn only
+ Session  10 replies · 1 switch · cost ≈ $0.21 (1593%) vs gpt-6-luna · low
+          ▇▇▇▇▇▇▇▇▇▇  1 reply per cell
+ Context  █░░░░░░░░░ 17%  82.2K / 475K gpt-6.1-sol      Cache  96% last reply · 85% session
+ Recent   20:10  high   gpt-6.1-sol · xhigh · classifier agrees with high · +10 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:08:20 a62350 s0 high plan jump gpt-6.1-sol xhigh rw
+20:08:26 a62350 s1 high plan continue gpt-6.1-sol xhigh rw
+20:08:42 a62350 s2 high plan continue gpt-6.1-sol xhigh rw
+20:08:48 a62350 s3 high plan continue gpt-6.1-sol xhigh rw
+20:08:55 a62350 s4 high plan continue gpt-6.1-sol xhigh rw
+20:08:58 a62350 s5 high plan same-tier gpt-6.1-sol xhigh rw
+20:09:04 a62350 s6 high plan continue gpt-6.1-sol xhigh rw
+20:09:36 stream-aborted {'thread': '01a14089-382a-7ca0-8887-cf97b15ebc74', 'turn': '01a14089-39df-73a0-aecc-53169da62350', 'path': '/v1/responses', 'stage': 'client'}
+20:09:36 a62350 s7 high plan continue gpt-6.1-sol xhigh rw
+20:09:45 a62350 s8 high plan continue gpt-6.1-sol xhigh rw
+20:09:55 a62350 s9 high plan continue gpt-6.1-sol xhigh rw
+20:10:04 a62350 s10 high plan same-tier gpt-6.1-sol xhigh rw
+### codex
+    intervening turns. A timeout burst can extend adaptation delay indefinitely.
+ 
+  • Stale or wrong advice: one confident mistake can occupy the switch budget. Versioning
+    prevents obsolete results; it cannot prove classification accuracy.
+ 
+  • Context overflow: retaining the incumbent may become impossible. Availability then
+    requires an explicit cap exception; a strict cap requires reporting infeasibility.
+ 
+  • Estimated cache loss: TTL and prefix estimates can misclassify actual provider cache
+    behavior.
+ 
+  • Restart loopholes: cooldown state must survive restart, or recovery must conservatively
+    withhold automatic loss credit.
+ 
+  • Latency: async classification alone does not establish p99 < 2 ms. Fact extraction,
+    locks, cancellation waits, persistence, snapshots, and sinks must also fit the budget.
+ 
+  Treat 2 ms as the SLO for the complete routing call, including contention—not just the pure
+  function. Acceptance should measure that distribution with 10% timeouts and bursts,
+  alongside invariants for retries, rolling windows, and pin races.
+ 
+  No files edited or checks run; latency remains unverified.
+ 
+  Worked for 3m 4s • 20:11                                                                   
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol xhigh · 828K window · Context 92% left · +40 -0 · Ready · 71.7K used · Design …
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

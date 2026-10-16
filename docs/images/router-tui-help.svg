@@ -100,20 +100,20 @@
   <text x="343.6" y="446.0" fill="#878787" xml:space="preserve"> · escalated after a repeated failure</text>
   <text x="94.0" y="465.0" fill="#878787" xml:space="preserve">18:41  </text>
   <text x="148.6" y="465.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="203.2" y="465.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="328.0" y="465.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="203.2" y="465.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="465.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
   <text x="94.0" y="484.0" fill="#878787" xml:space="preserve">18:40  </text>
   <text x="148.6" y="484.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="203.2" y="484.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="328.0" y="484.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="203.2" y="484.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="484.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
   <text x="94.0" y="503.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="148.6" y="503.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="203.2" y="503.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="328.0" y="503.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="203.2" y="503.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="503.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
   <text x="94.0" y="522.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="148.6" y="522.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="203.2" y="522.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="328.0" y="522.0" fill="#878787" xml:space="preserve"> · moved up a tier</text>
+  <text x="203.2" y="522.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="522.0" fill="#878787" xml:space="preserve"> · moved up a tier</text>
   <text x="16.0" y="560.0" fill="#87afff" font-weight="700" xml:space="preserve">esc</text>
   <text x="39.4" y="560.0" fill="#878787" xml:space="preserve"> close</text>
 </svg>

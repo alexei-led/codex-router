@@ -1,0 +1,50 @@
+## C7-ops (A) endpoint=80ed585d thread=01a14087-74d8-7e63-a88a-f5274619dcc6
+prompt: Run make lint and summarize the result in three lines. Do not fix anything.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ LOW  ops → gpt-6-luna · medium                                                 ↓ down to low
+      Jev low 36% · Jev gave cheaper tiers 99% (needs 90%)
+ Pin      micro  ▶low   medium   high                                          next turn only
+ Session  2 replies · 1 switch · saved ≈ $0.04 (95%) vs gpt-6.1-sol · medium
+          ▃▃  1 reply per cell
+ Context  ░░░░░░░░░░ 9%  25.6K / 258.4K gpt-6-luna      Cache  95% last reply · 56% session
+ Recent   20:06  low    gpt-6-luna · medium · down to low · +1 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:06:24 cb8522 s0 low ops downgrade gpt-6-luna medium rw
+20:06:32 cb8522 s1 low ops continue gpt-6-luna medium rw
+### codex
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna medium · 828K window · Context 99% left · +40 -0 · Ready · 18.3K used · Run and…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

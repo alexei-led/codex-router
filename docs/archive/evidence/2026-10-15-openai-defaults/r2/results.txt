@@ -1,0 +1,120 @@
+review lunamed gpt-6-luna/medium r=1 rc=0 secs=38 usd=0.0051 in=159085 out=1336 reason=270 score=4/5 fp=0 found=D1,D3,D4,D5
+review sol gpt-6.1-sol/low r=1 rc=0 secs=66 usd=0.1319 in=222952 out=1743 reason=30 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review lunamed gpt-6-luna/medium r=2 rc=0 secs=30 usd=0.0058 in=183411 out=2134 reason=549 score=4/5 fp=0 found=D2,D3,D4,D5
+review solmed gpt-6.1-sol/medium r=1 rc=0 secs=76 usd=0.1619 in=402505 out=2103 reason=142 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review lunahi gpt-6-luna/high r=1 rc=0 secs=88 usd=0.0095 in=405277 out=4331 reason=2418 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review luna gpt-6-luna/xhigh r=1 rc=0 secs=95 usd=0.0136 in=417279 out=8203 reason=5796 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review lunamed gpt-6-luna/medium r=3 rc=0 secs=40 usd=0.0060 in=215405 out=2147 reason=484 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review solhigh gpt-6.1-sol/high r=1 rc=0 secs=117 usd=0.1823 in=397640 out=3074 reason=460 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review sol gpt-6.1-sol/low r=2 rc=0 secs=58 usd=0.1130 in=239752 out=1725 reason=60 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review solxhigh gpt-6.1-sol/xhigh r=1 rc=0 secs=139 usd=0.1906 in=438059 out=3900 reason=1118 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review lunahi gpt-6-luna/high r=2 rc=0 secs=55 usd=0.0072 in=224454 out=3577 reason=1738 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review solmed gpt-6.1-sol/medium r=2 rc=0 secs=76 usd=0.1542 in=394486 out=2136 reason=140 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review sol gpt-6.1-sol/low r=3 rc=0 secs=52 usd=0.1182 in=196190 out=1599 reason=43 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+debug lunamed gpt-6-luna/medium r=1 rc=0 secs=66 usd=0.0122 in=533329 out=2756 reason=629 own-pass A-fixed B-fixed testfiles=2
+review luna gpt-6-luna/xhigh r=2 rc=0 secs=91 usd=0.0116 in=372348 out=6483 reason=4335 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review lunahi gpt-6-luna/high r=3 rc=0 secs=52 usd=0.0091 in=358269 out=3461 reason=1420 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review solhigh gpt-6.1-sol/high r=2 rc=0 secs=117 usd=0.2125 in=644082 out=3751 reason=738 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review solmed gpt-6.1-sol/medium r=3 rc=0 secs=81 usd=0.1642 in=456371 out=2406 reason=338 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+debug lunamed gpt-6-luna/medium r=2 rc=0 secs=73 usd=0.0122 in=381571 out=2503 reason=554 own-pass A-fixed B-fixed testfiles=2
+debug sol gpt-6.1-sol/low r=1 rc=0 secs=88 usd=0.1572 in=408976 out=3120 reason=115 own-pass A-fixed B-fixed testfiles=3
+review luna gpt-6-luna/xhigh r=3 rc=0 secs=100 usd=0.0182 in=441872 out=7773 reason=5320 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review solxhigh gpt-6.1-sol/xhigh r=2 rc=0 secs=153 usd=0.2636 in=599474 out=5498 reason=2284 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+review solhigh gpt-6.1-sol/high r=3 rc=0 secs=97 usd=0.2140 in=436526 out=2533 reason=257 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+debug sol gpt-6.1-sol/low r=2 rc=0 secs=80 usd=0.1444 in=337887 out=2113 reason=31 own-pass A-fixed B-fixed testfiles=3
+debug lunamed gpt-6-luna/medium r=3 rc=0 secs=94 usd=0.0151 in=566378 out=3385 reason=749 own-pass A-fixed B-fixed testfiles=2
+ops lunamed gpt-6-luna/medium r=1 rc=0 secs=54 usd=0.0099 in=405788 out=1263 reason=151 make-pass platforms-ok listen-ok
+debug solmed gpt-6.1-sol/medium r=1 rc=0 secs=215 usd=0.3105 in=1257613 out=6193 reason=1345 own-pass A-fixed B-fixed testfiles=3
+debug lunahi gpt-6-luna/high r=1 rc=0 secs=258 usd=0.0348 in=2256485 out=10204 reason=5556 own-pass A-fixed B-fixed testfiles=3
+ops lunamed gpt-6-luna/medium r=2 rc=0 secs=46 usd=0.0082 in=284783 out=1407 reason=0 make-pass platforms-ok listen-ok
+review solxhigh gpt-6.1-sol/xhigh r=3 rc=0 secs=203 usd=0.2972 in=875755 out=5816 reason=2176 score=5/5 fp=0 found=D1,D2,D3,D4,D5
+ops lunamed gpt-6-luna/medium r=3 rc=0 secs=59 usd=0.0078 in=376352 out=1796 reason=182 make-pass platforms-ok listen-ok
+debug solhigh gpt-6.1-sol/high r=1 rc=0 secs=217 usd=0.3574 in=1212801 out=7824 reason=1653 own-pass A-fixed B-fixed testfiles=2
+debug lunahi gpt-6-luna/high r=2 rc=0 secs=97 usd=0.0156 in=657100 out=4417 reason=2019 own-pass A-fixed B-fixed testfiles=2
+debug sol gpt-6.1-sol/low r=3 rc=0 secs=205 usd=0.1866 in=764381 out=4041 reason=295 own-pass A-fixed B-fixed testfiles=3
+code lunamed gpt-6-luna/medium r=1 rc=0 secs=53 usd=0.0088 in=472194 out=1985 reason=87 own-pass hidden-pass docs-ok
+debug luna gpt-6-luna/xhigh r=1 rc=0 secs=338 usd=0.0556 in=3190217 out=27077 reason=15287 own-pass A-fixed B-fixed testfiles=2
+debug lunahi gpt-6-luna/high r=3 rc=0 secs=95 usd=0.0096 in=386527 out=3165 reason=1298 own-pass A-fixed B-fixed testfiles=2
+ops sol gpt-6.1-sol/low r=1 rc=0 secs=78 usd=0.1136 in=340076 out=1467 reason=40 make-pass platforms-ok listen-ok
+code lunamed gpt-6-luna/medium r=2 rc=0 secs=82 usd=0.0102 in=493914 out=2628 reason=509 own-pass hidden-pass docs-ok
+debug solmed gpt-6.1-sol/medium r=2 rc=0 secs=226 usd=0.3207 in=1236513 out=6225 reason=994 own-pass A-fixed B-fixed testfiles=3
+ops lunahi gpt-6-luna/high r=1 rc=0 secs=54 usd=0.0081 in=288197 out=1572 reason=285 make-pass platforms-ok listen-ok
+ops sol gpt-6.1-sol/low r=2 rc=0 secs=69 usd=0.1204 in=333006 out=1475 reason=37 make-pass platforms-ok listen-ok
+code lunamed gpt-6-luna/medium r=3 rc=0 secs=80 usd=0.0080 in=412663 out=1920 reason=197 own-pass hidden-pass docs-ok
+ops lunahi gpt-6-luna/high r=2 rc=0 secs=55 usd=0.0076 in=385712 out=2280 reason=650 make-pass platforms-ok listen-ok
+explore lunamed gpt-6-luna/medium r=1 rc=0 secs=27 usd=0.0073 in=275491 out=941 reason=159 score=14/14 wrong=
+debug solmed gpt-6.1-sol/medium r=3 rc=0 secs=142 usd=0.2204 in=665915 out=4057 reason=416 own-pass A-fixed B-fixed testfiles=3
+explore lunamed gpt-6-luna/medium r=2 rc=0 secs=39 usd=0.0084 in=284188 out=747 reason=0 score=13/14 wrong=q3_upgrade_bar
+ops sol gpt-6.1-sol/low r=3 rc=0 secs=92 usd=0.1058 in=371565 out=1733 reason=58 make-pass platforms-ok listen-ok
+debug luna gpt-6-luna/xhigh r=2 rc=0 secs=218 usd=0.0222 in=1002625 out=12255 reason=8460 own-pass A-fixed B-fixed testfiles=2
+ops lunahi gpt-6-luna/high r=3 rc=0 secs=83 usd=0.0093 in=521606 out=2756 reason=790 make-pass platforms-ok listen-ok
+explore lunamed gpt-6-luna/medium r=3 rc=0 secs=36 usd=0.0066 in=251126 out=1050 reason=52 score=13/14 wrong=q3_upgrade_bar
+debug solhigh gpt-6.1-sol/high r=2 rc=0 secs=342 usd=0.4025 in=1549303 out=9465 reason=2284 own-pass A-fixed B-fixed testfiles=3
+code sol gpt-6.1-sol/low r=1 rc=0 secs=63 usd=0.1285 in=244078 out=2068 reason=30 own-pass hidden-pass docs-ok
+plan lunamed gpt-6-luna/medium r=1 rc=0 secs=47 usd=0.0085 in=288417 out=2387 reason=236 plan=saved
+ops solmed gpt-6.1-sol/medium r=1 rc=0 secs=87 usd=0.1392 in=392005 out=2105 reason=188 make-pass platforms-ok listen-ok
+debug solxhigh gpt-6.1-sol/xhigh r=1 rc=0 secs=468 usd=0.5360 in=2155228 out=14474 reason=5227 own-pass A-fixed B-fixed testfiles=3
+code lunahi gpt-6-luna/high r=1 rc=0 secs=91 usd=0.0083 in=423217 out=3111 reason=606 own-pass hidden-pass docs-ok
+plan lunamed gpt-6-luna/medium r=2 rc=0 secs=43 usd=0.0087 in=248437 out=3484 reason=736 plan=saved
+code sol gpt-6.1-sol/low r=2 rc=0 secs=66 usd=0.1049 in=204204 out=1951 reason=26 own-pass hidden-pass docs-ok
+plan lunamed gpt-6-luna/medium r=3 rc=0 secs=47 usd=0.0125 in=390634 out=3394 reason=936 plan=saved
+code lunahi gpt-6-luna/high r=2 rc=0 secs=55 usd=0.0121 in=587223 out=2674 reason=484 own-pass hidden-pass docs-ok
+ops solmed gpt-6.1-sol/medium r=2 rc=0 secs=99 usd=0.1445 in=420100 out=1928 reason=148 make-pass platforms-ok listen-ok
+code sol gpt-6.1-sol/low r=3 rc=0 secs=67 usd=0.1317 in=348588 out=1944 reason=28 own-pass hidden-pass docs-ok
+code lunahi gpt-6-luna/high r=3 rc=0 secs=59 usd=0.0117 in=558396 out=2906 reason=714 own-pass hidden-pass docs-ok
+explore sol gpt-6.1-sol/low r=1 rc=0 secs=41 usd=0.1207 in=230824 out=924 reason=15 score=14/14 wrong=
+debug luna gpt-6-luna/xhigh r=3 rc=0 secs=243 usd=0.0240 in=1119170 out=12101 reason=7949 own-pass A-fixed B-fixed testfiles=2
+explore lunahi gpt-6-luna/high r=1 rc=0 secs=33 usd=0.0087 in=270093 out=2050 reason=494 score=14/14 wrong=
+explore sol gpt-6.1-sol/low r=2 rc=0 secs=40 usd=0.1103 in=205140 out=888 reason=14 score=14/14 wrong=
+ops solmed gpt-6.1-sol/medium r=3 rc=0 secs=111 usd=0.1597 in=533660 out=2358 reason=251 make-pass platforms-ok listen-ok
+explore lunahi gpt-6-luna/high r=2 rc=0 secs=40 usd=0.0083 in=261821 out=2354 reason=877 score=14/14 wrong=
+explore sol gpt-6.1-sol/low r=3 rc=0 secs=33 usd=0.0687 in=153432 out=721 reason=21 score=14/14 wrong=
+ops luna gpt-6-luna/xhigh r=1 rc=0 secs=72 usd=0.0111 in=380585 out=3566 reason=1588 make-pass platforms-ok listen-ok
+explore lunahi gpt-6-luna/high r=3 rc=0 secs=31 usd=0.0080 in=286577 out=1580 reason=686 score=14/14 wrong=
+code solmed gpt-6.1-sol/medium r=1 rc=0 secs=112 usd=0.1639 in=442678 out=3463 reason=204 own-pass hidden-pass docs-ok
+plan sol gpt-6.1-sol/low r=1 rc=0 secs=111 usd=0.1833 in=361701 out=3292 reason=164 plan=saved
+ops luna gpt-6-luna/xhigh r=2 rc=0 secs=99 usd=0.0119 in=372074 out=4943 reason=2662 make-pass platforms-ok listen-ok
+plan lunahi gpt-6-luna/high r=1 rc=0 secs=91 usd=0.0171 in=432364 out=8030 reason=3118 plan=saved
+debug solhigh gpt-6.1-sol/high r=3 rc=0 secs=406 usd=0.5708 in=2773003 out=12008 reason=2213 own-pass A-fixed B-fixed testfiles=3
+code solmed gpt-6.1-sol/medium r=2 rc=0 secs=100 usd=0.1876 in=526037 out=2686 reason=139 own-pass hidden-pass docs-ok
+ops luna gpt-6-luna/xhigh r=3 rc=0 secs=95 usd=0.0093 in=508470 out=3136 reason=1392 make-pass platforms-ok listen-ok
+plan sol gpt-6.1-sol/low r=2 rc=0 secs=115 usd=0.1903 in=329913 out=3561 reason=112 plan=saved
+plan lunahi gpt-6-luna/high r=2 rc=0 secs=123 usd=0.0155 in=662427 out=6857 reason=3429 plan=saved
+ops solhigh gpt-6.1-sol/high r=1 rc=0 secs=100 usd=0.1457 in=442186 out=2444 reason=322 make-pass platforms-ok listen-ok
+debug solxhigh gpt-6.1-sol/xhigh r=2 rc=0 secs=476 usd=0.4966 in=2092093 out=15106 reason=5630 own-pass A-fixed B-fixed testfiles=3
+code luna gpt-6-luna/xhigh r=1 rc=0 secs=77 usd=0.0118 in=567391 out=4567 reason=1827 own-pass hidden-pass docs-ok
+code solmed gpt-6.1-sol/medium r=3 rc=0 secs=119 usd=0.1697 in=577390 out=2737 reason=112 own-pass hidden-pass docs-ok
+plan sol gpt-6.1-sol/low r=3 rc=0 secs=115 usd=0.1805 in=371807 out=3300 reason=125 plan=saved
+plan lunahi gpt-6-luna/high r=3 rc=0 secs=103 usd=0.0129 in=362222 out=7640 reason=3420 plan=saved
+ops solhigh gpt-6.1-sol/high r=2 rc=0 secs=109 usd=0.1920 in=458249 out=2579 reason=287 make-pass platforms-ok listen-ok
+explore solmed gpt-6.1-sol/medium r=1 rc=0 secs=83 usd=0.1555 in=500640 out=1537 reason=209 score=14/14 wrong=
+code luna gpt-6-luna/xhigh r=2 rc=0 secs=136 usd=0.0230 in=925408 out=11093 reason=5192 own-pass hidden-pass docs-ok
+explore solmed gpt-6.1-sol/medium r=2 rc=0 secs=34 usd=0.1133 in=183283 out=864 reason=45 score=14/14 wrong=
+ops solhigh gpt-6.1-sol/high r=3 rc=0 secs=91 usd=0.1387 in=488002 out=2163 reason=184 make-pass platforms-ok listen-ok
+explore solmed gpt-6.1-sol/medium r=3 rc=0 secs=34 usd=0.0922 in=198288 out=914 reason=88 score=14/14 wrong=
+code luna gpt-6-luna/xhigh r=3 rc=0 secs=89 usd=0.0129 in=548517 out=5261 reason=1888 own-pass hidden-pass docs-ok
+code solhigh gpt-6.1-sol/high r=1 rc=0 secs=108 usd=0.1863 in=513961 out=3879 reason=525 own-pass hidden-pass docs-ok
+explore luna gpt-6-luna/xhigh r=1 rc=0 secs=41 usd=0.0135 in=459476 out=3194 reason=1959 score=14/14 wrong=
+explore luna gpt-6-luna/xhigh r=2 rc=0 secs=53 usd=0.0127 in=437259 out=3365 reason=1926 score=14/14 wrong=
+plan solmed gpt-6.1-sol/medium r=1 rc=0 secs=209 usd=0.2945 in=691999 out=7567 reason=659 plan=saved
+explore luna gpt-6-luna/xhigh r=3 rc=0 secs=65 usd=0.0109 in=325165 out=2797 reason=1515 score=14/14 wrong=
+code solhigh gpt-6.1-sol/high r=2 rc=0 secs=129 usd=0.2127 in=592059 out=3494 reason=261 own-pass hidden-pass docs-ok
+debug solxhigh gpt-6.1-sol/xhigh r=3 rc=0 secs=453 usd=0.4906 in=2013610 out=13888 reason=3525 own-pass A-fixed B-fixed testfiles=3
+code solhigh gpt-6.1-sol/high r=3 rc=0 secs=80 usd=0.2227 in=584384 out=4058 reason=387 own-pass hidden-pass docs-ok
+ops solxhigh gpt-6.1-sol/xhigh r=1 rc=0 secs=1185 usd=0.1681 in=428041 out=4820 reason=2025 make-pass platforms-ok listen-ok
+plan solmed gpt-6.1-sol/medium r=2 rc=0 secs=1280 usd=0.2875 in=625371 out=8133 reason=996 plan=saved
+plan luna gpt-6-luna/xhigh r=1 rc=0 secs=1282 usd=0.0300 in=957175 out=23811 reason=18654 plan=saved
+ops solxhigh gpt-6.1-sol/xhigh r=2 rc=0 secs=138 usd=0.1695 in=507156 out=3457 reason=549 make-pass platforms-ok listen-ok
+plan solmed gpt-6.1-sol/medium r=3 rc=0 secs=160 usd=0.2119 in=507678 out=4748 reason=584 plan=saved
+ops solxhigh gpt-6.1-sol/xhigh r=3 rc=0 secs=137 usd=0.2062 in=498683 out=3815 reason=830 make-pass platforms-ok listen-ok
+plan solhigh gpt-6.1-sol/high r=1 rc=0 secs=1439 usd=0.4994 in=1622474 out=12808 reason=3941 plan=saved
+plan luna gpt-6-luna/xhigh r=2 rc=0 secs=338 usd=0.0367 in=1018135 out=27498 reason=22498 plan=saved
+code solxhigh gpt-6.1-sol/xhigh r=1 rc=0 secs=195 usd=0.2461 in=704250 out=5919 reason=2073 own-pass hidden-pass docs-ok
+plan solhigh gpt-6.1-sol/high r=2 rc=0 secs=342 usd=0.3874 in=1051101 out=12232 reason=2529 plan=saved
+plan luna gpt-6-luna/xhigh r=3 rc=0 secs=264 usd=0.0262 in=589260 out=24077 reason=19231 plan=saved
+code solxhigh gpt-6.1-sol/xhigh r=2 rc=0 secs=232 usd=0.3422 in=1013796 out=6837 reason=2180 own-pass hidden-pass docs-ok
+code solxhigh gpt-6.1-sol/xhigh r=3 rc=0 secs=186 usd=0.2437 in=731846 out=6627 reason=2620 own-pass hidden-pass docs-ok
+plan solhigh gpt-6.1-sol/high r=3 rc=0 secs=273 usd=0.3887 in=1046511 out=10043 reason=2106 plan=saved
+plan solxhigh gpt-6.1-sol/xhigh r=1 rc=0 secs=309 usd=0.4280 in=987408 out=10183 reason=4390 plan=saved
+plan solxhigh gpt-6.1-sol/xhigh r=2 rc=0 secs=447 usd=0.5359 in=1651364 out=16621 reason=3752 plan=saved
+plan solxhigh gpt-6.1-sol/xhigh r=3 rc=0 secs=501 usd=0.4558 in=1303780 out=16905 reason=4714 plan=saved

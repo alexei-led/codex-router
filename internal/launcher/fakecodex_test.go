@@ -56,7 +56,7 @@ func fakeSignals() int {
 	return exitFailed
 }
 
-var pinnedRoute = config.Route{Model: "gpt-6-luna", Effort: config.EffortMedium}
+var pinnedRoute = config.Default().Routes[config.TierLow]
 
 func TestMain(m *testing.M) {
 	if os.Getenv(envFake) != "" {

@@ -14,22 +14,17 @@ How the file is read:
 
 ## Example
 
-Cheaper low tier, a price table for the Usage tab, a local classifier:
+Cheaper low tier, a stronger plan route, a local classifier:
 
 ```json
 {
   "baseline": "medium",
   "routes": {
-    "low": { "model": "gpt-6-luna", "effort": "low" }
+    "low": { "model": "gpt-6-luna", "effort": "medium" }
   },
   "activities": {
-    "debug": { "medium": { "model": "gpt-6-sol", "effort": "high" } },
+    "plan": { "medium": { "effort": "high" } },
     "docs": { "medium": { "effort": "low" } }
-  },
-  "prices": {
-    "gpt-6-luna": { "input": 0.5, "cachedInput": 0.05, "output": 3 },
-    "gpt-6-sol": { "input": 2.5, "cachedInput": 0.25, "output": 15 },
-    "gpt-6.1-sol": { "input": 5, "cachedInput": 0.5, "output": 30 }
   },
   "preset": "thrifty",
   "classifier": "ollama",
@@ -37,7 +32,7 @@ Cheaper low tier, a price table for the Usage tab, a local classifier:
 }
 ```
 
-The prices are placeholders: use the list prices you want estimates against. Because objects merge, `"policy": {"minDwellRequests": 6}` changes one field. Because map entries replace, `routes.low` above replaces the whole default `low` route.
+Because objects merge, `"policy": {"minDwellRequests": 6}` changes one field. Because map entries replace, `routes.low` above replaces the whole default `low` route.
 
 ## Fields
 
@@ -46,7 +41,7 @@ The prices are placeholders: use the list prices you want estimates against. Bec
 | `baseline`    | tier                              | `medium`                                                     | Tier of the route used when no thread model is known, and the target of the upward context fix. |
 | `routes`      | map tier to route                 | see below                                                    | Model and effort per tier. All four tiers must exist.                                           |
 | `activities`  | map activity to map tier to route | `debug` at `medium`                                          | Per-activity override of a tier's route. Optional.                                              |
-| `prices`      | map model to price                | none                                                         | List prices in USD per million tokens. Optional.                                                |
+| `prices`      | map model to price                | `gpt-6.1-sol`, `gpt-6-luna`                                  | List prices in USD per million tokens. Optional.                                                |
 | `policy`      | object                            | see below                                                    | Switching thresholds.                                                                           |
 | `preset`      | `thrifty`, `balanced`, `quality`  | `balanced`                                                   | Overrides some policy fields. See [presets](#presets).                                          |
 | `classifier`  | string                            | `jev`                                                        | Key of the active entry in `classifiers`, or `off`.                                             |
@@ -65,17 +60,17 @@ A route is `{"model": "<slug>", "effort": "<effort>"}`. An empty `effort` keeps 
 | Tier     | Default model | Default effort |
 | -------- | ------------- | -------------- |
 | `high`   | `gpt-6.1-sol` | `high`         |
-| `medium` | `gpt-6-sol`   | `medium`       |
-| `low`    | `gpt-6-luna`  | `medium`       |
-| `micro`  | `gpt-6-luna`  | `low`          |
+| `medium` | `gpt-6.1-sol` | `medium`       |
+| `low`    | `gpt-6-luna`  | `high`         |
+| `micro`  | `gpt-6-luna`  | `medium`       |
 
-The four defaults share one model compatibility group, so switching between them mid-thread works **[verified]**. A model in a different group fails mid-thread, so the router refuses a route outside the group of the model Codex sent and keeps the request. The Policy view lists such models as blocked.
+The defaults use two models in one compatibility group, so switching between them mid-thread works **[verified]**. Codex caches per model, not per effort, so only a move between `gpt-6-luna` and `gpt-6.1-sol` costs cache. In benchmarks on 2026-10-15/16, `gpt-6-luna` at high effort matched `gpt-6.1-sol` on bounded review, debug, ops, code, explore and plan tasks at 5–10% of the list cost; `xhigh` on either model cost more and planned no better than `high`. `gpt-6.1-sol` keeps medium and high for long, open-ended and design work, which those tests did not cover. [Choose models and efforts](user-guide.md#choose-models-and-efforts) has the numbers. A model in a different group fails mid-thread, so the router refuses a route outside the group of the model Codex sent and keeps the request. The Policy view lists such models as blocked.
 
-An `activities.<activity>.<tier>` entry replaces the tier's model and effort field by field; an empty field inherits the tier's route. The default sends `debug` at `medium` to `gpt-6-sol` with `high` effort. An activity route applies when the classifier's activity probability reaches `policy.activityMass`.
+An `activities.<activity>.<tier>` entry replaces the tier's model and effort field by field; an empty field inherits the tier's route. The default sends `debug` at `medium` to `gpt-6.1-sol` with `high` effort. An activity route applies when the classifier's activity probability reaches `policy.activityMass`.
 
 ### prices
 
-`{"input": n, "cachedInput": n, "output": n}`, USD per million tokens, none negative. They drive the list-price estimate on the Now and Usage tabs, and they order models for the "same task, stronger or cheaper" check (by output price). With no price for a model, estimates stay in tokens and the panel says there is no baseline. Plan billing is usage limits, so the figures are estimates, not a bill.
+`{"input": n, "cachedInput": n, "output": n}`, USD per million tokens, none negative. They drive the list-price estimate on the Now and Usage tabs, and they order models for the "same task, stronger or cheaper" check (by output price). The defaults are OpenAI list prices: `gpt-6.1-sol` 2 / 0.10 / 10 (input up to 272K tokens) and `gpt-6-luna` 0.10 / 0.01 / 0.50. An entry you name replaces that model's default price; the other default stays. With no price for a model, estimates stay in tokens and the panel says there is no baseline. Plan billing is usage limits, so the figures are estimates, not a bill.
 
 ### policy
 

@@ -1,0 +1,30 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestHiddenMaxEffort(t *testing.T) {
+	if got := Efforts[len(Efforts)-1]; got != Effort("max") {
+		t.Fatalf("strongest effort = %q, want max", got)
+	}
+	path := filepath.Join(t.TempDir(), "c.json")
+	body := `{"routes":{"high":{"model":"gpt-6.1-sol","effort":"max"}},"activities":{"plan":{"high":{"effort":"max"}}}}`
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load with max effort: %v", err)
+	}
+	if c.Routes[TierHigh].Effort != Effort("max") {
+		t.Fatalf("high effort = %q", c.Routes[TierHigh].Effort)
+	}
+	bad := filepath.Join(t.TempDir(), "bad.json")
+	_ = os.WriteFile(bad, []byte(`{"routes":{"high":{"model":"gpt-6.1-sol","effort":"ultra"}}}`), 0o600)
+	if _, err := Load(bad); err == nil {
+		t.Fatal("unknown effort ultra must still be rejected")
+	}
+}

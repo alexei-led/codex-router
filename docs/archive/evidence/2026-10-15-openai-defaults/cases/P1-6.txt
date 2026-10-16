@@ -1,0 +1,53 @@
+## P1-6 (keep) endpoint=ff74ec15 thread=01a14087-d942-71e3-8a11-df869dd88448
+prompt: Last one: what does gofmt -l print? One sentence. Do not run anything.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MICRO  explore → gpt-6-luna · low                                            ↓ down to micro
+        Jev micro 99% · Jev gave cheaper tiers 99% (needs 91%) · switch ≈ 9k uncached tokens
+ Pin     ▶micro   low   medium   high                                          next turn only
+ Session  11 replies · 4 switches · saved ≈ $0.09 (38%) vs gpt-6.1-sol · medium
+          ▃▃▃▃▃▅▅▅▅▅▁  1 reply per cell
+ Context  █░░░░░░░░░ 14%  38.3K / 258.4K gpt-6-luna      Cache  15% last reply · 66% session
+ Recent   20:08  micro  gpt-6-luna · low · down to micro
+          20:07  medium gpt-6.1-sol · medium · waiting to go down: needs more support
+          20:07  medium gpt-6.1-sol · medium · hold: escalation holds 2 turns
+          20:07  medium gpt-6.1-sol · medium · hold: escalation holds 2 turns · +1 steps
+          20:07  medium gpt-6.1-sol · medium · escalate: same tool failure twice, edit in be…
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:08:03 f3ec37 s0 micro explore downgrade gpt-6-luna low rw
+### codex
+ 
+• The -run flag tells go test to run only tests whose names match the supplied regular
+  expression.
+ 
+  Worked for 4s • 20:07                                                                      
+ 
+ 
+› Another quick one: what does go vet do? One sentence. Do not run anything.
+ 
+ 
+• go vet analyzes Go code for likely mistakes, such as incorrect Printf format arguments,
+  that the compiler may not catch.
+ 
+  Worked for 3s • 20:07                                                                      
+ 
+ 
+› Last one: what does gofmt -l print? One sentence. Do not run anything.
+ 
+ 
+• gofmt -l prints the names of Go files that are not formatted according to gofmt.
+ 
+↳ Hook · router: micro · explore → gpt-6-luna · low · down to micro
+ 
+  Worked for 2s • 20:08                                                                      
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna low · 828K window · Context 98% left · +40 -0 · Ready · 101K used · Run TestAdd…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

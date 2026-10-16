@@ -252,7 +252,7 @@ func TestRunRoutesASessionAndReturnsCodexExitCode(t *testing.T) {
 				t.Errorf("resumes = %s, want one for thread-1", resumes)
 			}
 			updates := h.recorded(t, "update")
-			if len(updates) != 1 || string(updates[0]) != `{"threadId":"thread-1","model":"gpt-6-luna","effort":"medium"}` {
+			if len(updates) != 1 || string(updates[0]) != `{"threadId":"thread-1","model":"gpt-6-luna","effort":"high"}` {
 				t.Errorf("settings writes = %s, want one pinned route", updates)
 			}
 			h.assertStart(t)

@@ -8,9 +8,9 @@
 
 **The right model for every turn of a Codex session.** codex-router picks the model and reasoning effort for each turn of the [Codex CLI](https://github.com/openai/codex). Reading code and small edits go to a light model, and a fix that keeps failing goes to the strongest one. The choice shows in Codex's own footer.
 
-![A terminal split. Left: Codex, where the same test failed twice with an edit in between, and the footer now shows GPT-6.1-Sol high. Right: the codex-router panel explaining that the turn moved up from gpt-6-sol medium because the same tool failure repeated.](docs/images/codex-router-split.svg)
+![A terminal split. Left: Codex, where the same test failed twice with an edit in between, and the footer now shows GPT-6.1-Sol high. Right: the codex-router panel explaining that the turn moved up from gpt-6.1-sol medium because the same tool failure repeated.](docs/images/codex-router-split.svg)
 
-<sub>Left: Codex. The same test failed twice with an edit in between, so the router moved the turn from `gpt-6-sol · medium` to `gpt-6.1-sol · high`, and the footer follows. Right: the optional panel shows why. Sample data.</sub>
+<sub>Left: Codex. The same test failed twice with an edit in between, so the router moved the turn from `gpt-6.1-sol · medium` to `gpt-6.1-sol · high`, and the footer follows. Right: the optional panel shows why. Sample data.</sub>
 
 ## Why
 

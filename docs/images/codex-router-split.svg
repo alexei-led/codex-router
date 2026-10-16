@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1264 427" width="1264" height="427" role="img" aria-labelledby="title desc">
   <title id="title">Codex and the codex-router panel side by side</title>
-  <desc id="desc">A terminal split. Left: Codex runs a Go test that fails twice with an edit in between, and its footer shows GPT-6.1-Sol high. Right: the codex-router panel says this turn moved from gpt-6-sol medium to gpt-6.1-sol high because the same tool failure repeated, shows the classifier's tier and activity reading, the session's routed replies by tier, the estimated saving, and that the footer is synced.</desc>
+  <desc id="desc">A terminal split. Left: Codex runs a Go test that fails twice with an edit in between, and its footer shows GPT-6.1-Sol high. Right: the codex-router panel says this turn moved from gpt-6.1-sol medium to gpt-6.1-sol high because the same tool failure repeated, shows the classifier's tier and activity reading, the session's routed replies by tier, the estimated saving, and that the footer is synced.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
   <rect width="1264" height="427" rx="8" fill="#14171f"/>
   <rect x="0.5" y="0.5" width="1263" height="426" rx="8" fill="none" stroke="#2e3340"/>
@@ -43,8 +43,6 @@
   <text x="491.8" y="161.0" fill="#d0d0d0" xml:space="preserve">       Jev high 18%</text>
   <text x="640.0" y="161.0" fill="#878787" xml:space="preserve"> · </text>
   <text x="663.4" y="161.0" fill="#d0d0d0" xml:space="preserve">no classifier needed</text>
-  <text x="819.4" y="161.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="842.8" y="161.0" fill="#d0d0d0" xml:space="preserve">switch ≈ 38k uncached tokens</text>
   <text x="468.4" y="180.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="491.8" y="180.0" fill="#d0d0d0" xml:space="preserve"> Pin     </text>
   <text x="562.0" y="180.0" fill="#5fd7af" xml:space="preserve"> micro  </text>
@@ -62,7 +60,7 @@
   <text x="764.8" y="199.0" fill="#878787" xml:space="preserve"> · </text>
   <text x="788.2" y="199.0" fill="#d0d0d0" xml:space="preserve">saved </text>
   <text x="835.0" y="199.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
-  <text x="936.4" y="199.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6-sol · medium</text>
+  <text x="936.4" y="199.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6.1-sol · medium</text>
   <text x="31.6" y="218.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">└</text>
   <text x="47.2" y="218.0" fill="#cd3131" xml:space="preserve">--- FAIL: TestBackoff (0.00s)</text>
   <text x="468.4" y="218.0" fill="#2e3340" xml:space="preserve"> │ </text>
@@ -128,25 +126,25 @@
   <text x="468.4" y="313.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="569.8" y="313.0" fill="#878787" xml:space="preserve">18:41  </text>
   <text x="624.4" y="313.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="679.0" y="313.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="803.8" y="313.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="679.0" y="313.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="835.0" y="313.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
   <text x="468.4" y="332.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="569.8" y="332.0" fill="#878787" xml:space="preserve">18:40  </text>
   <text x="624.4" y="332.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="679.0" y="332.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="803.8" y="332.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="679.0" y="332.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="835.0" y="332.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
   <text x="16.0" y="351.0" fill="#11a8cd" xml:space="preserve">›</text>
   <text x="31.6" y="351.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">Ask Codex to do anything</text>
   <text x="468.4" y="351.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="569.8" y="351.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="624.4" y="351.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="679.0" y="351.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="803.8" y="351.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="679.0" y="351.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="835.0" y="351.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
   <text x="468.4" y="370.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="569.8" y="370.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="624.4" y="370.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="679.0" y="370.0" fill="#d0d0d0" xml:space="preserve">gpt-6-sol · high</text>
-  <text x="803.8" y="370.0" fill="#878787" xml:space="preserve"> · moved up a tier</text>
+  <text x="679.0" y="370.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="835.0" y="370.0" fill="#878787" xml:space="preserve"> · moved up a tier</text>
   <text x="31.6" y="389.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">GPT-6.1-Sol high · main · 828K window · Context 89% left</text>
   <text x="468.4" y="389.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="31.6" y="408.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">? for shortcuts</text>

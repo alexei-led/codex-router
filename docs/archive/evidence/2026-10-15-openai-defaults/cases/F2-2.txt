@@ -1,0 +1,54 @@
+## F2-2 (keep) endpoint=990bc892 thread=01a1409c-12a5-7c12-929e-34dba103750f
+prompt: Add the line "// lab: checked Add" directly above func Add in internal/labfix/labfix.go. Do not fix the bug. Then run exactly: go test -tags lab -run TestAdd ./internal/labfix/ ; echo "exit_code=$?" and show the output verbatim.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MEDIUM  code → gpt-6.1-sol · medium     ↑ escalate: same tool failure twice, edit in between
+         Jev medium 4% · no classifier needed · switch ≈ 26k uncached tokens
+ Pin      micro   low  ▶medium   high                                          next turn only
+ Session  6 replies · 2 switches · saved ≈ $0.06 (52%) vs gpt-6.1-sol · medium
+          ▃▃▃▃▃▅  1 reply per cell
+ Context  ░░░░░░░░░░ 6%  31.6K / 475K gpt-6.1-sol      Cache  0% last reply · 64% session
+ Recent   20:29  medium gpt-6.1-sol · medium · escalate: same tool failure twice, edit in be…
+          20:29  low    gpt-6-luna · medium · classifier agrees with low · +2 steps
+          20:28  low    gpt-6-luna · medium · down to low · +1 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:29:07 053f20 s0 low ops same-tier gpt-6-luna medium 
+20:29:10 053f20 s1 low ops continue gpt-6-luna medium 
+20:29:13 053f20 s2 low ops continue gpt-6-luna medium 
+20:29:21 053f20 s3 medium ops escalation gpt-6.1-sol medium rw
+### codex
+  └ Read labfix.go
+    + Show details                                                                           
+ 
+• Edited internal/labfix/labfix.go (+1 -0)
+    5 +// lab: checked Add
+    + Show details                                                                           
+ 
+• Ran go test -tags lab -run TestAdd ./internal/labfix/ ; echo "exit_code=$?"
+  └ FAIL    github.com/alexei-led/codex-router/internal/labfix    0.263s
+    FAIL
+    exit_code=1
+    + 3 lines (⌃t to expand)                                                                 
+ 
+• --- FAIL: TestAdd (0.00s)
+      labfix_test.go:9: Add(2, 3) = -1, want 5
+  FAIL
+  FAIL  github.com/alexei-led/codex-router/internal/labfix      0.263s
+  FAIL
+  exit_code=1
+ 
+↳ Hook · router: medium · ops → gpt-6.1-sol · medium · escalate: same tool failure twice,
+edit in between
+ 
+  Worked for 17s • 20:29                                                                     
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol medium · 828K window · Context 98% left · +40 -0 · Ready · 51.7K used · Run Te…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

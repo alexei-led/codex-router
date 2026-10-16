@@ -1,0 +1,53 @@
+## F2-5 (keep) endpoint=990bc892 thread=01a1409c-12a5-7c12-929e-34dba103750f
+prompt: Last one: what does gofmt -l print? One sentence. Do not run anything.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MEDIUM  explore → gpt-6.1-sol · medium                waiting to go down: needs more support
+         Jev medium 0% · Jev gave cheaper tiers 99% (needs 90%)
+ Pin      micro   low  ▶medium   high                                          next turn only
+ Session  9 replies · 2 switches · saved ≈ $0.06 (45%) vs gpt-6.1-sol · medium
+          ▃▃▃▃▃▅▅▅▅  1 reply per cell
+ Context  ░░░░░░░░░░ 7%  37.9K / 475K gpt-6.1-sol      Cache  99% last reply · 76% session
+ Recent   20:29  medium gpt-6.1-sol · medium · waiting to go down: needs more support
+          20:29  medium gpt-6.1-sol · medium · hold: escalation holds 2 turns
+          20:29  medium gpt-6.1-sol · medium · hold: escalation holds 2 turns
+          20:29  medium gpt-6.1-sol · medium · escalate: same tool failure twice, edit in be…
+          20:29  low    gpt-6-luna · medium · classifier agrees with low · +2 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:29:53 460744 s0 medium explore downgrade-pending gpt-6.1-sol medium 
+### codex
+  anything.
+ 
+ 
+• The -run flag filters tests by a regular expression, so -run TestAdd runs tests whose names
+  match TestAdd.
+ 
+  Worked for 4s • 20:29                                                                      
+ 
+ 
+› Another quick one: what does go vet do? One sentence. Do not run anything.
+ 
+ 
+• go vet analyzes Go code for likely bugs, such as incorrect Printf format strings, that the
+  compiler may accept.
+ 
+  Worked for 4s • 20:29                                                                      
+ 
+ 
+› Last one: what does gofmt -l print? One sentence. Do not run anything.
+ 
+ 
+• gofmt -l prints the names of files whose formatting differs from what gofmt would produce.
+ 
+  Worked for 3s • 20:29                                                                      
+ 
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol medium · 828K window · Context 98% left · +40 -0 · Ready · 57K used · Run Test…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

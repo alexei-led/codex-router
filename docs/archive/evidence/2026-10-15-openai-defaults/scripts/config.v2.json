@@ -1,0 +1,81 @@
+{
+  "baseline": "medium",
+  "routes": {
+    "high": {
+      "model": "gpt-6.1-sol",
+      "effort": "xhigh"
+    },
+    "medium": {
+      "model": "gpt-6.1-sol",
+      "effort": "medium"
+    },
+    "low": {
+      "model": "gpt-6-luna",
+      "effort": "medium"
+    },
+    "micro": {
+      "model": "gpt-6-luna",
+      "effort": "low"
+    }
+  },
+  "activities": {
+    "code": {
+      "low": {
+        "model": "gpt-6.1-sol",
+        "effort": "low"
+      }
+    },
+    "debug": {
+      "low": {
+        "model": "gpt-6.1-sol",
+        "effort": "low"
+      },
+      "medium": {
+        "model": "gpt-6.1-sol",
+        "effort": "high"
+      }
+    },
+    "plan": {
+      "low": {
+        "model": "gpt-6.1-sol",
+        "effort": "low"
+      }
+    },
+    "review": {
+      "low": {
+        "model": "gpt-6.1-sol",
+        "effort": "low"
+      }
+    }
+  },
+  "prices": {
+    "gpt-6-luna": {
+      "input": 0.1,
+      "cachedInput": 0.01,
+      "output": 0.5
+    },
+    "gpt-6.1-sol": {
+      "input": 2,
+      "cachedInput": 0.1,
+      "output": 10
+    }
+  },
+  "classifier": "jev",
+  "classifiers": {
+    "jev": {
+      "envFile": "~/.config/codex-router/.env"
+    },
+    "clef": {
+      "envFile": "~/.config/codex-router/.env"
+    },
+    "clef-flash": {
+      "envFile": "~/.config/codex-router/.env"
+    },
+    "clef-omni": {
+      "envFile": "~/.config/codex-router/.env"
+    },
+    "openai": {
+      "envFile": "~/.config/codex-router/.env"
+    }
+  }
+}

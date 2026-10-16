@@ -1,0 +1,51 @@
+## C2-docs (A) endpoint=5b87f0a8 thread=01a14080-51bf-7a33-9fb0-77a889fd6e8e
+prompt: In README.md, in the Status section, change the first word "Early." to "Early stage." Change nothing else.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ MICRO  docs → gpt-6-luna · low                                               ↓ down to micro
+        Jev micro 98% · Jev gave cheaper tiers 98% (needs 90%)
+ Pin     ▶micro   low   medium   high                                          next turn only
+ Session  3 replies · 1 switch · saved ≈ $0.04 (94%) vs gpt-6.1-sol · medium
+          ▁▁▁  1 reply per cell
+ Context  █░░░░░░░░░ 10%  26.4K / 258.4K gpt-6-luna      Cache  96% last reply · 71% session
+ Recent   19:58  micro  gpt-6-luna · low · down to micro · +2 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+19:58:36 df34b9 s0 micro docs downgrade gpt-6-luna low rw
+19:58:39 df34b9 s1 micro docs continue gpt-6-luna low rw
+19:58:41 df34b9 s2 micro docs continue gpt-6-luna low rw
+### codex
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna low · 828K window · Context 99% left · +40 -0 · Ready · 18.3K used · Update REA…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

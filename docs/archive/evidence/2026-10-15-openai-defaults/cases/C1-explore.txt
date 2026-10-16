@@ -1,0 +1,52 @@
+## C1-explore (A) endpoint=e7b5362b thread=01a1407b-338a-7930-8f1c-c5302464f1d5
+prompt: List the Go packages under internal/ with a one-line description each. Read only package doc comments; do not change anything.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · lab/routing-tune                                            default · 68a7f567
+ LOW  explore → gpt-6-luna · medium                                             ↓ down to low
+      Jev low 17% · Jev gave cheaper tiers 98% (needs 90%)
+ Pin      micro  ▶low   medium   high                                          next turn only
+ Session  4 replies · 1 switch · saved ≈ $0.06 (94%) vs gpt-6.1-sol · medium
+          ▃▃▃▃  1 reply per cell
+ Context  █░░░░░░░░░ 12%  32.3K / 258.4K gpt-6-luna      Cache  93% last reply · 75% session
+ Recent   19:53  low    gpt-6-luna · medium · down to low · +3 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+19:53:00 b463f0 s0 low explore downgrade gpt-6-luna medium rw
+19:53:03 b463f0 s1 low explore continue gpt-6-luna medium rw
+19:53:07 b463f0 s2 low explore continue gpt-6-luna medium rw
+19:53:14 b463f0 s3 low explore continue gpt-6-luna medium rw
+### codex
+ 
+  • policy — Chooses a tier using routing signals, holds, cost, and context fit.
+
+  • proxy — Forwards Responses API traffic and coordinates request rewrites and usage
+    reporting.
+
+  • registry — Tracks running router endpoints and prunes entries for unavailable endpoints.
+
+  • responses — Models the Responses request fields and usage data the router reads or
+    rewrites.
+
+  • route — Runs the routing engine and publishes decisions and session snapshots.
+
+  • service — Installs, loads, and checks per-home launchd or systemd units.
+
+  • sessions — Finds router sessions and selects or sends commands to them.
+
+  • setup — Configures or undoes stage 2 routing for a Codex home.
+
+  • statedir — Defines the router state directory, layout, permissions, and atomic writes.
+
+  • tui — Provides the router panel for sessions, routes, policy, classifier, and usage.
+
+  Worked for 22s • 19:53                                                                     
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6-Luna medium · lab/routing-tune · 828K window · Context 98% left · +38 -0 · Ready · 2…
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view

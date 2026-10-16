@@ -1,0 +1,64 @@
+## C6-highplan (B) endpoint=baea32e7 thread=01a14082-112a-7913-b061-72d1cf16ebfc
+prompt: Design a replacement for the routing policy engine in internal/policy and internal/route. Constraints: decisions must stay pure functions of input and state; p99 decision latency under 2 ms; no new dependencies; the classifier may time out on 10% of turns. Conflicting requirements: product wants switches within one turn of a difficulty change, finance wants at most one cache-losing switch per 10 turns, and users want pins to win always. Compare at least three designs with tradeoffs, pick one, and give a migration plan with risks. Do not edit files.
+
+### TUI
+codex-router  Jev ready                                      Sessions  Policy  Usage   ? help
+
+codex-router · 178ad11                                                     default · 68a7f567
+ HIGH  plan → gpt-6.1-sol · xhigh                                 classifier agrees with high
+       Jev high 100% · Jev gave high 100%
+ Pin      micro   low   medium  ▶high                                          next turn only
+ Session  10 replies · 1 switch · cost ≈ $0.23 (1594%) vs gpt-6-luna · low
+          ▇▇▇▇▇▇▇▇▇▇  1 reply per cell
+ Context  █░░░░░░░░░ 19%  90.3K / 475K gpt-6.1-sol      Cache  97% last reply · 88% session
+ Recent   20:03  high   gpt-6.1-sol · xhigh · classifier agrees with high · +12 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help
+### decisions
+20:00:31 98eef2 s0 high plan jump gpt-6.1-sol xhigh rw
+20:00:36 98eef2 s1 high plan continue gpt-6.1-sol xhigh rw
+20:00:52 98eef2 s2 high plan continue gpt-6.1-sol xhigh rw
+20:01:01 98eef2 s3 high plan continue gpt-6.1-sol xhigh rw
+20:01:12 98eef2 s4 high plan continue gpt-6.1-sol xhigh rw
+20:01:20 98eef2 s5 high plan same-tier gpt-6.1-sol xhigh rw
+20:01:43 stream-aborted {'thread': '01a14082-112a-7913-b061-72d1cf16ebfc', 'turn': '01a14082-128c-7593-85a2-32bc3a98eef2', 'path': '/v1/responses', 'stage': 'client'}
+20:01:43 98eef2 s6 high plan continue gpt-6.1-sol xhigh rw
+20:01:53 98eef2 s7 high plan continue gpt-6.1-sol xhigh rw
+20:02:15 98eef2 s8 high plan continue gpt-6.1-sol xhigh rw
+20:02:24 98eef2 s9 high plan continue gpt-6.1-sol xhigh rw
+20:03:00 stream-aborted {'thread': '01a14082-112a-7913-b061-72d1cf16ebfc', 'turn': '01a14082-128c-7593-85a2-32bc3a98eef2', 'path': '/v1/responses', 'stage': 'client'}
+20:03:00 98eef2 s10 high plan same-tier gpt-6.1-sol xhigh rw
+20:03:08 98eef2 s11 high plan continue gpt-6.1-sol xhigh rw
+20:03:43 stream-aborted {'thread': '01a14082-112a-7913-b061-72d1cf16ebfc', 'turn': '01a14082-128c-7593-85a2-32bc3a98eef2', 'path': '/v1/responses', 'stage': 'client'}
+20:03:43 98eef2 s12 high plan continue gpt-6.1-sol xhigh rw
+### codex
+ 
+  5. Canary by thread, then remove old branches. Roll back without resetting switch history.
+     Update preset semantics, obsolete vote/dwell settings, and operator documentation.
+ 
+  ## Main risks
+ 
+  • Quality during cooldown: a difficult task may remain on a weaker model. Measure blocked
+    upgrades and failure rates; do not hide emergency exceptions inside escalation.
+ 
+  • Recovery: lost or evicted budget history must not grant a fresh switch. Start with a
+    conservative ten-turn quarantine. Frequent restarts will delay adaptation.
+ 
+  • Durability versus latency: exact crash-atomic pin consumption requires durable dispatch
+    coordination. Queued persistence alone cannot promise it.
+ 
+  • Cache assumptions: optimistic warmth estimates can undercount losses. Compare predicted
+    tax with observed usage.
+ 
+  • Rollback: restoring the old engine without retaining the gate can immediately violate the
+    limit.
+ 
+  No files changed. No tests or benchmarks run; this is a design proposal.
+ 
+  Worked for 5m 46s • 20:06                                                                  
+
+ 
+› Ask Codex to do anything
+ 
+  GPT-6.1-Sol xhigh · 828K window · Context 92% left · +40 -0 · Ready · 64.7K used · Design …
+  ? for shortcuts                                                  ⚠ 5 warnings · f2 to view
