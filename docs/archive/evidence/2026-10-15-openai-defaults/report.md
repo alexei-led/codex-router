@@ -119,7 +119,7 @@ case starts a fresh thread in a fresh export of `lab-base`. Driver: `live/live.s
 | L3   | follow-up: biggest package         | stays low: cheaper 56%                                              |
 | L4   | add `version --json` with a test   | stays low `luna · high`: stronger 51% < 79%; done, tests pass       |
 | L5   | follow-up: fix `-tags lab` failure | `upgrade` to medium `sol · medium`, 95% ≥ 79%; fixed, exit_code=0   |
-| L6   | USD tax design doc                 | `jump` from low to high `sol · high`, Jev 98%                      |
+| L6   | USD tax design doc                 | `jump` from low to high `sol · high`, Jev 98%                       |
 | L8b  | follow-up: line count              | `downgrade-pending`: cheaper 87% < 94% (Sol warm, Luna cold)        |
 | L9   | review `git show HEAD`             | `upgrade` to medium `sol · medium`, 81% ≥ 75% (fresh thread)        |
 | L10  | `make lint`, one line              | stays low: cheaper 75% < 90%                                        |
