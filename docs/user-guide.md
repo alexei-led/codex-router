@@ -140,7 +140,7 @@ When a key variable or the Cloudflare account ID is unset, the classifier is off
 
 - **`routes`**: the model and effort for each tier. Keep all models in one compatibility group. The defaults are in one group.
 - **`preset`**: `thrifty` moves up reluctantly and down readily. `quality` does the reverse. `balanced` (the default) uses `policy` as written.
-- **`prices`**: list prices in USD per million tokens, for the savings estimate in the panel. The defaults cover `gpt-6.1-sol` and `gpt-6-luna`; add one for any other model you route to.
+- **`prices`**: list prices in USD per million tokens, for the savings estimate in the panel. The defaults cover `gpt-6.1-sol` and `gpt-6-luna`. Add one for any other model you route to, and for Codex's own model if it is neither: the saving is measured against it.
 - **`activities`**: a different route for an activity at a tier. The default sends `debug` at `medium` to high effort.
 
 The [configuration reference](configuration.md) has every field and its default.
@@ -176,7 +176,7 @@ To change the trade-off:
 - **Spend less:** set `routes.medium` to `gpt-6-luna · high`, or use the `thrifty` preset. Expect weaker long-running and design work.
 - **Spend more on small turns:** set `routes.low` to `gpt-6.1-sol · low`. 8–14 times the cost of the default; it did no better on the tasks above.
 - **Per activity:** add `activities` entries, for example `{"plan": {"medium": {"effort": "high"}}}`. A route on another model costs cache on each move, so prefer effort-only overrides.
-- **Keep `xhigh` for a pin**, for one hard turn, rather than a tier.
+- **Need `xhigh` for one hard turn?** Pick it with Codex's `/model`. Routing then stays manual until you resume it: `space` in the panel or `codex-router ctl resume`.
 
 ### `model_context_window`
 
@@ -186,9 +186,9 @@ If `~/.codex/config.toml` sets `model_context_window`, Codex sizes its context f
 
 ### Footer
 
-![Codex footer showing the routed model, GPT-6-Sol medium](images/codex-footer.svg)
+![Codex footer showing the routed model, GPT-6.1-Sol medium](images/codex-footer.svg)
 
-The footer shows the routed model and effort, for example `GPT-6-Sol medium`. It repaints when the route changes, also while a turn runs. The window figure follows the routed model from the next turn: Codex sizes a turn by the model the turn started on.
+The footer shows the routed model and effort, for example `GPT-6.1-Sol medium`. It repaints when the route changes, also while a turn runs. The window figure follows the routed model from the next turn: Codex sizes a turn by the model the turn started on.
 
 ### Several sessions and homes
 
