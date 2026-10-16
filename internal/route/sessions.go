@@ -69,7 +69,6 @@ func (e *Engine) Sessions() []SessionInfo {
 func (e *Engine) sessions() []SessionInfo {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	priced := len(e.cfg.Prices) > 0
 	var out []SessionInfo
 	latest, now := e.latest(), e.now()
 	for _, th := range e.all() {
@@ -91,7 +90,9 @@ func (e *Engine) sessions() []SessionInfo {
 			c := *ls
 			s.LastSwitch = &c
 		}
-		if priced {
+		// The saving is measured against the native model, so a session
+		// whose native model has no price carries no dollar figures.
+		if _, priced := e.cfg.Prices[th.native.Model]; priced {
 			spent, saved := th.stats.RoutedUSD, th.stats.BaselineUSD-th.stats.RoutedUSD
 			s.SpentUSD, s.SavedUSD = &spent, &saved
 		}
