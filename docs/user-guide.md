@@ -499,6 +499,32 @@ To stop using the wrapper, run plain `codex`. For a set-up home, close its sessi
 
 Config and logs stay in their [documented locations](configuration.md#environment). Setup undo keeps state unless you pass `--purge`.
 
+## Read-only diagnostics
+
+Run `codex-router [--config PATH] doctor [--home PATH] [--state-dir DIR] [--json]` to inspect the selected Codex home and this user's router state. `doctor` does not write state. It does not start or repair services, run the classifier, or contact the proxy port. It checks config precedence, private state directories, registry control hellos and software versions. It also checks service status, cache presence, classifier configuration, log size, and stale runtime directories. `--json` returns the same checks as structured output. The command exits 1 when it finds errors and 0 otherwise. Warnings do not change the exit code.
+
+The proxy-port check reads the stored port and tries a temporary loopback bind. It closes the bind immediately. It never connects or sends HTTP, so it cannot activate an edge socket. A held port is considered expected only when read-only service status reports the edge up. Otherwise the listener is unverified. A race can make an up edge appear bindable. An absent port file or inconclusive bind probe leaves the port check unverified. Unreadable service status is an error. The classifier key check uses the process environment only. Key presence in a configured credential file remains unverified because `doctor` does not inspect or print `envFile` contents.
+
+Example fresh-install output (paths and home id are abbreviated):
+
+```text
+codex-router doctor (dev)
+OK config: using defaults; no file at <config-path> (priority: $CODEX_ROUTER_CONFIG)
+WARNING state: <state>/codex-router is not present yet
+WARNING registry: directory is not present; no endpoints are registered yet
+OK services <home-id>: read-only service status is available
+WARNING services <home-id>: no service units are installed for this home
+WARNING home-state <home-id>: state directory is not present; privacy could not be checked
+WARNING proxy-port <home-id>: unverified; port file is absent
+WARNING classifier: off; key absent from process environment
+INFO catalog: cache absent
+INFO launcher-logs: directory absent; 0 bytes
+INFO runtime-dirs: runtime base absent; no stale directories
+Summary: 0 error(s), 6 warning(s)
+```
+
+For a mismatched control hello, the panel closes the connection. It retries the same registry identity with exponential backoff from one second to a one-minute cap. A change to endpoint metadata triggers an immediate retry. A mismatch never prunes the registry entry.
+
 ## Troubleshoot
 
 | Symptom                                                                 | Cause and fix                                                                                                                                                                                                                                                                                    |
@@ -510,7 +536,7 @@ Config and logs stay in their [documented locations](configuration.md#environmen
 | Panel says `no sessions`; `codex-router sessions` prints nothing        | No session is registered for your user under this state dir. Start a session, or use the same `XDG_STATE_HOME` (or none) in the panel's shell as in the session's shell.                                                                                                                         |
 | `codex-router: the panel will not list this session: …`                 | The router could not write its registry entry, usually because the registry dir is not a private directory of yours (mode `0700`). The session routes as usual.                                                                                                                                  |
 | `codex-router: tui: "x" matches N sessions:`                            | `--session` named several sessions. Pass one of the listed ids, or a longer label.                                                                                                                                                                                                               |
-| Panel shows `disconnected`                                              | The session's router ended or restarted. Its rows leave after 10 s. A restarted router shows up again by itself. Routing of other sessions is unaffected.                                                                                                                                        |
+| Panel shows `disconnected`                                              | The session's router ended or restarted. Its rows leave after 10 s. A restarted router shows up again by itself. A socket that answers as another endpoint is closed and retried with backoff; it is not pruned. Routing of other sessions is unaffected.                                      |
 | Locked panel shows `ended` and closes                                   | The session's router exited. Start the panel again with the new session's id or label.                                                                                                                                                                                                           |
 | Second session fails to start                                           | `proxy.port` is fixed, so the port is taken. Use `0` (the default) for any free port.                                                                                                                                                                                                            |
 | Model stays put after a `/model` pick                                   | That is the manual hold. Press `space` in the panel to resume routing.                                                                                                                                                                                                                           |
@@ -558,6 +584,8 @@ Ctrl-C and Ctrl-\ reach Codex through the terminal. The router ignores them. SIG
 
 Each `codex-router` run writes one JSON-lines file: `$XDG_STATE_HOME/codex-router/logs/<id>.log`, else `~/.local/state/codex-router/logs/<id>.log`, where `<id>` is the run's `endpoint_id` from `codex-router sessions --json` (directory `0700`, file `0600`). Logs hold thread and turn ids, decisions, statuses, sizes and timings. They never hold request or response text or credentials. Nothing is printed to the terminal while Codex owns it.
 
+When a new run log opens, the launcher best-effort retains the newest 40 regular `<8-hex id>.log` files by modification time. It does not remove the file being opened, symlinks, directories, or unrelated files. A removal failure is logged as a warning. It does not stop the session. `doctor` reports the log directory's regular-file size. The macOS launchd `edge.log` and `brain.log` files are not rotated while launchd holds them. Setup's timestamped `config.toml` backups are also operator-managed. Automatic cleanup is deferred.
+
 A set-up home's edge and brain log JSON lines of the same kind. On macOS they go to `<state>/codex-router/homes/<home id>/logs/edge.log` and `brain.log`, with no rotation. On Linux they go to the journal: `journalctl --user -u codex-router-brain@<home id>` (and `codex-router-edge@<home id>`). `codex-router service status` prints the home id.
 
 ### Codex versions
@@ -577,4 +605,5 @@ The footer sync needs `codex --remote` and the app-server's `thread/settings/upd
 | `setup`                     | 0 on success, 1 on error or a refused edit                                               |
 | `service`                   | 0, also when the home is not set up. 1 on error                                          |
 | `ctl`                       | 0 on success, 1 on error or when no session matches, 2 when several match                |
+| `doctor`                    | 0 when there are no errors; 1 when at least one error is found                            |
 | any                         | 2 on a usage error                                                                       |

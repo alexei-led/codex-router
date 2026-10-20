@@ -19,6 +19,9 @@ import (
 
 const (
 	pollInterval = time.Second
+	// identityMismatchBackoffCap bounds retries for a registry identity whose
+	// socket answers as another endpoint. Metadata changes reset this backoff.
+	identityMismatchBackoffCap = time.Minute
 	// lostGrace is how long a lost endpoint's sessions stay listed as
 	// disconnected before they are dropped.
 	lostGrace = 10 * time.Second
@@ -107,6 +110,19 @@ type fleetEndpoint struct {
 // endpoint, and merges their sessions. It subscribes only the focused
 // session's endpoint to that session. In locked mode the focus is fixed and
 // every other session is ignored.
+type endpointIdentity struct {
+	id      string
+	pid     int
+	started string
+	socket  string
+	home    home.Home
+}
+
+type mismatchBackoff struct {
+	attempts int
+	next     time.Time
+}
+
 type fleet struct {
 	list   func() ([]registry.Endpoint, error)
 	dial   func(registry.Endpoint) (conn, error)
@@ -118,10 +134,11 @@ type fleet struct {
 	changed chan struct{}
 	submu   sync.Mutex // serializes subscription changes
 
-	mu    sync.Mutex
-	eps   map[string]*fleetEndpoint
-	focus string
-	auto  bool // focus is the most recent session, not a cwd match
+	mu         sync.Mutex
+	eps        map[string]*fleetEndpoint
+	mismatches map[endpointIdentity]mismatchBackoff
+	focus      string
+	auto       bool // focus is the most recent session, not a cwd match
 	// provisional: auto picked while a live endpoint had not listed its
 	// sessions yet, so a more recent session may still show up.
 	provisional bool
@@ -134,7 +151,7 @@ type fleet struct {
 func newFleet(list func() ([]registry.Endpoint, error), dial func(registry.Endpoint) (conn, error)) *fleet {
 	return &fleet{
 		list: list, dial: dial, prune: func(registry.Endpoint) {}, now: time.Now,
-		changed: make(chan struct{}, 1), eps: map[string]*fleetEndpoint{},
+		changed: make(chan struct{}, 1), eps: map[string]*fleetEndpoint{}, mismatches: map[endpointIdentity]mismatchBackoff{},
 	}
 }
 
@@ -184,15 +201,26 @@ func (f *fleet) poll() {
 	eps, err := f.list()
 	if err == nil {
 		var wg sync.WaitGroup
+		now := f.now()
+		identities := make(map[endpointIdentity]struct{}, len(eps))
 		for _, ep := range eps {
-			f.mu.Lock()
+			identities[identityOf(ep)] = struct{}{}
+		}
+		f.mu.Lock()
+		for identity := range f.mismatches {
+			if _, ok := identities[identity]; !ok {
+				delete(f.mismatches, identity)
+			}
+		}
+		for _, ep := range eps {
 			e := f.eps[ep.ID]
 			live := e != nil && e.c != nil
-			f.mu.Unlock()
-			if !live {
+			retry := f.mismatches[identityOf(ep)]
+			if !live && !now.Before(retry.next) {
 				wg.Go(func() { f.connect(ep) })
 			}
 		}
+		f.mu.Unlock()
 		wg.Wait()
 	}
 	now := f.now()
@@ -215,6 +243,28 @@ func (f *fleet) poll() {
 	f.sync()
 }
 
+func identityOf(ep registry.Endpoint) endpointIdentity {
+	return endpointIdentity{
+		id: ep.ID, pid: ep.PID, started: ep.Started.UTC().Format(time.RFC3339Nano),
+		socket: ep.Socket, home: ep.Home,
+	}
+}
+
+func (f *fleet) recordIdentityMismatch(ep registry.Endpoint) {
+	identity := identityOf(ep)
+	now := f.now()
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	backoff := f.mismatches[identity]
+	delay := pollInterval
+	for range backoff.attempts {
+		delay = min(delay*2, identityMismatchBackoffCap)
+	}
+	backoff.attempts++
+	backoff.next = now.Add(delay)
+	f.mismatches[identity] = backoff
+}
+
 // connect dials ep and starts its pumps. A hello naming another endpoint or
 // home means the entry is stale: the registry entry is a hint only (M3).
 func (f *fleet) connect(ep registry.Endpoint) {
@@ -226,9 +276,11 @@ func (f *fleet) connect(ep registry.Endpoint) {
 	h := c.Hello()
 	if ep.Home.ID != "" && (h.EndpointID != ep.ID || h.Home.ID != ep.Home.ID) {
 		_ = c.Close()
+		f.recordIdentityMismatch(ep)
 		return
 	}
 	f.mu.Lock()
+	delete(f.mismatches, identityOf(ep))
 	e := f.eps[ep.ID]
 	if e == nil {
 		e = &fleetEndpoint{}

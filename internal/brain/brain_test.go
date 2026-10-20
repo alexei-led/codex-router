@@ -313,12 +313,13 @@ func shortDir(t *testing.T) string {
 }
 
 type rig struct {
-	b     *Brain
-	d     *fakeDaemon
-	clock *clock
-	home  home.Home
-	env   map[string]string
-	deps  route.Deps
+	b       *Brain
+	d       *fakeDaemon
+	version string
+	clock   *clock
+	home    home.Home
+	env     map[string]string
+	deps    route.Deps
 	// models, when set, reloads the catalog from the home's models cache.
 	models *catalog.CacheWatch
 	quiet  int
@@ -453,13 +454,14 @@ func (r *rig) quiesce(t *testing.T) {
 func (r *rig) start(t *testing.T) {
 	t.Helper()
 	b, err := Start(Options{
-		Home:   r.home,
-		Deps:   r.deps,
-		Getenv: r.getenv,
-		Daemon: r.d.path,
-		Idle:   IdleAfter,
-		Sweep:  5 * time.Millisecond,
-		Models: r.models,
+		Home:    r.home,
+		Version: r.version,
+		Deps:    r.deps,
+		Getenv:  r.getenv,
+		Daemon:  r.d.path,
+		Idle:    IdleAfter,
+		Sweep:   5 * time.Millisecond,
+		Models:  r.models,
 	})
 	if err != nil {
 		t.Fatalf("Start: %v", err)
@@ -500,6 +502,7 @@ func TestBrainResumesLoadedMainThreads(t *testing.T) {
 
 func TestBrainServesControlLinkAndRegistry(t *testing.T) {
 	r := newRig(t, "")
+	r.version = "v-test"
 	r.start(t)
 
 	root, err := registry.Root(r.getenv)
@@ -511,7 +514,7 @@ func TestBrainServesControlLinkAndRegistry(t *testing.T) {
 		t.Fatalf("registry = %+v, %v; want one entry", eps, err)
 	}
 	ep := eps[0]
-	if ep.ID != EndpointID(r.home.ID) || ep.Kind != registry.KindBrain || ep.Home != r.home || ep.Protocol != control.Protocol {
+	if ep.ID != EndpointID(r.home.ID) || ep.Kind != registry.KindBrain || ep.Home != r.home || ep.Protocol != control.Protocol || ep.Version != r.version {
 		t.Errorf("entry = %+v", ep)
 	}
 	c, err := control.Dial(ep.Socket)
@@ -519,7 +522,7 @@ func TestBrainServesControlLinkAndRegistry(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = c.Close() }()
-	if h := c.Hello(); h.EndpointID != ep.ID || h.Kind != registry.KindBrain || h.Home != r.home {
+	if h := c.Hello(); h.EndpointID != ep.ID || h.Kind != registry.KindBrain || h.Home != r.home || h.Version != r.version {
 		t.Errorf("hello = %+v", h)
 	}
 

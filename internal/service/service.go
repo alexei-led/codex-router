@@ -221,6 +221,34 @@ func (m *Manager) Status(ctx context.Context, homeID string) []Unit {
 	return out
 }
 
+type statusReader interface {
+	readState(ctx context.Context, u *Unit) error
+}
+
+// StatusReadOnly reports watched unit states and returns errors from the
+// platform status command. It never starts or changes a unit.
+func (m *Manager) StatusReadOnly(ctx context.Context, homeID string) ([]Unit, error) {
+	reader, ok := m.b.(statusReader)
+	if !ok {
+		return nil, errors.New("service: status reader is unavailable")
+	}
+	var out []Unit
+	for _, u := range m.b.units(homeID) {
+		if !u.watch {
+			continue
+		}
+		if _, err := os.Lstat(u.Path); errors.Is(err, os.ErrNotExist) {
+			u.State = Missing
+		} else if err != nil {
+			return out, fmt.Errorf("service: status %s: %w", u.Name, err)
+		} else if err := reader.readState(ctx, &u); err != nil {
+			return out, fmt.Errorf("service: status %s: %w", u.Name, err)
+		}
+		out = append(out, u)
+	}
+	return out, nil
+}
+
 // Ensured is what Ensure found or did.
 type Ensured int
 

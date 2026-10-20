@@ -1,9 +1,11 @@
 package classifier
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -249,6 +251,92 @@ func TestATimedOutRequestHoldsTheSlotUntilItSettles(t *testing.T) {
 		}
 		if c.Health().Failures != 0 {
 			t.Errorf("failures = %d, want 0 after a success", c.Health().Failures)
+		}
+	})
+}
+
+func TestQueuedAskTimeoutIsObservableWithoutCountingAsFailure(t *testing.T) {
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	synctest.Test(t, func(t *testing.T) {
+		rec := script(untilCancelled)
+		c := jevClient(rec)
+		firstCtx, cancelFirst := context.WithCancel(t.Context())
+		firstDone := make(chan error, 1)
+		go func() {
+			_, err := c.Ask(firstCtx, smallInput)
+			firstDone <- err
+		}()
+		synctest.Wait()
+
+		queuedCtx, cancelQueued := context.WithTimeout(t.Context(), 100*time.Millisecond)
+		defer cancelQueued()
+		queuedDone := make(chan error, 1)
+		go func() {
+			_, err := c.Ask(queuedCtx, smallInput)
+			queuedDone <- err
+		}()
+		synctest.Wait()
+		synctest.Sleep(100 * time.Millisecond)
+		if err := <-queuedDone; !errors.Is(err, ErrCancelled) {
+			t.Fatalf("queued ask err = %v, want cancellation", err)
+		}
+		cancelFirst()
+		if err := <-firstDone; !errors.Is(err, ErrCancelled) {
+			t.Fatalf("first ask err = %v, want cancellation", err)
+		}
+		if got := c.Health(); got.QueueTimeouts != 1 || got.QueueWait != 100*time.Millisecond || got.Failures != 0 {
+			t.Errorf("health = %+v, want one 100ms queue timeout and no classifier failure", got)
+		}
+	})
+	if !strings.Contains(logs.String(), `"msg":"classifier-queue-timeout"`) || !strings.Contains(logs.String(), `"wait":100000000`) {
+		t.Errorf("queue timeout warning missing wait duration: %s", logs.String())
+	}
+}
+
+func TestSuccessfulQueuedAskRecordsWaitOutsideServiceLatency(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		release := make(chan struct{})
+		rec := script(func(*http.Request) (*http.Response, error) {
+			<-release
+			return respond(http.StatusOK, jevAnswer), nil
+		})
+		c := jevClient(rec)
+		firstDone := make(chan error, 1)
+		go func() {
+			_, err := c.Ask(t.Context(), smallInput)
+			firstDone <- err
+		}()
+		synctest.Wait()
+
+		type result struct {
+			advice Advice
+			err    error
+		}
+		queuedDone := make(chan result, 1)
+		go func() {
+			advice, err := c.Ask(t.Context(), smallInput)
+			queuedDone <- result{advice, err}
+		}()
+		synctest.Wait()
+		synctest.Sleep(75 * time.Millisecond)
+		close(release)
+		if err := <-firstDone; err != nil {
+			t.Fatalf("first ask err = %v", err)
+		}
+		got := <-queuedDone
+		if got.err != nil {
+			t.Fatalf("queued ask err = %v", got.err)
+		}
+		health := c.Health()
+		if health.QueueWait < 75*time.Millisecond || health.QueueTimeouts != 0 {
+			t.Errorf("health = %+v, want successful queue wait >=75ms and no timeout", health)
+		}
+		if got.advice.Latency >= health.QueueWait || health.Latency >= health.QueueWait {
+			t.Errorf("service latency includes queue wait: advice=%v health=%+v", got.advice.Latency, health)
 		}
 	})
 }
@@ -711,5 +799,46 @@ func TestClefEndToEndReadsTheWrappedCloudflareAnswer(t *testing.T) {
 	}
 	if advice.Choice != "micro" || advice.Probabilities["micro"] != 0.5923 {
 		t.Errorf("advice = %+v", advice)
+	}
+}
+
+func TestQueuedCancellationIsNotAQueueTimeout(t *testing.T) {
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	synctest.Test(t, func(t *testing.T) {
+		rec := script(untilCancelled)
+		c := jevClient(rec)
+		firstCtx, cancelFirst := context.WithCancel(t.Context())
+		firstDone := make(chan error, 1)
+		go func() {
+			_, err := c.Ask(firstCtx, smallInput)
+			firstDone <- err
+		}()
+		synctest.Wait()
+
+		queuedCtx, cancelQueued := context.WithCancel(t.Context())
+		queuedDone := make(chan error, 1)
+		go func() {
+			_, err := c.Ask(queuedCtx, smallInput)
+			queuedDone <- err
+		}()
+		synctest.Wait()
+		cancelQueued()
+		if err := <-queuedDone; !errors.Is(err, ErrCancelled) {
+			t.Fatalf("queued ask err = %v, want cancellation", err)
+		}
+		cancelFirst()
+		if err := <-firstDone; !errors.Is(err, ErrCancelled) {
+			t.Fatalf("first ask err = %v, want cancellation", err)
+		}
+		if got := c.Health(); got.QueueTimeouts != 0 {
+			t.Errorf("cancelled queue wait counted as a timeout: %+v", got)
+		}
+	})
+	if strings.Contains(logs.String(), "classifier-queue-timeout") {
+		t.Errorf("cancelled queue wait logged as a timeout: %s", logs.String())
 	}
 }

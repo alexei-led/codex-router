@@ -1,12 +1,14 @@
 package registry
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -125,6 +127,27 @@ func chmod(t *testing.T, p string, mode os.FileMode) {
 	t.Helper()
 	if err := os.Chmod(p, mode); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestLegacyAndVersionedEntriesDecode(t *testing.T) {
+	legacy := []byte(`{"endpoint_id":"legacy","kind":"session","protocol":2,"pid":1,"started":"2026-10-14T12:00:00Z","home":{"id":"3fa9c0d1e2b4","path":"/u/.codex-work","name":"work"},"socket":"/run/legacy.sock"}`)
+	var ep Endpoint
+	if err := json.Unmarshal(legacy, &ep); err != nil {
+		t.Fatal(err)
+	}
+	if ep.ID != "legacy" || ep.Version != "" {
+		t.Errorf("legacy entry = %+v, want empty version", ep)
+	}
+
+	versioned := endpoint("versioned", time.Now())
+	versioned.Version = "v0.7.2"
+	b, err := json.Marshal(versioned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"version":"v0.7.2"`) {
+		t.Errorf("versioned entry JSON = %s", b)
 	}
 }
 

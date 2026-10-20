@@ -49,6 +49,7 @@ type Options struct {
 	// "codex" on PATH.
 	CodexBin  string
 	CodexArgs []string
+	Version   string
 	// Env is the environment for codex and for the router's own lookups
 	// (classifier key, CODEX_HOME, XDG dirs); nil means os.Environ().
 	Env    []string
@@ -261,14 +262,14 @@ func start(ctx context.Context, o Options) (s *session, err error) {
 	eng, store, h := newRouter(o, s.log, snk)
 
 	ctlPath := filepath.Join(dir, control.SocketName)
-	hello := control.Hello{EndpointID: id, Kind: registry.KindSession, Home: h, Label: launcherLabel(h)}
+	hello := control.Hello{EndpointID: id, Kind: registry.KindSession, Home: h, Label: launcherLabel(h), Version: o.Version}
 	if s.ctl, err = control.Listen(ctlPath, endpoint{eng, hello}); err != nil {
 		return s, err
 	}
 	snk.ctl.Store(s.ctl)
 	s.register(registry.Endpoint{
 		ID: id, Kind: registry.KindSession, Protocol: control.Protocol,
-		PID: os.Getpid(), Started: time.Now(), Home: h, Socket: ctlPath,
+		PID: os.Getpid(), Started: time.Now(), Home: h, Socket: ctlPath, Version: o.Version,
 	})
 	s.env = append(slices.Clone(o.Env), control.EnvSocket+"="+ctlPath)
 

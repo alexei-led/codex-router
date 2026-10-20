@@ -43,7 +43,8 @@ func EndpointID(homeID string) string { return "brain-" + homeID }
 
 // Options configure a Brain.
 type Options struct {
-	Home home.Home
+	Home    home.Home
+	Version string
 	// Deps carry the engine's config, catalog, classifier, logger and clock.
 	// The brain overwrites Home, Sink, Cwd, HoldUnseeded and the intent
 	// fields (Intent, IntentLost, SaveIntent).
@@ -145,7 +146,7 @@ func Start(o Options) (b *Brain, err error) {
 	d.SaveIntent = store.save
 	b.eng = route.New(d)
 	id := EndpointID(o.Home.ID)
-	hello := control.Hello{EndpointID: id, Kind: registry.KindBrain, Home: o.Home}
+	hello := control.Hello{EndpointID: id, Kind: registry.KindBrain, Home: o.Home, Version: o.Version}
 	ctl, err := control.Listen(ctlPath, endpoint{b.eng, hello})
 	if err != nil {
 		return b, err
@@ -156,7 +157,7 @@ func Start(o Options) (b *Brain, err error) {
 	}
 	b.register(registry.Endpoint{
 		ID: id, Kind: registry.KindBrain, Protocol: control.Protocol,
-		PID: os.Getpid(), Started: time.Now(), Home: o.Home, Socket: ctlPath,
+		PID: os.Getpid(), Started: time.Now(), Home: o.Home, Socket: ctlPath, Version: o.Version,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	b.cancel = cancel

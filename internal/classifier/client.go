@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"sync"
@@ -18,8 +19,9 @@ import (
 // call waits, under its context, while another is in flight, and a request
 // abandoned at the deadline holds the slot until it settles, so a late answer
 // never overlaps the next turn's. now measures the budget, the breaker and the
-// latency; the context carries the same timeout as a duration, so an injected
-// clock never makes the request expire early or late.
+// service latency, which excludes time waiting for the slot; the context carries
+// the same timeout as a duration, so an injected clock never makes the request
+// expire early or late.
 type Client struct {
 	cfg     config.Classifier
 	key     string
@@ -64,9 +66,17 @@ func (c *Client) Ask(ctx context.Context, in Input) (Advice, error) {
 	}
 	// Wait rather than fail fast: a review the next turn cancelled frees the
 	// slot only once its abandoned post settles, moments later.
+	queuedAt := c.now()
 	select {
 	case c.slot <- struct{}{}:
+		c.recordQueueWait(max(c.now().Sub(queuedAt), 0), false)
 	case <-ctx.Done():
+		wait := max(c.now().Sub(queuedAt), 0)
+		deadline := errors.Is(ctx.Err(), context.DeadlineExceeded)
+		c.recordQueueWait(wait, deadline)
+		if deadline {
+			slog.Default().Warn("classifier-queue-timeout", "wait", wait)
+		}
 		return Advice{}, ErrCancelled
 	}
 	defer c.release()
@@ -84,6 +94,15 @@ func (c *Client) Ask(ctx context.Context, in Input) (Advice, error) {
 	}
 	advice.Latency = latency
 	return advice, nil
+}
+
+func (c *Client) recordQueueWait(wait time.Duration, timeout bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.health.QueueWait = wait
+	if timeout {
+		c.health.QueueTimeouts++
+	}
 }
 
 func (c *Client) release() {
@@ -104,7 +123,10 @@ func (c *Client) record(err error, latency time.Duration) {
 	defer c.mu.Unlock()
 	switch {
 	case err == nil:
-		c.health = Health{Latency: latency}
+		c.health.Failures = 0
+		c.health.PausedUntil = time.Time{}
+		c.health.Latency = latency
+		c.health.LastError = ""
 	case errors.Is(err, ErrCancelled):
 	default:
 		c.health.Failures = min(c.health.Failures+1, FailuresToPause)

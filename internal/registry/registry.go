@@ -34,6 +34,7 @@ type Endpoint struct {
 	ID       string    `json:"endpoint_id"`
 	Kind     string    `json:"kind"`
 	Protocol int       `json:"protocol"`
+	Version  string    `json:"version,omitempty"`
 	PID      int       `json:"pid"`
 	Started  time.Time `json:"started"`
 	Home     home.Home `json:"home"`
