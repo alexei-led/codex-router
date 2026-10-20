@@ -103,13 +103,19 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 // rewrite returns the body to send upstream: the Decider's rewrite, or the
 // original bytes on any parse, decision or rewrite failure.
 func (s *Server) rewrite(ctx context.Context, body []byte, meta responses.Meta) []byte {
+	if s.opts.Decider == nil {
+		return body
+	}
+	if responses.Classify(meta) == responses.KindPassthrough {
+		if notifier, ok := s.opts.Decider.(PassthroughNotifier); ok {
+			notifier.PassThrough(meta)
+		}
+		return body
+	}
 	ids := []any{"thread", meta.ThreadID, "turn", meta.TurnID}
 	req, err := responses.Parse(body)
 	if err != nil {
 		s.log.Warn("parse-error", append(ids, "bytes", len(body))...)
-		return body
-	}
-	if s.opts.Decider == nil {
 		return body
 	}
 	rw, ok := s.decide(ctx, req, meta, ids)

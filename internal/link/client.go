@@ -44,9 +44,9 @@ type ClientOptions struct {
 // the brain down (redial after a backoff), slow (the call's deadline, and a
 // breaker that skips the brain for BreakerCooldown after FailuresToOpen
 // timeouts in a row) or gone mid-call. Observe never blocks: it queues and
-// drops when ObserveQueue is full. A decide is written after the
-// observations queued before it, so the brain applies a reply's usage before
-// the next step's decide.
+// drops when ObserveQueue is full. Passthrough signals share the ordered
+// writer queue, so a request's signal precedes its response observation and a
+// later decide waits for all earlier queued events.
 type Client struct {
 	path    func() string
 	homeID  string
@@ -55,7 +55,7 @@ type Client struct {
 	now     func() time.Time // breaker and backoff clock; tests replace it
 
 	observes chan queued
-	// unwritten counts the observations queued or being written.
+	// unwritten counts link events queued or being written.
 	unwritten atomic.Int64
 	done      chan struct{}
 	wg        sync.WaitGroup
@@ -72,12 +72,13 @@ type Client struct {
 }
 
 var (
-	_ proxy.Decider  = (*Client)(nil)
-	_ proxy.Observer = (*Client)(nil)
+	_ proxy.Decider             = (*Client)(nil)
+	_ proxy.Observer            = (*Client)(nil)
+	_ proxy.PassthroughNotifier = (*Client)(nil)
 )
 
-// queued is an observation for the writer, or a decide's marker: flushed is
-// closed once every observation queued before it is written.
+// queued is a link event for the writer, or a decide's marker: flushed is
+// closed once every event queued before it is written or dropped.
 type queued struct {
 	h       Header
 	flushed chan struct{}
@@ -155,8 +156,21 @@ func (c *Client) Observe(meta responses.Meta, served string, usage responses.Usa
 	}
 }
 
-// flush waits, under ctx, until the observations queued before it are
-// written or dropped.
+// PassThrough queues a metadata-only signal to clear the brain's awaiting
+// routed reply. It shares the writer queue with observations and is not
+// dropped when the queue is full, preserving frame order before the response.
+func (c *Client) PassThrough(meta responses.Meta) {
+	h := Header{Type: TypePassThrough, Meta: &meta}
+	c.unwritten.Add(1)
+	select {
+	case c.observes <- queued{h: h}:
+	case <-c.done:
+		c.unwritten.Add(-1)
+	}
+}
+
+// flush waits, under ctx, until all events queued before it are written or
+// dropped.
 func (c *Client) flush(ctx context.Context) bool {
 	if c.unwritten.Load() == 0 {
 		return true
@@ -185,8 +199,7 @@ func (c *Client) Up(ctx context.Context) bool {
 	return c.connect(ctx) != nil
 }
 
-// Close drops the connection and stops the observe writer. Queued
-// observations are lost.
+// Close drops the connection and stops the event writer. Queued events are lost.
 func (c *Client) Close() error {
 	c.mu.Lock()
 	if c.closed {

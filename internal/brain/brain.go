@@ -307,6 +307,13 @@ func (h linkHandler) Observe(m responses.Meta, served string, u responses.Usage,
 	h.b.eng.Observe(m, served, u, status)
 }
 
+func (h linkHandler) PassThrough(m responses.Meta) {
+	if m.ThreadID != "" {
+		h.b.touch(m.ThreadID, false)
+	}
+	h.b.eng.PassThrough(m)
+}
+
 // reloadModels loads the home's models cache again when Codex rewrote it.
 func (b *Brain) reloadModels() {
 	if b.o.Models == nil {

@@ -170,6 +170,14 @@ func (s *Server) serve(conn net.Conn) {
 			decides.Go(func() { s.decide(ctx, w, h, body) })
 		case TypeObserve:
 			s.observe(h)
+		case TypePassThrough:
+			if h.Meta != nil {
+				if handler, ok := s.h.(interface{ PassThrough(responses.Meta) }); ok {
+					handler.PassThrough(*h.Meta)
+				}
+			}
+		default:
+			// Unknown frame types are ignored for forward compatibility.
 		}
 	}
 }

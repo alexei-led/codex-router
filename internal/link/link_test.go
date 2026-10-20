@@ -66,6 +66,7 @@ type fakeBrain struct {
 	mu       sync.Mutex
 	decides  []decideCall
 	observes []observeCall
+	passes   []responses.Meta
 }
 
 func (b *fakeBrain) Decide(ctx context.Context, req *responses.Request, m responses.Meta) (responses.Rewrite, bool) {
@@ -90,6 +91,18 @@ func (b *fakeBrain) Observe(m responses.Meta, served string, u responses.Usage, 
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.observes = append(b.observes, observeCall{m, served, u, status})
+}
+
+func (b *fakeBrain) PassThrough(m responses.Meta) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.passes = append(b.passes, m)
+}
+
+func (b *fakeBrain) passThroughs() []responses.Meta {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return append([]responses.Meta(nil), b.passes...)
 }
 
 func (b *fakeBrain) calls() []decideCall {
@@ -190,6 +203,7 @@ func TestFrameRoundTrip(t *testing.T) {
 	}{
 		{"hello", Header{Type: TypeHello, HomeID: homeA}, nil},
 		{"decide", Header{Type: TypeDecide, ID: 7, Meta: &stepMeta, DeadlineUnixMs: 1_790_000_001_700}, smallBody},
+		{"passthrough", Header{Type: TypePassThrough, Meta: &stepMeta}, nil},
 		{"rewrite", Header{Type: TypeRewrite, ID: 7, Rewrite: &toLow}, nil},
 		{"body with newlines", Header{Type: TypeDecide, ID: 1}, []byte("{\n\"model\":\"m\"\n}\n")},
 	}
@@ -298,6 +312,19 @@ func TestDecideAndObserveRoundTrip(t *testing.T) {
 	want := observeCall{stepMeta, "gpt-6-luna", usage, 200}
 	if got := brain.observed()[0]; got != want {
 		t.Fatalf("observed %+v, want %+v", got, want)
+	}
+}
+
+func TestPassThroughFrameReachesBrain(t *testing.T) {
+	path := sockPath(t)
+	brain := &fakeBrain{}
+	startBrain(t, path, homeA, brain)
+	c := newClient(t, path, homeA, time.Second)
+
+	c.PassThrough(stepMeta)
+	eventually(t, "passthrough frame", func() bool { return len(brain.passThroughs()) == 1 })
+	if got := brain.passThroughs()[0]; got != stepMeta {
+		t.Fatalf("passthrough metadata = %+v, want %+v", got, stepMeta)
 	}
 }
 
@@ -1071,6 +1098,8 @@ func TestBadFramesDoNotBreakTheConnection(t *testing.T) {
 		{"decide that panics the handler", &panicBrain{}, Header{Type: TypeDecide, ID: 1, Meta: &stepMeta}, smallBody, TypeNone, TypeNone},
 		{"observe without meta", &fakeBrain{rw: toLow, ok: true}, Header{Type: TypeObserve}, nil, "", TypeRewrite},
 		{"observe that panics the handler", &panicBrain{}, Header{Type: TypeObserve, Meta: &stepMeta, Usage: &responses.Usage{}}, nil, "", TypeNone},
+		{"passthrough without meta", &fakeBrain{rw: toLow, ok: true}, Header{Type: TypePassThrough}, nil, "", TypeRewrite},
+		{"unknown frame type", &fakeBrain{rw: toLow, ok: true}, Header{Type: "future-frame"}, nil, "", TypeRewrite},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1168,7 +1197,7 @@ func startFrameLog(t *testing.T, path string) *frameLog {
 	return l
 }
 
-func TestDecideIsWrittenAfterTheObservesQueuedBeforeIt(t *testing.T) {
+func TestPassthroughAndObservesAreWrittenBeforeTheNextDecide(t *testing.T) {
 	path := sockPath(t)
 	brain := startFrameLog(t, path)
 	c := newClient(t, path, homeA, time.Second)
@@ -1179,8 +1208,9 @@ func TestDecideIsWrittenAfterTheObservesQueuedBeforeIt(t *testing.T) {
 	cc := c.conn
 	c.mu.Unlock()
 	cc.wsem <- struct{}{}
+	c.PassThrough(turn("tu-1"))
+	eventually(t, "the writer to take the passthrough", func() bool { return len(c.observes) == 0 })
 	c.Observe(turn("tu-1"), "m", responses.Usage{InputTokens: 1}, 200)
-	eventually(t, "the writer to take the first observe", func() bool { return len(c.observes) == 0 })
 	c.Observe(turn("tu-2"), "m", responses.Usage{InputTokens: 1}, 200)
 
 	decided := make(chan struct{})
@@ -1188,11 +1218,11 @@ func TestDecideIsWrittenAfterTheObservesQueuedBeforeIt(t *testing.T) {
 		defer close(decided)
 		c.Decide(context.Background(), parse(t, smallBody), turn("tu-3"))
 	}()
-	eventually(t, "the decide to queue behind the observes", func() bool { return len(c.observes) == 2 })
+	eventually(t, "the decide to queue behind earlier events", func() bool { return len(c.observes) == 3 })
 	<-cc.wsem
 	<-decided
 
-	want := []string{"observe tu-1", "observe tu-2", "decide tu-3"}
+	want := []string{"passthrough tu-1", "observe tu-1", "observe tu-2", "decide tu-3"}
 	eventually(t, "three frames", func() bool { return len(brain.got()) == len(want) })
 	if got := brain.got(); !slices.Equal(got, want) {
 		t.Fatalf("frames = %q, want %q", got, want)

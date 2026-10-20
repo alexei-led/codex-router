@@ -509,7 +509,7 @@ const (
 	edgeToken = "edge-token-under-test"
 	edgeBody  = `{"model":"gpt-6-sol","reasoning":{"effort":"medium"},"input":[` +
 		`{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]}],"stream":true}`
-	edgeTurn = `{"session_id":"s-1","thread_id":"th-1","turn_id":"tu-1","agent_name":"main"}`
+	edgeTurn = `{"session_id":"s-1","thread_id":"th-1","turn_id":"tu-1","request_kind":"turn","thread_source":"user","agent_name":"main"}`
 
 	exitWait      = 10 * time.Second
 	edgeBindTries = 5
