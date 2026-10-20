@@ -67,6 +67,7 @@ type model struct {
 	popover  popover
 	toast    string
 	toastSeq int
+	scroll   int // top row of the focused pane's viewport
 }
 
 func newModel(f *fleet) *model {
@@ -133,20 +134,44 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseClickMsg:
 		return m, m.click(msg.Mouse())
 	case tea.MouseWheelMsg:
-		if m.view().listed() {
-			switch msg.Mouse().Button {
-			case tea.MouseWheelUp:
-				return m, m.selectStep(-1)
-			case tea.MouseWheelDown:
-				return m, m.selectStep(1)
-			}
-		}
+		return m, m.wheel(msg.Mouse())
 	}
 	return m, nil
 }
 
 // click runs the action under a left click. It lays the view out again
 // rather than keeping the last drawn zones, so it cannot act on a stale one.
+func (m *model) wheel(ms tea.Mouse) tea.Cmd {
+	direction := 0
+	switch ms.Button {
+	case tea.MouseWheelUp:
+		direction = -1
+	case tea.MouseWheelDown:
+		direction = 1
+	default:
+		return nil
+	}
+	v := m.view()
+	if v.tab == TabSessions && v.listed() {
+		_, _, g := layoutWithInfo(v)
+		inDetail := g.hasDetail && (v.wide() && ms.X >= g.detailX || !v.wide() && ms.Y >= g.detailRow)
+		if inDetail {
+			if v.wide() {
+				m.pane = paneDetail
+			}
+			return m.scrollStep(direction)
+		}
+		return m.selectStep(direction)
+	}
+	return m.scrollStep(direction)
+}
+
+func (m *model) scrollStep(d int) tea.Cmd {
+	_, _, g := layoutWithInfo(m.view())
+	m.scroll = min(max(m.scroll+d, 0), g.scrollMax)
+	return nil
+}
+
 func (m *model) click(ms tea.Mouse) tea.Cmd {
 	if ms.Button != tea.MouseLeft || m.now().Sub(m.focus) < focusClick {
 		return nil
@@ -239,21 +264,24 @@ func (m *model) run(b key.Binding) tea.Cmd {
 	case is(b, keys.Help):
 		m.help = true
 	case is(b, keys.Back):
-		m.zoom, m.pane = false, paneList
+		m.zoom, m.pane, m.scroll = false, paneList, 0
 	case is(b, keys.Next):
 		m.cycle(1)
 	case is(b, keys.Prev):
 		m.cycle(-1)
 	case is(b, keys.Up):
-		if v.listed() {
+		if v.listed() && (!v.wide() || v.pane != paneDetail) {
 			return m.selectStep(-1)
 		}
+		return m.scrollStep(-1)
 	case is(b, keys.Down):
-		if v.listed() {
+		if v.listed() && (!v.wide() || v.pane != paneDetail) {
 			return m.selectStep(1)
 		}
+		return m.scrollStep(1)
 	case is(b, keys.Open):
 		if v.listed() && m.st.focus != "" {
+			m.scroll = 0
 			if v.wide() {
 				m.pane = paneDetail
 			} else {
@@ -270,11 +298,11 @@ func (m *model) run(b key.Binding) tea.Cmd {
 		}
 	case is(b, keys.Pin):
 		if m.tab == TabSessions && m.st.focus != "" {
-			m.popover = popPin
+			m.scroll, m.popover = 0, popPin
 		}
 	case is(b, keys.Preset):
 		if m.tab == TabPolicy && m.st.focus != "" {
-			m.popover = popPreset
+			m.scroll, m.popover = 0, popPreset
 		}
 	case is(b, keys.Toggle):
 		cmd := toggleCommand(m.st.focus, m.snap().Mode)
@@ -301,7 +329,7 @@ func (m *model) setPreset(p config.Preset) tea.Cmd {
 // show opens view t. Going on into Sessions lands on the list, going back
 // on the detail, which is the last stop of the tab ring when it is side by side.
 func (m *model) show(t Tab, dir int) {
-	m.tab, m.zoom, m.pane = t, false, paneList
+	m.tab, m.zoom, m.pane, m.scroll = t, false, paneList, 0
 	if dir < 0 && t == TabSessions {
 		m.pane = paneDetail
 	}
@@ -357,6 +385,7 @@ func (m *model) focusOn(id string) tea.Cmd {
 	if id == m.st.focus || !m.f.pick(id) {
 		return nil
 	}
+	m.scroll = 0
 	m.st.focus, m.st.snap = id, nil
 	f := m.f
 	return func() tea.Msg { f.sync(); return nil }
@@ -440,6 +469,6 @@ func (m *model) view() view {
 		snap: m.snap(), tab: m.tab, width: m.width, height: m.height, disconnected: m.st.disconnected,
 		notice: m.notice, styled: true, light: m.light, fleet: &m.st, locked: m.f.locked != "",
 		loading: m.st.snap == nil && m.st.focus != "" && !m.st.disconnected,
-		zoom:    m.zoom, pane: m.pane, help: m.help, popover: m.popover, toast: m.toast,
+		zoom:    m.zoom, pane: m.pane, help: m.help, popover: m.popover, toast: m.toast, scroll: m.scroll,
 	}
 }

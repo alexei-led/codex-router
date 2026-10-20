@@ -9,4 +9,4 @@ codex-router  Jev ready                         Sessions  Policy  Usage   ? help
             min dwell 8 requests
             escalation hold 2 turns · review every 6 requests · jump bar 0.85
 
-s preset · space pause · P pause home · tab views · q quit · ? help
+↑↓ scroll · s preset · space pause · P pause home · tab views · q quit · ? help

@@ -103,7 +103,7 @@ The router uses these words in the footer, the panel, the config and the docs.
 | **Classifier**          | A small model that reads your prompt and recent dialogue and returns probabilities for each tier and activity.                                 |
 | **Activity**            | The kind of work: `code`, `debug`, `explore`, `plan`, `review`, `ops` or `docs`. An activity can give a tier a different route (`activities`). |
 | **Policy**              | The rules that decide when to switch tier. A switch needs enough repeated classifier answers (votes), and costly switches need more support.   |
-| **Compatibility group** | Models that Codex can switch between in one thread. The router never routes outside the group of the model that Codex sent.                    |
+| **Compatibility group** | Models Codex can switch between in one thread. If the catalog does not list a model, compatibility is unknown and routing keeps the request unchanged.                    |
 | **Pin**                 | A tier that you choose in the panel for a session's next turn. The classifier is not asked for that turn.                                      |
 | **Pause**               | Routing off for one session, or for every session of a home. Requests go out unchanged.                                                        |
 | **Manual hold**         | What a `/model` pick in Codex causes. The router keeps your model for that thread until you resume.                                            |
@@ -197,7 +197,7 @@ In a home you [set up](#route-a-whole-home-setup), plain `codex` is enough: the 
 - **Home name.** `~/.codex` is `default`, `~/.codex-<x>` is `<x>`, any other home is its directory name.
 - **Session label.** `home · repo · branch`, read from the `.git` of the directory Codex started in. A linked worktree shows its main repo's name. A detached HEAD shows the short commit. Outside a repo, the label is `home · <directory>`. When two sessions get the same label, each gets four hex characters derived from its id appended, as in `default · notes · 9f3c`.
 - **Session id.** `<home id>/<thread id>`. The home id is derived from the home's path. The thread id is the one Codex shows.
-- **New and idle sessions.** `/new` in Codex starts a new session, which joins the list at its first prompt. A session with no prompt or reply for 10 minutes leaves the list at its router's next change, unless it is that router's most recent session.
+- **New and idle sessions.** `/new` in Codex starts a new session, which joins the list at its first prompt. A session with no prompt or reply for 10 minutes leaves the list at its router's next change, unless it is that router's most recent session. An already-seen session stays listed at any age while it has a per-session pause, a `/model` manual hold, or a pending pin. Ordinary idle sessions still expire.
 
 Each router (a `codex-router` run, or a home's brain) lists itself in the session registry, `$XDG_STATE_HOME/codex-router/registry` (else `~/.local/state/codex-router/registry`), and removes its entry when it exits. Panels in any shell find sessions there. Use the same `XDG_STATE_HOME` (or none) in every shell, and in the shell where you ran `codex-router setup`.
 
@@ -225,11 +225,11 @@ The panel first selects the session whose directory is the panel's directory or 
 
 - **Header**: the totals, and the focused home's classifier state: `Jev ready`, `○ Jev off`, or `✕ Jev unreachable · resumes in 42s` while the classifier is paused after failures.
 - **Home line**: the home's name, and `brain up 2h` when the home is [set up](#route-a-whole-home-setup). A brain that is down shows `brain down: default model`, and Codex's requests pass through unchanged. The line also counts routers that are lost. A brain that goes down stays on the line until it is back. Its sessions leave after 10 s.
-- **Rows**: label, state, model, effort and a sparkline of the last 10 routed replies. The switch time has `↑` or `↓` for its direction. The sparkline `▁▃▅▇` means micro, low, medium, high, so it reads without color. A narrow panel drops columns from the right.
+- **Rows**: label, state, model, effort and a sparkline of the last 10 routed replies. The switch time has `↑` or `↓` for its direction. A pending pin adds a distinct `◇ pin` marker beside the state. The sparkline `▁▃▅▇` means micro, low, medium, high, so it reads without color. A narrow panel drops columns from the right.
 - **State** always has a glyph: `● on`, `↑ high` (a repeated failure holds a higher tier), `‖ paused`, `◐ manual` (you picked a model with `/model`), `? unknown` (a restarted brain holds the route until the next reply), `! state lost` (the brain could not read its saved pause, pin and preset, so the home is paused until `P` resumes it), `✕ disconnected`.
 - **`○ waiting for the first prompt`**: a router is running, but its Codex has not sent a prompt yet. It has no session to select. It shows under its home with the directory it was started in, or `brain` for a home's brain.
 - **Detail**: the tier, activity and route (`HIGH  debug → gpt-6.1-sol · high`). The reason appears to the right. Below it, the evidence compares the classifier score with the policy threshold (`Jev high 99% ≥ 75%`). With the classifier off the chip reads `PINS ONLY` and the evidence line gives the exact reason, for example the unset key variable. Other chips: `KEPT` (a decision that left Codex's model in place), `PAUSED`, `MANUAL`, `STATE LOST`.
-- **Pin** buttons, one per tier. `▶` marks the tier in use and the pinned tier is reversed. **Session**: replies, switches, the estimated saving against the baseline (it needs `prices`) and the strip of routed replies, one cell per `N` replies. **Context** and **Cache**: how full the smallest window is and prompt-cache reuse. **Look**: things to act on, each naming where you change it.
+- **Pin** buttons, one per tier. `▶` marks the tier in use and the pinned tier is reversed. **Session**: replies, switches, the list-price estimate and the strip of routed replies, one cell per `N` replies. A dollar total appears only when prices cover every eligible reply; otherwise the panel says `estimate partial` or `estimate unknown` with the `N of M replies priced` coverage, and hides the partial subtotal. The comparison uses a per-reply native basis: a `/model` change can make the native model differ across replies, so the panel does not imply one model for the whole session. **Context** and **Cache**: how full the smallest window is and prompt-cache reuse. **Look**: things to act on, each naming where you change it.
 
 At 120 columns or wider, the list and detail sit side by side. An accent bar `▎` marks the focused side:
 
@@ -241,10 +241,10 @@ At 120 columns or wider, the list and detail sit side by side. An accent bar `�
 
 - **Preset**: `thrifty`, `balanced`, `quality`. It applies to every session of the selected session's home. While the classifier is off, it says `no effect while the classifier is off`.
 - **Classifier**: the name and model, the median latency and the failure count; when it is paused, `✕ Jev unreachable · resumes in 42s` with the last error (`timeout`, `http 503`, `bad response`; never the key). With no calls yet it says `ready · no calls yet`. When it is off: `○ off · <reason> · requests keep Codex's model; only pins change it`.
-- **Routes**: the model and effort of each tier, the model whose compatibility group they must share, and the models blocked because they are outside it.
+- **Routes**: the model and effort of each tier, the model whose compatibility group they must share, and known-incompatible models blocked because they are outside it. Unknown catalog entries are reported separately as compatibility unknown; an empty catalog is shown as unavailable. Unknown is not shown as incompatible, but routing still fails closed and keeps the request unchanged.
 - **Switching**: the votes and bars for going up and down, and the minimum dwell.
 
-**Usage** shows the estimated saving as one sentence against the baseline, a ledger (replies, switches, cache reuse, the last switch), and replies by tier and activity as block bars. Plan billing counts usage, not dollars, so the dollar figure is only an estimate.
+**Usage** shows the list-price estimate on a per-reply native basis, a ledger (replies, switches, cache reuse, the last switch), and replies by tier and activity as block bars. When pricing coverage is incomplete, it shows `estimate partial` or `estimate unknown` and the priced-reply count instead of a dollar subtotal. Plan billing counts usage, not dollars, so a complete dollar figure is still only an estimate.
 
 ![Router panel, Usage view: the saving against the baseline, the ledger, and replies by tier and activity as bars](images/router-tui-usage.svg)
 
@@ -268,7 +268,7 @@ When a router goes away, its sessions show `disconnected`, and leave the list 10
 
 | Key                | Action                                                                                       |
 | ------------------ | -------------------------------------------------------------------------------------------- |
-| `↑` `↓`, `j` `k`   | select the previous, next session (Sessions view)                                            |
+| `↑` `↓`, `j` `k`   | select sessions or scroll detail, Policy or Usage                                            |
 | `enter`            | open the selected session's detail alone; side by side, move the focus to the detail         |
 | `esc`              | close the help or a popover, else go back from the detail                                    |
 | `[`, `]`           | previous, next session (all sessions only)                                                   |
@@ -292,7 +292,7 @@ The mouse works too, with the left button:
 | a preset button (Policy)      | set that preset for the home                                        |
 | a choice in a popover         | pick it; a click outside closes the popover                         |
 | a key in the footer, `? help` | do what that key does                                               |
-| the wheel over the list       | move the selection                                                  |
+| the wheel over the list       | move selection; scroll detail, Policy or Usage |
 
 A click that only focuses the terminal window does nothing. The panel takes the mouse, so the terminal's own text selection is off. Hold `Shift` (Option on macOS Terminal.app and iTerm2) while you drag to select text anyway. Or run `codex-router tui --no-mouse` to leave the mouse to the terminal: keys work as before, and clicks do nothing.
 
@@ -373,7 +373,7 @@ Then approve the hooks in Codex's hook review. Keep the command string stable, b
 codex-router ctl status|pause|resume|pin [--home PATH] [--cwd DIR] [--tier TIER]
 ```
 
-`ctl` shows or changes one session's routing, with no panel. The Codex plugin's skill uses it. It picks the session of `$CODEX_THREAD_ID`, which Codex sets for its shell commands. Outside Codex, it picks the session in the deepest directory that equals or contains `--cwd` (default: the current directory), in `--home` (default `$CODEX_HOME`, else `~/.codex`).
+`ctl` shows or changes one session's routing, with no panel. The Codex plugin's skill uses it. It picks the session of `$CODEX_THREAD_ID`, which Codex sets for its shell commands. If that id is set but is not listed for the selected home, `ctl` fails instead of falling back to a session that shares the working directory. Outside Codex, it picks the session in the deepest directory that equals or contains `--cwd` (default: the current directory), in `--home` (default `$CODEX_HOME`, else `~/.codex`).
 
 - `status` prints the session's mode, tier and route.
 - `pause` and `resume` act on that session only.

@@ -33,9 +33,7 @@
   <text x="179.8" y="180.0" fill="#878787" xml:space="preserve"> · </text>
   <text x="203.2" y="180.0" fill="#d0d0d0" xml:space="preserve">19 switches</text>
   <text x="289.0" y="180.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="312.4" y="180.0" fill="#d0d0d0" xml:space="preserve">saved </text>
-  <text x="359.2" y="180.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
-  <text x="460.6" y="180.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6.1-sol · medium</text>
+  <text x="312.4" y="180.0" fill="#878787" xml:space="preserve">estimate unknown · 0 of 144 replies priced</text>
   <text x="94.0" y="199.0" fill="#d7af5f" xml:space="preserve">▅</text>
   <text x="101.8" y="199.0" fill="#d7af5f" xml:space="preserve">▅</text>
   <text x="109.6" y="199.0" fill="#d7af5f" xml:space="preserve">▅</text>
@@ -102,21 +100,24 @@
   <text x="148.6" y="351.0" fill="#d7af5f" xml:space="preserve">medium </text>
   <text x="203.2" y="351.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
   <text x="359.2" y="351.0" fill="#878787" xml:space="preserve"> · moved up a tier</text>
-  <text x="16.0" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">p</text>
-  <text x="23.8" y="389.0" fill="#878787" xml:space="preserve"> pin</text>
-  <text x="55.0" y="389.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="78.4" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">space</text>
-  <text x="117.4" y="389.0" fill="#878787" xml:space="preserve"> pause</text>
-  <text x="164.2" y="389.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="187.6" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">P</text>
-  <text x="195.4" y="389.0" fill="#878787" xml:space="preserve"> pause home</text>
-  <text x="281.2" y="389.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="304.6" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">tab</text>
-  <text x="328.0" y="389.0" fill="#878787" xml:space="preserve"> views</text>
+  <text x="16.0" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">↑↓</text>
+  <text x="31.6" y="389.0" fill="#878787" xml:space="preserve"> scroll</text>
+  <text x="86.2" y="389.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="109.6" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">p</text>
+  <text x="117.4" y="389.0" fill="#878787" xml:space="preserve"> pin</text>
+  <text x="148.6" y="389.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="172.0" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">space</text>
+  <text x="211.0" y="389.0" fill="#878787" xml:space="preserve"> pause</text>
+  <text x="257.8" y="389.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="281.2" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">P</text>
+  <text x="289.0" y="389.0" fill="#878787" xml:space="preserve"> pause home</text>
   <text x="374.8" y="389.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="398.2" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">q</text>
-  <text x="406.0" y="389.0" fill="#878787" xml:space="preserve"> quit</text>
-  <text x="445.0" y="389.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="468.4" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">?</text>
-  <text x="476.2" y="389.0" fill="#878787" xml:space="preserve"> help</text>
+  <text x="398.2" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">tab</text>
+  <text x="421.6" y="389.0" fill="#878787" xml:space="preserve"> views</text>
+  <text x="468.4" y="389.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="491.8" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">q</text>
+  <text x="499.6" y="389.0" fill="#878787" xml:space="preserve"> quit</text>
+  <text x="538.6" y="389.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="562.0" y="389.0" fill="#87afff" font-weight="700" xml:space="preserve">?</text>
+  <text x="569.8" y="389.0" fill="#878787" xml:space="preserve"> help</text>
 </svg>

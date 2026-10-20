@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/charmbracelet/colorprofile"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/home"
@@ -115,23 +115,23 @@ func (s fleetState) homeRole(id string) role {
 	return roleMuted
 }
 
-func runes(s string) int { return utf8.RuneCountInString(s) }
+func cells(s string) int { return ansi.StringWidth(s) }
 
-// clip cuts s to n runes, ending with … when cut.
+// clip cuts s to n terminal cells, ending with … when cut.
 func clip(s string, n int) string {
-	if runes(s) <= n {
+	if cells(s) <= n {
 		return s
 	}
 	if n <= 0 {
 		return ""
 	}
-	return string([]rune(s)[:n-1]) + "…"
+	return ansi.Truncate(s, n, "…")
 }
 
-// pad clips s to n runes and fills it with spaces to n.
+// pad clips s to n terminal cells and fills it with spaces to n.
 func pad(s string, n int) string {
 	s = clip(s, n)
-	return s + strings.Repeat(" ", max(n-runes(s), 0))
+	return s + strings.Repeat(" ", max(n-cells(s), 0))
 }
 
 func plural(n int, one, many string) string {
@@ -143,65 +143,93 @@ func plural(n int, one, many string) string {
 
 // sessions is the Sessions view: the list and the selected session's detail,
 // stacked, side by side, or the detail alone.
-func (c *canvas) sessions(v view, reserve int) {
+func (c *canvas) sessions(v view, room int, limited bool) {
+	bodyStart := len(c.out)
 	switch {
 	case v.wide():
-		c.sideBySide(v, reserve)
+		c.sideBySide(v, room, limited)
 	case v.listed() && v.fleet.focus == "":
-		c.list(v, 0)
-	case v.listed():
-		d := c.child(c.width)
-		d.detail(v)
-		room := 0
-		if v.height > 0 {
-			room = max(v.height-len(c.out)-len(d.out)-reserve-1, minListRows)
+		if limited && room == 0 {
+			return
 		}
 		c.list(v, room)
-		c.blank()
-		c.stack(d)
+	case v.listed():
+		if limited && room == 0 {
+			return
+		}
+		if !limited {
+			c.list(v, 0)
+			c.blank()
+			d := c.child(c.width)
+			d.detail(v)
+			c.layout = layoutInfo{detailRow: len(c.out), hasDetail: true}
+			c.append(d)
+			return
+		}
+		if room <= 2 {
+			d := c.child(c.width)
+			d.detail(v)
+			c.layout = layoutInfo{detailRow: len(c.out), hasDetail: true, scrollMax: max(len(d.out)-room, 0)}
+			d = crop(d, room, v.scroll)
+			c.append(d)
+			return
+		}
+		d := c.child(c.width)
+		d.detail(v)
+		detailRoom := min(len(d.out), max(room-minListRows-1, 0))
+		listRoom := room - detailRoom - 1
+		c.list(v, listRoom)
+		if len(c.out)-bodyStart < room {
+			c.blank()
+		}
+		available := max(room-(len(c.out)-bodyStart), 0)
+		scrollMax := 0
+		if available > 0 {
+			scrollMax = max(len(d.out)-available, 0)
+		}
+		d = crop(d, available, v.scroll)
+		c.layout = layoutInfo{detailRow: len(c.out), hasDetail: true, scrollMax: scrollMax}
+		c.append(d)
 	case v.fleet != nil && v.fleet.focus == "":
 		c.add(dim(noSession))
 	default:
-		c.detail(v)
+		d := c.child(c.width)
+		d.detail(v)
+		scrollMax := 0
+		if limited {
+			scrollMax = max(len(d.out)-room, 0)
+			d = crop(d, room, v.scroll)
+		}
+		c.layout = layoutInfo{detailRow: len(c.out), hasDetail: true, scrollMax: scrollMax}
+		c.append(d)
 	}
-}
-
-// stack appends d's lines below c's, keeping its zones and anchors.
-func (c *canvas) stack(d *canvas) {
-	for _, z := range d.zones {
-		z.row += len(c.out)
-		c.zones = append(c.zones, z)
-	}
-	for k, a := range d.anchors {
-		a.row += len(c.out)
-		c.anchors[k] = a
-	}
-	c.out = append(c.out, d.out...)
-	c.widths = append(c.widths, d.widths...)
 }
 
 // sideBySide draws the list on the left and the detail on the right, with an
 // accent gutter on the focused pane.
-func (c *canvas) sideBySide(v view, reserve int) {
+func (c *canvas) sideBySide(v view, room int, limited bool) {
+	if limited && room == 0 {
+		return
+	}
 	lw := c.width * listShare / 100
 	rw := c.width - lw - 3
 	l, r := c.child(lw), c.child(rw)
-	room := 0
-	if v.height > 0 {
-		room = max(v.height-len(c.out)-reserve, minListRows)
-	}
 	l.list(v, room)
 	if v.fleet.focus == "" {
 		r.add(dim(noSession))
 	} else {
 		r.detail(v)
 	}
-	mark := func(p pane) string {
-		if v.pane == p {
-			return c.paint(seg{text: "▎", role: roleAccent})
+	scrollMax := 0
+	if limited {
+		rScroll := 0
+		if v.pane == paneDetail {
+			rScroll = v.scroll
+			scrollMax = max(len(r.out)-room, 0)
 		}
-		return " "
+		r = crop(r, room, rScroll)
 	}
+	bodyStart := len(c.out)
 	for i := range max(len(l.out), len(r.out)) {
 		left, lwid := "", 0
 		if i < len(l.out) {
@@ -211,10 +239,16 @@ func (c *canvas) sideBySide(v view, reserve int) {
 		if i < len(r.out) {
 			right, rwid = r.out[i], r.widths[i]
 		}
+		mark := func(p pane) string {
+			if v.pane == p {
+				return c.paint(seg{text: "▎", role: roleAccent})
+			}
+			return " "
+		}
 		c.out = append(c.out, mark(paneList)+left+strings.Repeat(" ", lw-lwid)+" "+mark(paneDetail)+right)
 		c.widths = append(c.widths, lw+3+rwid)
 	}
-	base := len(c.out) - max(len(l.out), len(r.out))
+	base := bodyStart
 	for _, z := range l.zones {
 		z.row, z.x0, z.x1 = z.row+base, z.x0+1, z.x1+1
 		c.zones = append(c.zones, z)
@@ -227,6 +261,7 @@ func (c *canvas) sideBySide(v view, reserve int) {
 		a.row, a.x = a.row+base, a.x+lw+3
 		c.anchors[k] = a
 	}
+	c.layout = layoutInfo{detailRow: base, detailX: lw + 3, hasDetail: v.fleet.focus != "", scrollMax: scrollMax}
 }
 
 // listLine is one line of the list body; session is set on session rows.
@@ -248,23 +283,23 @@ func listColumns(width int, st fleetState) listCols {
 	for _, h := range st.homes {
 		for _, e := range h.endpoints {
 			if e.idle {
-				cols.session = max(cols.session, runes(waitingName(e, h)))
+				cols.session = max(cols.session, cells(waitingName(e, h)))
 			}
 		}
 	}
 	for _, s := range st.all() {
-		text, _ := stateOf(s)
-		cols.session = max(cols.session, runes(rowLabel(s)))
-		cols.state = max(cols.state, runes(text))
-		cols.model = max(cols.model, runes(routeText(s.Route)))
+		text := stateText(s)
+		cols.session = max(cols.session, cells(rowLabel(s)))
+		cols.state = max(cols.state, cells(text))
+		cols.model = max(cols.model, cells(routeText(s.Route)))
 	}
 	cols.session = min(cols.session, maxSessionCol)
-	used := runes("▸ ") + minSessionCol + runes(gap) + cols.state
+	used := cells("▸ ") + minSessionCol + cells(gap) + cols.state
 	fits := func(w int) bool {
-		if used+runes(gap)+w > width {
+		if used+cells(gap)+w > width {
 			return false
 		}
-		used += runes(gap) + w
+		used += cells(gap) + w
 		return true
 	}
 	switch {
@@ -434,6 +469,9 @@ func sessionRow(s fleetSession, h fleetHome, cols listCols, selected bool) []seg
 	name := plain(pad(rowLabel(s), cols.session))
 	name.bold = selected
 	text, r := stateOf(s)
+	if s.PendingPin {
+		text += " · ◇ pin"
+	}
 	segs := []seg{marker, name, plain(gap), col(r, pad(text, cols.state))}
 	if cols.model > 0 {
 		segs = append(segs, plain(gap), plain(pad(routeText(s.Route), cols.model)))
@@ -461,6 +499,14 @@ func sessionRow(s fleetSession, h fleetHome, cols listCols, selected bool) []seg
 
 // stateOf is the STATE column: a lost connection first, then the session's
 // attention flag, else its mode. Every state has a glyph.
+func stateText(s fleetSession) string {
+	text, _ := stateOf(s)
+	if s.PendingPin {
+		text += " · ◇ pin"
+	}
+	return text
+}
+
 func stateOf(s fleetSession) (string, role) {
 	switch {
 	case s.disconnected:

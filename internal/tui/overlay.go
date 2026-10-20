@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 const (
@@ -21,18 +22,49 @@ func (c *canvas) compose(v view, footerRow int) (string, []zone) {
 	base := strings.Join(c.out, "\n")
 	var overlays []*lipgloss.Layer
 	zones := c.zones
+	overlayOpen := false
 	switch {
 	case v.help:
-		overlays = append(overlays, lipgloss.NewLayer(c.box(c.helpLines(), roleAccent, c.width)).Y(helpTop).Z(1))
-		zones = nil
+		all := strings.Split(strings.Join(c.helpLines(), "\n"), "\n")
+		if v.height > 0 {
+			var wrapped []string
+			width := max(c.width-4, 1)
+			for _, line := range all {
+				if ansi.StringWidth(line) > width {
+					wrapped = append(wrapped, strings.Split(ansi.Hardwrap(line, width, false), "\n")...)
+				} else {
+					wrapped = append(wrapped, line)
+				}
+			}
+			maxLines := max(footerRow-helpTop-3, 1)
+			if len(wrapped) > maxLines {
+				wrapped = wrapped[:maxLines]
+				wrapped[maxLines-1] = c.paint(dim("… more help hidden at this height"))
+			}
+			all = wrapped
+		}
+		box := c.box([]string{strings.Join(all, "\n")}, roleAccent, c.width)
+		y := helpTop
+		if v.height > 0 {
+			y = min(y, max(footerRow-lipgloss.Height(box)-1, 0))
+		}
+		overlays = append(overlays, lipgloss.NewLayer(box).Y(y).Z(1))
+		zones, overlayOpen = nil, true
 	case v.popover != popNone:
 		if a, ok := c.popoverAnchor(v); ok {
-			layer, zs := c.popover(v, a)
+			layer, zs := c.popover(v, a, footerRow)
 			overlays, zones = append(overlays, layer), zs
+			overlayOpen = true
 		}
 	}
-	if len(zones) != len(c.zones) || v.help {
-		for row := range max(len(c.out), v.height) + 8 {
+	if overlayOpen {
+		rows := len(c.out)
+		if v.height > 0 {
+			rows = min(rows, v.height)
+		} else {
+			rows += 8
+		}
+		for row := range rows {
 			zones = append(zones, zone{action: action{kind: actClose}, row: row, x1: c.width})
 		}
 	}
@@ -90,7 +122,7 @@ func (c *canvas) popoverAnchor(v view) (anchor, bool) {
 
 // popover is the open choice box hung under the row it belongs to, with a
 // zone for each choice. A narrow panel wraps the choices onto more lines.
-func (c *canvas) popover(v view, a anchor) (*lipgloss.Layer, []zone) {
+func (c *canvas) popover(v view, a anchor, footerRow int) (*lipgloss.Layer, []zone) {
 	var items [][]seg
 	choice := func(k, name string, r role, act action) {
 		items = append(items, []seg{
@@ -117,7 +149,7 @@ func (c *canvas) popover(v view, a anchor) (*lipgloss.Layer, []zone) {
 		}
 	}
 	for _, it := range items {
-		if line != nil && segsWidth(line)+len(gap)+segsWidth(it) > c.width-4 {
+		if line != nil && segsWidth(line)+lipgloss.Width(gap)+segsWidth(it) > c.width-4 {
 			flush()
 		}
 		if line != nil {
@@ -128,11 +160,20 @@ func (c *canvas) popover(v view, a anchor) (*lipgloss.Layer, []zone) {
 	flush()
 	box := c.box(pc.out, roleAccent, 0)
 	x := min(a.x, max(c.width-lipgloss.Width(box), 0))
+	y := a.row + 1
+	if v.height > 0 {
+		boxHeight := lipgloss.Height(box)
+		bottom := min(v.height, max(footerRow-1, 0))
+		if y+boxHeight > bottom {
+			y = max(a.row-boxHeight, 0)
+		}
+		y = min(y, max(bottom-boxHeight, 0))
+	}
 	zs := make([]zone, 0, len(pc.zones))
 	for _, z := range pc.zones {
-		zs = append(zs, zone{action: z.action, row: a.row + 2 + z.row, x0: x + 2 + z.x0, x1: x + 2 + z.x1})
+		zs = append(zs, zone{action: z.action, row: y + 1 + z.row, x0: x + 2 + z.x0, x1: x + 2 + z.x1})
 	}
-	return lipgloss.NewLayer(c.padded(box, x)).Y(a.row + 1).Z(1), zs
+	return lipgloss.NewLayer(c.padded(box, x)).Y(y).Z(1), zs
 }
 
 // padded is box in the middle of full-width blank lines, so the rows it covers

@@ -1121,7 +1121,8 @@ func TestCtlStatusPicksTheSessionOfTheHome(t *testing.T) {
 		{"another home's deeper session is ignored", "repo/sub/deep", "", exitOK,
 			map[string]string{"label": "work · repo · sub", "attention": "paused"}, nil},
 		{"thread id beats cwd", "twin", "t-repo", exitOK, map[string]string{"label": "work · repo · main"}, nil},
-		{"another home's thread id is not used", "repo", "t-other", exitOK, map[string]string{"label": "work · repo · main"}, nil},
+		{"another home's explicit thread id refuses cwd fallback", "repo", "t-other", exitError, nil, []string{"CODEX_THREAD_ID", "not listed"}},
+		{"missing explicit thread id refuses cwd fallback", "repo", "missing-thread", exitError, nil, []string{"CODEX_THREAD_ID", "not listed"}},
 		{"sessions sharing the cwd", "twin", "", exitUsage, nil, []string{"2 sessions", "work · twin · a", "work · twin · b"}},
 		{"no session works there", ".", "", exitError, nil, []string{"no running session of Codex home"}},
 	}
@@ -1146,6 +1147,19 @@ func TestCtlStatusPicksTheSessionOfTheHome(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCtlDoesNotMutateACwdSessionWhenExplicitThreadIsMissing(t *testing.T) {
+	env, codexHome, projects, applied := ctlFixture(t)
+	env = append(slices.Clone(env), envThread+"=missing-thread")
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{"ctl", "pause", "--home", codexHome, "--cwd", filepath.Join(projects, "repo")}, env, nil, &stdout, &stderr)
+	if code != exitError || !strings.Contains(stderr.String(), "CODEX_THREAD_ID") || !strings.Contains(stderr.String(), "not listed") {
+		t.Fatalf("exit %d stderr %q; want explicit missing-thread error", code, stderr.String())
+	}
+	if got := slices.DeleteFunc(applied(), func(c route.Command) bool { return c.Op == control.OpSubscribe }); len(got) != 0 {
+		t.Fatalf("missing explicit thread mutated a cwd session: %+v", got)
 	}
 }
 

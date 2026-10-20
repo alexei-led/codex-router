@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/policy"
@@ -171,6 +172,77 @@ func TestContextGuardIsCountedAndWorthALook(t *testing.T) {
 	if s.Stats.FitHeld != 1 || !slices.ContainsFunc(s.Worth, func(f Finding) bool { return f.Kind == FindingContext }) {
 		t.Fatalf("fit held = %d, worth = %+v", s.Stats.FitHeld, s.Worth)
 	}
+}
+
+func TestSnapshotDistinguishesUnknownAndIncompatibleModels(t *testing.T) {
+	t.Run("empty catalog", func(t *testing.T) {
+		h := newHarness(t, testConfig())
+		h.cat.Set(catalog.Catalog{})
+		s := h.engine.Snapshot()
+		if len(s.Blocked) != 0 {
+			t.Fatalf("blocked = %v with empty catalog; unknown models are not known incompatible", s.Blocked)
+		}
+		if s.CatalogAvailable || s.CurrentModelKnown || !slices.Contains(s.CompatibilityUnknown, medium.Model) {
+			t.Fatalf("catalog state available=%v unknown=%v", s.CatalogAvailable, s.CompatibilityUnknown)
+		}
+	})
+
+	t.Run("missing current model fails closed but is not blocked", func(t *testing.T) {
+		h := newHarness(t, testConfig())
+		req := req(config.Route{Model: "missing-current", Effort: config.EffortMedium}, userMsg(secretPrompt))
+		if _, ok := h.decide(req, meta("th", "t1")); ok {
+			t.Fatal("unknown current model was routed")
+		}
+		s := h.engine.SnapshotFor("th")
+		if len(s.Blocked) != 0 {
+			t.Fatalf("blocked = %v for missing current model, want compatibility unknown", s.Blocked)
+		}
+		if !s.CatalogAvailable || s.CurrentModelKnown || !slices.Contains(s.CompatibilityUnknown, "missing-current") {
+			t.Fatalf("unknown current model not reported: %+v", s)
+		}
+	})
+
+	t.Run("missing target model is unknown", func(t *testing.T) {
+		cfg := testConfig()
+		cfg.Routes[config.TierHigh] = config.Route{Model: "missing-target", Effort: config.EffortHigh}
+		h := newHarness(t, cfg)
+		s := h.engine.Snapshot()
+		if slices.Contains(s.Blocked, "missing-target") {
+			t.Fatalf("missing target listed as blocked: %v", s.Blocked)
+		}
+		if !slices.Contains(s.CompatibilityUnknown, "missing-target") {
+			t.Fatalf("missing target not reported as unknown: %v", s.CompatibilityUnknown)
+		}
+	})
+
+	t.Run("known equal and unequal groups", func(t *testing.T) {
+		cfg := testConfig()
+		cfg.Routes[config.TierHigh] = config.Route{Model: "gpt-5.5", Effort: config.EffortHigh}
+		h := newHarness(t, cfg)
+		s := h.engine.Snapshot()
+		if !s.CurrentModelKnown || !slices.Equal(s.Blocked, []string{"gpt-5.5"}) {
+			t.Fatalf("blocked = %v, want only known unequal gpt-5.5", s.Blocked)
+		}
+		if len(s.CompatibilityUnknown) != 0 {
+			t.Fatalf("unknown = %v, want no unknown models", s.CompatibilityUnknown)
+		}
+	})
+
+	t.Run("catalog becoming available", func(t *testing.T) {
+		h := newHarness(t, testConfig())
+		h.cat.Set(catalog.Catalog{})
+		if s := h.engine.Snapshot(); len(s.Blocked) != 0 {
+			t.Fatalf("empty catalog blocked = %v", s.Blocked)
+		}
+		cat, err := catalog.Parse([]byte(testCatalog))
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.cat.Set(cat)
+		if s := h.engine.Snapshot(); len(s.Blocked) != 0 || len(s.CompatibilityUnknown) != 0 || !s.CatalogAvailable {
+			t.Fatalf("available catalog snapshot = blocked %v unknown %v available %v", s.Blocked, s.CompatibilityUnknown, s.CatalogAvailable)
+		}
+	})
 }
 
 func TestWorth(t *testing.T) {

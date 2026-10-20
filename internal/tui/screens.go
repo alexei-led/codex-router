@@ -128,11 +128,19 @@ func (c *canvas) routesRows(s route.Snapshot) {
 	for _, b := range s.Blocked {
 		c.add(kv("Blocked"), plain(b), dim(" · outside "+s.Baseline.Model+"'s group"))
 	}
+	switch {
+	case !s.CatalogAvailable:
+		c.add(dim(" Compatibility unknown · catalog unavailable"))
+	case len(s.CompatibilityUnknown) > 0:
+		c.add(dim(" Compatibility unknown · missing catalog entries: " + strings.Join(s.CompatibilityUnknown, ", ")))
+	case !s.CurrentModelKnown:
+		c.add(dim(" Compatibility unknown · current model is missing from the catalog"))
+	}
 }
 
 func groupText(s route.Snapshot) string {
-	if s.Group.CompHash == "" {
-		return "compatibility group unknown"
+	if !s.CatalogAvailable || !s.CurrentModelKnown {
+		return ""
 	}
 	return "group of " + s.Baseline.Model
 }
@@ -158,10 +166,10 @@ func (c *canvas) usage(v view) {
 		c.add(kv("Usage"), dim("no replies yet"))
 		return
 	}
-	c.add(append([]seg{kv("Usage")}, savedSegs(st, s.Baseline)...)...)
-	if st.BaselineUSD > 0 {
+	c.add(append([]seg{kv("Usage")}, savedSegs(st)...)...)
+	if pricingComplete(st) && st.BaselineUSD > 0 {
 		c.flow(blankKV(),
-			[]seg{dim(fmt.Sprintf("list-price estimate $%.2f vs $%.2f all-%s", st.RoutedUSD, st.BaselineUSD, routeText(s.Baseline)))},
+			[]seg{dim(fmt.Sprintf("list-price estimate $%.2f vs $%.2f per-reply native basis", st.RoutedUSD, st.BaselineUSD))},
 			[]seg{dim("plan billing is limits, not $")})
 	}
 	ledger := [][]seg{

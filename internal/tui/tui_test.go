@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,9 +13,9 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
@@ -52,9 +53,11 @@ func fixture() route.Snapshot {
 		Baseline: sol61, Footer: sol61, FooterSynced: true,
 		Last: &last, Recent: []route.Decision{earlier, last},
 		Classifier: classifier.Health{Latency: 412 * time.Millisecond}, ClassifierLabel: "Jev", ClassifierModel: "jev-1.13.0", ClassifierMedian: 388 * time.Millisecond,
-		Routes:  map[config.Tier]config.Route{config.TierHigh: sol61, config.TierMedium: sol, config.TierLow: luna, config.TierMicro: micro},
-		Group:   catalog.Group{CompHash: "3000"},
-		Blocked: []string{"gpt-5.5"},
+		Routes:            map[config.Tier]config.Route{config.TierHigh: sol61, config.TierMedium: sol, config.TierLow: luna, config.TierMicro: micro},
+		Group:             catalog.Group{CompHash: "3000"},
+		CurrentModelKnown: true,
+		CatalogAvailable:  true,
+		Blocked:           []string{"gpt-5.5"},
 		Policy: config.Policy{UpgradeVotes: 2, DowngradeVotes: 2, EscalationHoldTurns: 2, MinDwellRequests: 8, ReviewEveryRequests: 6,
 			UpgradeBase: 0.65, JumpConfidence: 0.85, DowngradeMass: 0.7, ActivityMass: 0.6},
 		Stats: route.Stats{
@@ -68,6 +71,7 @@ func fixture() route.Snapshot {
 			UncachedSwitchTokens: 212_000,
 			FitHeld:              2,
 			RoutedUSD:            1.87, BaselineUSD: 2.71,
+			PricedReplies: 48, EligibleReplies: 48,
 		},
 		ApproxTokens: 44_600, Window: 272_000,
 		Worth: []route.Finding{
@@ -128,7 +132,7 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		{"no decision yet", func(s *route.Snapshot) { s.Stats = route.Stats{}; s.Last = nil }, TabSessions,
 			[]string{"WAITING", "no routed request yet · baseline gpt-6.1-sol · high", "no routed replies yet"}, []string{"Cache", "HIGH"}},
 		{"session summary", func(*route.Snapshot) {}, TabSessions,
-			[]string{"48 replies · 9 switches · saved ≈ $0.84 (31%) vs gpt-6.1-sol · high", "per cell"}, nil},
+			[]string{"48 replies · 9 switches · saved ≈ $0.84 (31%) vs per-reply native basis", "per cell"}, nil},
 		{"strip glyphs tell the tiers apart", func(*route.Snapshot) {}, TabSessions, []string{"▃▃▃▃▃▅▅▅▅▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇"}, nil},
 		{"costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabSessions, []string{"cost ≈ $0.29 (11%)"}, []string{"saved"}},
 		{"prices missing", func(s *route.Snapshot) { s.Stats.RoutedUSD, s.Stats.BaselineUSD = 0, 0 }, TabSessions, []string{`savings need "prices" in the config`}, nil},
@@ -161,12 +165,14 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 			[]string{"Routes     micro  gpt-6-luna · low", "low    gpt-6-luna · medium", "medium gpt-6-sol · medium", "high   gpt-6.1-sol · high", "group of gpt-6.1-sol"},
 			[]string{"comp_hash", "3000"}},
 		{"blocked models", func(*route.Snapshot) {}, TabPolicy, []string{"Blocked    gpt-5.5 · outside gpt-6.1-sol's group"}, nil},
-		{"group unknown", func(s *route.Snapshot) { s.Group = catalog.Group{} }, TabPolicy, []string{"compatibility group unknown"}, nil},
+		{"group unknown", func(s *route.Snapshot) {
+			s.Group, s.CurrentModelKnown, s.CompatibilityUnknown = catalog.Group{}, false, []string{s.Baseline.Model}
+		}, TabPolicy, []string{"Compatibility unknown · missing catalog entries"}, nil},
 		{"thresholds", func(*route.Snapshot) {}, TabPolicy,
 			[]string{"up after 2 votes, bar 0.65 · down after 2 votes, bar 0.70 · min dwell 8 requests", "escalation hold 2 turns · review every 6 requests · jump bar 0.85"}, nil},
 
 		{"savings sentence", func(*route.Snapshot) {}, TabUsage,
-			[]string{"Routing saved ≈ $0.84 (31%) vs gpt-6.1-sol · high", "list-price estimate $1.87 vs $2.71 all-gpt-6.1-sol · high", "plan billing is limits, not $"}, nil},
+			[]string{"Routing saved ≈ $0.84 (31%) vs per-reply native basis", "list-price estimate $1.87 vs $2.71 per-reply native basis", "plan billing is limits, not $"}, nil},
 		{"ledger", func(*route.Snapshot) {}, TabUsage,
 			[]string{"48 replies since 18:12 · 9 switches · cache reuse 97%", "switches wrote 212K uncached tokens", "last switch 18:41  medium → high · debug (inside a turn)"}, nil},
 		{"counts as bars", func(*route.Snapshot) {}, TabUsage,
@@ -193,6 +199,59 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestIncompletePricingDoesNotLookLikeACompleteSessionTotal(t *testing.T) {
+	var st route.Stats
+	if err := json.Unmarshal([]byte(`{"Replies":2,"PricedReplies":1,"EligibleReplies":2,"RoutedUSD":0.12,"BaselineUSD":0.30}`), &st); err != nil {
+		t.Fatal(err)
+	}
+	s := fixture()
+	s.Stats = st
+	got := renderPlain(s, TabUsage, 100)
+	if !strings.Contains(got, "estimate partial") || !strings.Contains(got, "1 of 2 replies priced") {
+		t.Fatalf("missing partial-coverage statement:\n%s", got)
+	}
+	if strings.Contains(got, "$0.12") || strings.Contains(got, "$0.30") || strings.Contains(got, "Routing saved") {
+		t.Fatalf("partial subtotals presented as session totals:\n%s", got)
+	}
+}
+
+func TestUnknownPricingReportsCoverageWithoutASubtotal(t *testing.T) {
+	var st route.Stats
+	if err := json.Unmarshal([]byte(`{"Replies":2,"RoutedUSD":0.12,"BaselineUSD":0.30}`), &st); err != nil {
+		t.Fatal(err)
+	}
+	s := fixture()
+	s.Stats = st
+	got := renderPlain(s, TabUsage, 100)
+	if !strings.Contains(got, "estimate unknown") || !strings.Contains(got, "0 of 2 replies priced") {
+		t.Fatalf("missing unknown-coverage statement:\n%s", got)
+	}
+	if strings.Contains(got, "$0.12") || strings.Contains(got, "$0.30") || strings.Contains(got, "Routing saved") {
+		t.Fatalf("unpriced subtotal presented as a session total:\n%s", got)
+	}
+}
+
+func TestPricingBasisNamesEachNativeReply(t *testing.T) {
+	got := renderPlain(fixture(), TabUsage, 100)
+	if !strings.Contains(got, "per-reply native basis") || strings.Contains(got, "all-gpt-") {
+		t.Fatalf("usage implies a single native model:\n%s", got)
+	}
+}
+
+func TestPolicyReportsCompatibilityUnknownSeparately(t *testing.T) {
+	s := fixture()
+	s.Group, s.CurrentModelKnown = catalog.Group{}, false
+	s.CompatibilityUnknown = []string{s.Baseline.Model}
+	s.Blocked = nil
+	got := renderPlain(s, TabPolicy, 100)
+	if !strings.Contains(got, "Compatibility unknown") {
+		t.Fatalf("policy did not report compatibility uncertainty:\n%s", got)
+	}
+	if strings.Contains(got, "Blocked") {
+		t.Fatalf("unknown models were presented as blocked:\n%s", got)
 	}
 }
 
@@ -338,8 +397,8 @@ func TestAddNeverExceedsWidth(t *testing.T) {
 	for w := 1; w <= 6; w++ {
 		c := &canvas{width: w}
 		c.add(plain("abcdef"[:w]), plain("x"), plain("yz"))
-		if got := utf8.RuneCountInString(c.out[0]); got > w {
-			t.Errorf("width %d: line has %d runes", w, got)
+		if got := ansi.StringWidth(c.out[0]); got > w {
+			t.Errorf("width %d: line has %d cells", w, got)
 		}
 	}
 }
@@ -708,6 +767,18 @@ func TestListStatesHaveGlyphs(t *testing.T) {
 	}
 }
 
+func TestListMarksPendingPins(t *testing.T) {
+	s := info(homeDefault, "pin", "repo · main", nil)
+	if err := json.Unmarshal([]byte(`{"pending_pin":true}`), &s.SessionInfo); err != nil {
+		t.Fatal(err)
+	}
+	st := fleetState{focus: s.ID, homes: []fleetHome{{home: homeDefault, sessions: []fleetSession{s}}}}
+	got := render(view{tab: TabSessions, width: 80, fleet: &st})
+	if !strings.Contains(got, "◇ pin") {
+		t.Fatalf("pending pin has no distinct list marker:\n%s", got)
+	}
+}
+
 func TestListRowCells(t *testing.T) {
 	st := fleetFixture()
 	got := render(view{tab: TabSessions, width: 97, fleet: &st})
@@ -760,14 +831,204 @@ func TestListScrollKeepsTheSelectionInView(t *testing.T) {
 	}
 }
 
+func TestClipPreservesGraphemeClusters(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		text  string
+		cells int
+		want  string
+	}{
+		{"combining mark", "e\u0301xyz", 3, "e\u0301x…"},
+		{"emoji ZWJ", "👩‍💻xy", 3, "👩‍💻…"},
+		{"wide CJK", "界xy", 3, "界…"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := clip(tt.text, tt.cells); got != tt.want || ansi.StringWidth(got) > tt.cells {
+				t.Errorf("clip(%q, %d) = %q (%d cells), want %q", tt.text, tt.cells, got, ansi.StringWidth(got), tt.want)
+			}
+		})
+	}
+}
+
+func TestUnicodeLayoutFitsTerminalCellsAndKeepsGraphemes(t *testing.T) {
+	st := fleetFixture()
+	st.homes[0].sessions[0].Label = homeDefault.Name + " · " + strings.Repeat("界", 20) + "e\u0301👩‍💻"
+	st.focus = st.homes[0].sessions[0].ID
+	for _, width := range []int{40, 80, 97, 130} {
+		got := render(view{snap: fixture(), tab: TabSessions, width: width, fleet: &st})
+		for row, line := range strings.Split(strings.TrimSuffix(got, "\n"), "\n") {
+			if cells := ansi.StringWidth(line); cells > width {
+				t.Errorf("width %d row %d: %d cells: %q", width, row, cells, line)
+			}
+		}
+	}
+}
+
+func TestLayoutsFitTerminalHeight(t *testing.T) {
+	st := manyFixture()
+	for _, tab := range []Tab{TabSessions, TabPolicy, TabUsage} {
+		for _, width := range []int{40, 80, 97, 130} {
+			for _, height := range []int{18, 20, 24} {
+				for _, overlay := range []string{"none", "help", "popover", "toast"} {
+					name := fmt.Sprintf("%s/%d/%d/%s", tab, width, height, overlay)
+					t.Run(name, func(t *testing.T) {
+						v := view{snap: fixture(), tab: tab, width: width, height: height, fleet: &st}
+						switch overlay {
+						case "help":
+							v.help = true
+						case "popover":
+							switch tab {
+							case TabPolicy:
+								v.popover = popPreset
+							case TabSessions:
+								v.popover = popPin
+							default:
+								return
+							}
+						case "toast":
+							v.toast = "pinned high for the next turn"
+						}
+						got, zones := layout(v)
+						lines := strings.Split(strings.TrimSuffix(got, "\n"), "\n")
+						if len(lines) > height {
+							t.Errorf("%d lines, height %d:\n%s", len(lines), height, got)
+						}
+						for row, line := range lines {
+							if cells := ansi.StringWidth(line); cells > width {
+								t.Errorf("row %d has %d cells, width %d: %q", row, cells, width, line)
+							}
+						}
+						for _, z := range zones {
+							if z.row < 0 || z.row >= height || z.x0 < 0 || z.x1 > width || z.x0 >= z.x1 {
+								t.Errorf("zone out of bounds: %+v", z)
+							}
+						}
+						wantFooter := "? help"
+						if overlay == "help" || overlay == "popover" {
+							wantFooter = "esc close"
+						}
+						if !strings.Contains(got, wantFooter) {
+							t.Errorf("footer key %q not visible:\n%s", wantFooter, got)
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+func TestLockedLayoutsFitTerminalHeight(t *testing.T) {
+	st := lockedFixture()
+	for _, tab := range []Tab{TabSessions, TabPolicy, TabUsage} {
+		for _, width := range []int{40, 80, 97, 130} {
+			for _, height := range []int{18, 20, 24} {
+				for _, overlay := range []string{"none", "help", "popover", "toast"} {
+					if tab == TabUsage && overlay == "popover" {
+						continue
+					}
+					t.Run(fmt.Sprintf("%s/%d/%d/%s", tab, width, height, overlay), func(t *testing.T) {
+						v := view{snap: fixture(), tab: tab, width: width, height: height, fleet: &st, locked: true}
+						switch overlay {
+						case "help":
+							v.help = true
+						case "popover":
+							if tab == TabPolicy {
+								v.popover = popPreset
+							} else {
+								v.popover = popPin
+							}
+						case "toast":
+							v.toast = "pinned high for the next turn"
+						}
+						got, zones := layout(v)
+						lines := strings.Split(strings.TrimSuffix(got, "\n"), "\n")
+						if len(lines) > height {
+							t.Errorf("%d lines, height %d:\n%s", len(lines), height, got)
+						}
+						for row, line := range lines {
+							if cells := ansi.StringWidth(line); cells > width {
+								t.Errorf("row %d has %d cells, width %d: %q", row, cells, width, line)
+							}
+						}
+						for _, z := range zones {
+							if z.row < 0 || z.row >= height || z.x0 < 0 || z.x1 > width || z.x0 >= z.x1 {
+								t.Errorf("zone out of bounds: %+v", z)
+							}
+						}
+						footer := "? help"
+						if overlay == "help" || overlay == "popover" {
+							footer = "esc close"
+						}
+						if !strings.Contains(got, footer) {
+							t.Errorf("footer key %q not visible:\n%s", footer, got)
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+func TestDetailScrollReachesLastLineAndSurvivesResize(t *testing.T) {
+	m, _ := connected(t, fixture())
+	s := fixture()
+	s.Worth = make([]route.Finding, 30)
+	for i := range s.Worth {
+		s.Worth[i] = route.Finding{Kind: route.FindingContext, Text: fmt.Sprintf("detail line %02d", i)}
+	}
+	s.Worth[len(s.Worth)-1].Text = "last detail line"
+	m.st.snap, m.zoom = &s, true
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 18})
+	if strings.Contains(screen(m), "last detail line") {
+		t.Fatal("detail is not a viewport; the last line is already on screen")
+	}
+	for range 80 {
+		press(m, "down")
+	}
+	if got := screen(m); !strings.Contains(got, "last detail line") {
+		t.Fatalf("scroll did not reach the last detail line:\n%s", got)
+	}
+	m.Update(tea.WindowSizeMsg{Width: 97, Height: 24})
+	lines := strings.Split(strings.TrimSuffix(screen(m), "\n"), "\n")
+	if len(lines) > 24 {
+		t.Fatalf("after resize: %d lines, height 24", len(lines))
+	}
+}
+
+func TestUsageScrollShowsLastActivityAndKeepsFooter(t *testing.T) {
+	m, _ := connected(t, fixture())
+	s := fixture()
+	s.Stats.ByActivity = map[config.Activity]int{
+		config.ActivityCode: 1, config.ActivityDebug: 1, config.ActivityDocs: 1,
+		config.ActivityExplore: 1, config.ActivityOps: 1, config.ActivityPlan: 1,
+		config.ActivityReview: 1,
+	}
+	m.st.snap, m.tab = &s, TabUsage
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 18})
+	if strings.Contains(screen(m), "review") {
+		t.Fatal("usage starts at the bottom instead of the top")
+	}
+	for range 80 {
+		press(m, "down")
+	}
+	if got := screen(m); !strings.Contains(got, "review") || !strings.Contains(got, "? help") {
+		t.Fatalf("scroll did not reach the last activity and keep footer:\n%s", got)
+	}
+	m.Update(tea.WindowSizeMsg{Width: 40, Height: 20})
+	lines := strings.Split(strings.TrimSuffix(screen(m), "\n"), "\n")
+	if len(lines) > 20 {
+		t.Fatalf("after resize while scrolled: %d lines, height 20", len(lines))
+	}
+}
+
 func TestRenderFleetIsWidthAndHeightBound(t *testing.T) {
 	for _, c := range fleetCases() {
 		for _, width := range []int{40, 64, 80, 97, 119, 120, 130} {
 			got := renderCase(c, width)
 			lines := strings.Split(strings.TrimSuffix(got, "\n"), "\n")
 			for _, line := range lines {
-				if n := utf8.RuneCountInString(line); n > width {
-					t.Errorf("%s/%d: line of %d runes: %q", c.name, width, n, line)
+				if n := ansi.StringWidth(line); n > width {
+					t.Errorf("%s/%d: line of %d cells: %q", c.name, width, n, line)
 				}
 			}
 			if c.height > 0 && len(lines) > c.height {

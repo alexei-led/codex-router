@@ -22,37 +22,42 @@ const (
 
 // SessionInfo is one session's summary for the sessions list: a Codex main
 // thread of this engine's home. ID is "<home id>/<thread id>". Every number
-// comes from the thread's own tallies. The USD fields are set only when
-// prices are configured.
+// comes from the thread's own tallies. The USD fields are set only when every
+// eligible reply has prices for its routed and native models.
 type SessionInfo struct {
-	ID           string        `json:"id"`
-	Home         string        `json:"home"`
-	ThreadID     string        `json:"thread_id"`
-	Label        string        `json:"label"`
-	Cwd          string        `json:"cwd"`
-	Mode         Mode          `json:"mode"`
-	Tier         config.Tier   `json:"tier"`
-	Route        config.Route  `json:"route"`
-	Replies      int           `json:"replies"`
-	Switches     int           `json:"switches"`
-	Strip        []config.Tier `json:"strip"`
-	LastSwitch   *Switch       `json:"last_switch,omitempty"`
-	LastActive   time.Time     `json:"last_active"`
-	Attention    Attention     `json:"attention,omitempty"`
-	FooterSynced bool          `json:"footer_synced"`
-	SavedUSD     *float64      `json:"saved_usd,omitempty"`
-	SpentUSD     *float64      `json:"spent_usd,omitempty"`
+	ID              string        `json:"id"`
+	Home            string        `json:"home"`
+	ThreadID        string        `json:"thread_id"`
+	Label           string        `json:"label"`
+	Cwd             string        `json:"cwd"`
+	Mode            Mode          `json:"mode"`
+	Tier            config.Tier   `json:"tier"`
+	Route           config.Route  `json:"route"`
+	Replies         int           `json:"replies"`
+	Switches        int           `json:"switches"`
+	Strip           []config.Tier `json:"strip"`
+	LastSwitch      *Switch       `json:"last_switch,omitempty"`
+	LastActive      time.Time     `json:"last_active"`
+	Attention       Attention     `json:"attention,omitempty"`
+	PendingPin      bool          `json:"pending_pin,omitempty"`
+	FooterSynced    bool          `json:"footer_synced"`
+	PricedReplies   int           `json:"priced_replies"`
+	EligibleReplies int           `json:"eligible_replies"`
+	SavedUSD        *float64      `json:"saved_usd,omitempty"`
+	SpentUSD        *float64      `json:"spent_usd,omitempty"`
 }
 
-// sessionIdle is how long a thread may go without a user step or reply
-// before the sessions list hides it, so a thread left behind by /new leaves.
-// The control server recomputes the list only when it pushes, so an idle
-// row leaves with the engine's next step or reply, not on the dot.
+// sessionIdle is how long an ordinary thread may go without a user step or
+// reply before the sessions list hides it, so a thread left behind by /new
+// leaves. Per-thread pause, manual hold and pending pin intent keep it listed.
+// The control server recomputes the list only when it pushes, so an idle row
+// leaves with the engine's next step or reply, not on the dot.
 const sessionIdle = 10 * time.Minute
 
 // Sessions lists the threads that have had a user step, most recently
-// active first, then by thread id. A thread idle for sessionIdle is left
-// out unless it is the engine's most recently active one. Cwd and the
+// active first, then by thread id. Ordinary threads idle for sessionIdle are
+// left out unless they are the engine's most recently active one. Per-thread
+// pause, manual hold and pending pin intent keep a thread listed. Cwd and the
 // label, which reads the cwd's git metadata, are filled outside the engine
 // lock.
 func (e *Engine) Sessions() []SessionInfo {
@@ -72,7 +77,8 @@ func (e *Engine) sessions() []SessionInfo {
 	var out []SessionInfo
 	latest, now := e.latest(), e.now()
 	for _, th := range e.all() {
-		if th.lastActive.IsZero() || th != latest && now.Sub(th.lastActive) >= sessionIdle {
+		intent := th.paused || th.manual || th.pin != nil
+		if th.lastActive.IsZero() || th != latest && now.Sub(th.lastActive) >= sessionIdle && !intent {
 			continue
 		}
 		mode := e.mode(th)
@@ -84,15 +90,16 @@ func (e *Engine) sessions() []SessionInfo {
 			ID: e.home.ID + "/" + th.id, Home: e.home.ID, ThreadID: th.id,
 			Mode: mode, Tier: th.tier, Route: rt,
 			Replies: th.stats.Replies, Switches: th.stats.Switches, Strip: slices.Clone(th.stats.tail),
-			LastActive: th.lastActive, Attention: e.attention(th), FooterSynced: len(th.pending) == 0,
+			LastActive: th.lastActive, Attention: e.attention(th), PendingPin: th.pin != nil, FooterSynced: len(th.pending) == 0,
+			PricedReplies: th.stats.PricedReplies, EligibleReplies: th.stats.EligibleReplies,
 		}
 		if ls := th.stats.LastSwitch; ls != nil {
 			c := *ls
 			s.LastSwitch = &c
 		}
-		// The saving is measured against the native model, so a session
-		// whose native model has no price carries no dollar figures.
-		if _, priced := e.cfg.Prices[th.native.Model]; priced {
+		// Publish a session total only when every routed reply has prices for
+		// both its routed model and the native model for that reply.
+		if th.stats.EligibleReplies > 0 && th.stats.PricedReplies == th.stats.EligibleReplies {
 			spent, saved := th.stats.RoutedUSD, th.stats.BaselineUSD-th.stats.RoutedUSD
 			s.SpentUSD, s.SavedUSD = &spent, &saved
 		}
