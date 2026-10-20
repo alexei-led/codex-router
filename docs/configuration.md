@@ -64,17 +64,19 @@ A route is `{"model": "<slug>", "effort": "<effort>"}`. An empty `effort` keeps 
 | `low`    | `gpt-6-luna`  | `high`         |
 | `micro`  | `gpt-6-luna`  | `medium`       |
 
-The defaults use two models in one compatibility group, so switching between them mid-thread works **[verified]**. Codex caches per model, not per effort, so only a move between `gpt-6-luna` and `gpt-6.1-sol` costs cache. In benchmarks on 2026-10-15/16, `gpt-6-luna` at high effort matched `gpt-6.1-sol` on bounded review, debug, ops, code, explore and plan tasks at 5–10% of the list cost; `xhigh` on either model cost more and planned no better than `high`. `gpt-6.1-sol` keeps medium and high for long, open-ended and design work, which those tests did not cover. [Choose models and efforts](user-guide.md#choose-models-and-efforts) has the numbers. A model in a different group fails mid-thread, so the router refuses a route outside the group of the model Codex sent and keeps the request. The Policy view lists such models as blocked.
+The defaults use two models in one compatibility group. The router checks that a target model shares the group of the model Codex sent. If it does not, the request keeps its original route. The Policy view lists incompatible models as blocked.
 
-An `activities.<activity>.<tier>` entry replaces the tier's model and effort field by field; an empty field inherits the tier's route. The default sends `debug` at `medium` to `gpt-6.1-sol` with `high` effort. An activity route applies when the classifier's activity probability reaches `policy.activityMass`.
+Effort changes on one model keep its prompt cache. A switch between models can require an uncached prefix. See [evaluation](evaluation.md) for the small tests behind these defaults.
+
+An `activities.<activity>.<tier>` entry overrides the tier's model and effort. An empty field inherits the tier's route. The default sends `debug` at `medium` to `gpt-6.1-sol` with `high` effort. An activity route applies when the classifier's activity probability reaches `policy.activityMass`.
 
 ### prices
 
-`{"input": n, "cachedInput": n, "output": n}`, USD per million tokens, none negative. They drive the list-price estimate on the Now and Usage tabs, and they order models for the "same task, stronger or cheaper" check (by output price). The defaults are OpenAI list prices: `gpt-6.1-sol` 2 / 0.10 / 10 (input up to 272K tokens) and `gpt-6-luna` 0.10 / 0.01 / 0.50. An entry you name replaces that model's default price; the other default stays. With no price for a model, estimates stay in tokens and the panel says there is no baseline. Plan billing is usage limits, so the figures are estimates, not a bill.
+`{"input": n, "cachedInput": n, "output": n}`, USD per million tokens, none negative. They drive the list-price estimates in the Sessions and Usage views, and they order models for the "same task, stronger or cheaper" check (by output price). The defaults are OpenAI list prices: `gpt-6.1-sol` 2 / 0.10 / 10 (input up to 272K tokens) and `gpt-6-luna` 0.10 / 0.01 / 0.50. An entry you name replaces that model's default price; the other default stays. With no price for a model, estimates stay in tokens and the panel says there is no baseline. Plan billing is usage limits, so the figures are estimates, not a bill.
 
 ### policy
 
-Counts are integers, masses and fills are in (0, 1], slopes are not negative.
+Counts are integers. Probability thresholds and context fill are in (0, 1]. Slopes are zero or positive.
 
 | Field                   | Default | Meaning                                                                                                                                                       |
 | ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -87,7 +89,6 @@ Counts are integers, masses and fills are in (0, 1], slopes are not negative.
 | `downgradeMass`         | 0.9     | Mass at or below the target tier needed to move down, before the cost term. Also the bar for a cheaper activity route on the same task.                       |
 | `downgradeSlope`        | 0.08    | Cost term slope for moving down.                                                                                                                              |
 | `downgradePivotTokens`  | 100000  | Pivot for moving down (min 1).                                                                                                                                |
-| `downgradeHorizonTurns` | 5       | Validated (min 1) but not read by the engine yet; preset values have no effect.                                                                               |
 | `continuationMass`      | 0.7     | When the classifier scores a new prompt this likely to continue the running task, it counts as the same task.                                                 |
 | `escalationHoldTurns`   | 2       | After a repeated-tool-failure escalation, turns the tier is held (min 0).                                                                                     |
 | `reviewEveryRequests`   | 4       | Background classifier review every N requests of a thread. 0 turns reviews off.                                                                               |
@@ -108,11 +109,12 @@ Counts are integers, masses and fills are in (0, 1], slopes are not negative.
 | `jumpConfidence`        | 0.98    | 0.95                     | 0.9     |
 | `downgradeVotes`        | 1       | 2                        | 3       |
 | `downgradeMass`         | 0.8     | 0.9                      | 0.95    |
-| `downgradeHorizonTurns` | 8       | 5                        | 3       |
 | `minDwellRequests`      | 4       | 8                        | 16      |
 | `escalationHoldTurns`   | 1       | 2                        | 4       |
 
-The preset values are chosen for direction, not tuned on data.
+The preset values express a preference. They have not been tuned against a representative workload.
+
+Old configs can still contain `policy.downgradeHorizonTurns`. It is ignored. It is absent from the defaults and presets, and you can remove it from your file.
 
 ### classifiers
 
@@ -143,7 +145,7 @@ To use another service that speaks one of the three protocols, add an entry with
 
 An `endpoint` may hold `{NAME}` placeholders, where `NAME` is upper case letters, digits and `_`, starting with a letter. Each is filled from the env var `NAME`, else from `envFile`, and is URL path-escaped. The Clef entries use `{CLOUDFLARE_ACCOUNT_ID}`, your Cloudflare account ID. A placeholder with no value turns the classifier off, logged as `<NAME> is not set`. A malformed placeholder is a config error.
 
-`"classifier": "off"` turns the classifier off on purpose: no prompt or dialogue leaves the machine, and only pins and the context guard change the model.
+`"classifier": "off"` disables classifier requests. Only pins and the context guard change the model. Codex still sends its normal coding requests to OpenAI.
 
 The brain (`codex-router setup`) runs under launchd or systemd and does not see your shell's env. Point `envFile` at a file that holds the key, and the account ID for Clef. The other fields keep their defaults:
 
@@ -151,22 +153,36 @@ The brain (`codex-router setup`) runs under launchd or systemd and does not see 
 { "classifiers": { "jev": { "envFile": "~/.config/codex-router/.env" } } }
 ```
 
-The file holds the line `TYPESAFE_API_KEY=...`. One file can hold several keys and the Cloudflare account ID (`CLOUDFLARE_API_TOKEN=...`, `CLOUDFLARE_ACCOUNT_ID=...`, `OPENAI_API_KEY=...`); each classifier reads only its own. The same works for `codex-router` sessions, so the key need not be in your shell. Rules:
+The file holds the line `TYPESAFE_API_KEY=...`. One file can hold several keys and the Cloudflare account ID (`CLOUDFLARE_API_TOKEN=...`, `CLOUDFLARE_ACCOUNT_ID=...`, `OPENAI_API_KEY=...`); each classifier reads only its own. The wrapper can read the same file, so the key need not be in your shell. Rules:
 
 - The env var wins over the file. The file is read only when the variable is unset.
 - Lines are `KEY=value` or `export KEY=value`. Quotes (`'…'`, `"…"`, no escapes) are allowed. A line that starts with `#` is a comment, and so is ` #…` after an unquoted value. Only the `keyEnv` key and the endpoint placeholders are read, the last assignment wins, and nothing from the file goes into the process env.
 - The file must be private: any group or other permission (`0640`, `0604`, even `0620`) is refused with a log line naming it (`chmod 600` it). A missing file, a missing key or an empty value turns the classifier off, logged as above.
 - The key is never logged or printed.
 
-Only the active classifier is called. It receives the clipped prompt and recent dialogue (`context`), never headers or your Codex credentials, and only the `keyEnv` key as its bearer token. With `jev` that text goes to `api.typesafe.ai`, with the Clef entries to `api.cloudflare.com`, with `openai` to `api.openai.com`. With `ollama` it stays on your machine.
+### Classifier data and privacy
 
-Failure rules for every adapter: two attempts per ask inside `timeoutMs`; three failures in a row pause the classifier for 60 s, during which turns are forwarded unrouted. One ask runs at a time; another waits for it. A missing key and a cancelled call do not count as failures. The router also gives up a decision shortly after `timeoutMs` (plus 200 ms) and forwards the request.
+Only the selected classifier is called. Its payload contains:
+
+- The current prompt, clipped to `context.maxTextChars` characters.
+- Up to `context.recentTurns` user or assistant messages, each clipped separately. These are messages, not user/assistant pairs.
+- Fixed questions and labels for complexity, activity and continuation. The System One adapter also includes your configured tier model names and efforts.
+
+It does not receive Codex HTTP headers or ChatGPT credentials. It uses its own `keyEnv` credential. Code or secrets pasted into a user or assistant message can be included in the clipped text. Clipping is a size limit, not secret removal.
+
+With `jev`, text goes to `api.typesafe.ai`. Clef uses `api.cloudflare.com`, and the OpenAI classifier uses `api.openai.com`. The default Ollama endpoint is local. If you change its endpoint to another host, text goes there. `off` disables classifier traffic. In every case, Codex's coding requests still go to the OpenAI ChatGPT backend.
+
+Provider retention and training policies are outside the router's control. Check the selected provider's terms before sending private work.
+
+Failure rules: one routing ask gets up to two attempts inside `timeoutMs`. Ollama can also send a separate activity request within that same deadline. It gets one attempt. Three consecutive failures pause classification for 60 seconds. A missing key or cancelled call does not count as a failure. One ask runs at a time.
+
+When a decision fails or times out, that request is forwarded unchanged. The router's decision deadline is the classifier timeout plus 200 ms. Explicit pins and the context guard can still affect other requests while classification is off.
 
 ### context
 
 | Field          | Default | Meaning                                                              |
 | -------------- | ------- | -------------------------------------------------------------------- |
-| `recentTurns`  | 6       | Dialogue turns sent to the classifier (min 1).                       |
+| `recentTurns`  | 6       | User or assistant text messages sent to the classifier (min 1).                       |
 | `maxTextChars` | 1200    | Each text is clipped to this many characters before sending (min 1). |
 
 Set both low to send less text to a hosted classifier.
@@ -183,7 +199,7 @@ Codex's prompt cache is per model and ignores effort. A model counts as warm fro
 
 Advice only. The router never edits this key: `codex-router setup` changes `config.toml` only inside its own marked blocks.
 
-If you set `model_context_window` in `~/.codex/config.toml`, Codex sizes its context from that number whatever model the router picks. After a switch to a model with a smaller window, Codex would then send a thread that is too large for it. The router's fit guard avoids routes that do not fit, but the cleanest setup is to remove `model_context_window` and let Codex take the window from the routed model's catalog entry. If you keep it, set it no larger than the smallest window among your routes.
+If you set `model_context_window` in `~/.codex/config.toml`, Codex sizes its context from that number whatever model the router picks. After a switch to a model with a smaller window, Codex would then send a thread that is too large for it. The fit guard rejects routes that are too small. Remove `model_context_window` to let Codex use the routed model's catalog entry. If you keep it, set it no larger than the smallest window among your routes.
 
 ## Environment
 

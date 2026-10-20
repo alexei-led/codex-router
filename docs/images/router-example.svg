@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 656 503" width="656" height="503" role="img" aria-labelledby="title desc">
+  <title id="title">Why codex-router moved up a tier</title>
+  <desc id="desc">Sample data. codex-router tui --session, locked to one session. There is no list: the header shows the views and the detail of default · codex-router · main fills the screen. The turn moved up to gpt-6.1-sol high after the same tool failure repeated.</desc>
+  <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
+  <rect width="656" height="503" rx="8" fill="#14171f"/>
+  <rect x="0.5" y="0.5" width="655" height="502" rx="8" fill="none" stroke="#2e3340"/>
+  <text x="16.0" y="28.0" fill="#e5e510" font-weight="700" xml:space="preserve">SAMPLE DATA</text>
+  <text x="101.8" y="28.0" fill="#d0d0d0" xml:space="preserve">  Illustrates routing; savings shown are not measured.</text>
+  <text x="16.0" y="66.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">codex-router</text>
+  <text x="125.2" y="66.0" fill="#5fd7af" xml:space="preserve">Jev ready</text>
+  <rect x="382.6" y="52.0" width="78.0" height="19" fill="#87afff"/>
+  <text x="382.6" y="66.0" fill="#14171f" font-weight="700" xml:space="preserve"> Sessions </text>
+  <text x="460.6" y="66.0" fill="#d0d0d0" xml:space="preserve"> Policy  Usage   </text>
+  <text x="593.2" y="66.0" fill="#878787" xml:space="preserve">? help</text>
+  <text x="16.0" y="104.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">codex-router · main</text>
+  <text x="499.6" y="104.0" fill="#878787" xml:space="preserve">default · 3fa9c0d1</text>
+  <rect x="16.0" y="109.0" width="46.8" height="19" fill="#d75f87"/>
+  <text x="16.0" y="123.0" fill="#14171f" font-weight="700" xml:space="preserve"> HIGH </text>
+  <text x="70.6" y="123.0" fill="#d787d7" xml:space="preserve">debug</text>
+  <text x="109.6" y="123.0" fill="#d0d0d0" xml:space="preserve"> → </text>
+  <text x="133.0" y="123.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="16.0" y="142.0" fill="#d0d0d0" xml:space="preserve">       ↑ escalate: same tool failure twice, edit in between</text>
+  <text x="16.0" y="161.0" fill="#d0d0d0" xml:space="preserve">       Jev high 18%</text>
+  <text x="164.2" y="161.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="187.6" y="161.0" fill="#d0d0d0" xml:space="preserve">no classifier needed</text>
+  <text x="16.0" y="180.0" fill="#d0d0d0" xml:space="preserve"> Pin     </text>
+  <text x="86.2" y="180.0" fill="#5fd7af" xml:space="preserve"> micro  </text>
+  <text x="148.6" y="180.0" fill="#5fafd7" xml:space="preserve"> low  </text>
+  <text x="195.4" y="180.0" fill="#d7af5f" xml:space="preserve"> medium  </text>
+  <text x="265.6" y="180.0" fill="#d75f87" font-weight="700" xml:space="preserve">▶high  </text>
+  <text x="530.8" y="180.0" fill="#878787" xml:space="preserve">next turn only</text>
+  <text x="16.0" y="199.0" fill="#d0d0d0" xml:space="preserve"> Session  144 replies</text>
+  <text x="179.8" y="199.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="203.2" y="199.0" fill="#d0d0d0" xml:space="preserve">19 switches</text>
+  <text x="16.0" y="218.0" fill="#d0d0d0" xml:space="preserve">          saved </text>
+  <text x="140.8" y="218.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
+  <text x="242.2" y="218.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6.1-sol · medium</text>
+  <text x="94.0" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="101.8" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="109.6" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="117.4" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="125.2" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="133.0" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="140.8" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="148.6" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="156.4" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="164.2" y="237.0" fill="#5fafd7" xml:space="preserve">▃</text>
+  <text x="172.0" y="237.0" fill="#5fafd7" xml:space="preserve">▃</text>
+  <text x="179.8" y="237.0" fill="#5fafd7" xml:space="preserve">▃</text>
+  <text x="187.6" y="237.0" fill="#5fafd7" xml:space="preserve">▃</text>
+  <text x="195.4" y="237.0" fill="#5fafd7" xml:space="preserve">▃</text>
+  <text x="203.2" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="211.0" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="218.8" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="226.6" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="234.4" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="242.2" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="250.0" y="237.0" fill="#5fd7af" xml:space="preserve">▁</text>
+  <text x="257.8" y="237.0" fill="#5fd7af" xml:space="preserve">▁</text>
+  <text x="265.6" y="237.0" fill="#5fafd7" xml:space="preserve">▃</text>
+  <text x="273.4" y="237.0" fill="#5fafd7" xml:space="preserve">▃</text>
+  <text x="281.2" y="237.0" fill="#5fafd7" xml:space="preserve">▃</text>
+  <text x="289.0" y="237.0" fill="#5fafd7" xml:space="preserve">▃</text>
+  <text x="296.8" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="304.6" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="312.4" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="320.2" y="237.0" fill="#d7af5f" xml:space="preserve">▅</text>
+  <text x="328.0" y="237.0" fill="#d75f87" xml:space="preserve">▇</text>
+  <text x="335.8" y="237.0" fill="#d75f87" xml:space="preserve">▇</text>
+  <text x="343.6" y="237.0" fill="#d75f87" xml:space="preserve">▇</text>
+  <text x="351.4" y="237.0" fill="#d75f87" xml:space="preserve">▇</text>
+  <text x="359.2" y="237.0" fill="#d75f87" xml:space="preserve">▇</text>
+  <text x="367.0" y="237.0" fill="#d75f87" xml:space="preserve">▇</text>
+  <text x="374.8" y="237.0" fill="#878787" xml:space="preserve">  4 replies per cell</text>
+  <text x="16.0" y="256.0" fill="#d0d0d0" xml:space="preserve"> Context  █░░░░░░░░░ 10%  </text>
+  <text x="218.8" y="256.0" fill="#878787" xml:space="preserve">91K / 828K</text>
+  <text x="296.8" y="256.0" fill="#878787" xml:space="preserve"> gpt-6.1-sol</text>
+  <text x="16.0" y="275.0" fill="#d0d0d0" xml:space="preserve"> Cache    97% last reply</text>
+  <text x="203.2" y="275.0" fill="#878787" xml:space="preserve"> · 64% session</text>
+  <text x="16.0" y="294.0" fill="#d0d0d0" xml:space="preserve"> Look     cache reuse 64% after 19 switches; switches wrote 612K uncached tokens</text>
+  <text x="16.0" y="313.0" fill="#d0d0d0" xml:space="preserve">          · see Policy</text>
+  <text x="16.0" y="332.0" fill="#d0d0d0" xml:space="preserve">          context guard kept 3 steps on a larger window than the policy chose ·</text>
+  <text x="16.0" y="351.0" fill="#d0d0d0" xml:space="preserve">          see Policy</text>
+  <text x="16.0" y="370.0" fill="#d0d0d0" xml:space="preserve"> Recent   </text>
+  <text x="94.0" y="370.0" fill="#878787" xml:space="preserve">18:42  </text>
+  <text x="148.6" y="370.0" fill="#d75f87" xml:space="preserve">high   </text>
+  <text x="203.2" y="370.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="343.6" y="370.0" fill="#878787" xml:space="preserve"> · escalated after a repeated failure</text>
+  <text x="94.0" y="389.0" fill="#878787" xml:space="preserve">18:41  </text>
+  <text x="148.6" y="389.0" fill="#d7af5f" xml:space="preserve">medium </text>
+  <text x="203.2" y="389.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="389.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="94.0" y="408.0" fill="#878787" xml:space="preserve">18:40  </text>
+  <text x="148.6" y="408.0" fill="#d7af5f" xml:space="preserve">medium </text>
+  <text x="203.2" y="408.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="408.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="94.0" y="427.0" fill="#878787" xml:space="preserve">18:38  </text>
+  <text x="148.6" y="427.0" fill="#d7af5f" xml:space="preserve">medium </text>
+  <text x="203.2" y="427.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="427.0" fill="#878787" xml:space="preserve"> · classifier agrees with the tier</text>
+  <text x="94.0" y="446.0" fill="#878787" xml:space="preserve">18:38  </text>
+  <text x="148.6" y="446.0" fill="#d7af5f" xml:space="preserve">medium </text>
+  <text x="203.2" y="446.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="359.2" y="446.0" fill="#878787" xml:space="preserve"> · moved up a tier</text>
+  <text x="16.0" y="484.0" fill="#87afff" font-weight="700" xml:space="preserve">p</text>
+  <text x="23.8" y="484.0" fill="#878787" xml:space="preserve"> pin</text>
+  <text x="55.0" y="484.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="78.4" y="484.0" fill="#87afff" font-weight="700" xml:space="preserve">space</text>
+  <text x="117.4" y="484.0" fill="#878787" xml:space="preserve"> pause</text>
+  <text x="164.2" y="484.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="187.6" y="484.0" fill="#87afff" font-weight="700" xml:space="preserve">P</text>
+  <text x="195.4" y="484.0" fill="#878787" xml:space="preserve"> pause home</text>
+  <text x="281.2" y="484.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="304.6" y="484.0" fill="#87afff" font-weight="700" xml:space="preserve">tab</text>
+  <text x="328.0" y="484.0" fill="#878787" xml:space="preserve"> views</text>
+  <text x="374.8" y="484.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="398.2" y="484.0" fill="#87afff" font-weight="700" xml:space="preserve">q</text>
+  <text x="406.0" y="484.0" fill="#878787" xml:space="preserve"> quit</text>
+  <text x="445.0" y="484.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="468.4" y="484.0" fill="#87afff" font-weight="700" xml:space="preserve">?</text>
+  <text x="476.2" y="484.0" fill="#878787" xml:space="preserve"> help</text>
+</svg>

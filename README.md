@@ -6,76 +6,97 @@
 [![Go version](https://img.shields.io/github/go-mod/go-version/alexei-led/codex-router)](go.mod)
 [![License: MIT](https://img.shields.io/github/license/alexei-led/codex-router)](LICENSE)
 
-**The right model for every turn of a Codex session.** codex-router picks the model and reasoning effort for each turn of the [Codex CLI](https://github.com/openai/codex). Reading code and small edits go to a light model, and a fix that keeps failing goes to the strongest one. The choice shows in Codex's own footer.
+**Automatic model and reasoning effort selection for Codex CLI.**
 
-![A terminal split. Left: Codex, where the same test failed twice with an edit in between, and the footer now shows GPT-6.1-Sol high. Right: the codex-router panel explaining that the turn moved up from gpt-6.1-sol medium because the same tool failure repeated.](docs/images/codex-router-split.svg)
+A Codex session can start with a small edit and end with a stubborn bug. Keeping the strongest model on for everything uses more of your plan. Switching by hand means watching the model picker while you work.
 
-<sub>Left: Codex. The same test failed twice with an edit in between, so the router moved the turn from `gpt-6.1-sol · medium` to `gpt-6.1-sol · high`, and the footer follows. Right: the optional panel shows why. Sample data.</sub>
+codex-router picks a route for each turn. It uses lighter models for simple work and moves up when the work needs it. Codex's own footer shows the choice.
 
-## Why
+![Codex beside the router panel. Two failed checks with an edit between them trigger a move to high effort. The image is labeled sample data.](docs/images/codex-router-split.svg)
 
-Codex runs a whole session on the model you picked. With the strongest model, every directory listing and one-line rename spends your plan's usage, so it runs out sooner. With a light model, the hard bug stalls. Switching with `/model` by hand means watching every turn.
+The panel is optional. This illustration uses sample data, including its savings figures.
 
-codex-router does the switching for you:
+## What you get
 
-- **Per turn, automatically.** A small classifier reads your prompt and recent dialogue and rates how hard the turn is. A policy switches only when the evidence repeats, and asks for more when a switch would lose the prompt cache.
-- **Visible where you work.** The Codex footer shows the routed model in any terminal. An optional panel shows why, lets you pin a model or pause, and estimates what routing saved.
-- **You stay in charge.** A `/model` pick holds your model. On any router error the request goes out unchanged. If the router cannot start, you get plain `codex`.
-- **Your setup is left alone.** `codex-router` never edits `~/.codex/config.toml`. Only the optional `codex-router setup` does, in marked blocks with a backup, and `--undo` takes them out. Your ChatGPT login goes only to `chatgpt.com`. It is never logged and never sent to the classifier.
-
-It is for people who use the Codex CLI with a ChatGPT sign-in and run long sessions that mix easy and hard work.
+- **Less model picking.** A classifier scores the prompt and recent dialogue. The router uses that score, cache state and tool results to decide whether to switch.
+- **A reason for each choice.** The panel shows the route and why it changed. One panel covers multiple sessions and Codex homes.
+- **Manual control.** Use `/model` to keep your own choice. Pin the next turn or pause routing from the panel.
+- **A way back.** Routing errors forward the request unchanged. Launcher startup errors fall back to plain Codex. The wrapper does not edit your Codex config.
 
 ## How it works
 
+A classifier is a small model that rates the work. It does not answer your coding request. Hosted options include Jev, from [Typesafe](https://typesafe.ai), and Cloudflare's Clef. [Ollama](https://ollama.com) runs the classifier locally.
+
 ```mermaid
 flowchart LR
-  codex["Codex<br/>(normal TUI)"]:::codex ---->|"request"| proxy["codex-router<br/>local proxy"]:::core
-  proxy <-->|"prompt, dialogue"| cls["classifier<br/>Jev or Ollama"]:::ext
-  proxy ---->|"model + effort<br/>swapped"| up["chatgpt.com"]:::ext
-  proxy -.->|"footer"| codex
-
-  classDef core fill:#ecfdf5,stroke:#059669,color:#064e3b
-  classDef codex fill:#f1f5f9,stroke:#64748b,color:#0f172a
-  classDef ext fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+  codex["Codex CLI"] --> router["codex-router on your machine"]
+  router <-->|"clipped prompt and dialogue"| classifier["Hosted or local classifier"]
+  router -->|"model and effort"| openai["OpenAI ChatGPT backend"]
+  router -.->|"route in footer"| codex
 ```
 
-`codex-router` starts a private Codex app-server and runs the normal Codex TUI against it. Codex sends its model requests to a proxy on `127.0.0.1`. On each turn, the proxy asks the classifier, then changes only `model` and `reasoning.effort` and forwards everything else byte for byte. It also writes the choice back into the thread settings, so the footer repaints. Compaction, subagents and anything it cannot parse pass through untouched. See [architecture](docs/architecture.md) for the details.
+The router starts a private Codex app-server and a local proxy. It changes the model and effort in supported requests. Compaction, subagents and requests it cannot parse pass through unchanged. [Architecture details](docs/architecture.md).
 
-## Quick start
+## Try it
 
-You need the Codex CLI on `PATH`, signed in with ChatGPT, on macOS or Linux.
+You need macOS or Linux, Codex CLI on `PATH`, and a ChatGPT sign-in. API-key sign-in is not supported.
+
+Install on an Apple silicon Mac:
 
 ```sh
-# macOS on Apple silicon; other builds and `go install` are in the user guide
 curl -fsSL -o codex-router \
   https://github.com/alexei-led/codex-router/releases/latest/download/codex-router-darwin-arm64
 sudo install -m 0755 codex-router /usr/local/bin/codex-router
-
-export TYPESAFE_API_KEY=...   # key for the default classifier (Jev), or set envFile; or use a local Ollama model
-cd your-repo
-codex-router                  # use it like `codex`; arguments pass through
+codex-router version
 ```
 
-In a second pane, run `codex-router tui` for the panel. The [user guide](docs/user-guide.md) has the other install options, configuration and troubleshooting.
+[Linux, Intel Mac and Go installation](docs/user-guide.md#install).
 
-## Many sessions, one panel
+Choose where classification runs **before you start**. Your coding requests still go to OpenAI in both cases. Codex credentials are never sent to the classifier.
 
-![Router panel, Sessions view: five sessions in two Codex homes, one of them set up with a brain, each row with its state, model and recent turns, and the detail of the selected session](docs/images/router-tui-sessions.svg)
+**Hosted classifier:** Jev is the default. Get a Typesafe API key, then run:
 
-- Run as many sessions as you like, in any repo or worktree and under any Codex home (`CODEX_HOME`). `codex-router tui` shows them all; `--session` locks it to one ([picture](docs/user-guide.md#panel)).
-- `codex-router setup --home ~/.codex-work` routes every plain `codex` session of that home, through a small service that launchd or systemd keeps running. Add the Codex plugin for the transcript line and the `router` skill.
-- `codex-router setup --undo` puts `config.toml` back and removes the services. See [Route a whole home](docs/user-guide.md#route-a-whole-home-setup).
+```sh
+export TYPESAFE_API_KEY=your-key
+cd your-repo
+codex-router
+```
 
-## Status
+Jev receives the clipped prompt and recent dialogue. If the key is missing, automatic classification is off. Pins and the context guard still work.
 
-Early. It was tested live against Codex 0.162.1 on macOS: one session ([live test report](docs/archive/evidence/2026-10-14/live-test-report.md)), then five sessions in two homes, with and without setup ([stage 1](docs/archive/evidence/2026-10-14-multi-session/stage1/report.md), [stage 2](docs/archive/evidence/2026-10-14-multi-session/stage2/report.md)). On Linux, the systemd units are covered by unit tests only. The footer sync uses Codex's experimental `--remote` mode and `thread/settings/update`, so a Codex update can break it. Routing keeps working when sync fails.
+**Local classifier:** install and start Ollama, then run:
 
-## Docs
+```sh
+ollama pull qwen3.5:9b
+mkdir -p ~/.config/codex-router
+# Use a separate file so this example does not replace an existing config.
+printf '%s\n' '{"classifier":"ollama"}' > ~/.config/codex-router/ollama.json
+cd your-repo
+codex-router --config ~/.config/codex-router/ollama.json
+```
 
-- [User guide](docs/user-guide.md): install, configure, use the footer and panel, troubleshoot
-- [Configuration reference](docs/configuration.md): every field, presets, classifiers
-- [Architecture](docs/architecture.md): components, request flow, routing decisions, security
+The default Ollama endpoint keeps classifier text on your machine. See [classifier setup and privacy](docs/user-guide.md#choose-a-classifier) for other options.
 
-## License
+Run `codex-router tui` in a second terminal to see decisions and controls. Arguments pass through, for example `codex-router resume --last`.
 
-[MIT](LICENSE)
+## Limits
+
+Early software. Live checks covered Codex 0.162.1 on macOS. Linux service files have unit tests, but no recorded live run. Footer sync uses experimental Codex interfaces, so updates can break it.
+
+Switching models can lose prompt-cache reuse. The policy accounts for this, but routing does not guarantee lower usage or better answers. The panel's dollar figures are list-price estimates, not ChatGPT plan billing.
+
+The local proxy carries your ChatGPT credentials. If its process is killed, close the affected Codex session before restarting. Close a home's sessions before undoing setup. [Recovery and security limits](docs/user-guide.md#if-the-router-is-killed).
+
+## Documentation
+
+- [User guide](docs/user-guide.md): install, choose a classifier, use the panel, update and troubleshoot.
+- [Configuration](docs/configuration.md): fields, defaults and what the classifier receives.
+- [Architecture](docs/architecture.md): request flow, routing policy and security boundaries.
+- [Evaluation](docs/evaluation.md): small benchmark results and their limits.
+- [Contributing](CONTRIBUTING.md): build, tests and release process.
+
+## Related projects
+
+[pi-model-router](https://github.com/alexei-led/pi-model-router) routes models in the Pi coding agent. [claude-router](https://github.com/alexei-led/claude-router) routes Claude Code sessions and was built with Claude Mods. They started the same experiment: let the task influence the model choice. Each has its own integration and limits.
+
+[MIT license](LICENSE).

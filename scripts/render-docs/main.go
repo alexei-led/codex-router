@@ -92,14 +92,19 @@ func render(out, footerPath, sessionPath string) error {
 	for _, p := range pictures {
 		v := fleet
 		p.set(&v)
-		if err := write(out, p.name, toSVG(parseANSI(tui.RenderFleetView(v)), p.title, p.desc)); err != nil {
+		if err := write(out, p.name, sampleSVG(parseANSI(tui.RenderFleetView(v)), p.title, p.desc)); err != nil {
 			return err
 		}
 	}
 	fleet.Locked = true
 	locked := tui.RenderFleetView(fleet)
 	const lockedDesc = "codex-router tui --session, locked to one session. There is no list: the header shows the views and the detail of default · codex-router · main fills the screen. The turn moved up to gpt-6.1-sol high after the same tool failure repeated."
-	if err := write(out, "router-tui-locked", toSVG(parseANSI(locked), "codex-router panel locked to one session", lockedDesc)); err != nil {
+	if err := write(out, "router-tui-locked", sampleSVG(parseANSI(locked), "codex-router panel locked to one session", lockedDesc)); err != nil {
+		return err
+	}
+	share := fleet
+	share.Width = 80
+	if err := write(out, "router-example", sampleSVG(parseANSI(tui.RenderFleetView(share)), "Why codex-router moved up a tier", lockedDesc)); err != nil {
 		return err
 	}
 	text, err := os.ReadFile(footerPath)
@@ -108,7 +113,7 @@ func render(out, footerPath, sessionPath string) error {
 	}
 	lines := parseANSI(strings.TrimRight(string(text), "\n ") + "\n")
 	const footerDesc = "The Codex terminal UI while a turn runs. The footer line shows the model the router chose for the turn, GPT-6.1-Sol with medium effort, next to the branch, the context window and the remaining context."
-	if err := write(out, "codex-footer", toSVG(lines, "Codex footer showing the routed model", footerDesc)); err != nil {
+	if err := write(out, "codex-footer", sampleSVG(lines, "Codex footer showing the routed model", footerDesc)); err != nil {
 		return err
 	}
 	return renderSplit(out, sessionPath, locked)
@@ -124,7 +129,12 @@ func renderSplit(out, sessionPath, panel string) error {
 	left := parseANSI(strings.TrimRight(string(text), "\n ") + "\n")
 	right := parseANSI(panel)
 	const desc = "A terminal split. Left: Codex runs a Go test that fails twice with an edit in between, and its footer shows GPT-6.1-Sol high. Right: the codex-router panel says this turn moved from gpt-6.1-sol medium to gpt-6.1-sol high because the same tool failure repeated, shows the classifier's tier and activity reading, the session's routed replies by tier, the estimated saving, and that the footer is synced."
-	return write(out, "codex-router-split", toSVG(sideBySide(left, right), "Codex and the codex-router panel side by side", desc))
+	return write(out, "codex-router-split", sampleSVG(sideBySide(left, right), "Codex and the codex-router panel side by side", desc))
+}
+
+func sampleSVG(lines [][]run, title, desc string) string {
+	header := parseANSI("\x1b[1;33mSAMPLE DATA\x1b[0m  Illustrates routing; savings shown are not measured.\n\n")
+	return toSVG(append(header, lines...), title, "Sample data. "+desc)
 }
 
 // write saves name.svg and, when rsvg-convert exists, name.png.

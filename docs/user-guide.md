@@ -1,6 +1,8 @@
 # User guide
 
-Install codex-router, configure it, read what it shows, and fix it when something goes wrong. For how it works inside, see [architecture](architecture.md). For every config field, see the [configuration reference](configuration.md).
+Install and use codex-router. Start with [Install](#install) and [First run](#first-run). For individual fields, use the [configuration reference](configuration.md).
+
+[Classifiers and privacy](#choose-a-classifier) · [Panel](#panel) · [Setup](#route-a-whole-home-setup) · [Update or uninstall](#update-or-uninstall) · [Troubleshooting](#troubleshoot)
 
 ## Requirements
 
@@ -32,23 +34,41 @@ From a checkout, `make build` writes `.bin/codex-router`.
 
 ## First run
 
+Choose a classifier first. It rates the work from the clipped prompt and recent dialogue. It does not perform the coding task.
+
+### Hosted: Jev
+
+Jev is a hosted classifier from [Typesafe](https://typesafe.ai). It is the default and needs a separate API key. Your ChatGPT subscription does not supply that key. Prompt text goes to `api.typesafe.ai`.
+
 ```sh
-export TYPESAFE_API_KEY=...   # classifier key; see "Choose a classifier"
+export TYPESAFE_API_KEY=your-key
 cd your-repo
-codex-router                  # instead of `codex`
+codex-router
 ```
 
-Codex looks and behaves as usual. The footer now shows the model that the router picked for the turn. To watch the decisions, run the panel in a second terminal or split:
+Without the key, classification is off. Codex still runs, and pins and the context guard still work.
+
+### Local: Ollama
+
+[Install Ollama](https://ollama.com/download) and start its server. Pull the model, then create a dedicated router config:
 
 ```sh
-codex-router tui
+ollama pull qwen3.5:9b
+mkdir -p ~/.config/codex-router
+printf '%s\n' '{"classifier":"ollama"}' > ~/.config/codex-router/ollama.json
+cd your-repo
+codex-router --config ~/.config/codex-router/ollama.json
 ```
 
-Run as many sessions as you like, in other repos, worktrees or Codex homes. One panel shows them all (see [Several sessions and homes](#several-sessions-and-homes)).
+This uses the default local endpoint. A custom remote Ollama endpoint sends classifier text to that host. Your normal coding requests go to OpenAI in either mode.
 
-If any startup step fails, the router prints one line, `codex-router: <reason>; running plain codex`, and starts plain `codex` with your arguments.
+### Check the first turn
 
-To route plain `codex` instead, with no wrapper command, set the home up once: see [Route a whole home](#route-a-whole-home-setup).
+Run `codex-router tui` in a second terminal. Submit a prompt in Codex. The panel should show the session, a ready classifier and a decision. The footer shows the model and effort in use. A decision can keep the current route.
+
+If startup fails, the router prints `codex-router: <reason>; running plain codex` and starts plain Codex. If classification is off, check the [troubleshooting table](#troubleshoot).
+
+One panel covers sessions in multiple repos and Codex homes. To route plain `codex`, see [Route a whole home](#route-a-whole-home-setup).
 
 ### Pass arguments to Codex
 
@@ -67,16 +87,7 @@ In this mode, Codex refuses `-s` and `-a` together with `resume` ("Permission ov
 
 ### What starts
 
-`codex-router` does these steps in order:
-
-1. Reads the config. A missing file means the defaults.
-2. Creates a private runtime directory (mode `0700`) for its sockets.
-3. Opens its log, starts its control socket and lists itself in the session registry, so panels find it.
-4. Starts the proxy on `127.0.0.1` and checks that it answers.
-5. Starts a private `codex app-server` for this session, with `-c` overrides only. Your `~/.codex/config.toml` is not touched.
-6. Runs the Codex TUI against that app-server in your terminal. It returns Codex's exit code when Codex quits.
-
-The reasons for this design are in [architecture](architecture.md#why-a-private-app-server).
+The wrapper starts a local proxy, a private Codex app-server and the Codex TUI. It uses command overrides and does not edit `~/.codex/config.toml`. It returns Codex's exit code. See [architecture](architecture.md#why-a-private-app-server) for the process details.
 
 ## Concepts
 
@@ -115,7 +126,9 @@ A missing file means the defaults. Keys that you leave out keep their defaults. 
 
 ### Choose a classifier
 
-The classifier scores each new turn. Only the active one is called. It gets the clipped prompt and recent dialogue, never your Codex credentials.
+Only the selected classifier is called. Hosted options send it clipped prompt and dialogue text. Jev is Typesafe's classifier. Clef is Cloudflare's classifier family. Ollama runs a model on your own machine by default.
+
+Your normal coding request still goes to OpenAI. `off` disables classifier traffic only. It does not make Codex local. The [payload reference](configuration.md#classifier-data-and-privacy) describes the fields and request limits.
 
 | Classifier      | Where text goes       | Setup                                                                                   |
 | --------------- | --------------------- | --------------------------------------------------------------------------------------- |
@@ -125,7 +138,9 @@ The classifier scores each new turn. Only the active one is called. It gets the 
 | `clef-omni`     | `api.cloudflare.com`  | same as `clef`, with `{"classifier": "clef-omni"}`                                      |
 | `openai`        | `api.openai.com`      | `export OPENAI_API_KEY=...`, `{"classifier": "openai"}`                                 |
 | `ollama`        | stays on your machine | `ollama pull qwen3.5:9b`, then `{"classifier": "ollama"}` in the config                 |
-| `off`           | nothing is sent       | `{"classifier": "off"}` in the config; only pins and the context guard change the model |
+| `off`           | no classifier traffic       | `{"classifier": "off"}` in the config; only pins and the context guard change the model |
+
+Get a [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) and your account ID for Clef. The OpenAI option needs a separate API key. See the [default endpoints and models](configuration.md#classifiers).
 
 When a key variable or the Cloudflare account ID is unset, the classifier is off for the session. The panel shows `Jev off`, requests keep their model, and pins still work. To send less text to a hosted classifier, lower [`context`](configuration.md#context).
 
@@ -147,36 +162,14 @@ The [configuration reference](configuration.md) has every field and its default.
 
 ### Choose models and efforts
 
-The defaults, and why:
+Start with the [default routes](configuration.md#routes-and-activities). They use a lighter model for `micro` and `low`, and a stronger one for `medium` and `high`. The [evaluation](evaluation.md) explains the small tests behind that choice and their limits.
 
-| Tier   | Route                  | Why                                                                                |
-| ------ | ---------------------- | ---------------------------------------------------------------------------------- |
-| micro  | `gpt-6-luna · medium`  | Short answers. Luna at `low` is weak at agentic work (DeepSWE 2.4%), so not lower. |
-| low    | `gpt-6-luna · high`    | Matched Sol on every bounded task below at 5–10% of the cost.                      |
-| medium | `gpt-6.1-sol · medium` | Long, multi-step work, where public benchmarks show a wide gap to Luna.            |
-| high   | `gpt-6.1-sol · high`   | `xhigh` cost more, ran slower and planned no better.                               |
+- Use `thrifty` to make upgrades harder and downgrades easier. Use `quality` for the reverse.
+- Set `routes` to change the model or effort of a tier. Models must share a compatibility group.
+- Add `activities` for work-specific overrides. For example, `{"plan":{"medium":{"effort":"high"}}}` changes effort for planning.
+- Use Codex's `/model` for a manual choice. Resume routing with `space` in the panel or `codex-router ctl resume`.
 
-`debug` at `medium` goes to `gpt-6.1-sol · high`. Effort changes on one model keep the cache, so moving between `medium` and `high` is free.
-
-Measured on 2026-10-16: `codex exec`, one fixture per task, 3 runs each, graded by tests or a fixed key; plans scored blind by `gpt-6.1-sol · high` against a 10-point rubric. Pass rate and mean list-price cost per run:
-
-| Task                                 | Luna medium | Luna high   | Luna xhigh  | Sol low    | Sol medium | Sol high   | Sol xhigh  |
-| ------------------------------------ | ----------- | ----------- | ----------- | ---------- | ---------- | ---------- | ---------- |
-| review: find 5 planted defects       | 87% $0.006  | 100% $0.009 | 100% $0.014 | 100% $0.12 | 100% $0.16 | 100% $0.20 | 100% $0.25 |
-| debug: 2 bugs from a symptom + tests | 100% $0.013 | 100% $0.020 | 100% $0.034 | 100% $0.16 | 100% $0.28 | 100% $0.44 | 100% $0.51 |
-| ops: fix vet, build and Makefile     | 100% $0.009 | 100% $0.008 | 100% $0.011 | 100% $0.11 | 100% $0.15 | 100% $0.16 | 100% $0.18 |
-| code: new effort + hidden tests      | 100% $0.009 | 100% $0.011 | 100% $0.016 | 100% $0.12 | 100% $0.17 | 100% $0.21 | 100% $0.28 |
-| explore: 14 facts from the code      | 95% $0.007  | 100% $0.008 | 100% $0.012 | 100% $0.10 | 100% $0.12 | —          | —          |
-| plan: design doc, rubric score       | 63% $0.010  | 73% $0.015  | 60% $0.031  | 70% $0.19  | 73% $0.27  | 73% $0.43  | 60% $0.47  |
-
-These tasks are bounded: one fixture, minutes of work. They do not show long sessions, large context or open design. Public benchmarks do: on Terminal-Bench, SRE Bench and Bug Hunt, Sol leads Luna by a wide margin, and Luna invents more facts when it answers from memory.
-
-To change the trade-off:
-
-- **Spend less:** set `routes.medium` to `gpt-6-luna · high`, or use the `thrifty` preset. Expect weaker long-running and design work.
-- **Spend more on small turns:** set `routes.low` to `gpt-6.1-sol · low`. 8–14 times the cost of the default; it did no better on the tasks above.
-- **Per activity:** add `activities` entries, for example `{"plan": {"medium": {"effort": "high"}}}`. A route on another model costs cache on each move, so prefer effort-only overrides.
-- **Need `xhigh` for one hard turn?** Pick it with Codex's `/model`. Routing then stays manual until you resume it: `space` in the panel or `codex-router ctl resume`.
+Effort changes on the same model keep its prompt cache. Switching models can require an uncached prefix. Neither option guarantees lower ChatGPT plan usage.
 
 ### `model_context_window`
 
@@ -232,13 +225,13 @@ The panel first selects the session whose directory is the panel's directory or 
 
 - **Header**: the totals, and the focused home's classifier state: `Jev ready`, `○ Jev off`, or `✕ Jev unreachable · resumes in 42s` while the classifier is paused after failures.
 - **Home line**: the home's name, and `brain up 2h` when the home is [set up](#route-a-whole-home-setup). A brain that is down shows `brain down: default model`, and Codex's requests pass through unchanged. The line also counts routers that are lost. A brain that goes down stays on the line until it is back. Its sessions leave after 10 s.
-- **Rows**: the label without the home, the state, the model and effort in use, a sparkline of the last 10 routed replies, and the time of the last switch with `↑` or `↓`. The sparkline `▁▃▅▇` means micro, low, medium, high, so it reads without color. A narrow panel drops columns from the right.
+- **Rows**: label, state, model, effort and a sparkline of the last 10 routed replies. The switch time has `↑` or `↓` for its direction. The sparkline `▁▃▅▇` means micro, low, medium, high, so it reads without color. A narrow panel drops columns from the right.
 - **State** always has a glyph: `● on`, `↑ high` (a repeated failure holds a higher tier), `‖ paused`, `◐ manual` (you picked a model with `/model`), `? unknown` (a restarted brain holds the route until the next reply), `! state lost` (the brain could not read its saved pause, pin and preset, so the home is paused until `P` resumes it), `✕ disconnected`.
 - **`○ waiting for the first prompt`**: a router is running, but its Codex has not sent a prompt yet. It has no session to select. It shows under its home with the directory it was started in, or `brain` for a home's brain.
-- **Detail**: the tier chip with the activity and the route (`HIGH  debug → gpt-6.1-sol · high`), the reason at the right edge, and below it the evidence: the classifier's answer for the tier against the policy's bar (`Jev high 99% ≥ 75%`) and the engine's own support text. With the classifier off the chip reads `PINS ONLY` and the evidence line gives the exact reason, for example the unset key variable. Other chips: `KEPT` (a decision that left Codex's model in place), `PAUSED`, `MANUAL`, `STATE LOST`.
+- **Detail**: the tier, activity and route (`HIGH  debug → gpt-6.1-sol · high`). The reason appears to the right. Below it, the evidence compares the classifier score with the policy threshold (`Jev high 99% ≥ 75%`). With the classifier off the chip reads `PINS ONLY` and the evidence line gives the exact reason, for example the unset key variable. Other chips: `KEPT` (a decision that left Codex's model in place), `PAUSED`, `MANUAL`, `STATE LOST`.
 - **Pin** buttons, one per tier. `▶` marks the tier in use and the pinned tier is reversed. **Session**: replies, switches, the estimated saving against the baseline (it needs `prices`) and the strip of routed replies, one cell per `N` replies. **Context** and **Cache**: how full the smallest window is and prompt-cache reuse. **Look**: things to act on, each naming where you change it.
 
-From 120 columns the list sits on the left and the detail on the right, with an accent bar `▎` on the side that has the focus:
+At 120 columns or wider, the list and detail sit side by side. An accent bar `▎` marks the focused side:
 
 ![Router panel, Sessions view side by side at 130 columns](images/router-tui-sessions-wide.svg)
 
@@ -409,7 +402,11 @@ Each home gets its own edge, brain, port and token. Setup is optional: `codex-ro
 
 ### Before you start
 
+Close the home's Codex sessions before undoing setup. Running threads keep the router provider after undo. Another local process could take its old port and receive their ChatGPT credentials.
+
+
 - Run Codex once with this home and sign in, so the home exists.
+- Setup refuses an existing `<home>/codex-router.env` unless it has the setup ownership marker. It also refuses a symlink or directory at that path. Move a user-owned file before installing.
 - The home's `config.toml` must not set `model_provider` or define `[model_providers.router]`. Setup refuses it otherwise.
 - The services do not see your shell's env. Put the classifier key in a private file and point the classifier's `envFile` at it (see [classifiers](configuration.md#classifiers)). Without a key, the brain runs with the classifier off.
 - Setup writes three paths into the services: the `codex-router` binary it runs as, the config file (`--config`, else the usual lookup), and the state dir (`--state-dir`, else `$XDG_STATE_HOME`, else `~/.local/state`). Run setup from the shell you start panels in, so both use the same state dir.
@@ -436,11 +433,11 @@ Threads that already run keep their provider until `/new` or a Codex restart. Ne
 
 A symlinked `config.toml`, usually from a dotfiles repo, is refused, because the token would land in the repo. `--follow-symlink` edits the target anyway.
 
-Run plain `codex` in that home. A thread started with `-c`, `--profile` or `--no-daemon` runs outside the home's daemon: the edge still routes it, but the brain cannot reach it to sync its footer. Not tested live.
+Run plain `codex` in that home. A thread started with `-c`, `--profile` or `--no-daemon` runs outside the home's daemon. The edge still routes it. The brain cannot sync its footer. This path has not been tested live.
 
 ### Install the Codex plugin
 
-The plugin is optional. It starts the home's services at each session start if they are down, prints the [router line](#router-line-in-the-transcript-optional-hook) in the transcript, and adds a `router` skill: ask Codex what the router picked, or to pause, resume or pin routing of this session. Install it per home:
+The plugin is optional. It starts the home's services if they are down and prints the [router line](#router-line-in-the-transcript-optional-hook) in the transcript. Its `router` skill lets you ask Codex to show, pause, resume or pin routing. Install it per home:
 
 ```sh
 CODEX_HOME=~/.codex-work codex plugin marketplace add alexei-led/codex-router
@@ -483,14 +480,24 @@ If the binary moves, run setup again. A restarted brain keeps your pauses, manua
 
 ### Undo
 
+**Close every Codex session in this home first.** A running thread keeps the router provider. After undo, another process could take the freed port and receive that thread's ChatGPT credentials.
+
 ```sh
 codex-router setup --home ~/.codex-work --undo --dry-run   # print the changes, write nothing
 codex-router setup --home ~/.codex-work --undo             # add --purge to delete the state dir too
 ```
 
-End the home's Codex sessions first. A running thread keeps the router provider, so after undo it would keep sending your ChatGPT credentials to a port that nothing holds.
+Undo backs `config.toml` up, removes the marked blocks, then stops and removes the services. It removes `<home>/codex-router.env` only when the file has the setup ownership marker. Other files, symlinks and directories at that path stay untouched. The rest of `config.toml` stays byte for byte, including what Codex wrote meanwhile, such as hook trust. The state dir stays unless you pass `--purge`.
 
-Undo backs `config.toml` up, removes the marked blocks, then stops and removes the services and `<home>/codex-router.env`. The rest of `config.toml` stays byte for byte, including what Codex wrote meanwhile, such as hook trust. The state dir stays unless you pass `--purge`.
+## Update or uninstall
+
+To update a wrapper install, close its Codex sessions and repeat the [installation](#install) steps. Confirm the version with `codex-router version`.
+
+For a home installed with setup, close that home's Codex sessions first. Replace the binary, then rerun setup with the original `--home`, `--config` and `--state-dir` options and environment. Setup resolves those paths again and rewrites the service files. Omitting custom options can select a different config or state directory. If you moved the binary, run setup from its new path.
+
+To stop using the wrapper, run plain `codex`. For a set-up home, close its sessions and run [undo](#undo) before removing the binary. Remove the binary from the path where you installed it. The Go install path is normally `$(go env GOPATH)/bin/codex-router`.
+
+Config and logs stay in their [documented locations](configuration.md#environment). Setup undo keeps state unless you pass `--purge`.
 
 ## Troubleshoot
 

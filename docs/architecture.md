@@ -48,7 +48,7 @@ What crosses each boundary:
 
 - **Codex to proxy.** Model requests (`POST /v1/responses`) on `127.0.0.1`. The provider is `router` with `requires_openai_auth`, so Codex adds its own ChatGPT auth. A session token header proves the caller is the private app-server (see [Security](#security)).
 - **Proxy to chatgpt.com.** The request with `model` and `reasoning.effort` possibly changed, and the SSE stream back.
-- **Engine to classifier.** The clipped prompt and recent dialogue. No headers and no Codex credentials.
+- **Engine to classifier.** The clipped prompt, recent dialogue and fixed classification questions. The System One adapter also sends tier routes. No Codex headers or credentials. See [payload and privacy](configuration.md#classifier-data-and-privacy).
 - **App-server client to app-server.** `thread/settings/update` writes (the footer value) and `thread/settings/updated` notifications (including `/model` picks).
 - **Control socket to panel, hook and `ctl`.** Session lists and the subscribed session's snapshots out, and commands in: pin and unpin for one session, pause and resume for one session or the whole home, preset for the home. See [Control protocol](#control-protocol).
 
@@ -454,12 +454,14 @@ After `kill -9` or an out-of-memory kill, the private `codex app-server` keeps r
 
 A set-up home closes this for edge crashes and upgrades, because the service manager keeps the port (see [Socket activation](#security)). It remains when the edge unit is not loaded, for example after `launchctl bootout`, or after `setup --undo` while a thread that started with the router is still running.
 
+## Development
+
+See [Contributing](../CONTRIBUTING.md) for the build, checks and release process.
+
 ## Further reading
 
 - [research notes](archive/research.md): Codex extension points, spikes, risk register, what is unverified
-- [implementation plan](archive/plans/2026-10-13-codex-router-impl.md): decisions D1 to D12
 - [live test report](archive/evidence/2026-10-14/live-test-report.md): what was checked against a real Codex, and the bugs it found
-- [multi-session plan](archive/plans/20261014-multi-session-router.md): decisions M1 to M13 for sessions, the registry, the edge and the brain
 - [stage 1 live run](archive/evidence/2026-10-14-multi-session/stage1/report.md): five `codex-router` sessions in two homes, the checks and the bug found ([captures](archive/evidence/2026-10-14-multi-session/stage1/))
 - [stage 2 gate](archive/evidence/2026-10-14-multi-session/gate/report.md): G1 to G5 on a test home, the Codex facts the edge and brain rely on ([captures](archive/evidence/2026-10-14-multi-session/gate/))
 - [stage 2 live run](archive/evidence/2026-10-14-multi-session/stage2/report.md): five plain `codex` sessions in two set-up homes, edge and brain kills, daemon restart, undo, and the bugs found ([captures](archive/evidence/2026-10-14-multi-session/stage2/))
