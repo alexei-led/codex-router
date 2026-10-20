@@ -8,9 +8,24 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/route"
 )
+
+func TestHitButtonAfterWideTextUsesCellCoordinates(t *testing.T) {
+	want := action{kind: actTab, tab: TabUsage}
+	c := newCanvas(view{width: 40})
+	c.add(plain("界界"), clickable(plain("X"), want))
+	if got := ansi.StringWidth(c.out[0]); got != 5 {
+		t.Fatalf("rendered line has %d cells, want 5: %q", got, c.out[0])
+	}
+	x := ansi.StringWidth("界界")
+	if got, ok := hit(c.zones, x, 0); !ok || got != want {
+		t.Fatalf("click at visible X cell %d hit %+v %v, want %+v", x, got, ok, want)
+	}
+}
 
 func TestHit(t *testing.T) {
 	a, b := action{kind: actTab, tab: TabSessions}, action{kind: actTab, tab: TabPolicy}
@@ -185,6 +200,29 @@ func TestClicksSendCommands(t *testing.T) {
 	}
 }
 
+func TestUnicodeHeaderHitboxUsesTerminalCells(t *testing.T) {
+	m, _, _ := fleetPanel(t)
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 30})
+	s := fixture()
+	s.ClassifierLabel = "東京"
+	m.st.snap = &s
+	out, zones := layout(plainView(m))
+	line := strings.Split(out, "\n")[0]
+	byteX := strings.Index(line, "Usage")
+	if byteX < 0 {
+		t.Fatalf("header has no Usage tab:\n%s", out)
+	}
+	x := ansi.StringWidth(line[:byteX])
+	want := action{kind: actTab, tab: TabUsage}
+	if got, ok := hit(zones, x, 0); !ok || got != want {
+		t.Fatalf("visible Usage cell x=%d hit %+v %v, want %+v (line %q)", x, got, ok, want, line)
+	}
+	clickAt(m, x, 0, tea.MouseLeft)
+	if m.tab != TabUsage {
+		t.Fatalf("click at visible Usage tab selected %s", m.tab)
+	}
+}
+
 func TestClickOnAViewNameShowsIt(t *testing.T) {
 	m, _, _ := fleetPanel(t)
 	for _, tab := range []Tab{TabUsage, TabPolicy, TabSessions} {
@@ -271,6 +309,32 @@ func TestWheelMovesTheSelection(t *testing.T) {
 	}
 }
 
+func TestWheelOverTheDetailScrollsThatPane(t *testing.T) {
+	m, _, _ := fleetPanel(t)
+	s := fixture()
+	s.Worth = make([]route.Finding, 20)
+	for i := range s.Worth {
+		s.Worth[i] = route.Finding{Kind: route.FindingContext, Text: "detail line"}
+	}
+	m.st.snap = &s
+	for _, width := range []int{80, 130} {
+		m.scroll, m.pane, m.zoom = 0, paneList, false
+		m.Update(tea.WindowSizeMsg{Width: width, Height: 24})
+		_, _, g := layoutWithInfo(m.view())
+		if !g.hasDetail {
+			t.Fatalf("no detail pane at width %d", width)
+		}
+		x, y := 1, g.detailRow
+		if width >= wideWidth {
+			x = g.detailX + 1
+		}
+		m.Update(tea.MouseWheelMsg{X: x, Y: y, Button: tea.MouseWheelDown})
+		if m.scroll != 1 {
+			t.Errorf("wheel at %d,%d width %d set scroll %d, want 1", x, y, width, m.scroll)
+		}
+	}
+}
+
 func TestClicksTheMouseShouldNotAct(t *testing.T) {
 	now := at(18, 0)
 	tests := []struct {
@@ -319,5 +383,30 @@ func TestViewAsksForTheMouseUnlessDisabled(t *testing.T) {
 	m.mouse = true
 	if v := m.View(); v.MouseMode != tea.MouseModeCellMotion || !v.ReportFocus || !v.AltScreen {
 		t.Errorf("view = %+v", v)
+	}
+}
+
+func TestWheelStopsAtTheEndAndReturnsAtOnce(t *testing.T) {
+	m, _, _ := fleetPanel(t)
+	s := fixture()
+	s.Worth = make([]route.Finding, 20)
+	for i := range s.Worth {
+		s.Worth[i] = route.Finding{Kind: route.FindingContext, Text: "detail line"}
+	}
+	m.st.snap = &s
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
+	_, _, g := layoutWithInfo(m.view())
+	if g.scrollMax <= 0 {
+		t.Fatalf("detail does not scroll: max %d", g.scrollMax)
+	}
+	for range g.scrollMax + 10 {
+		m.Update(tea.MouseWheelMsg{X: 1, Y: g.detailRow, Button: tea.MouseWheelDown})
+	}
+	if m.scroll != g.scrollMax {
+		t.Fatalf("scroll %d past the end, want it clamped to %d", m.scroll, g.scrollMax)
+	}
+	m.Update(tea.MouseWheelMsg{X: 1, Y: g.detailRow, Button: tea.MouseWheelUp})
+	if m.scroll != g.scrollMax-1 {
+		t.Fatalf("scroll %d after one wheel up, want %d", m.scroll, g.scrollMax-1)
 	}
 }

@@ -1,6 +1,7 @@
 package route
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -311,6 +312,151 @@ func TestSessionsHideIdleThreads(t *testing.T) {
 	}
 }
 
+func TestSessionsKeepIntentRowsPastIdleExpiry(t *testing.T) {
+	ids := func(ss []SessionInfo) []string {
+		var out []string
+		for _, s := range ss {
+			out = append(out, s.ThreadID)
+		}
+		return out
+	}
+	for _, tc := range []struct {
+		name   string
+		intent func(*harness)
+		want   Attention
+	}{
+		{"paused", func(h *harness) { h.apply(Command{Op: OpPause, Session: "old"}) }, AttentionPaused},
+		{"manual", func(h *harness) {
+			h.engine.SettingsUpdated("old", config.Route{Model: "gpt-6-luna", Effort: config.EffortHigh})
+		}, AttentionManual},
+		{"pending pin", func(h *harness) { h.apply(Command{Op: OpPin, Session: "old", Tier: config.TierHigh}) }, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t, testConfig())
+			h.asker.script(answer(tier("medium", 0.97)), answer(tier("medium", 0.97)))
+			h.firstStep("old", "old-1")
+			tc.intent(h)
+			h.clock.Advance(time.Second)
+			h.firstStep("new", "new-1")
+			h.clock.Advance(11 * time.Minute)
+
+			if got := ids(h.engine.Sessions()); !slices.Contains(got, "old") {
+				t.Fatalf("sessions = %v, want intent-bearing old thread retained", got)
+			}
+			var old SessionInfo
+			for _, s := range h.engine.Sessions() {
+				if s.ThreadID == "old" {
+					old = s
+				}
+			}
+			if tc.name == "pending pin" {
+				if !old.PendingPin {
+					t.Error("pending pin was not exposed on SessionInfo")
+				}
+				data, err := json.Marshal(old)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var wire map[string]any
+				if err := json.Unmarshal(data, &wire); err != nil {
+					t.Fatal(err)
+				}
+				if wire["pending_pin"] != true {
+					t.Errorf("pending_pin JSON = %v, want true (%s)", wire["pending_pin"], data)
+				}
+			} else if old.Attention != tc.want {
+				t.Errorf("attention = %q, want %q", old.Attention, tc.want)
+			}
+			if slices.Contains(ids(h.engine.Sessions()), "new") == false {
+				t.Fatal("latest idle thread disappeared")
+			}
+		})
+	}
+}
+
+func TestOrdinaryIdleThreadStillExpiresBesideLatest(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("medium", 0.97)), answer(tier("medium", 0.97)))
+	h.firstStep("old", "old-1")
+	h.clock.Advance(time.Second)
+	h.firstStep("new", "new-1")
+	h.clock.Advance(11 * time.Minute)
+	var got []string
+	for _, s := range h.engine.Sessions() {
+		got = append(got, s.ThreadID)
+	}
+	if !slices.Equal(got, []string{"new"}) {
+		t.Fatalf("sessions = %v, want only latest new thread", got)
+	}
+}
+
+func TestPartialPricingDoesNotPublishSessionTotals(t *testing.T) {
+	cfg := testConfig()
+	cfg.Policy.UpgradeVotes = 1
+	cfg.Prices = map[string]config.Price{
+		medium.Model: {Input: 2, CachedInput: .2, Output: 8},
+	}
+	h := newHarness(t, cfg)
+	h.asker.script(answer(tier("medium", .97)), answer(tier("high", .99)))
+	h.firstStep("a", "a1")
+	h.reply(meta("a", "a1"), medium.Model, 1000, 0)
+	h.firstStep("a", "a2")
+	h.reply(meta("a", "a2"), high.Model, 1000, 0)
+	s := h.session("a")
+	if s.PricedReplies != 1 || s.EligibleReplies != 2 {
+		t.Errorf("pricing coverage = %d/%d, want 1/2", s.PricedReplies, s.EligibleReplies)
+	}
+	if s.SpentUSD != nil || s.SavedUSD != nil {
+		t.Fatalf("partial pricing exposed session totals: spent=%v saved=%v", s.SpentUSD, s.SavedUSD)
+	}
+	data, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire map[string]any
+	if err := json.Unmarshal(data, &wire); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := wire["spent_usd"]; ok {
+		t.Errorf("partial spent_usd present in JSON: %s", data)
+	}
+	if _, ok := wire["saved_usd"]; ok {
+		t.Errorf("partial saved_usd present in JSON: %s", data)
+	}
+	if wire["priced_replies"] != float64(1) || wire["eligible_replies"] != float64(2) {
+		t.Errorf("JSON pricing coverage = %v/%v, want 1/2 (%s)", wire["priced_replies"], wire["eligible_replies"], data)
+	}
+}
+
+func TestPricingUsesPerReplyNativeModelsAfterModelChange(t *testing.T) {
+	cfg := testConfig()
+	cfg.Prices = map[string]config.Price{
+		medium.Model: {Input: 2, CachedInput: .2, Output: 8},
+		low.Model:    {Input: 1, CachedInput: .1, Output: 4},
+	}
+	h := newHarness(t, cfg)
+	h.asker.script(answer(tier("medium", .97)), answer(tier("medium", .97)))
+	h.firstStep("a", "a1")
+	h.reply(meta("a", "a1"), medium.Model, 1000, 0)
+	picked := config.Route{Model: low.Model, Effort: config.EffortHigh}
+	h.engine.SettingsUpdated("a", picked)
+	h.apply(Command{Op: OpResume, Session: "a"})
+	if _, ok := h.decide(req(picked, userMsg(secretPrompt), userMsg("a2")), meta("a", "a2")); !ok {
+		t.Fatal("second turn was not routed")
+	}
+	h.reply(meta("a", "a2"), medium.Model, 1000, 0)
+	s := h.session("a")
+	if s.PricedReplies != 2 || s.EligibleReplies != 2 {
+		t.Fatalf("pricing coverage = %d/%d, want 2/2", s.PricedReplies, s.EligibleReplies)
+	}
+	if s.SpentUSD == nil || s.SavedUSD == nil {
+		t.Fatalf("fully priced replies have no totals: %+v", s)
+	}
+	if *s.SpentUSD <= 0 || *s.SavedUSD >= 0 {
+		t.Errorf("per-reply totals = spent %v saved %v, want positive spent and negative savings", *s.SpentUSD, *s.SavedUSD)
+	}
+}
+
 func TestSessionsCarryUSDOnlyWhenPriced(t *testing.T) {
 	priced := testConfig()
 	priced.Prices = map[string]config.Price{
@@ -340,8 +486,14 @@ func TestSessionsCarryUSDOnlyWhenPriced(t *testing.T) {
 			if (s.SpentUSD != nil) != tt.price || (s.SavedUSD != nil) != tt.price {
 				t.Fatalf("spent %v saved %v", s.SpentUSD, s.SavedUSD)
 			}
+			if s.EligibleReplies != 1 || (s.PricedReplies == 1) != tt.price {
+				t.Fatalf("pricing coverage = %d/%d, want priced=%v", s.PricedReplies, s.EligibleReplies, tt.price)
+			}
 			if tt.price && (*s.SpentUSD <= 0 || *s.SavedUSD <= 0) {
 				t.Fatalf("spent %v saved %v, want both positive", *s.SpentUSD, *s.SavedUSD)
+			}
+			if tt.name == "priced" && (*s.SpentUSD < 0.00139 || *s.SpentUSD > 0.00141 || *s.SavedUSD < 0.00139 || *s.SavedUSD > 0.00141) {
+				t.Errorf("fully priced totals changed: spent %v saved %v, want about $0.0014 each", *s.SpentUSD, *s.SavedUSD)
 			}
 		})
 	}

@@ -56,9 +56,11 @@ func (t *tally) reply(d Decision, u responses.Usage, at time.Time, prices map[st
 	if t.inputTokens > 0 {
 		t.CacheReusePct = t.cachedTokens * 100 / t.inputTokens
 	}
+	t.EligibleReplies++
 	routed, okR := prices[d.Route.Model]
 	baseline, okB := prices[native]
 	if okR && okB {
+		t.PricedReplies++
 		t.RoutedUSD += cost.USD(routed, u)
 		t.BaselineUSD += cost.USD(baseline, u)
 	}
@@ -160,6 +162,7 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 	}
 	s.StateLost = e.lost
 	cat := e.cat.Current()
+	s.CatalogAvailable = len(cat.Models) > 0
 	model := s.Baseline.Model
 	if th != nil {
 		s.ThreadID, s.Mode = th.id, e.mode(th)
@@ -182,18 +185,34 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 		}
 	}
 	s.Window, _ = cat.Window(model)
-	s.Group, _ = cat.GroupOf(model)
+	s.Group, s.CurrentModelKnown = cat.GroupOf(model)
+	currentKnown := s.CurrentModelKnown
+	unknown := map[string]bool{}
+	if model != "" && !currentKnown {
+		unknown[model] = true
+	}
 	seen := map[string]bool{}
 	for _, t := range config.Tiers {
 		for _, a := range append([]config.Activity{""}, config.Activities...) {
 			m := cfg.RouteFor(t, a).Model
-			if m != "" && !seen[m] && !cat.Compatible(model, m) {
+			if m == "" || seen[m] {
+				continue
+			}
+			_, targetKnown := cat.GroupOf(m)
+			switch {
+			case !targetKnown:
+				unknown[m] = true
+			case currentKnown && !cat.Compatible(model, m):
 				s.Blocked = append(s.Blocked, m)
 			}
 			seen[m] = true
 		}
 	}
+	for m := range unknown {
+		s.CompatibilityUnknown = append(s.CompatibilityUnknown, m)
+	}
 	slices.Sort(s.Blocked)
+	slices.Sort(s.CompatibilityUnknown)
 	return s
 }
 

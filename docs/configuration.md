@@ -41,7 +41,7 @@ Because objects merge, `"policy": {"minDwellRequests": 6}` changes one field. Be
 | `baseline`    | tier                              | `medium`                                                     | Tier of the route used when no thread model is known, and the target of the upward context fix. |
 | `routes`      | map tier to route                 | see below                                                    | Model and effort per tier. All four tiers must exist.                                           |
 | `activities`  | map activity to map tier to route | `debug` at `medium`                                          | Per-activity override of a tier's route. Optional.                                              |
-| `prices`      | map model to price                | `gpt-6.1-sol`, `gpt-6-luna`                                  | List prices in USD per million tokens. Optional.                                                |
+| `prices`      | map model to price                | `gpt-6.1-sol`, `gpt-6-luna`                                  | USD list prices for the per-reply estimate. Optional.                                                |
 | `policy`      | object                            | see below                                                    | Switching thresholds.                                                                           |
 | `preset`      | `thrifty`, `balanced`, `quality`  | `balanced`                                                   | Overrides some policy fields. See [presets](#presets).                                          |
 | `classifier`  | string                            | `jev`                                                        | Key of the active entry in `classifiers`, or `off`.                                             |
@@ -64,7 +64,7 @@ A route is `{"model": "<slug>", "effort": "<effort>"}`. An empty `effort` keeps 
 | `low`    | `gpt-6-luna`  | `high`         |
 | `micro`  | `gpt-6-luna`  | `medium`       |
 
-The defaults use two models in one compatibility group. The router checks that a target model shares the group of the model Codex sent. If it does not, the request keeps its original route. The Policy view lists incompatible models as blocked.
+The defaults use two models in one compatibility group. The router checks that a target model shares the group of the model Codex sent. A known unequal group is blocked and the request keeps its original route. If the current or target model is missing from the catalog, compatibility is unknown: the request still keeps its original route, but Policy reports the unknown model separately instead of calling it incompatible. An empty catalog is reported as unavailable. When the catalog becomes available, the next snapshot reflects its current groups.
 
 Effort changes on one model keep its prompt cache. A switch between models can require an uncached prefix. See [evaluation](evaluation.md) for the small tests behind these defaults.
 
@@ -72,7 +72,7 @@ An `activities.<activity>.<tier>` entry overrides the tier's model and effort. A
 
 ### prices
 
-`{"input": n, "cachedInput": n, "output": n}`, USD per million tokens, none negative. They drive the list-price estimates in the Sessions and Usage views, and they order models for the "same task, stronger or cheaper" check (by output price). The defaults are OpenAI list prices: `gpt-6.1-sol` 2 / 0.10 / 10 (input up to 272K tokens) and `gpt-6-luna` 0.10 / 0.01 / 0.50. An entry you name replaces that model's default price; the other default stays. With no price for a model, estimates stay in tokens and the panel says there is no baseline. Plan billing is usage limits, so the figures are estimates, not a bill.
+`{"input": n, "cachedInput": n, "output": n}`, USD per million tokens, none negative. They drive the list-price estimates in the Sessions and Usage views, and they order models for the "same task, stronger or cheaper" check (by output price). The defaults are OpenAI list prices: `gpt-6.1-sol` 2 / 0.10 / 10 (input up to 272K tokens) and `gpt-6-luna` 0.10 / 0.01 / 0.50. An entry you name replaces that model's default price; the other default stays. For a complete estimate, price every routed model and every model Codex uses as the native model. A reply is covered only when both its routed and native model have prices. The panel shows dollar totals only when every eligible reply is covered; otherwise it says `estimate partial` or `estimate unknown` with the `N of M replies priced` coverage and hides the partial subtotal. A `/model` change can make the native model differ over the session, so totals use a per-reply native basis, not one model for the whole session. Plan billing is usage limits, so a complete figure is still an estimate, not a bill.
 
 ### policy
 

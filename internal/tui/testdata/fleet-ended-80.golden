@@ -6,7 +6,8 @@ api · feat/auth                                                  work · aaaaaa
        Jev high 18% · no classifier needed · switch ≈ 41k uncached tokens
        hold 2 turns
  Pin      micro   low   medium  ▶high                             next turn only
- Session  48 replies · 9 switches · saved ≈ $0.84 (31%) vs gpt-6.1-sol · high
+ Session  48 replies · 9 switches
+          saved ≈ $0.84 (31%) vs per-reply native basis
           ▃▃▃▃▃▅▅▅▅▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇  1 reply per cell
  Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol
  Cache    98% last reply · 97% session

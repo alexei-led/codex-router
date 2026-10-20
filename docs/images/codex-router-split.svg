@@ -60,9 +60,7 @@
   <text x="655.6" y="237.0" fill="#878787" xml:space="preserve"> · </text>
   <text x="679.0" y="237.0" fill="#d0d0d0" xml:space="preserve">19 switches</text>
   <text x="764.8" y="237.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="788.2" y="237.0" fill="#d0d0d0" xml:space="preserve">saved </text>
-  <text x="835.0" y="237.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
-  <text x="936.4" y="237.0" fill="#d0d0d0" xml:space="preserve"> vs gpt-6.1-sol · medium</text>
+  <text x="788.2" y="237.0" fill="#878787" xml:space="preserve">estimate unknown · 0 of 144 replies priced</text>
   <text x="31.6" y="256.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">└</text>
   <text x="47.2" y="256.0" fill="#cd3131" xml:space="preserve">--- FAIL: TestBackoff (0.00s)</text>
   <text x="468.4" y="256.0" fill="#2e3340" xml:space="preserve"> │ </text>
@@ -151,21 +149,24 @@
   <text x="468.4" y="427.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="31.6" y="446.0" fill="#d0d0d0" opacity="0.6" xml:space="preserve">? for shortcuts</text>
   <text x="468.4" y="446.0" fill="#2e3340" xml:space="preserve"> │ </text>
-  <text x="491.8" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">p</text>
-  <text x="499.6" y="446.0" fill="#878787" xml:space="preserve"> pin</text>
-  <text x="530.8" y="446.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="554.2" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">space</text>
-  <text x="593.2" y="446.0" fill="#878787" xml:space="preserve"> pause</text>
-  <text x="640.0" y="446.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="663.4" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">P</text>
-  <text x="671.2" y="446.0" fill="#878787" xml:space="preserve"> pause home</text>
-  <text x="757.0" y="446.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="780.4" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">tab</text>
-  <text x="803.8" y="446.0" fill="#878787" xml:space="preserve"> views</text>
+  <text x="491.8" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">↑↓</text>
+  <text x="507.4" y="446.0" fill="#878787" xml:space="preserve"> scroll</text>
+  <text x="562.0" y="446.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="585.4" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">p</text>
+  <text x="593.2" y="446.0" fill="#878787" xml:space="preserve"> pin</text>
+  <text x="624.4" y="446.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="647.8" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">space</text>
+  <text x="686.8" y="446.0" fill="#878787" xml:space="preserve"> pause</text>
+  <text x="733.6" y="446.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="757.0" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">P</text>
+  <text x="764.8" y="446.0" fill="#878787" xml:space="preserve"> pause home</text>
   <text x="850.6" y="446.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="874.0" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">q</text>
-  <text x="881.8" y="446.0" fill="#878787" xml:space="preserve"> quit</text>
-  <text x="920.8" y="446.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="944.2" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">?</text>
-  <text x="952.0" y="446.0" fill="#878787" xml:space="preserve"> help</text>
+  <text x="874.0" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">tab</text>
+  <text x="897.4" y="446.0" fill="#878787" xml:space="preserve"> views</text>
+  <text x="944.2" y="446.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="967.6" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">q</text>
+  <text x="975.4" y="446.0" fill="#878787" xml:space="preserve"> quit</text>
+  <text x="1014.4" y="446.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="1037.8" y="446.0" fill="#87afff" font-weight="700" xml:space="preserve">?</text>
+  <text x="1045.6" y="446.0" fill="#878787" xml:space="preserve"> help</text>
 </svg>

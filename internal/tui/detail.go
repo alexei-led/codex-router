@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/policy"
 	"github.com/alexei-led/codex-router/internal/route"
 )
@@ -203,9 +202,12 @@ func (c *canvas) sessionRows(s route.Snapshot) {
 		c.add(lead, dim("no routed replies yet"))
 		return
 	}
-	saved := []seg{dim(`savings need "prices" in the config`)}
-	if st.BaselineUSD > 0 {
-		saved = savedPart(st, s.Baseline)
+	saved := pricingCoverage(st)
+	if pricingComplete(st) {
+		saved = []seg{dim(`savings need "prices" in the config`)}
+		if st.BaselineUSD > 0 {
+			saved = savedPart(st)
+		}
 	}
 	parts := [][]seg{{plain(plural(st.Replies, "reply", "replies"))}, {plain(plural(st.Switches, "switch", "switches"))}, saved}
 	c.flow(lead, parts...)
@@ -228,15 +230,15 @@ func (c *canvas) sessionRows(s route.Snapshot) {
 	c.add(line...)
 }
 
-// savedPart is `saved ≈ $1.18 (22%) vs gpt-6-sol · medium`.
-func savedPart(st route.Stats, baseline config.Route) []seg {
+// savedPart is `saved ≈ $1.18 (22%) vs per-reply native basis`.
+func savedPart(st route.Stats) []seg {
 	diff := st.BaselineUSD - st.RoutedUSD
 	word, r := "saved", roleOK
 	if diff < 0 {
 		word, r = "cost", roleWarn
 	}
 	pct := int(abs(diff)/st.BaselineUSD*100 + 0.5)
-	return []seg{plain(word + " "), col(r, fmt.Sprintf("≈ $%.2f (%d%%)", abs(diff), pct)), plain(" vs " + routeText(baseline))}
+	return []seg{plain(word + " "), col(r, fmt.Sprintf("≈ $%.2f (%d%%)", abs(diff), pct)), plain(" vs per-reply native basis")}
 }
 
 // contextRows are the context window and the cache, side by side when they fit.

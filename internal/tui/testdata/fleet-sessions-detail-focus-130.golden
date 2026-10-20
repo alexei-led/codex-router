@@ -7,7 +7,7 @@ codex-router  6 sessions · 2 homes · Jev ready                                
    notes                    ‖ paused  gpt-6-luna · medium   ▎       switch ≈ 41k uncached tokens · hold 2 turns
                                                             ▎ Pin      micro   low   medium  ▶high                  next turn only
  ● work · brain up 2h                                       ▎ Session  48 replies · 9 switches
-   api · feat/auth          ◐ manual  gpt-6-sol · medium    ▎          saved ≈ $0.84 (31%) vs gpt-6.1-sol · high
+   api · feat/auth          ◐ manual  gpt-6-sol · medium    ▎          saved ≈ $0.84 (31%) vs per-reply native basis
    api · fix/retry          ↑ high    gpt-6.1-sol · high    ▎          ▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇  1 reply per cell
    infra · main             ● on      gpt-6-sol · medium    ▎ Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol
    reflex · main            ○ waiting for the first prompt  ▎ Cache    98% last reply · 97% session
@@ -18,4 +18,4 @@ codex-router  6 sessions · 2 homes · Jev ready                                
                                                             ▎ Recent   18:41  high   gpt-6.1-sol · high · same test failure twice…
                                                             ▎          18:38  medium gpt-6-sol · medium · moved up a tier
 
-↑↓ select · p pin · space pause · P pause home · tab views · q quit · ? help
+↑↓ scroll · p pin · space pause · P pause home · tab views · q quit · ? help

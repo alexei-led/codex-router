@@ -105,7 +105,8 @@ type Switch struct {
 
 // Stats sums the session since its first routed reply. LastInputTokens and
 // LastCachedTokens are the last routed reply's; FitHeld counts the steps the
-// context guard moved off the policy's tier.
+// context guard moved off the policy's tier. Pricing coverage counts the
+// replies with prices for both the routed and per-reply native models.
 type Stats struct {
 	Since                time.Time
 	Replies              int
@@ -122,6 +123,8 @@ type Stats struct {
 	FitHeld              int
 	RoutedUSD            float64
 	BaselineUSD          float64
+	PricedReplies        int // replies with prices for both routed and native models
+	EligibleReplies      int // routed replies considered for dollar estimates
 }
 
 // FindingKind names what a WORTH A LOOK finding is about, and so where the
@@ -163,18 +166,21 @@ type Snapshot struct {
 	Classifier    classifier.Health
 	ClassifierOff bool // no classifier configured (e.g. its key is unset)
 	// ClassifierOffReason says why it is off, without the key. Empty when on.
-	ClassifierOffReason string
-	ClassifierLabel     string
-	ClassifierModel     string
-	ClassifierMedian    time.Duration
-	Routes              map[config.Tier]config.Route
-	Group               catalog.Group
-	Blocked             []string
-	Policy              config.Policy
-	Stats               Stats
-	ApproxTokens        int
-	Window              int
-	Worth               []Finding
+	ClassifierOffReason  string
+	ClassifierLabel      string
+	ClassifierModel      string
+	ClassifierMedian     time.Duration
+	Routes               map[config.Tier]config.Route
+	Group                catalog.Group
+	CurrentModelKnown    bool
+	CatalogAvailable     bool
+	Blocked              []string
+	CompatibilityUnknown []string
+	Policy               config.Policy
+	Stats                Stats
+	ApproxTokens         int
+	Window               int
+	Worth                []Finding
 }
 
 // Sink receives decisions and snapshots; the launcher fans them out to the

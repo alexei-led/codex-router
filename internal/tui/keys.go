@@ -31,7 +31,7 @@ type keyMap struct {
 }
 
 var keys = keyMap{
-	Up:          key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑↓", "select")),
+	Up:          key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑↓", "select or scroll")),
 	Down:        key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("j k", "same as ↑↓")),
 	Open:        key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
 	Back:        key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),

@@ -122,10 +122,12 @@ waiting; for a home not set up it prints one hint line. service status
 prints each unit's state.
 ctl acts on one running session of a Codex home (--home, else $CODEX_HOME,
 else ~/.codex), for the Codex plugin's skill: the session of
-$CODEX_THREAD_ID, which Codex sets for its shell commands, else the one
-whose cwd is the deepest equal to or containing --cwd (default: the current
-dir). status prints the session's mode, tier and route; pause and resume
-act on that session only; pin --tier T routes its next turn to tier T.
+$CODEX_THREAD_ID, which Codex sets for its shell commands. If that id is not
+listed for the home, ctl fails instead of falling back to --cwd. Otherwise,
+outside Codex it uses the session whose cwd is deepest equal to or containing
+--cwd (default: the current dir). status prints the session's mode, tier and
+route; pause and resume act on that session only; pin --tier T routes its next
+turn to tier T.
 
 Exit codes:
   run      codex's exit code; 128+N when signal N ended codex;
@@ -392,9 +394,9 @@ var blocked = sessions.Blocked
 var ctlOps = map[string]route.Op{"status": "", "pause": route.OpPause, "resume": route.OpResume, "pin": route.OpPin}
 
 // ctl shows or changes the routing of one session of a Codex home, for the
-// plugin's skill, which runs it from a Codex shell command: the session of
-// $CODEX_THREAD_ID when a router of the home lists it, else the one whose
-// cwd is the deepest equal to or containing --cwd.
+// plugin's skill, which runs it from a Codex shell command. An explicit
+// $CODEX_THREAD_ID must be listed for the home; otherwise ctl refuses to fall
+// back to --cwd. Without a thread id, it selects by the deepest matching cwd.
 func (c cli) ctl(args []string) int {
 	var sub string
 	if len(args) > 0 {
@@ -438,7 +440,17 @@ func (c cli) ctl(args []string) int {
 		return c.fail(err)
 	}
 	all = slices.DeleteFunc(all, func(s sessions.Session) bool { return s.Home != h.ID })
-	matches := sessions.ForShell(all, c.getenv(envThread), dir)
+	thread := c.getenv(envThread)
+	var matches []sessions.Session
+	if thread != "" {
+		i := slices.IndexFunc(all, func(s sessions.Session) bool { return s.ThreadID == thread })
+		if i < 0 {
+			return c.fail(fmt.Errorf("ctl: CODEX_THREAD_ID %q is not listed for Codex home %s; refusing cwd fallback", thread, h.Name))
+		}
+		matches = all[i : i+1]
+	} else {
+		matches = sessions.ForShell(all, "", dir)
+	}
 	switch len(matches) {
 	case 0:
 		if err := blocked(root, h.ID); err != nil {

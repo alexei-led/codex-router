@@ -6,10 +6,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/policy"
@@ -91,6 +91,7 @@ type view struct {
 	help         bool
 	popover      popover
 	toast        string
+	scroll       int // top row of the focused pane's viewport
 }
 
 // multi reports whether the panel shows every session.
@@ -111,6 +112,7 @@ type canvas struct {
 	widths  []int
 	zones   []zone
 	anchors map[string]anchor
+	layout  layoutInfo
 }
 
 // anchor is a drawn row an overlay hangs from.
@@ -132,19 +134,39 @@ func render(v view) string {
 
 // layout draws v and lists the clickable zones of the drawn rows.
 func layout(v view) (string, []zone) {
+	out, zones, _ := layoutWithInfo(v)
+	return out, zones
+}
+
+type layoutInfo struct {
+	detailRow int
+	detailX   int
+	hasDetail bool
+	scrollMax int // the largest useful scroll for the focused pane
+}
+
+func layoutWithInfo(v view) (string, []zone, layoutInfo) {
 	c := newCanvas(v)
 	foot := c.footerLines(v)
 	c.header(v)
 	c.blank()
+	bodyRows, limited := 0, v.height > 0
+	if limited {
+		reserve := 1 + len(foot)
+		if v.notice != "" {
+			reserve++
+		}
+		bodyRows = max(v.height-len(c.out)-reserve, 0)
+	}
 	switch {
 	case v.fleet != nil && !v.fleet.ended && v.fleet.focus == "" && v.tab != TabSessions:
 		c.add(dim("no Codex session yet · run codex-router in a project to start one"))
 	case v.tab == TabPolicy:
-		c.policy(v)
+		c.screen(bodyRows, limited, v.scroll, (*canvas).policy, v)
 	case v.tab == TabUsage:
-		c.usage(v)
+		c.screen(bodyRows, limited, v.scroll, (*canvas).usage, v)
 	default:
-		c.sessions(v, len(foot)+2)
+		c.sessions(v, bodyRows, limited)
 	}
 	c.blank()
 	footerRow := len(c.out)
@@ -154,7 +176,61 @@ func layout(v view) (string, []zone) {
 	if v.notice != "" {
 		c.add(col(roleWarn, v.notice))
 	}
-	return c.compose(v, footerRow)
+	out, zones := c.compose(v, footerRow)
+	return out, zones, c.layout
+}
+
+// screen draws one of the non-Sessions screens into the height budget and
+// scrolls its body without moving the header or footer.
+func (c *canvas) screen(rows int, limited bool, scroll int, draw func(*canvas, view), v view) {
+	body := c.child(c.width)
+	draw(body, v)
+	if limited {
+		c.layout.scrollMax = max(len(body.out)-max(rows, 0), 0)
+		body = crop(body, rows, scroll)
+	}
+	c.append(body)
+}
+
+// append joins a child's visible rows, hitboxes and anchors to this canvas.
+func (c *canvas) append(d *canvas) {
+	base := len(c.out)
+	for _, z := range d.zones {
+		z.row += base
+		c.zones = append(c.zones, z)
+	}
+	for k, a := range d.anchors {
+		a.row += base
+		c.anchors[k] = a
+	}
+	c.out = append(c.out, d.out...)
+	c.widths = append(c.widths, d.widths...)
+}
+
+// crop returns the rows at scroll in d, keeping only visible hitboxes and
+// anchors and moving them into viewport coordinates.
+func crop(d *canvas, rows, scroll int) *canvas {
+	if rows <= 0 {
+		return d.child(d.width)
+	}
+	start := min(max(scroll, 0), max(len(d.out)-rows, 0))
+	end := min(start+rows, len(d.out))
+	out := &canvas{styled: d.styled, th: d.th, width: d.width, anchors: map[string]anchor{}}
+	out.out = append(out.out, d.out[start:end]...)
+	out.widths = append(out.widths, d.widths[start:end]...)
+	for _, z := range d.zones {
+		if z.row >= start && z.row < end {
+			z.row -= start
+			out.zones = append(out.zones, z)
+		}
+	}
+	for k, a := range d.anchors {
+		if a.row >= start && a.row < end {
+			a.row -= start
+			out.anchors[k] = a
+		}
+	}
+	return out
 }
 
 func (c *canvas) paint(s seg) string {
@@ -186,7 +262,7 @@ func (c *canvas) zone(z zone) {
 func segsWidth(segs []seg) int {
 	n := 0
 	for _, s := range segs {
-		n += utf8.RuneCountInString(s.text)
+		n += ansi.StringWidth(s.text)
 	}
 	return n
 }
@@ -196,14 +272,14 @@ func (c *canvas) add(segs ...seg) {
 	room := c.width
 	var b strings.Builder
 	for _, s := range segs {
-		n := utf8.RuneCountInString(s.text)
+		n := ansi.StringWidth(s.text)
 		cut := n > room
 		if cut {
 			if room == 0 {
 				break
 			}
-			s.text = string([]rune(s.text)[:max(room-1, 0)]) + "…"
-			n = utf8.RuneCountInString(s.text)
+			s.text = ansi.Truncate(s.text, room, "…")
+			n = ansi.StringWidth(s.text)
 		}
 		if s.act.kind != actNone && n > 0 {
 			x0 := c.width - room
@@ -218,7 +294,7 @@ func (c *canvas) add(segs ...seg) {
 	line, w := b.String(), c.width-room
 	if !c.styled {
 		line = strings.TrimRight(line, " ")
-		w = utf8.RuneCountInString(line)
+		w = ansi.StringWidth(line)
 	}
 	c.out = append(c.out, line)
 	c.widths = append(c.widths, w)
@@ -246,19 +322,19 @@ func label(name string) seg { return plain(fmt.Sprintf(" %-*s", labelWidth-1, na
 // flow adds parts joined by " · " under lead, breaking before a part that
 // does not fit; later lines hang under the lead.
 func (c *canvas) flow(lead seg, parts ...[]seg) {
-	hang := plain(strings.Repeat(" ", utf8.RuneCountInString(lead.text)))
+	hang := plain(strings.Repeat(" ", ansi.StringWidth(lead.text)))
 	line := []seg{lead}
 	room := c.width - segsWidth(line)
 	first := true
 	for _, p := range parts {
 		w := segsWidth(p)
-		if !first && room < utf8.RuneCountInString(sep)+w {
+		if !first && room < ansi.StringWidth(sep)+w {
 			c.add(line...)
 			line, room, first = []seg{hang}, c.width-segsWidth([]seg{hang}), true
 		}
 		if !first {
 			line = append(line, dim(sep))
-			room -= utf8.RuneCountInString(sep)
+			room -= ansi.StringWidth(sep)
 		}
 		line = append(line, p...)
 		room -= w
@@ -269,25 +345,33 @@ func (c *canvas) flow(lead seg, parts ...[]seg) {
 
 // wrapped adds text as lines under lead; later lines hang under it.
 func (c *canvas) wrapped(lead seg, text string, style seg) {
-	w := utf8.RuneCountInString(lead.text)
-	room := max(c.width-w, 10)
-	var line string
+	w := ansi.StringWidth(lead.text)
+	room := max(c.width-w, 1)
 	first := true
+	line := ""
 	flush := func() {
 		if line == "" {
 			return
 		}
-		t := style
-		t.text = line
+		style.text = line
 		if first {
-			c.add(lead, t)
+			c.add(lead, style)
 		} else {
-			c.add(plain(strings.Repeat(" ", w)), t)
+			c.add(plain(strings.Repeat(" ", w)), style)
 		}
 		first, line = false, ""
 	}
 	for _, word := range strings.Fields(text) {
-		if line != "" && utf8.RuneCountInString(line)+1+utf8.RuneCountInString(word) > room {
+		wordWidth := ansi.StringWidth(word)
+		if wordWidth > room {
+			flush()
+			for _, part := range strings.Split(ansi.Hardwrap(word, room, false), "\n") {
+				line = part
+				flush()
+			}
+			continue
+		}
+		if line != "" && ansi.StringWidth(line)+1+wordWidth > room {
 			flush()
 		}
 		if line != "" {
@@ -403,8 +487,11 @@ func footerBindings(v view) []key.Binding {
 		return []key.Binding{keys.Quit, keys.Help}
 	}
 	var out []key.Binding
-	if v.listed() && len(st.all()) > 1 {
-		out = append(out, keys.Up)
+	scroll := v.tab != TabSessions || v.zoom || v.locked || v.fleet == nil || v.wide() && v.pane == paneDetail
+	if scroll {
+		out = append(out, described(keys.Up, "scroll"))
+	} else if v.listed() && len(st.all()) > 1 {
+		out = append(out, described(keys.Up, "select"))
 	}
 	if !v.disconnected {
 		toggle := "pause"
@@ -438,7 +525,7 @@ func (c *canvas) footerLines(v view) [][]seg {
 		switch {
 		case line == nil:
 			line = it
-		case segsWidth(line)+utf8.RuneCountInString(sep)+segsWidth(it) <= c.width:
+		case segsWidth(line)+ansi.StringWidth(sep)+segsWidth(it) <= c.width:
 			line = append(append(line, dim(sep)), it...)
 		default:
 			out = append(out, line)
@@ -499,8 +586,31 @@ func whyOf(d route.Decision) string {
 
 func percent(p float64) string { return fmt.Sprintf("%d%%", int(math.Round(p*100))) }
 
-// savedSegs is the saving against the baseline as a sentence.
-func savedSegs(st route.Stats, baseline config.Route) []seg {
+// savedSegs is the estimate against each reply's native model as a sentence.
+func pricingComplete(st route.Stats) bool {
+	total := st.EligibleReplies
+	if total == 0 {
+		total = st.Replies
+	}
+	return total > 0 && st.PricedReplies == total
+}
+
+func pricingCoverage(st route.Stats) []seg {
+	total := st.EligibleReplies
+	if total == 0 {
+		total = st.Replies
+	}
+	word := "partial"
+	if st.PricedReplies == 0 {
+		word = "unknown"
+	}
+	return []seg{dim(fmt.Sprintf("estimate %s · %d of %d replies priced", word, st.PricedReplies, total))}
+}
+
+func savedSegs(st route.Stats) []seg {
+	if !pricingComplete(st) {
+		return pricingCoverage(st)
+	}
 	if st.BaselineUSD <= 0 {
 		return []seg{dim(`savings need "prices" in the config`)}
 	}
@@ -510,7 +620,7 @@ func savedSegs(st route.Stats, baseline config.Route) []seg {
 	if diff < 0 {
 		word, r = "cost", roleWarn
 	}
-	return []seg{plain("Routing " + word + " "), col(r, fmt.Sprintf("≈ $%.2f (%d%%)", abs(diff), pct)), plain(" vs " + routeText(baseline))}
+	return []seg{plain("Routing " + word + " "), col(r, fmt.Sprintf("≈ $%.2f (%d%%)", abs(diff), pct)), plain(" vs per-reply native basis")}
 }
 
 type activityCount struct {
