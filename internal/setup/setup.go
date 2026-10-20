@@ -32,9 +32,10 @@ const ConfigFile = "config.toml"
 const PluginEnvFile = "codex-router.env"
 
 const (
-	logsDir     = "logs"
-	portTries   = 20
-	backupStamp = "20060102T150405Z"
+	logsDir         = "logs"
+	portTries       = 20
+	backupStamp     = "20060102T150405Z"
+	pluginEnvHeader = "# codex-router setup wrote this for the codex-router plugin; setup --undo removes it.\n"
 )
 
 // Options configure Run.
@@ -139,6 +140,11 @@ func (r runner) install(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if unmanaged, err := r.unmanagedPluginEnv(); err != nil {
+		return err
+	} else if unmanaged {
+		return fmt.Errorf("setup: %s was not created by codex-router setup; move it before running setup", r.pluginEnvPath())
+	}
 	if r.o.DryRun {
 		r.printf("dry run: would store port %d and a token in %s\n", port, r.dir)
 		for _, u := range r.o.Service.Units(r.o.Home.ID) {
@@ -235,15 +241,44 @@ func (r runner) pluginEnv() ([]byte, error) {
 	if strings.ContainsAny(r.o.Bin+r.o.StateDir, "\r\n") {
 		return nil, errors.New("setup: the binary or state dir path holds a line break")
 	}
-	return fmt.Appendf(nil, "# codex-router setup wrote this for the codex-router plugin; setup --undo removes it.\n"+
+	return fmt.Appendf(nil, pluginEnvHeader+
 		"CODEX_ROUTER_BIN=%s\nXDG_STATE_HOME=%s\n", r.o.Bin, r.o.StateDir), nil
 }
 
-// removePluginEnv deletes PluginEnvFile, if any.
+// unmanagedPluginEnv refuses symlinks and files without setup's ownership marker.
+// The marker is unchanged from earlier releases so upgrades can reuse their files.
+func (r runner) unmanagedPluginEnv() (bool, error) {
+	p := r.pluginEnvPath()
+	fi, err := os.Lstat(p)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("setup: %w", err)
+	}
+	if !fi.Mode().IsRegular() {
+		return true, nil
+	}
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return false, fmt.Errorf("setup: %w", err)
+	}
+	return !bytes.HasPrefix(b, []byte(pluginEnvHeader)), nil
+}
+
+// removePluginEnv deletes only a file owned by setup.
 func (r runner) removePluginEnv() error {
 	p := r.pluginEnvPath()
-	if _, err := os.Lstat(p); err != nil {
+	if unmanaged, err := r.unmanagedPluginEnv(); err != nil {
+		return err
+	} else if unmanaged {
+		r.printf("kept %s: not created by codex-router setup\n", p)
 		return nil
+	}
+	if _, err := os.Lstat(p); errors.Is(err, fs.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("setup: %w", err)
 	}
 	if r.o.DryRun {
 		r.printf("dry run: would remove %s\n", p)

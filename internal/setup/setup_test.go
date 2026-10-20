@@ -425,6 +425,71 @@ func TestSetupRerunKeepsPortAndToken(t *testing.T) {
 	}
 }
 
+func TestSetupPreservesUnmanagedPluginEnv(t *testing.T) {
+	for _, kind := range []string{"file", "symlink", "directory"} {
+		for _, undo := range []bool{false, true} {
+			t.Run(kind+"/undo="+strconv.FormatBool(undo), func(t *testing.T) {
+				f := newFixture(t, userConfig)
+				p := filepath.Join(f.h.Path, PluginEnvFile)
+				const content = "CODEX_ROUTER_BIN=/my/router\n"
+				switch kind {
+				case "file":
+					if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				case "symlink":
+					target := filepath.Join(t.TempDir(), "user.env")
+					if err := os.WriteFile(target, []byte(content), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.Symlink(target, p); err != nil {
+						t.Fatal(err)
+					}
+				case "directory":
+					if err := os.Mkdir(p, 0o700); err != nil {
+						t.Fatal(err)
+					}
+				}
+				o := f.options()
+				o.Undo = undo
+				err := f.run(t, o)
+				if undo {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), "not created by codex-router setup") {
+					t.Errorf("setup = %v, want an unmanaged-file error", err)
+				}
+				fi, err := os.Lstat(p)
+				if err != nil {
+					t.Fatalf("user path lost: %v", err)
+				}
+				if kind == "symlink" && fi.Mode()&os.ModeSymlink == 0 {
+					t.Error("user symlink replaced")
+				}
+				if kind == "directory" {
+					if !fi.IsDir() {
+						t.Error("user directory replaced")
+					}
+				} else if got := readFile(t, p); got != content {
+					t.Errorf("user file changed: %q", got)
+				}
+				if got := readFile(t, f.configPath()); got != userConfig {
+					t.Error("config changed")
+				}
+				if !undo && (f.runner.count() != 0 || len(f.mgr.Installed(f.h.ID)) != 0) {
+					t.Error("refused setup touched services")
+				}
+				if !undo {
+					if _, err := os.Stat(f.stateDir()); !os.IsNotExist(err) {
+						t.Error("refused setup wrote state")
+					}
+				}
+			})
+		}
+	}
+}
+
 func TestSetupDryRunWritesNothing(t *testing.T) {
 	for _, undo := range []bool{false, true} {
 		t.Run("undo="+strconv.FormatBool(undo), func(t *testing.T) {
