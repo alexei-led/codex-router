@@ -117,15 +117,24 @@ func (l launchd) unload(ctx context.Context, us []Unit) {
 // state: a loaded edge is up (launchd holds its port and starts it on
 // demand); a brain is up only while it runs.
 func (l launchd) state(ctx context.Context, u *Unit) {
+	_ = l.readState(ctx, u)
+}
+
+func (l launchd) readState(ctx context.Context, u *Unit) error {
 	u.State = Down
 	out, err := l.run(ctx, "launchctl", "print", l.domain()+"/"+u.Name)
 	if err != nil {
-		return
+		lower := strings.ToLower(out)
+		if strings.Contains(lower, "could not find service") || strings.Contains(lower, "not loaded") {
+			return nil
+		}
+		return err
 	}
 	u.loaded = true
 	if u.Role == RoleEdge || strings.Contains(out, "state = running") {
 		u.State = Up
 	}
+	return nil
 }
 
 // start bootstraps a unit launchd does not know and kickstarts one it knows

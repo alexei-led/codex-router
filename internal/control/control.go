@@ -67,6 +67,7 @@ type Hello struct {
 	Kind       string    `json:"kind"`
 	Home       home.Home `json:"home"`
 	Label      string    `json:"label,omitempty"`
+	Version    string    `json:"version,omitempty"`
 }
 
 // Message is one server-to-client line. ID echoes the request's id on ack

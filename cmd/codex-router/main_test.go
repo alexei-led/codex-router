@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -38,6 +39,229 @@ func testEnv(t *testing.T) []string {
 	t.Helper()
 	home := t.TempDir()
 	return []string{"HOME=" + home, "TMPDIR=" + home, "CODEX_HOME=" + home, envConfig + "=" + filepath.Join(home, "none.json")}
+}
+
+func TestDoctorJSONDoesNotCreateState(t *testing.T) {
+	homePath, state := t.TempDir(), t.TempDir()
+	env := append(testEnv(t), "CODEX_HOME="+homePath, "XDG_STATE_HOME="+state)
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{"doctor", "--json"}, env, nil, &stdout, &stderr)
+	if code != exitOK {
+		t.Fatalf("doctor exit %d, stderr %q, report %s", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		Version  string `json:"version"`
+		Errors   int    `json:"errors"`
+		Warnings int    `json:"warnings"`
+		Checks   []struct {
+			Name   string `json:"name"`
+			Status string `json:"status"`
+			Detail string `json:"detail"`
+		} `json:"checks"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("decode doctor report: %v: %s", err, stdout.String())
+	}
+	if report.Version != version || report.Errors != 0 || report.Warnings == 0 {
+		t.Errorf("report = %+v; want current version, no errors, and normal fresh-install warnings", report)
+	}
+	for _, name := range []string{"config", "state", "registry", "services", "catalog", "classifier", "launcher-logs", "runtime-dirs", "proxy-port"} {
+		if !slices.ContainsFunc(report.Checks, func(check struct {
+			Name   string `json:"name"`
+			Status string `json:"status"`
+			Detail string `json:"detail"`
+		}) bool {
+			return strings.HasPrefix(check.Name, name)
+		}) {
+			t.Errorf("report lacks %q check: %+v", name, report.Checks)
+		}
+	}
+	if _, err := os.Lstat(filepath.Join(state, "codex-router")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("doctor created state: Lstat = %v", err)
+	}
+}
+
+func TestDoctorPortProbeOnlyBindsAndDoesNotConnect(t *testing.T) {
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	port := ln.Addr().(*net.TCPAddr).Port
+	state := t.TempDir()
+	app := filepath.Join(state, "codex-router")
+	dir := statedir.HomeDir(app, "3fa9c0d1e2b4")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, statedir.PortFile), []byte(strconv.Itoa(port)+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	probe := probeDoctorPort(app, "3fa9c0d1e2b4")
+	if !probe.occupied || probe.port != port {
+		t.Fatalf("port probe = %+v, want held port %d", probe, port)
+	}
+
+	tcpListener := ln.(*net.TCPListener)
+	if err := tcpListener.SetDeadline(time.Now().Add(20 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	if conn, err := tcpListener.Accept(); err == nil {
+		_ = conn.Close()
+		t.Fatal("port probe connected to the listener")
+	} else {
+		var netErr net.Error
+		if !errors.As(err, &netErr) || !netErr.Timeout() {
+			t.Fatalf("Accept = %v, want timeout without a connection", err)
+		}
+	}
+
+	var report doctorReport
+	reportDoctorPort(probe, doctorServiceState{readable: true}, "3fa9c0d1e2b4", &report)
+	if report.Errors != 1 || !strings.Contains(report.Checks[0].Detail, "unexpected listener is unverified") {
+		t.Errorf("port classification = %+v, want an unverified unexpected listener error", report)
+	}
+}
+
+func TestDoctorInvalidConfigIsClearAndDoesNotPrintItsContents(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	const secret = "doctor-config-secret-marker"
+	if err := os.WriteFile(path, []byte(`{"unknown":"`+secret+`"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{"--config", path, "doctor"}, testEnv(t), nil, &stdout, &stderr)
+	out := stdout.String() + stderr.String()
+	if code != exitError || !strings.Contains(out, "invalid config") || strings.Contains(out, secret) {
+		t.Errorf("exit %d, output %q; want clear error without config contents", code, out)
+	}
+}
+
+func TestDoctorReadsSetUpServiceStatusWithoutStartingUnits(t *testing.T) {
+	homePath, stateBase, configHome, userHome := t.TempDir(), t.TempDir(), t.TempDir(), t.TempDir()
+	h, err := home.Resolve(func(k string) string {
+		if k == "CODEX_HOME" {
+			return homePath
+		}
+		return ""
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := filepath.Join(stateBase, "codex-router")
+	if err := os.MkdirAll(statedir.HomeDir(app, h.ID), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	mgr, err := service.New(service.Options{GOOS: runtime.GOOS, Home: userHome, ConfigHome: configHome, UID: os.Getuid()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, unit := range mgr.Units(h.ID) {
+		if err := os.MkdirAll(filepath.Dir(unit.Path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(unit.Path, []byte("fake unit"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	oldRunner := serviceRunner
+	var calls []string
+	serviceRunner = func(_ context.Context, name string, args ...string) (string, error) {
+		calls = append(calls, name+" "+strings.Join(args, " "))
+		if name == "launchctl" && strings.Contains(strings.Join(args, " "), ".brain") {
+			return "state = running", nil
+		}
+		if name == "systemctl" {
+			return "active\n", nil
+		}
+		return "", nil
+	}
+	t.Cleanup(func() { serviceRunner = oldRunner })
+
+	env := append(testEnv(t), "HOME="+userHome, "CODEX_HOME="+homePath, "XDG_STATE_HOME="+stateBase, "XDG_CONFIG_HOME="+configHome)
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{"doctor", "--home", homePath, "--state-dir", stateBase}, env, nil, &stdout, &stderr)
+	if code != exitOK || !strings.Contains(stdout.String(), "edge: up") || !strings.Contains(stdout.String(), "brain: up") {
+		t.Fatalf("doctor exit %d, report %q, stderr %q; want both units up", code, stdout.String(), stderr.String())
+	}
+	if len(calls) == 0 {
+		t.Fatal("doctor did not query service status")
+	}
+	for _, call := range calls {
+		if strings.Contains(call, "start") || strings.Contains(call, "enable") || strings.Contains(call, "kickstart") || strings.Contains(call, "bootstrap") {
+			t.Errorf("doctor started or repaired a service: %s", call)
+		}
+	}
+}
+
+func TestDoctorReportsEndpointVersionAndIdentityProblems(t *testing.T) {
+	homePath, state := t.TempDir(), t.TempDir()
+	env := append(testEnv(t), "CODEX_HOME="+homePath, "XDG_STATE_HOME="+state)
+	root, err := registry.Root(func(k string) string {
+		if k == "XDG_STATE_HOME" {
+			return state
+		}
+		return ""
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sockDir, err := os.MkdirTemp("/tmp", "crdoctor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(sockDir) })
+	writeEndpoint := func(ep registry.Endpoint, hello control.Hello) {
+		t.Helper()
+		ep.Socket = filepath.Join(sockDir, ep.ID+".sock")
+		srv, err := control.Listen(ep.Socket, endpointHandler{hello: hello})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = srv.Close() })
+		if err := registry.Write(root, ep); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeEndpoint(registry.Endpoint{ID: "old", Kind: registry.KindSession, Home: homeWork}, control.Hello{EndpointID: "old", Kind: registry.KindSession, Home: homeWork})
+	writeEndpoint(registry.Endpoint{ID: "different", Kind: registry.KindBrain, Home: homeDefault, Version: "release-a"}, control.Hello{EndpointID: "different", Kind: registry.KindBrain, Home: homeDefault, Version: "release-b"})
+	writeEndpoint(registry.Endpoint{ID: "identity", Kind: registry.KindSession, Home: homeWork}, control.Hello{EndpointID: "other", Kind: registry.KindSession, Home: homeWork})
+
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{"doctor", "--json"}, env, nil, &stdout, &stderr)
+	out := stdout.String() + stderr.String()
+	if code != exitError || !strings.Contains(out, "version missing") || !strings.Contains(out, "version differs") || !strings.Contains(out, "identity mismatch") {
+		t.Errorf("exit %d, report %q, stderr %q; want version and identity findings", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestDoctorDoesNotExposeClassifierKeyOrInspectCredentialFile(t *testing.T) {
+	homePath := t.TempDir()
+	cfg := config.Default()
+	cc := cfg.Classifiers[cfg.Classifier]
+	cc.KeyEnv = "DOCTOR_TEST_KEY"
+	cc.EnvFile = filepath.Join(t.TempDir(), "credentials.env")
+	cfg.Classifiers[cfg.Classifier] = cc
+	cfgPath := filepath.Join(t.TempDir(), "config.json")
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgPath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	const secret = "doctor-classifier-secret-marker"
+	env := append(testEnv(t), "CODEX_HOME="+homePath, envConfig+"="+cfgPath, "DOCTOR_TEST_KEY="+secret)
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{"doctor", "--json"}, env, nil, &stdout, &stderr)
+	out := stdout.String() + stderr.String()
+	if code != exitOK || !strings.Contains(out, "key present") || strings.Contains(out, secret) {
+		t.Errorf("exit %d, output %q; want presence only without the key value", code, out)
+	}
+	if strings.Contains(out, cc.EnvFile) {
+		t.Errorf("report exposed configured credential-file path: %s", out)
+	}
 }
 
 func TestRunPrints(t *testing.T) {

@@ -364,6 +364,26 @@ func TestStatusAndEnsure(t *testing.T) {
 	}
 }
 
+func TestStatusReadOnlyReturnsManagerErrorsWithoutStartingUnits(t *testing.T) {
+	f := &fakeRunner{}
+	m, _ := newManager(t, "linux", f)
+	if err := m.Install(context.Background(), spec("h1")); err != nil {
+		t.Fatal(err)
+	}
+	f.take()
+	f.replies = map[string]reply{
+		"systemctl --user is-active": {"", errors.New("manager unavailable")},
+	}
+	if _, err := m.StatusReadOnly(context.Background(), "h1"); err == nil || !strings.Contains(err.Error(), "manager unavailable") {
+		t.Errorf("StatusReadOnly error = %v, want manager error", err)
+	}
+	for _, call := range f.take() {
+		if strings.Contains(call, " start ") || strings.Contains(call, "enable") || strings.Contains(call, "kickstart") || strings.Contains(call, "bootstrap") {
+			t.Errorf("read-only status started or changed a service: %s", call)
+		}
+	}
+}
+
 func TestExecLineQuotes(t *testing.T) {
 	got := execLine([]string{"/opt/bin/codex-router", "--home", `/Users/u/my "codex" 100%`, `$HOME\x`})
 	want := `"/opt/bin/codex-router" "--home" "/Users/u/my \"codex\" 100%%" "$$HOME\\x"`

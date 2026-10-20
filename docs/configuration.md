@@ -153,7 +153,7 @@ The brain (`codex-router setup`) runs under launchd or systemd and does not see 
 { "classifiers": { "jev": { "envFile": "~/.config/codex-router/.env" } } }
 ```
 
-The file holds the line `TYPESAFE_API_KEY=...`. One file can hold several keys and the Cloudflare account ID (`CLOUDFLARE_API_TOKEN=...`, `CLOUDFLARE_ACCOUNT_ID=...`, `OPENAI_API_KEY=...`); each classifier reads only its own. The wrapper can read the same file, so the key need not be in your shell. Rules:
+The file holds the line `TYPESAFE_API_KEY=...`. One file can hold several keys and the Cloudflare account ID (`CLOUDFLARE_API_TOKEN=...`, `CLOUDFLARE_ACCOUNT_ID=...`, `OPENAI_API_KEY=...`). Each classifier reads only its own values. The wrapper can read the same file, so the key need not be in your shell. `codex-router doctor` does not inspect this file. It reports key presence from the process environment only. File-backed presence is unverified. Rules:
 
 - The env var wins over the file. The file is read only when the variable is unset.
 - Lines are `KEY=value` or `export KEY=value`. Quotes (`'…'`, `"…"`, no escapes) are allowed. A line that starts with `#` is a comment, and so is ` #…` after an unquoted value. Only the `keyEnv` key and the endpoint placeholders are read, the last assignment wins, and nothing from the file goes into the process env.
@@ -175,6 +175,8 @@ With `jev`, text goes to `api.typesafe.ai`. Clef uses `api.cloudflare.com`, and 
 Provider retention and training policies are outside the router's control. Check the selected provider's terms before sending private work.
 
 Failure rules: one routing ask gets up to two attempts inside `timeoutMs`. Ollama can also send a separate activity request within that same deadline. It gets one attempt. Three consecutive failures pause classification for 60 seconds. A missing key or cancelled call does not count as a failure. One ask runs at a time.
+
+A queued ask waits for that single slot. `classifier.Health.QueueWait` records the most recent wait before slot acquisition, and `QueueTimeouts` counts asks whose own deadline expired while queued; a cancelled ask is not counted. The client logs `classifier-queue-timeout` with the wait duration. `Health.Latency` and `Advice.Latency` start after the slot is acquired, so they exclude queue wait. Queue observability does not change the one-slot limit, retries, breaker, or decision behavior.
 
 When a decision fails or times out, that request is forwarded unchanged. The router's decision deadline is the classifier timeout plus 200 ms. Explicit pins and the context guard can still affect other requests while classification is off.
 

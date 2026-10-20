@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -217,6 +218,30 @@ func (h *harness) assertUnregistered(t *testing.T) {
 	t.Helper()
 	if eps := h.registered(t); len(eps) != 0 {
 		t.Errorf("registry still holds %+v", eps)
+	}
+}
+
+func TestSessionRecordsSoftwareVersion(t *testing.T) {
+	h := newHarness(t)
+	h.opts.Version = "v-test"
+	h.opts.Probe = func(context.Context, int) error { return nil }
+	s, err := start(context.Background(), h.opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.close()
+
+	eps := h.registered(t)
+	if len(eps) != 1 || eps[0].Version != h.opts.Version {
+		t.Fatalf("registry entries = %+v, want version %q", eps, h.opts.Version)
+	}
+	c, err := control.Dial(eps[0].Socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close() }()
+	if got := c.Hello().Version; got != h.opts.Version {
+		t.Errorf("hello version = %q, want %q", got, h.opts.Version)
 	}
 }
 
@@ -570,6 +595,92 @@ func TestLogDir(t *testing.T) {
 				t.Errorf("logDir = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestLogRetentionKeepsNewestFortyAndOnlyRemovesRunLogs(t *testing.T) {
+	dir := t.TempDir()
+	var active string
+	for i := range logRetentionCount + 5 {
+		name := fmt.Sprintf("%08x.log", i)
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte("log"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		stamp := time.Date(2026, 1, 1, 0, 0, i, 0, time.UTC)
+		if err := os.Chtimes(path, stamp, stamp); err != nil {
+			t.Fatal(err)
+		}
+		if i == logRetentionCount+4 {
+			active = path
+		}
+	}
+	unrelated := filepath.Join(dir, "notes.log")
+	if err := os.WriteFile(unrelated, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	namedDir := filepath.Join(dir, "000000fe.log")
+	if err := os.Mkdir(namedDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(dir, "unrelated-target")
+	if err := os.WriteFile(target, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	symlink := filepath.Join(dir, "000000fd.log")
+	if err := os.Symlink(target, symlink); err != nil {
+		t.Fatal(err)
+	}
+
+	if errs := retainLogs(dir, active, os.Remove); len(errs) != 0 {
+		t.Fatalf("retention errors = %v", errs)
+	}
+	var logCount int
+	for i := range logRetentionCount + 5 {
+		path := filepath.Join(dir, fmt.Sprintf("%08x.log", i))
+		_, err := os.Lstat(path)
+		if err == nil {
+			logCount++
+			if i < 5 {
+				t.Errorf("old log %s was not pruned", path)
+			}
+		} else if i >= 5 {
+			t.Errorf("new log %s was removed: %v", path, err)
+		}
+	}
+	if logCount != logRetentionCount {
+		t.Errorf("remaining run logs = %d, want %d", logCount, logRetentionCount)
+	}
+	for _, path := range []string{active, unrelated, namedDir, symlink, target} {
+		if _, err := os.Lstat(path); err != nil {
+			t.Errorf("unrelated/active path %s was changed: %v", path, err)
+		}
+	}
+	if fi, err := os.Lstat(symlink); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("symlink %s was followed or replaced: info=%v err=%v", symlink, fi, err)
+	}
+}
+
+func TestLogRetentionRemovalErrorsDoNotFailOpening(t *testing.T) {
+	state := t.TempDir()
+	dir := filepath.Join(state, RuntimeDirName, logDirName)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for i := range logRetentionCount + 1 {
+		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("%08x.log", i)), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	log, restore := openLogWith(Options{Env: []string{"XDG_STATE_HOME=" + state}, Stderr: io.Discard}, "ffffffff", func(string) error { return os.ErrPermission })
+	log.Info("startup continued")
+	restore()
+	if _, err := os.Stat(filepath.Join(dir, "ffffffff.log")); err != nil {
+		t.Errorf("active log was removed or opening failed: %v", err)
+	}
+	contents, err := os.ReadFile(filepath.Join(dir, "ffffffff.log"))
+	if err != nil || !strings.Contains(string(contents), `"msg":"log-retention-failed"`) {
+		t.Errorf("retention warning = %s, %v; want a warning in the log", contents, err)
 	}
 }
 

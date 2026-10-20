@@ -26,6 +26,25 @@ var testHello = Hello{EndpointID: "ep-1", Kind: "session", Home: home.Home{ID: t
 
 func sid(thread string) string { return SessionID(testHome, thread) }
 
+func TestLegacyHelloDecodesWithoutVersion(t *testing.T) {
+	var h Hello
+	if err := json.Unmarshal([]byte(`{"endpoint_id":"ep-1","kind":"session","home":{"id":"3fa9c0d1e2b4","path":"/h/.codex-work","name":"work"}}`), &h); err != nil {
+		t.Fatal(err)
+	}
+	if h.EndpointID != "ep-1" || h.Version != "" {
+		t.Errorf("legacy hello = %+v, want empty version", h)
+	}
+
+	h.Version = "v0.7.2"
+	b, err := json.Marshal(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"version":"v0.7.2"`) {
+		t.Errorf("versioned hello JSON = %s", b)
+	}
+}
+
 type fakeHandler struct {
 	mu       sync.Mutex
 	sessions []route.SessionInfo

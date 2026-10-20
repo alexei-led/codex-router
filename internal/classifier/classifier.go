@@ -62,9 +62,11 @@ type Doer interface {
 
 // Health is the client's breaker state.
 type Health struct {
-	Failures    int
-	PausedUntil time.Time
-	Latency     time.Duration
+	Failures      int
+	PausedUntil   time.Time
+	Latency       time.Duration
+	QueueWait     time.Duration
+	QueueTimeouts uint64
 	// LastError is why the last call failed, as a short code such as
 	// "timeout" or "http 503". Never the key or a response body. Empty after
 	// a success.

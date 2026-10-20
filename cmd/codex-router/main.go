@@ -26,6 +26,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/brain"
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/hook"
 	"github.com/alexei-led/codex-router/internal/launcher"
@@ -60,6 +61,8 @@ Usage:
   codex-router tui [--session ID|LABEL] [--socket PATH] [--no-mouse]
                                                      show the router panel
   codex-router sessions [--json]                     list running sessions
+  codex-router [--config PATH] doctor [--home PATH] [--state-dir DIR] [--json]
+                                                     read-only operational diagnostics
   codex-router hook                                  Codex hook: print a line when the route switched
   codex-router [--config PATH] proxy [--port N]      run the proxy alone (debugging, codex exec)
   codex-router [--config PATH] edge [--home PATH] [--state-dir DIR]
@@ -91,6 +94,10 @@ starts at a " · " (for example "repo · branch" or a branch name).
 panel otherwise takes clicks on tabs, sessions, pins and presets.
 sessions prints one line per session: id, home, label, mode, route; --json
 prints the full session list with each session's endpoint_id.
+doctor checks configuration, private state paths, registry endpoints,
+service status, caches, classifier key availability, logs and runtime dirs.
+It never starts services or reads classifier credential files. --json prints
+machine-readable checks; warnings do not affect its exit status.
 proxy --port defaults to the config's proxy.port (0 = any free port) and
 prints the codex -c flags that point at it.
 edge holds the provider port of one Codex home (--home, else $CODEX_HOME,
@@ -133,6 +140,7 @@ Exit codes:
   tui      0 on quit, 1 on error or when no session matches --session,
            2 when several sessions match --session (they are listed)
   sessions 0, also when no session runs; 1 on error
+  doctor   0 when no errors are found; 1 when at least one error is found
   hook     0, also when the router is not running; 1 only when stdout fails
   proxy    0 after SIGINT or SIGTERM, 1 on error
   edge     0 after SIGINT or SIGTERM, 1 on error or when the home is not set up
@@ -202,6 +210,8 @@ func run(ctx context.Context, args, env []string, stdin io.Reader, stdout, stder
 			return c.tui(ctx, rest)
 		case "sessions":
 			return c.sessions(rest)
+		case "doctor":
+			return c.doctor(ctx, g.config, rest)
 		case "proxy":
 			return c.proxy(ctx, g.config, rest)
 		case "edge":
@@ -280,7 +290,7 @@ func (c cli) loadConfig(flagPath string) (config.Config, error) {
 var launchExec func(path string, argv, env []string) error
 
 func (c cli) launch(configPath string, codexArgs []string) int {
-	o := launcher.Options{CodexArgs: codexArgs, Env: c.env, Stderr: c.stderr, Exec: launchExec}
+	o := launcher.Options{CodexArgs: codexArgs, Env: c.env, Stderr: c.stderr, Exec: launchExec, Version: version}
 	cfg, err := c.loadConfig(configPath)
 	if err != nil {
 		if err := launcher.Fallback(o, err); err != nil {
@@ -637,7 +647,7 @@ func (c cli) brain(ctx context.Context, configPath string, args []string) int {
 	models := catalog.NewCacheWatch(filepath.Join(h.Path, catalog.CacheFile), store, nil)
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := brain.Run(ctx, brain.Options{Home: h, Deps: deps, Getenv: c.getenv, Models: models}); err != nil {
+	if err := brain.Run(ctx, brain.Options{Home: h, Version: version, Deps: deps, Getenv: c.getenv, Models: models}); err != nil {
 		return c.fail(err)
 	}
 	return exitOK
@@ -727,6 +737,587 @@ func (c cli) setup(ctx context.Context, configPath string, args []string) int {
 		return c.fail(err)
 	}
 	return exitOK
+}
+
+type doctorCheck struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	Detail string `json:"detail"`
+}
+
+type doctorReport struct {
+	Version  string        `json:"version"`
+	Errors   int           `json:"errors"`
+	Warnings int           `json:"warnings"`
+	Checks   []doctorCheck `json:"checks"`
+}
+
+func (d *doctorReport) add(status, name, detail string) {
+	d.Checks = append(d.Checks, doctorCheck{Name: name, Status: status, Detail: detail})
+	switch status {
+	case "error":
+		d.Errors++
+	case "warning":
+		d.Warnings++
+	}
+}
+
+// doctor runs read-only diagnostics. It does not invoke setup, service ensure,
+// the classifier, or any network health endpoint.
+func (c cli) doctor(ctx context.Context, configFlag string, args []string) int {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	asJSON := fs.Bool("json", false, "print machine-readable checks as JSON")
+	c, h, code, ok := c.homeFlags(fs, args, true)
+	if !ok {
+		return code
+	}
+	report := doctorReport{Version: safeDoctorVersion(version)}
+
+	configPath, priority, err := c.doctorConfigPath(configFlag)
+	var cfg config.Config
+	configOK := false
+	if err != nil {
+		report.add("error", "config", "config path could not be resolved")
+	} else if cfg, err = config.Load(configPath); err != nil {
+		report.add("error", "config", fmt.Sprintf("invalid config at %s (priority: %s); check JSON syntax, known fields and values", configPath, priority))
+	} else {
+		configOK = true
+		if _, err := os.Stat(configPath); errors.Is(err, os.ErrNotExist) {
+			report.add("ok", "config", fmt.Sprintf("using defaults; no file at %s (priority: %s)", configPath, priority))
+		} else {
+			report.add("ok", "config", fmt.Sprintf("loaded %s (priority: %s)", configPath, priority))
+		}
+	}
+
+	app, err := statedir.Dir(c.getenv)
+	if err != nil {
+		report.add("error", "state", "state directory path could not be resolved")
+		if emitErr := emitDoctor(c.stdout, report, *asJSON); emitErr != nil {
+			return c.fail(emitErr)
+		}
+		return exitError
+	}
+	statePrivate := checkPrivatePath(&report, "state", app)
+	appInfo, appStatErr := os.Lstat(app)
+	stateTreeSafe := errors.Is(appStatErr, os.ErrNotExist) ||
+		(appStatErr == nil && appInfo.IsDir() && appInfo.Mode()&os.ModeSymlink == 0 && statePrivate)
+
+	// This bind-only probe cannot activate launchd or systemd socket units.
+	// Run it before service status checks, and never connect to the port.
+	portProbe := probeDoctorPort(app, h.ID)
+	root := filepath.Join(app, "registry")
+	var eps []registry.Endpoint
+	registryOK := false
+	if stateTreeSafe {
+		eps, registryOK = doctorRegistry(&report, root)
+	} else {
+		report.add("warning", "registry", "not inspected because the state directory is not private")
+	}
+	liveEndpoints := make(map[string]struct{}, len(eps))
+	homeIDs := map[string]struct{}{h.ID: {}}
+	for _, ep := range eps {
+		if doctorHomeID(ep.Home.ID) {
+			homeIDs[ep.Home.ID] = struct{}{}
+		} else {
+			report.add("error", "registry", fmt.Sprintf("endpoint %q has an invalid home id", ep.ID))
+		}
+		client, err := control.Dial(ep.Socket)
+		if err != nil {
+			report.add("error", "endpoint "+strconv.Quote(ep.ID), "control socket did not answer the hello")
+			doctorVersionCheck(&report, ep, nil)
+			continue
+		}
+		hello := client.Hello()
+		_ = client.Close()
+		if hello.EndpointID != ep.ID || hello.Kind != ep.Kind || hello.Home != ep.Home {
+			report.add("error", "endpoint "+strconv.Quote(ep.ID), "control hello identity mismatch")
+		} else {
+			liveEndpoints[ep.ID] = struct{}{}
+			report.add("ok", "endpoint "+strconv.Quote(ep.ID), "control hello answered and identity matches")
+		}
+		doctorVersionCheck(&report, ep, &hello)
+	}
+
+	ids := make([]string, 0, len(homeIDs))
+	for id := range homeIDs {
+		if doctorHomeID(id) {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	serviceStates := c.doctorServices(ctx, ids, h.ID, &report)
+	checkDoctorHomeDirs(app, ids, serviceStates, h.ID, &report)
+	reportDoctorPort(portProbe, serviceStates[h.ID], h.ID, &report)
+	if configOK {
+		doctorClassifier(&report, cfg, c.getenv)
+	} else {
+		report.add("warning", "classifier", "not checked because config is invalid or unavailable")
+	}
+	doctorCatalog(&report, h)
+	if stateTreeSafe {
+		doctorLauncherLogs(&report, filepath.Join(app, "logs"))
+	} else {
+		report.add("warning", "launcher-logs", "not inspected because the state directory is not private")
+	}
+	if registryOK {
+		doctorRuntimeDirs(&report, launcher.RuntimeBase(c.getenv), liveEndpoints)
+	} else {
+		report.add("warning", "runtime-dirs", "not checked because the registry could not be read")
+	}
+
+	if err := emitDoctor(c.stdout, report, *asJSON); err != nil {
+		return c.fail(err)
+	}
+	if report.Errors > 0 {
+		return exitError
+	}
+	return exitOK
+}
+
+func (c cli) doctorConfigPath(flagPath string) (string, string, error) {
+	if flagPath != "" {
+		return flagPath, "--config", nil
+	}
+	if path := c.getenv(envConfig); path != "" {
+		return path, "$CODEX_ROUTER_CONFIG", nil
+	}
+	if dir := c.getenv("XDG_CONFIG_HOME"); filepath.IsAbs(dir) {
+		return filepath.Join(dir, config.DirName, config.FileName), "$XDG_CONFIG_HOME", nil
+	}
+	h := c.getenv("HOME")
+	if !filepath.IsAbs(h) {
+		return "", "", errors.New("HOME is not an absolute path")
+	}
+	return filepath.Join(h, ".config", config.DirName, config.FileName), "$HOME/.config", nil
+}
+
+func safeDoctorVersion(v string) string {
+	if v == "" || len(v) > 64 {
+		return "unknown"
+	}
+	for _, r := range v {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') && !strings.ContainsRune("._+-", r) {
+			return "unrecognized"
+		}
+	}
+	return v
+}
+
+func doctorVersionCheck(report *doctorReport, ep registry.Endpoint, hello *control.Hello) {
+	var findings []string
+	if ep.Version == "" {
+		findings = append(findings, "registry software version missing")
+	} else if ep.Version != version {
+		findings = append(findings, fmt.Sprintf("registry version differs from doctor version (%s vs %s)", safeDoctorVersion(ep.Version), safeDoctorVersion(version)))
+	}
+	if hello != nil {
+		if hello.Version == "" {
+			findings = append(findings, "hello software version missing")
+		} else {
+			if ep.Version != "" && ep.Version != hello.Version {
+				findings = append(findings, fmt.Sprintf("registry and hello versions differ (%s vs %s)", safeDoctorVersion(ep.Version), safeDoctorVersion(hello.Version)))
+			}
+			if hello.Version != version {
+				findings = append(findings, fmt.Sprintf("hello version differs from doctor version (%s vs %s)", safeDoctorVersion(hello.Version), safeDoctorVersion(version)))
+			}
+		}
+	}
+	name := "version " + strconv.Quote(ep.ID)
+	if len(findings) == 0 {
+		report.add("ok", name, "registry and hello software versions match the doctor version")
+		return
+	}
+	findings = append(findings, "release mismatch does not imply protocol incompatibility")
+	report.add("warning", name, strings.Join(findings, "; "))
+}
+
+func doctorHomeID(id string) bool {
+	if len(id) != 12 {
+		return false
+	}
+	for _, r := range id {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func doctorRegistry(report *doctorReport, root string) ([]registry.Endpoint, bool) {
+	fi, err := os.Lstat(root)
+	if errors.Is(err, os.ErrNotExist) {
+		report.add("warning", "registry", "directory is not present; no endpoints are registered yet")
+		return nil, true
+	}
+	if err != nil {
+		report.add("error", "registry", "directory could not be inspected")
+		return nil, false
+	}
+	if !fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 {
+		report.add("error", "registry", "path is not a real directory")
+		return nil, false
+	}
+	if err := statedir.CheckPrivate(root); err != nil {
+		report.add("error", "registry", "directory is not private to this user")
+		return nil, false
+	}
+	eps, skipped, err := registry.List(root)
+	if err != nil {
+		report.add("error", "registry", "entries could not be listed")
+		return nil, false
+	}
+	report.add("ok", "registry", fmt.Sprintf("listed %d endpoint entries", len(eps)))
+	if len(skipped) > 0 {
+		report.add("error", "registry", fmt.Sprintf("%d invalid entries were skipped", len(skipped)))
+	}
+	return eps, true
+}
+
+type doctorServiceState struct {
+	setup, readable, edgeUp bool
+}
+
+func (c cli) doctorServices(ctx context.Context, ids []string, selectedID string, report *doctorReport) map[string]doctorServiceState {
+	states := make(map[string]doctorServiceState, len(ids))
+	mgr, err := c.services()
+	if err != nil {
+		report.add("error", "services", "service status could not be initialized on this platform")
+		return states
+	}
+	for _, id := range ids {
+		allUnits := mgr.Units(id)
+		installed := mgr.Installed(id)
+		status := doctorServiceState{setup: len(installed) > 0, readable: true}
+		statusCtx, cancel := context.WithTimeout(ctx, ensureTimeout)
+		units, err := mgr.StatusReadOnly(statusCtx, id)
+		cancel()
+		if err != nil {
+			status.readable = false
+			if id == selectedID || len(installed) > 0 {
+				report.add("error", "services "+id, "read-only service status could not be read")
+			}
+			states[id] = status
+			continue
+		}
+		if id == selectedID || len(installed) > 0 {
+			report.add("ok", "services "+id, "read-only service status is available")
+		}
+		if len(installed) == 0 {
+			if id == selectedID {
+				report.add("warning", "services "+id, "no service units are installed for this home")
+			}
+			states[id] = status
+			continue
+		}
+		if len(installed) != len(allUnits) {
+			report.add("error", "services "+id, fmt.Sprintf("only %d of %d service unit files are installed", len(installed), len(allUnits)))
+		}
+		for _, unit := range units {
+			if unit.Role == service.RoleEdge {
+				status.edgeUp = unit.State == service.Up
+			}
+			if unit.State == service.Up {
+				report.add("ok", "service "+id+" "+unit.Role, "up")
+			} else {
+				report.add("error", "service "+id+" "+unit.Role, unit.State.String())
+			}
+		}
+		states[id] = status
+	}
+	return states
+}
+
+func checkPrivatePath(report *doctorReport, name, path string) bool {
+	_, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		report.add("warning", name, path+" is not present yet")
+		return false
+	}
+	if err != nil {
+		report.add("error", name, path+" could not be inspected")
+		return false
+	}
+	if err := statedir.CheckPrivate(path); err != nil {
+		report.add("error", name, path+" is not private to this user")
+		return false
+	}
+	report.add("ok", name, path+" is private to this user")
+	return true
+}
+
+func checkDoctorHomeDirs(app string, ids []string, services map[string]doctorServiceState, selectedID string, report *doctorReport) {
+	for _, id := range ids {
+		path := statedir.HomeDir(app, id)
+		_, err := os.Lstat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			parent := filepath.Dir(path)
+			if _, perr := os.Lstat(parent); perr == nil {
+				if err := statedir.CheckPrivate(parent); err != nil {
+					report.add("error", "home-state "+id, "homes directory is not private to this user")
+					continue
+				}
+			}
+			if services[id].setup {
+				report.add("error", "home-state "+id, "set-up home's state directory is missing")
+			} else {
+				report.add("warning", "home-state "+id, "state directory is not present; privacy could not be checked")
+			}
+			continue
+		}
+		if err != nil {
+			report.add("error", "home-state "+id, "state directory could not be inspected")
+			continue
+		}
+		if err := statedir.CheckHome(app, path); err != nil {
+			report.add("error", "home-state "+id, "state directory or a parent is not private to this user")
+			continue
+		}
+		report.add("ok", "home-state "+id, "state directory and parents are private to this user")
+	}
+}
+
+type doctorPortProbe struct {
+	port     int
+	present  bool
+	invalid  bool
+	free     bool
+	occupied bool
+	unknown  bool
+}
+
+func probeDoctorPort(app, homeID string) doctorPortProbe {
+	dir := statedir.HomeDir(app, homeID)
+	if _, err := os.Lstat(dir); errors.Is(err, os.ErrNotExist) {
+		return doctorPortProbe{}
+	} else if err != nil || statedir.CheckHome(app, dir) != nil {
+		return doctorPortProbe{unknown: true}
+	}
+	path := filepath.Join(dir, statedir.PortFile)
+	fi, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return doctorPortProbe{}
+	}
+	if err != nil || !fi.Mode().IsRegular() {
+		return doctorPortProbe{present: true, invalid: true}
+	}
+	port, err := statedir.ReadPort(dir)
+	if err != nil {
+		return doctorPortProbe{present: true, invalid: true}
+	}
+	probe := doctorPortProbe{port: port, present: true}
+	ln, err := net.Listen("tcp4", net.JoinHostPort(proxy.LoopbackHost, strconv.Itoa(port)))
+	if err != nil {
+		if errors.Is(err, syscall.EADDRINUSE) {
+			probe.occupied = true
+		} else {
+			probe.unknown = true
+		}
+		return probe
+	}
+	if err := ln.Close(); err != nil {
+		probe.unknown = true
+		return probe
+	}
+	probe.free = true
+	return probe
+}
+
+func reportDoctorPort(probe doctorPortProbe, serviceStatus doctorServiceState, homeID string, report *doctorReport) {
+	name := "proxy-port " + homeID
+	if !probe.present {
+		report.add("warning", name, "unverified; port file is absent")
+		return
+	}
+	if probe.invalid {
+		report.add("error", name, "port file is unreadable or does not contain a valid port")
+		return
+	}
+	if probe.unknown {
+		report.add("warning", name, fmt.Sprintf("port %d bind probe was inconclusive; no connection was attempted", probe.port))
+		return
+	}
+	if probe.free {
+		if serviceStatus.readable && serviceStatus.edgeUp {
+			report.add("warning", name, fmt.Sprintf("port %d is bindable although the edge reports up; status and probe may have raced", probe.port))
+		} else {
+			report.add("ok", name, fmt.Sprintf("port %d is free; no connection was attempted", probe.port))
+		}
+		return
+	}
+	if probe.occupied {
+		switch {
+		case !serviceStatus.readable:
+			report.add("warning", name, fmt.Sprintf("port %d is held but service status is unavailable; listener is unverified", probe.port))
+		case serviceStatus.setup && serviceStatus.edgeUp:
+			report.add("ok", name, fmt.Sprintf("port %d is held by the set-up edge; no connection was attempted", probe.port))
+		default:
+			report.add("error", name, fmt.Sprintf("port %d is held without an up edge service; unexpected listener is unverified", probe.port))
+		}
+	}
+}
+
+func doctorClassifier(report *doctorReport, cfg config.Config, getenv func(string) string) {
+	if cfg.Classifier == config.ClassifierOff {
+		report.add("ok", "classifier", "off in config; key not required")
+		return
+	}
+	cc, ok := cfg.Classifiers[cfg.Classifier]
+	if !ok {
+		report.add("error", "classifier", "selected classifier is not configured")
+		return
+	}
+	missingPlaceholder := false
+	if names, err := config.EndpointPlaceholders(cc.Endpoint); err == nil {
+		for _, name := range names {
+			if getenv(name) == "" {
+				missingPlaceholder = true
+			}
+		}
+	}
+	if missingPlaceholder && cc.EnvFile != "" {
+		keyState := "key not required"
+		if cc.KeyEnv != "" {
+			if getenv(cc.KeyEnv) != "" {
+				keyState = "key present in process environment"
+			} else {
+				keyState = "key presence in credential file not inspected"
+			}
+		}
+		report.add("warning", "classifier", "configured; "+keyState+"; endpoint values in credential file were not inspected")
+		return
+	}
+	if cc.KeyEnv == "" {
+		if missingPlaceholder {
+			report.add("warning", "classifier", "off; a required endpoint value is absent from the process environment")
+		} else {
+			report.add("ok", "classifier", "on; no key is required")
+		}
+		return
+	}
+	if getenv(cc.KeyEnv) != "" {
+		report.add("ok", "classifier", "on; key present in process environment (value hidden)")
+		return
+	}
+	if cc.EnvFile != "" {
+		report.add("warning", "classifier", "configured; key presence in credential file was not inspected")
+		return
+	}
+	report.add("warning", "classifier", "off; key absent from process environment")
+}
+
+func doctorCatalog(report *doctorReport, h home.Home) {
+	path := filepath.Join(h.Path, catalog.CacheFile)
+	fi, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		report.add("info", "catalog", "cache absent")
+		return
+	}
+	if err != nil {
+		report.add("warning", "catalog", "cache could not be inspected")
+		return
+	}
+	if fi.Mode().IsRegular() {
+		report.add("ok", "catalog", "cache present")
+	} else {
+		report.add("warning", "catalog", "cache path is present but is not a regular file")
+	}
+}
+
+func doctorLauncherLogs(report *doctorReport, dir string) {
+	fi, err := os.Lstat(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		report.add("info", "launcher-logs", "directory absent; 0 bytes")
+		return
+	}
+	if err != nil || !fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 {
+		report.add("warning", "launcher-logs", "directory could not be inspected safely")
+		return
+	}
+	if err := statedir.CheckPrivate(dir); err != nil {
+		report.add("error", "launcher-logs", "directory is not private to this user")
+		return
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		report.add("warning", "launcher-logs", "directory could not be listed")
+		return
+	}
+	var files int
+	var size int64
+	for _, entry := range entries {
+		if fi, err := os.Lstat(filepath.Join(dir, entry.Name())); err == nil && fi.Mode().IsRegular() {
+			files++
+			size += fi.Size()
+		}
+	}
+	report.add("ok", "launcher-logs", fmt.Sprintf("%d regular files, %d bytes; per-run retention cap 40", files, size))
+}
+
+func doctorRuntimeDirs(report *doctorReport, base string, live map[string]struct{}) {
+	fi, err := os.Lstat(base)
+	if errors.Is(err, os.ErrNotExist) {
+		report.add("info", "runtime-dirs", "runtime base absent; no stale directories")
+		return
+	}
+	if err != nil || !fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 {
+		report.add("warning", "runtime-dirs", "runtime base could not be inspected safely")
+		return
+	}
+	entries, err := os.ReadDir(base)
+	if err != nil {
+		report.add("warning", "runtime-dirs", "runtime base could not be listed")
+		return
+	}
+	var stale []string
+	for _, entry := range entries {
+		if !runtimeID(entry.Name()) {
+			continue
+		}
+		path := filepath.Join(base, entry.Name())
+		fi, err := os.Lstat(path)
+		if err != nil || !fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 {
+			continue
+		}
+		if _, ok := live[entry.Name()]; !ok {
+			stale = append(stale, entry.Name())
+		}
+	}
+	slices.Sort(stale)
+	if len(stale) == 0 {
+		report.add("ok", "runtime-dirs", "no stale runtime directories found")
+	} else {
+		report.add("warning", "runtime-dirs", fmt.Sprintf("%d directories have no matching live registry endpoint: %s", len(stale), strings.Join(stale, ", ")))
+	}
+}
+
+func runtimeID(id string) bool {
+	if len(id) != 8 {
+		return false
+	}
+	for _, r := range id {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func emitDoctor(w io.Writer, report doctorReport, asJSON bool) error {
+	if asJSON {
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(report)
+	}
+	if _, err := fmt.Fprintf(w, "codex-router doctor (%s)\n", report.Version); err != nil {
+		return err
+	}
+	for _, check := range report.Checks {
+		if _, err := fmt.Fprintf(w, "%s %s: %s\n", strings.ToUpper(check.Status), check.Name, check.Detail); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintf(w, "Summary: %d error(s), %d warning(s)\n", report.Errors, report.Warnings)
+	return err
 }
 
 func (c cli) service(ctx context.Context, args []string) int {

@@ -104,6 +104,7 @@ type testFleet struct {
 	conns   map[string]*fakeConn
 	all     []*fakeConn
 	pruned  []string
+	dialed  int
 	clock   time.Time
 }
 
@@ -136,6 +137,7 @@ func (tf *testFleet) list() ([]registry.Endpoint, error) {
 func (tf *testFleet) dial(ep registry.Endpoint) (conn, error) {
 	tf.mu.Lock()
 	defer tf.mu.Unlock()
+	tf.dialed++
 	c := tf.conns[ep.ID]
 	if c == nil {
 		return nil, errors.New("connection refused")
@@ -495,6 +497,76 @@ func TestFleetRejectsAStaleEntry(t *testing.T) {
 	}
 	if st := tf.state(); !st.disconnected || len(st.homes) != 0 {
 		t.Errorf("state = %+v", st)
+	}
+}
+
+func TestFleetBacksOffIdentityMismatchesWithoutPruning(t *testing.T) {
+	tf := newTestFleet(t)
+	first := tf.add("e1", registry.KindSession, homeWork)
+	first.hello.EndpointID = "wrong"
+	tf.poll()
+	if !first.isClosed() {
+		t.Fatal("mismatched connection was not closed")
+	}
+	tf.poll()
+	if tf.dialed != 1 {
+		t.Fatalf("immediate retries = %d, want 1 dial", tf.dialed)
+	}
+
+	tf.advance(pollInterval)
+	second := newFakeConn(control.Hello{EndpointID: "wrong-again", Kind: registry.KindSession, Home: homeWork})
+	tf.mu.Lock()
+	tf.conns["e1"] = second
+	tf.all = append(tf.all, second)
+	tf.mu.Unlock()
+	tf.poll()
+	if tf.dialed != 2 || !second.isClosed() {
+		t.Fatalf("after first backoff, dials = %d, closed = %v; want 2 and true", tf.dialed, second.isClosed())
+	}
+	tf.poll()
+	if tf.dialed != 2 {
+		t.Errorf("repeated mismatch retried before its longer backoff: dials = %d", tf.dialed)
+	}
+	tf.advance(2*time.Second - time.Nanosecond)
+	tf.poll()
+	if tf.dialed != 2 {
+		t.Errorf("retry occurred before the doubled backoff elapsed: dials = %d", tf.dialed)
+	}
+	tf.advance(time.Nanosecond)
+	third := newFakeConn(control.Hello{EndpointID: "wrong-third", Kind: registry.KindSession, Home: homeWork})
+	tf.mu.Lock()
+	tf.conns["e1"] = third
+	tf.all = append(tf.all, third)
+	tf.mu.Unlock()
+	tf.poll()
+	if tf.dialed != 3 || !third.isClosed() {
+		t.Errorf("retry after doubled backoff = dials %d, closed %v; want 3 and true", tf.dialed, third.isClosed())
+	}
+	if got := tf.prunedIDs(); len(got) != 0 {
+		t.Errorf("mismatch pruned registry entries: %v", got)
+	}
+}
+
+func TestFleetMetadataChangeResetsMismatchBackoffAndDeadEntriesStillPrune(t *testing.T) {
+	tf := newTestFleet(t)
+	first := tf.add("e1", registry.KindSession, homeWork)
+	first.hello.EndpointID = "wrong"
+	tf.poll()
+
+	tf.mu.Lock()
+	tf.entries[0].PID++
+	tf.entries[0].Socket = "/run/e1-restarted.sock"
+	changed := newFakeConn(control.Hello{EndpointID: "still-wrong", Kind: registry.KindSession, Home: homeWork})
+	tf.conns["e1"] = changed
+	tf.all = append(tf.all, changed)
+	tf.entries = append(tf.entries, registry.Endpoint{ID: "dead", Kind: registry.KindSession, PID: -1, Home: homeDefault, Socket: "/run/dead.sock"})
+	tf.mu.Unlock()
+	tf.poll()
+	if tf.dialed != 3 || !changed.isClosed() {
+		t.Fatalf("changed identity did not retry immediately: dials = %d, closed = %v", tf.dialed, changed.isClosed())
+	}
+	if got := tf.prunedIDs(); !slices.Equal(got, []string{"dead"}) {
+		t.Errorf("dead unchanged entry prune calls = %v, want [dead]", got)
 	}
 }
 

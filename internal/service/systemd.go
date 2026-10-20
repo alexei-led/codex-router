@@ -126,10 +126,24 @@ func (d systemd) unload(ctx context.Context, us []Unit) {
 }
 
 func (d systemd) state(ctx context.Context, u *Unit) {
+	_ = d.readState(ctx, u)
+}
+
+func (d systemd) readState(ctx context.Context, u *Unit) error {
 	u.State = Down
-	if out, _ := d.systemctl(ctx, "is-active", u.Name); strings.TrimSpace(out) == "active" {
+	out, err := d.systemctl(ctx, "is-active", u.Name)
+	if err != nil {
+		switch strings.TrimSpace(out) {
+		case "inactive", "failed", "unknown":
+			return nil
+		default:
+			return err
+		}
+	}
+	if strings.TrimSpace(out) == "active" {
 		u.State = Up
 	}
+	return nil
 }
 
 func (d systemd) start(ctx context.Context, us []Unit) error {
