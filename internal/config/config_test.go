@@ -168,12 +168,12 @@ func TestEffectivePresetValues(t *testing.T) {
 		{PresetBalanced, func(*Policy) {}},
 		{PresetThrifty, func(p *Policy) {
 			p.UpgradeVotes, p.UpgradeBase, p.JumpConfidence = 3, 0.85, 0.98
-			p.DowngradeVotes, p.DowngradeMass, p.DowngradeHorizonTurns = 1, 0.8, 8
+			p.DowngradeVotes, p.DowngradeMass = 1, 0.8
 			p.MinDwellRequests, p.EscalationHoldTurns = 4, 1
 		}},
 		{PresetQuality, func(p *Policy) {
 			p.UpgradeVotes, p.UpgradeBase, p.JumpConfidence = 1, 0.6, 0.9
-			p.DowngradeVotes, p.DowngradeMass, p.DowngradeHorizonTurns = 3, 0.95, 3
+			p.DowngradeVotes, p.DowngradeMass = 3, 0.95
 			p.MinDwellRequests, p.EscalationHoldTurns = 16, 4
 		}},
 	}
@@ -185,6 +185,21 @@ func TestEffectivePresetValues(t *testing.T) {
 		if got := c.Effective(); got != want {
 			t.Errorf("%s: got %+v, want %+v", tc.preset, got, want)
 		}
+	}
+}
+
+func TestLegacyDowngradeHorizonIsAccepted(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(p, []byte(`{"policy":{"downgradeHorizonTurns":5}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Policy.DowngradeHorizonTurns = 0
+	if !reflect.DeepEqual(c, Default()) {
+		t.Errorf("legacy setting changed the active config: %+v", c)
 	}
 }
 

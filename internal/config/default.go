@@ -41,22 +41,21 @@ func Default() Config {
 			modelLuna: {Input: 0.1, CachedInput: 0.01, Output: 0.5},
 		},
 		Policy: Policy{
-			UpgradeVotes:          2,
-			UpgradeBase:           0.75,
-			UpgradeSlope:          0.15,
-			UpgradePivotTokens:    100_000,
-			JumpConfidence:        0.95,
-			DowngradeVotes:        2,
-			DowngradeMass:         0.9,
-			DowngradeSlope:        0.08,
-			DowngradePivotTokens:  100_000,
-			DowngradeHorizonTurns: 5,
-			ContinuationMass:      0.7,
-			EscalationHoldTurns:   2,
-			ReviewEveryRequests:   4,
-			MinDwellRequests:      8,
-			ActivityMass:          0.6,
-			ContextFill:           0.8,
+			UpgradeVotes:         2,
+			UpgradeBase:          0.75,
+			UpgradeSlope:         0.15,
+			UpgradePivotTokens:   100_000,
+			JumpConfidence:       0.95,
+			DowngradeVotes:       2,
+			DowngradeMass:        0.9,
+			DowngradeSlope:       0.08,
+			DowngradePivotTokens: 100_000,
+			ContinuationMass:     0.7,
+			EscalationHoldTurns:  2,
+			ReviewEveryRequests:  4,
+			MinDwellRequests:     8,
+			ActivityMass:         0.6,
+			ContextFill:          0.8,
 		},
 		Preset:     PresetBalanced,
 		Classifier: "jev",
@@ -128,7 +127,6 @@ func (c Config) Effective() Policy {
 		p.JumpConfidence = 0.98
 		p.DowngradeVotes = 1
 		p.DowngradeMass = 0.8
-		p.DowngradeHorizonTurns = 8
 		p.MinDwellRequests = 4
 		p.EscalationHoldTurns = 1
 	case PresetQuality:
@@ -137,7 +135,6 @@ func (c Config) Effective() Policy {
 		p.JumpConfidence = 0.9
 		p.DowngradeVotes = 3
 		p.DowngradeMass = 0.95
-		p.DowngradeHorizonTurns = 3
 		p.MinDwellRequests = 16
 		p.EscalationHoldTurns = 4
 	}

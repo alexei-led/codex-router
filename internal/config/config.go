@@ -73,22 +73,23 @@ type Price struct {
 
 // Policy holds the switching thresholds. Taxes are in uncached tokens.
 type Policy struct {
-	UpgradeVotes          int     `json:"upgradeVotes"`
-	UpgradeBase           float64 `json:"upgradeBase"`
-	UpgradeSlope          float64 `json:"upgradeSlope"`
-	UpgradePivotTokens    int     `json:"upgradePivotTokens"`
-	JumpConfidence        float64 `json:"jumpConfidence"`
-	DowngradeVotes        int     `json:"downgradeVotes"`
-	DowngradeMass         float64 `json:"downgradeMass"`
-	DowngradeSlope        float64 `json:"downgradeSlope"`
-	DowngradePivotTokens  int     `json:"downgradePivotTokens"`
-	DowngradeHorizonTurns int     `json:"downgradeHorizonTurns"`
-	ContinuationMass      float64 `json:"continuationMass"`
-	EscalationHoldTurns   int     `json:"escalationHoldTurns"`
-	ReviewEveryRequests   int     `json:"reviewEveryRequests"`
-	MinDwellRequests      int     `json:"minDwellRequests"`
-	ActivityMass          float64 `json:"activityMass"`
-	ContextFill           float64 `json:"contextFill"`
+	UpgradeVotes         int     `json:"upgradeVotes"`
+	UpgradeBase          float64 `json:"upgradeBase"`
+	UpgradeSlope         float64 `json:"upgradeSlope"`
+	UpgradePivotTokens   int     `json:"upgradePivotTokens"`
+	JumpConfidence       float64 `json:"jumpConfidence"`
+	DowngradeVotes       int     `json:"downgradeVotes"`
+	DowngradeMass        float64 `json:"downgradeMass"`
+	DowngradeSlope       float64 `json:"downgradeSlope"`
+	DowngradePivotTokens int     `json:"downgradePivotTokens"`
+	ContinuationMass     float64 `json:"continuationMass"`
+	EscalationHoldTurns  int     `json:"escalationHoldTurns"`
+	ReviewEveryRequests  int     `json:"reviewEveryRequests"`
+	MinDwellRequests     int     `json:"minDwellRequests"`
+	ActivityMass         float64 `json:"activityMass"`
+	ContextFill          float64 `json:"contextFill"`
+	// Deprecated: accepted for existing configs; has no effect.
+	DowngradeHorizonTurns int `json:"downgradeHorizonTurns,omitempty"`
 }
 
 // ClassifierOff as Config.Classifier turns the classifier off: no prompt

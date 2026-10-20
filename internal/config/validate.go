@@ -170,7 +170,6 @@ func (p Policy) validate() error {
 		{"downgradeVotes", p.DowngradeVotes, 1},
 		{"upgradePivotTokens", p.UpgradePivotTokens, 1},
 		{"downgradePivotTokens", p.DowngradePivotTokens, 1},
-		{"downgradeHorizonTurns", p.DowngradeHorizonTurns, 1},
 		{"escalationHoldTurns", p.EscalationHoldTurns, 0},
 		{"reviewEveryRequests", p.ReviewEveryRequests, 0},
 		{"minDwellRequests", p.MinDwellRequests, 0},

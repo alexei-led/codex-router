@@ -48,7 +48,6 @@
     "downgradeMass": 0.9,
     "downgradeSlope": 0.08,
     "downgradePivotTokens": 100000,
-    "downgradeHorizonTurns": 5,
     "continuationMass": 0.7,
     "escalationHoldTurns": 2,
     "reviewEveryRequests": 4,
