@@ -55,16 +55,17 @@ func RecordPath(dir, p string) error {
 // SocketMode is the permission the socket is created with.
 const SocketMode os.FileMode = 0o600
 
-// Frame types. The edge sends hello, decide and observe; the brain answers
-// hello, rewrite or none per decide, and error before it closes a
+// Frame types. The edge sends hello, decide, passthrough and observe; the brain
+// answers hello, rewrite or none per decide, and error before it closes a
 // connection it refuses.
 const (
-	TypeHello   = "hello"
-	TypeDecide  = "decide"
-	TypeRewrite = "rewrite"
-	TypeNone    = "none"
-	TypeObserve = "observe"
-	TypeError   = "error"
+	TypeHello       = "hello"
+	TypeDecide      = "decide"
+	TypeRewrite     = "rewrite"
+	TypeNone        = "none"
+	TypeObserve     = "observe"
+	TypePassThrough = "passthrough"
+	TypeError       = "error"
 )
 
 // MaxHeaderBytes caps a frame's JSON header.

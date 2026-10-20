@@ -64,6 +64,12 @@ type Decider interface {
 	Decide(ctx context.Context, req *responses.Request, meta responses.Meta) (responses.Rewrite, bool)
 }
 
+// PassthroughNotifier is optionally implemented by a Decider that must clear
+// any pending routed reply when metadata proves the request passes through.
+type PassthroughNotifier interface {
+	PassThrough(meta responses.Meta)
+}
+
 // Observer learns the served model, usage and status of each response: once
 // per response.completed event of a 2xx stream, or once with zero usage for a
 // non-2xx upstream response. Requests that never got an upstream response are

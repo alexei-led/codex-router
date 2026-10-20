@@ -407,6 +407,36 @@ func (r *rig) routeThread(t *testing.T, id string) config.Route {
 	return want
 }
 
+func TestLinkPassthroughDoesNotConsumeAwaitingDecision(t *testing.T) {
+	r := newRig(t, "")
+	r.routing(t)
+	r.d.load("t1", &fakeThread{cwd: "/w1", source: "user", route: native})
+	r.start(t)
+	routed := r.routeThread(t, "t1")
+	h := linkHandler{r.b}
+
+	compact := userStep("t1")
+	compact.TurnID = "tu-routed"
+	compact.RequestKind = "compaction"
+	h.PassThrough(compact)
+	h.Observe(compact, native.Model, responses.Usage{InputTokens: 1000, TotalTokens: 1000}, 200)
+	if got := r.b.eng.SnapshotFor("t1").Stats.Replies; got != 0 {
+		t.Fatalf("compaction reply counted as routed: replies = %d, want 0", got)
+	}
+
+	later := step(native,
+		responses.Item{Type: responses.TypeMessage, Role: "user", Text: "fix it"},
+		responses.Item{Type: responses.TypeMessage, Role: "user", Text: "continue"},
+	)
+	if rw, ok := h.Decide(t.Context(), later, turn("t1", "tu-routed")); !ok || rw.Model != routed.Model || rw.Effort != routed.Effort {
+		t.Fatalf("later user-step rewrite = %+v, %v; want %+v", rw, ok, routed)
+	}
+	h.Observe(turn("t1", "tu-routed"), routed.Model, responses.Usage{InputTokens: 1000, TotalTokens: 1000}, 200)
+	if got := r.b.eng.SnapshotFor("t1").Stats.Replies; got != 1 {
+		t.Fatalf("later user-step replies = %d, want 1", got)
+	}
+}
+
 func (r *rig) quiesce(t *testing.T) {
 	t.Helper()
 	r.quiet++

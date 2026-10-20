@@ -158,6 +158,8 @@ Notes on the steps:
 - **Step 9, rewrite.** The proxy buffers the body and changes only `model` and `reasoning.effort`. Every other byte is the original.
 - **Step 12, usage.** A tee on the stream reads `response.completed` before Codex can send its next step.
 
+Requests whose metadata proves they cannot be routed (including compaction and side-thread requests) skip request-body parsing and are forwarded byte-for-byte; with no Decider, all request bodies also skip parsing. When a Decider supports passthrough notification, the proxy signals it before forwarding, and the edge-brain link orders that signal before the response's usage observation so the response cannot count against a pending routed decision.
+
 The engine also reviews a running turn in the background every `reviewEveryRequests` requests. It applies the answer at the next step.
 
 ## Routing decisions

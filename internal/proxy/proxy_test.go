@@ -29,7 +29,7 @@ const (
 	testAccount = "acct-secret-4567"
 	testToken   = "router-session-token-under-test"
 	promptText  = "PROMPT-TEXT-MARKER fix the flaky test"
-	turnMeta    = `{"session_id":"s-1","thread_id":"th-1","turn_id":"turn-1","agent_name":"main"}`
+	turnMeta    = `{"session_id":"s-1","thread_id":"th-1","turn_id":"turn-1","request_kind":"turn","agent_name":"main"}`
 	upstreamDir = "/backend-api/codex"
 )
 
@@ -186,6 +186,20 @@ func (f deciderFunc) Decide(ctx context.Context, req *responses.Request, meta re
 	return f(ctx, req, meta)
 }
 
+type passRecorder struct {
+	decides int
+	passed  []responses.Meta
+}
+
+func (r *passRecorder) Decide(context.Context, *responses.Request, responses.Meta) (responses.Rewrite, bool) {
+	r.decides++
+	return responses.Rewrite{}, false
+}
+
+func (r *passRecorder) PassThrough(meta responses.Meta) {
+	r.passed = append(r.passed, meta)
+}
+
 type observation struct {
 	meta   responses.Meta
 	served string
@@ -288,6 +302,136 @@ func TestRewriteForwardsHeadersAndStreams(t *testing.T) {
 	want := []observation{{meta: decided, served: "gpt-6-luna", usage: wantUsage, status: http.StatusOK}}
 	if got := obs.all(); len(got) != 1 || got[0] != want[0] {
 		t.Errorf("observations = %+v, want %+v", got, want)
+	}
+}
+
+func benchmarkPassthroughBody() []byte {
+	item := `{"type":"message","role":"user","content":[{"type":"input_text","text":"` + strings.Repeat("x", 1370) + `"}]}`
+	items := make([]string, 1500)
+	for i := range items {
+		items[i] = item
+	}
+	return []byte(`{"model":"gpt-6-sol","input":[` + strings.Join(items, ",") + `]}`)
+}
+
+func BenchmarkRewritePassthrough(b *testing.B) {
+	body := benchmarkPassthroughBody()
+	meta := responses.Meta{ThreadID: "th-1", TurnID: "turn-1", RequestKind: "compaction"}
+	s := New(Options{
+		Decider: deciderFunc(func(context.Context, *responses.Request, responses.Meta) (responses.Rewrite, bool) {
+			return responses.Rewrite{}, false
+		}),
+		Logger: slog.New(slog.DiscardHandler),
+	})
+	b.SetBytes(int64(len(body)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		if got := s.rewrite(context.Background(), body, meta); len(got) != len(body) {
+			b.Fatal("rewrite changed passthrough body length")
+		}
+	}
+}
+
+func TestPassthroughMetadataForwardsInvalidBodyAndSignalsEngine(t *testing.T) {
+	up := sseUpstream(t, evCreated, evCompleted)
+	decider := &passRecorder{}
+	obs := &recorder{}
+	h := startProxy(t, up.url(), func(o *Options) {
+		o.Decider = decider
+		o.Observer = obs
+	})
+
+	body := []byte(`{not valid JSON; preserve these bytes exactly`)
+	req := newRequest(t, t.Context(), http.MethodPost, h.base+PathResponses, body)
+	req.Header.Set(responses.HeaderTurnMetadata,
+		`{"session_id":"s-1","thread_id":"th-1","turn_id":"turn-1","request_kind":"compaction"}`)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK || string(got) != evCreated+evCompleted {
+		t.Fatalf("client got %d %q", resp.StatusCode, got)
+	}
+	if in := up.last(t); !bytes.Equal(in.body, body) {
+		t.Errorf("upstream body = %q, want original %q", in.body, body)
+	}
+	wantMeta := responses.Meta{
+		SessionID: "s-1", ThreadID: "th-1", TurnID: "turn-1",
+		RequestKind: "compaction", Account: responses.AccountHash(testAccount),
+	}
+	if decider.decides != 0 || len(decider.passed) != 1 || decider.passed[0] != wantMeta {
+		t.Errorf("decider calls = %d, passthrough metadata = %+v; want 0 and %+v", decider.decides, decider.passed, wantMeta)
+	}
+	if strings.Contains(h.logs.String(), "parse-error") {
+		t.Errorf("passthrough body was parsed:\n%s", h.logs.String())
+	}
+	wantObs := []observation{{meta: wantMeta, served: "gpt-6-luna", usage: wantUsage, status: http.StatusOK}}
+	if got := obs.all(); len(got) != 1 || got[0] != wantObs[0] {
+		t.Errorf("observations = %+v, want %+v", got, wantObs)
+	}
+}
+
+func TestMissingTurnMetadataPassesWithoutDeciding(t *testing.T) {
+	up := sseUpstream(t, evCreated, evCompleted)
+	decider := &passRecorder{}
+	obs := &recorder{}
+	h := startProxy(t, up.url(), func(o *Options) {
+		o.Decider = decider
+		o.Observer = obs
+	})
+	body := []byte(`{malformed but opaque passthrough payload`)
+	req := newRequest(t, t.Context(), http.MethodPost, h.base+PathResponses, body)
+	req.Header.Del(responses.HeaderTurnMetadata)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK || string(got) != evCreated+evCompleted {
+		t.Fatalf("client got %d %q", resp.StatusCode, got)
+	}
+	if in := up.last(t); !bytes.Equal(in.body, body) {
+		t.Errorf("upstream body = %q, want original %q", in.body, body)
+	}
+	wantMeta := responses.Meta{Account: responses.AccountHash(testAccount)}
+	if decider.decides != 0 || len(decider.passed) != 1 || decider.passed[0] != wantMeta {
+		t.Errorf("decider calls = %d, passthrough metadata = %+v; want 0 and %+v", decider.decides, decider.passed, wantMeta)
+	}
+	if strings.Contains(h.logs.String(), "parse-error") {
+		t.Errorf("request without turn metadata was parsed:\n%s", h.logs.String())
+	}
+	wantObs := []observation{{meta: wantMeta, served: "gpt-6-luna", usage: wantUsage, status: http.StatusOK}}
+	if got := obs.all(); len(got) != 1 || got[0] != wantObs[0] {
+		t.Errorf("observations = %+v, want %+v", got, wantObs)
+	}
+}
+
+func TestNoDeciderDoesNotParseRequestBody(t *testing.T) {
+	up := sseUpstream(t, evCompleted)
+	h := startProxy(t, up.url())
+	body := []byte(`{this is not JSON`)
+
+	resp, got := postResponses(t, h, body)
+
+	if resp.StatusCode != http.StatusOK || string(got) != evCompleted {
+		t.Fatalf("client got %d %q", resp.StatusCode, got)
+	}
+	if in := up.last(t); !bytes.Equal(in.body, body) {
+		t.Errorf("upstream body = %q, want original %q", in.body, body)
+	}
+	if strings.Contains(h.logs.String(), "parse-error") {
+		t.Errorf("request body was parsed without a Decider:\n%s", h.logs.String())
 	}
 }
 
