@@ -59,48 +59,57 @@ func (c Command) home() bool {
 	return c.Scope == ScopeHome || c.Scope == "" && c.Session == ""
 }
 
-// Decision is one per-request outcome.
+// Decision is one per-request outcome. Its names on the control wire are
+// spelled out, as they are for Snapshot and the types below: the engine's
+// field names are not the protocol, and internal/control pins these spellings
+// with literal fixtures, so a rename here cannot change what a client reads.
 type Decision struct {
-	ThreadID  string
-	TurnID    string
-	Step      int
-	Tier      config.Tier
-	Activity  config.Activity
-	Route     config.Route
-	Original  config.Route
-	Rewritten bool
-	Reason    policy.Reason
-	Why       string
-	Support   string
-	Estimate  *policy.Estimate
-	Reading   *Reading
-	MidTurn   bool
-	At        time.Time
+	ThreadID  string           `json:"ThreadID"`
+	TurnID    string           `json:"TurnID"`
+	Step      int              `json:"Step"`
+	Tier      config.Tier      `json:"Tier"`
+	Activity  config.Activity  `json:"Activity"`
+	Route     config.Route     `json:"Route"`
+	Original  config.Route     `json:"Original"`
+	Rewritten bool             `json:"Rewritten"`
+	Reason    policy.Reason    `json:"Reason"`
+	Why       string           `json:"Why"`
+	Support   string           `json:"Support"`
+	Estimate  *policy.Estimate `json:"Estimate"`
+	Reading   *Reading         `json:"Reading"`
+	MidTurn   bool             `json:"MidTurn"`
+	At        time.Time        `json:"At"`
+	// SupportParts is Support as the fragments the engine built it from, so a
+	// panel can punctuate and wrap them itself. It is optional: an engine
+	// older than this field sends Support alone, and a reader then shows that
+	// whole (a label may hold the separator, so it must not be split). It is
+	// last so this additive field moves no existing name on the wire.
+	SupportParts []string `json:"SupportParts,omitempty"`
 }
 
 // Reading is the classifier answer the decision's turn runs on, for display:
 // the probability per tier, and the activity answer with its probability and
 // the two likeliest alternates. Tiers holds only the tiers the answer scored.
 type Reading struct {
-	Tiers      map[config.Tier]float64
-	Activity   config.Activity
-	ActivityP  float64
-	Alternates []Share
+	Tiers      map[config.Tier]float64 `json:"Tiers"`
+	Activity   config.Activity         `json:"Activity"`
+	ActivityP  float64                 `json:"ActivityP"`
+	Alternates []Share                 `json:"Alternates"`
 }
 
 // Share is one activity's probability in an answer.
 type Share struct {
-	Activity config.Activity
-	P        float64
+	Activity config.Activity `json:"Activity"`
+	P        float64         `json:"P"`
 }
 
 // Switch is the last route change.
 type Switch struct {
-	At       time.Time
-	From     config.Tier
-	To       config.Tier
-	Activity config.Activity
-	MidTurn  bool
+	At       time.Time       `json:"At"`
+	From     config.Tier     `json:"From"`
+	To       config.Tier     `json:"To"`
+	Activity config.Activity `json:"Activity"`
+	MidTurn  bool            `json:"MidTurn"`
 }
 
 // Stats sums the session since its first routed reply. LastInputTokens and
@@ -108,23 +117,23 @@ type Switch struct {
 // context guard moved off the policy's tier. Pricing coverage counts the
 // replies with prices for both the routed and per-reply native models.
 type Stats struct {
-	Since                time.Time
-	Replies              int
-	Switches             int
-	ByTier               map[config.Tier]int
-	ByActivity           map[config.Activity]int
-	Strip                []config.Tier
-	RepliesPerCell       int
-	LastSwitch           *Switch
-	CacheReusePct        int
-	LastInputTokens      int
-	LastCachedTokens     int
-	UncachedSwitchTokens int
-	FitHeld              int
-	RoutedUSD            float64
-	BaselineUSD          float64
-	PricedReplies        int // replies with prices for both routed and native models
-	EligibleReplies      int // routed replies considered for dollar estimates
+	Since                time.Time               `json:"Since"`
+	Replies              int                     `json:"Replies"`
+	Switches             int                     `json:"Switches"`
+	ByTier               map[config.Tier]int     `json:"ByTier"`
+	ByActivity           map[config.Activity]int `json:"ByActivity"`
+	Strip                []config.Tier           `json:"Strip"`
+	RepliesPerCell       int                     `json:"RepliesPerCell"`
+	LastSwitch           *Switch                 `json:"LastSwitch"`
+	CacheReusePct        int                     `json:"CacheReusePct"`
+	LastInputTokens      int                     `json:"LastInputTokens"`
+	LastCachedTokens     int                     `json:"LastCachedTokens"`
+	UncachedSwitchTokens int                     `json:"UncachedSwitchTokens"`
+	FitHeld              int                     `json:"FitHeld"`
+	RoutedUSD            float64                 `json:"RoutedUSD"`
+	BaselineUSD          float64                 `json:"BaselineUSD"`
+	PricedReplies        int                     `json:"PricedReplies"`   // replies with prices for both routed and native models
+	EligibleReplies      int                     `json:"EligibleReplies"` // routed replies considered for dollar estimates
 }
 
 // FindingKind names what a WORTH A LOOK finding is about, and so where the
@@ -142,8 +151,8 @@ const (
 
 // Finding is one WORTH A LOOK line derived from the session's facts.
 type Finding struct {
-	Kind FindingKind
-	Text string
+	Kind FindingKind `json:"Kind"`
+	Text string      `json:"Text"`
 }
 
 // Snapshot is one thread's full state, as the control socket publishes it
@@ -151,36 +160,36 @@ type Finding struct {
 type Snapshot struct {
 	// Seq orders snapshots: they are taken under the engine lock but
 	// published after it, so a consumer drops one older than it holds.
-	Seq           uint64
-	ThreadID      string
-	At            time.Time
-	Mode          Mode
-	StateLost     bool // the saved intent was unreadable; the home is paused until resume
-	Preset        config.Preset
-	Pin           *config.Tier
-	Baseline      config.Route
-	Footer        config.Route
-	FooterSynced  bool
-	Last          *Decision
-	Recent        []Decision
-	Classifier    classifier.Health
-	ClassifierOff bool // no classifier configured (e.g. its key is unset)
+	Seq           uint64            `json:"Seq"`
+	ThreadID      string            `json:"ThreadID"`
+	At            time.Time         `json:"At"`
+	Mode          Mode              `json:"Mode"`
+	StateLost     bool              `json:"StateLost"` // the saved intent was unreadable; the home is paused until resume
+	Preset        config.Preset     `json:"Preset"`
+	Pin           *config.Tier      `json:"Pin"`
+	Baseline      config.Route      `json:"Baseline"`
+	Footer        config.Route      `json:"Footer"`
+	FooterSynced  bool              `json:"FooterSynced"`
+	Last          *Decision         `json:"Last"`
+	Recent        []Decision        `json:"Recent"`
+	Classifier    classifier.Health `json:"Classifier"`
+	ClassifierOff bool              `json:"ClassifierOff"` // no classifier configured (e.g. its key is unset)
 	// ClassifierOffReason says why it is off, without the key. Empty when on.
-	ClassifierOffReason  string
-	ClassifierLabel      string
-	ClassifierModel      string
-	ClassifierMedian     time.Duration
-	Routes               map[config.Tier]config.Route
-	Group                catalog.Group
-	CurrentModelKnown    bool
-	CatalogAvailable     bool
-	Blocked              []string
-	CompatibilityUnknown []string
-	Policy               config.Policy
-	Stats                Stats
-	ApproxTokens         int
-	Window               int
-	Worth                []Finding
+	ClassifierOffReason  string                       `json:"ClassifierOffReason"`
+	ClassifierLabel      string                       `json:"ClassifierLabel"`
+	ClassifierModel      string                       `json:"ClassifierModel"`
+	ClassifierMedian     time.Duration                `json:"ClassifierMedian"`
+	Routes               map[config.Tier]config.Route `json:"Routes"`
+	Group                catalog.Group                `json:"Group"`
+	CurrentModelKnown    bool                         `json:"CurrentModelKnown"`
+	CatalogAvailable     bool                         `json:"CatalogAvailable"`
+	Blocked              []string                     `json:"Blocked"`
+	CompatibilityUnknown []string                     `json:"CompatibilityUnknown"`
+	Policy               config.Policy                `json:"Policy"`
+	Stats                Stats                        `json:"Stats"`
+	ApproxTokens         int                          `json:"ApproxTokens"`
+	Window               int                          `json:"Window"`
+	Worth                []Finding                    `json:"Worth"`
 }
 
 // Sink receives decisions and snapshots; the launcher fans them out to the

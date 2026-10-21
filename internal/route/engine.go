@@ -692,7 +692,9 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	th.sent, th.hasSent = d.Route, true
 	th.approx = st.tokens
 	th.stepIndex++
-	d.Why, d.Support = whyText(d, cfg, st.tokens), supportText(d, c.advice, cfg, tax)
+	d.Why = whyText(d, cfg, st.tokens)
+	d.SupportParts = supportParts(d, c.advice, cfg, tax)
+	d.Support = supportLine(d.SupportParts)
 	dd := d
 	th.awaiting = &dd
 	th.retries = appendCapped(th.retries, retry{st.fp, d}, retriesKept)
@@ -938,7 +940,7 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 func (e *Engine) publish(d Decision) {
 	e.emit(func() {
 		if e.sink != nil {
-			e.sink.OnDecision(d)
+			e.sink.OnDecision(copyDecision(d))
 		}
 	})
 	e.emitSnapshot(e.lockedSnapshot(d.ThreadID))

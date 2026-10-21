@@ -1,0 +1,33 @@
+{
+  "type": "snapshot",
+  "session": "h/t-1",
+  "futureEnvelopeField": {
+    "added": "by a later protocol-v2 revision"
+  },
+  "snapshot": {
+    "Seq": 9,
+    "ThreadID": "t-9",
+    "futureSnapshotField": [
+      1,
+      2,
+      3
+    ],
+    "Last": {
+      "ThreadID": "t-9",
+      "Tier": "high",
+      "Estimate": {
+        "TaxTokens": 512,
+        "futureEstimateField": true
+      }
+    },
+    "Group": {
+      "CompHash": "gpt-5",
+      "futureGroupField": "x"
+    },
+    "Classifier": {
+      "Failures": 2,
+      "LastError": "http 503",
+      "futureHealthField": null
+    }
+  }
+}

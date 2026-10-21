@@ -322,6 +322,22 @@ func label(name string) seg { return plain(fmt.Sprintf(" %-*s", labelWidth-1, na
 // flow adds parts joined by " · " under lead, breaking before a part that
 // does not fit; later lines hang under the lead.
 func (c *canvas) flow(lead seg, parts ...[]seg) {
+	c.flowParts(lead, parts, false)
+}
+
+// flowWrap is flow for evidence the panel does not size: the engine's support
+// and the classifier's reason can be longer than a line, so a part that does not
+// fit on a line of its own wraps at its own spaces onto the hanging lines
+// instead of being cut at the edge. A token wider than the line is cut cell-wise,
+// as wrapped cuts one, and joining the lines leaves every cell of the part.
+func (c *canvas) flowWrap(lead seg, parts ...[]seg) {
+	c.flowParts(lead, parts, true)
+}
+
+// flowParts draws parts joined by sep under lead. With wrap set, a part too wide
+// for the line it starts on continues on the lines after it, each hanging under
+// the lead.
+func (c *canvas) flowParts(lead seg, parts [][]seg, wrap bool) {
 	hang := plain(strings.Repeat(" ", ansi.StringWidth(lead.text)))
 	line := []seg{lead}
 	room := c.width - segsWidth(line)
@@ -336,11 +352,80 @@ func (c *canvas) flow(lead seg, parts ...[]seg) {
 			line = append(line, dim(sep))
 			room -= ansi.StringWidth(sep)
 		}
+		if wrap {
+			for room > 0 && segsWidth(p) > room {
+				head, tail := cutPart(p, room)
+				if len(head) == 0 || len(tail) == 0 {
+					break
+				}
+				c.add(append(line, head...)...)
+				line, room, p = []seg{hang}, c.width-segsWidth([]seg{hang}), tail
+			}
+		}
 		line = append(line, p...)
-		room -= w
+		room -= segsWidth(p)
 		first = false
 	}
 	c.add(line...)
+}
+
+// cutPart splits p for a line of room cells: head is what fits, ending at a
+// space when p holds one past its first cell, and tail is the rest without that
+// space, as a wrap replaces the space it broke on. A part with no such space in
+// room — a long token, or one whose spaces only start at column zero, where a
+// break would leave a blank head and the wrap no progress — is cut cell-wise,
+// which never splits a grapheme or wide cell.
+func cutPart(p []seg, room int) (head, tail []seg) {
+	w := segsWidth(p)
+	if col, run, ok := lastSpace(p, room); ok && col > 0 {
+		return slicePart(p, 0, col), slicePart(p, col+run, w)
+	}
+	return slicePart(p, 0, room), slicePart(p, room, w)
+}
+
+// lastSpace is the column of the last space in p that starts at or before room,
+// and the cells that space runs for: where a wrap breaks when the head it leaves
+// holds text.
+func lastSpace(p []seg, room int) (col, run int, ok bool) {
+	start := 0
+	for _, s := range p {
+		for i := 0; i < len(s.text); i++ {
+			if s.text[i] != ' ' {
+				continue
+			}
+			c := start + ansi.StringWidth(s.text[:i])
+			if c > room {
+				return col, run, ok
+			}
+			n := len(s.text[i:]) - len(strings.TrimLeft(s.text[i:], " "))
+			col, run, ok = c, n, true
+			i += n - 1
+		}
+		start += ansi.StringWidth(s.text)
+	}
+	return col, run, ok
+}
+
+// slicePart is p's cells from to, keeping each run's style, so the pieces of a
+// split part draw as the part did.
+func slicePart(p []seg, from, to int) []seg {
+	var out []seg
+	start := 0
+	for _, s := range p {
+		end := start + ansi.StringWidth(s.text)
+		switch {
+		case end <= from, start >= to: // the run is outside the slice
+		case start >= from && end <= to:
+			out = append(out, s)
+		default:
+			if text := ansi.Cut(s.text, max(from-start, 0), min(to-start, end-start)); text != "" {
+				s.text = text
+				out = append(out, s)
+			}
+		}
+		start = end
+	}
+	return out
 }
 
 // wrapped adds text as lines under lead; later lines hang under it.

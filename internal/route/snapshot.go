@@ -166,13 +166,13 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 	model := s.Baseline.Model
 	if th != nil {
 		s.ThreadID, s.Mode = th.id, e.mode(th)
-		s.Recent, s.Stats = slices.Clone(th.recent), th.stats.copy()
+		s.Recent, s.Stats = copyDecisions(th.recent), th.stats.copy()
 		if th.pin != nil {
 			p := *th.pin
 			s.Pin = &p
 		}
 		if th.last != nil {
-			d := *th.last
+			d := copyDecision(*th.last)
 			s.Last = &d
 		}
 		if th.native.Model != "" {
@@ -226,6 +226,28 @@ func (t *tally) copy() Stats {
 		s.LastSwitch = &ls
 	}
 	return s
+}
+
+// copyDecision is d with support fragments of its own. A decision that leaves
+// the engine, published to a sink or read again in a later snapshot, must not
+// share the slice the thread keeps: a consumer that edits what it was handed
+// would otherwise change routing state.
+func copyDecision(d Decision) Decision {
+	d.SupportParts = slices.Clone(d.SupportParts)
+	return d
+}
+
+// copyDecisions is copyDecision over a history; an empty history stays nil, so
+// a thread without decisions still publishes Recent as null.
+func copyDecisions(ds []Decision) []Decision {
+	if len(ds) == 0 {
+		return nil
+	}
+	out := make([]Decision, len(ds))
+	for i, d := range ds {
+		out[i] = copyDecision(d)
+	}
+	return out
 }
 
 // median is the middle latency, the mean of the two middle ones for an even

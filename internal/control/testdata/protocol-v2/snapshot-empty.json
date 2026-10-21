@@ -1,0 +1,80 @@
+{
+  "Seq": 0,
+  "ThreadID": "",
+  "At": "0001-01-01T00:00:00Z",
+  "Mode": "",
+  "StateLost": false,
+  "Preset": "",
+  "Pin": null,
+  "Baseline": {
+    "model": ""
+  },
+  "Footer": {
+    "model": ""
+  },
+  "FooterSynced": false,
+  "Last": null,
+  "Recent": null,
+  "Classifier": {
+    "Failures": 0,
+    "PausedUntil": "0001-01-01T00:00:00Z",
+    "Latency": 0,
+    "QueueWait": 0,
+    "QueueTimeouts": 0,
+    "LastError": ""
+  },
+  "ClassifierOff": false,
+  "ClassifierOffReason": "",
+  "ClassifierLabel": "",
+  "ClassifierModel": "",
+  "ClassifierMedian": 0,
+  "Routes": null,
+  "Group": {
+    "CompHash": "",
+    "Lite": false,
+    "ToolMode": ""
+  },
+  "CurrentModelKnown": false,
+  "CatalogAvailable": false,
+  "Blocked": null,
+  "CompatibilityUnknown": null,
+  "Policy": {
+    "upgradeVotes": 0,
+    "upgradeBase": 0,
+    "upgradeSlope": 0,
+    "upgradePivotTokens": 0,
+    "jumpConfidence": 0,
+    "downgradeVotes": 0,
+    "downgradeMass": 0,
+    "downgradeSlope": 0,
+    "downgradePivotTokens": 0,
+    "continuationMass": 0,
+    "escalationHoldTurns": 0,
+    "reviewEveryRequests": 0,
+    "minDwellRequests": 0,
+    "activityMass": 0,
+    "contextFill": 0
+  },
+  "Stats": {
+    "Since": "0001-01-01T00:00:00Z",
+    "Replies": 0,
+    "Switches": 0,
+    "ByTier": null,
+    "ByActivity": null,
+    "Strip": null,
+    "RepliesPerCell": 0,
+    "LastSwitch": null,
+    "CacheReusePct": 0,
+    "LastInputTokens": 0,
+    "LastCachedTokens": 0,
+    "UncachedSwitchTokens": 0,
+    "FitHeld": 0,
+    "RoutedUSD": 0,
+    "BaselineUSD": 0,
+    "PricedReplies": 0,
+    "EligibleReplies": 0
+  },
+  "ApproxTokens": 0,
+  "Window": 0,
+  "Worth": null
+}

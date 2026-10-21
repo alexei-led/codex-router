@@ -60,17 +60,19 @@ type Doer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Health is the client's breaker state.
+// Health is the client's breaker state. A Snapshot carries it on the control
+// wire, so its JSON names are spelled out and pinned by internal/control's
+// protocol-v2 fixtures.
 type Health struct {
-	Failures      int
-	PausedUntil   time.Time
-	Latency       time.Duration
-	QueueWait     time.Duration
-	QueueTimeouts uint64
+	Failures      int           `json:"Failures"`
+	PausedUntil   time.Time     `json:"PausedUntil"`
+	Latency       time.Duration `json:"Latency"`
+	QueueWait     time.Duration `json:"QueueWait"`
+	QueueTimeouts uint64        `json:"QueueTimeouts"`
 	// LastError is why the last call failed, as a short code such as
 	// "timeout" or "http 503". Never the key or a response body. Empty after
 	// a success.
-	LastError string
+	LastError string `json:"LastError"`
 }
 
 // Code is a classifier failure reason.

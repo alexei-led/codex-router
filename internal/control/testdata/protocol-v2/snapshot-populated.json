@@ -1,0 +1,175 @@
+{
+  "Seq": 7,
+  "ThreadID": "t-1",
+  "At": "2024-03-04T05:06:07Z",
+  "Mode": "paused",
+  "StateLost": true,
+  "Preset": "quality",
+  "Pin": "high",
+  "Baseline": {
+    "model": "gpt-5-codex"
+  },
+  "Footer": {
+    "model": "gpt-5-codex",
+    "effort": "high"
+  },
+  "FooterSynced": true,
+  "Last": {
+    "ThreadID": "t-1",
+    "TurnID": "turn-1",
+    "Step": 2,
+    "Tier": "high",
+    "Activity": "review",
+    "Route": {
+      "model": "gpt-5-codex",
+      "effort": "high"
+    },
+    "Original": {
+      "model": "gpt-5-mini"
+    },
+    "Rewritten": true,
+    "Reason": "upgrade",
+    "Why": "the upgrade mass cleared the bar",
+    "Support": "medium 0.42, high 0.91, bar 0.55",
+    "Estimate": {
+      "TaxTokens": 4096,
+      "Threshold": 0.55,
+      "Mass": 0.91,
+      "Streak": 2
+    },
+    "Reading": {
+      "Tiers": {
+        "high": 0.91,
+        "medium": 0.42
+      },
+      "Activity": "review",
+      "ActivityP": 0.8,
+      "Alternates": [
+        {
+          "Activity": "code",
+          "P": 0.1
+        }
+      ]
+    },
+    "MidTurn": true,
+    "At": "2024-03-04T05:06:07Z"
+  },
+  "Recent": [
+    {
+      "ThreadID": "t-1",
+      "TurnID": "turn-0",
+      "Step": 1,
+      "Tier": "medium",
+      "Activity": "code",
+      "Route": {
+        "model": "gpt-5-mini"
+      },
+      "Original": {
+        "model": "gpt-5-mini"
+      },
+      "Rewritten": false,
+      "Reason": "same-tier",
+      "Why": "the answer stayed at the incumbent tier",
+      "Support": "medium 0.42",
+      "Estimate": null,
+      "Reading": null,
+      "MidTurn": false,
+      "At": "2024-03-04T05:06:07Z",
+      "SupportParts": [
+        "medium 0.42"
+      ]
+    }
+  ],
+  "Classifier": {
+    "Failures": 1,
+    "PausedUntil": "2024-03-04T05:06:07Z",
+    "Latency": 250000000,
+    "QueueWait": 10000000,
+    "QueueTimeouts": 2,
+    "LastError": "timeout"
+  },
+  "ClassifierOff": false,
+  "ClassifierOffReason": "no key",
+  "ClassifierLabel": "clef",
+  "ClassifierModel": "deepseek-flash",
+  "ClassifierMedian": 1500000000,
+  "Routes": {
+    "high": {
+      "model": "gpt-5-codex",
+      "effort": "high"
+    },
+    "medium": {
+      "model": "gpt-5-mini"
+    }
+  },
+  "Group": {
+    "CompHash": "gpt-5",
+    "Lite": true,
+    "ToolMode": "code"
+  },
+  "CurrentModelKnown": true,
+  "CatalogAvailable": true,
+  "Blocked": [
+    "gpt-5-pro"
+  ],
+  "CompatibilityUnknown": [
+    "gpt-5.1-codex"
+  ],
+  "Policy": {
+    "upgradeVotes": 2,
+    "upgradeBase": 0.5,
+    "upgradeSlope": 0.2,
+    "upgradePivotTokens": 8192,
+    "jumpConfidence": 0.9,
+    "downgradeVotes": 1,
+    "downgradeMass": 0.6,
+    "downgradeSlope": 0.2,
+    "downgradePivotTokens": 4096,
+    "continuationMass": 0.5,
+    "escalationHoldTurns": 2,
+    "reviewEveryRequests": 3,
+    "minDwellRequests": 1,
+    "activityMass": 0.6,
+    "contextFill": 0.85
+  },
+  "Stats": {
+    "Since": "2024-03-04T05:06:07Z",
+    "Replies": 3,
+    "Switches": 1,
+    "ByTier": {
+      "high": 3
+    },
+    "ByActivity": {
+      "review": 3
+    },
+    "Strip": [
+      "medium",
+      "high"
+    ],
+    "RepliesPerCell": 1,
+    "LastSwitch": {
+      "At": "2024-03-04T05:06:07Z",
+      "From": "medium",
+      "To": "high",
+      "Activity": "review",
+      "MidTurn": true
+    },
+    "CacheReusePct": 80,
+    "LastInputTokens": 1000,
+    "LastCachedTokens": 800,
+    "UncachedSwitchTokens": 200,
+    "FitHeld": 2,
+    "RoutedUSD": 0.25,
+    "BaselineUSD": 0.5,
+    "PricedReplies": 3,
+    "EligibleReplies": 3
+  },
+  "ApproxTokens": 1234,
+  "Window": 200000,
+  "Worth": [
+    {
+      "Kind": "cache",
+      "Text": "cache reuse 80%, switching wrote 200 uncached tokens"
+    }
+  ]
+}

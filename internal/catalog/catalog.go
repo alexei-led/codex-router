@@ -51,11 +51,13 @@ func (m *Model) UnmarshalJSON(b []byte) error {
 }
 
 // Group is the compatibility key: a per-step rewrite is safe only between
-// models with an equal Group (research §1.2, spikes 3-5).
+// models with an equal Group (research §1.2, spikes 3-5). A Snapshot carries
+// it on the control wire, so its JSON names are spelled out and pinned by
+// internal/control's protocol-v2 fixtures.
 type Group struct {
-	CompHash string
-	Lite     bool
-	ToolMode string
+	CompHash string `json:"CompHash"`
+	Lite     bool   `json:"Lite"`
+	ToolMode string `json:"ToolMode"`
 }
 
 // Catalog is a parsed /models body.

@@ -96,6 +96,7 @@ func continuing(a classifier.Advice, c float64) classifier.Advice {
 type recordingSink struct {
 	mu        sync.Mutex
 	decisions []Decision
+	snaps     []Snapshot
 	snapshots int
 	engine    *Engine
 }
@@ -109,16 +110,25 @@ func (s *recordingSink) OnDecision(d Decision) {
 	s.decisions = append(s.decisions, d)
 }
 
-func (s *recordingSink) OnSnapshot(Snapshot) {
+func (s *recordingSink) OnSnapshot(snap Snapshot) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.snapshots++
+	s.snaps = append(s.snaps, snap)
 }
 
 func (s *recordingSink) Decisions() []Decision {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]Decision(nil), s.decisions...)
+}
+
+// Snapshots returns the snapshots published so far, for tests that check what
+// a consumer can reach.
+func (s *recordingSink) Snapshots() []Snapshot {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]Snapshot(nil), s.snaps...)
 }
 
 type clock struct {

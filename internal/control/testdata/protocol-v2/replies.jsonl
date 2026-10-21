@@ -1,0 +1,2 @@
+{"type":"ack","id":"c-2"}
+{"type":"error","id":"c-5","error":"unknown op \"lint\""}

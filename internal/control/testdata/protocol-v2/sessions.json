@@ -1,0 +1,55 @@
+[
+  {
+    "id": "h/t-1",
+    "home": "h",
+    "thread_id": "t-1",
+    "label": "home · api · main",
+    "cwd": "/h/api",
+    "mode": "on",
+    "tier": "high",
+    "route": {
+      "model": "gpt-5-codex",
+      "effort": "high"
+    },
+    "replies": 3,
+    "switches": 1,
+    "strip": [
+      "medium",
+      "high"
+    ],
+    "last_switch": {
+      "At": "2024-03-04T05:06:07Z",
+      "From": "medium",
+      "To": "high",
+      "Activity": "review",
+      "MidTurn": true
+    },
+    "last_active": "2024-03-04T05:06:07Z",
+    "attention": "paused",
+    "pending_pin": true,
+    "footer_synced": true,
+    "priced_replies": 3,
+    "eligible_replies": 3,
+    "saved_usd": 0.25,
+    "spent_usd": 0.75
+  },
+  {
+    "id": "h/t-2",
+    "home": "h",
+    "thread_id": "t-2",
+    "label": "",
+    "cwd": "",
+    "mode": "",
+    "tier": "",
+    "route": {
+      "model": ""
+    },
+    "replies": 0,
+    "switches": 0,
+    "strip": null,
+    "last_active": "0001-01-01T00:00:00Z",
+    "footer_synced": false,
+    "priced_replies": 0,
+    "eligible_replies": 0
+  }
+]

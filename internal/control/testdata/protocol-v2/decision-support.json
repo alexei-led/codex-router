@@ -1,0 +1,31 @@
+{
+  "ThreadID": "t-1",
+  "TurnID": "turn-1",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "review",
+  "Route": {
+    "model": "gpt-5-codex",
+    "effort": "high"
+  },
+  "Original": {
+    "model": "gpt-5-mini"
+  },
+  "Rewritten": true,
+  "Reason": "upgrade",
+  "Why": "the upgrade mass cleared the bar",
+  "Support": "Jev · fast gave stronger tiers 91% (needs 55%) · switch ≈ 41k uncached tokens",
+  "Estimate": {
+    "TaxTokens": 41000,
+    "Threshold": 0.55,
+    "Mass": 0.91,
+    "Streak": 2
+  },
+  "Reading": null,
+  "MidTurn": true,
+  "At": "2024-03-04T05:06:07Z",
+  "SupportParts": [
+    "Jev · fast gave stronger tiers 91% (needs 55%)",
+    "switch ≈ 41k uncached tokens"
+  ]
+}

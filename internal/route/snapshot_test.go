@@ -1,6 +1,7 @@
 package route
 
 import (
+	"maps"
 	"reflect"
 	"slices"
 	"testing"
@@ -296,32 +297,52 @@ func TestWorth(t *testing.T) {
 	}
 }
 
-func TestSupportText(t *testing.T) {
+// TestSupportParts pins the evidence line's fragments and the string they
+// spell: Support keeps its wording, and no fragment is split on the separator,
+// which a classifier's own label may hold.
+func TestSupportParts(t *testing.T) {
 	cfg := testConfig()
 	advice := tier("high", 0.7)
 	advice.Activity = &classifier.ActivityAdvice{Choice: config.ActivityDebug, Probabilities: map[config.Activity]float64{config.ActivityDebug: 0.72}}
 	bar := &policy.Estimate{Mass: 0.88, Threshold: 0.82}
+	spaced := cfg
+	spaced.Classifiers = maps.Clone(cfg.Classifiers)
+	labeled := spaced.Classifiers[spaced.Classifier]
+	labeled.Label = "Jev · fast"
+	spaced.Classifiers[spaced.Classifier] = labeled
 	tests := []struct {
 		name   string
+		cfg    config.Config
 		d      Decision
 		advice *classifier.Advice
 		tax    int
-		want   string
+		want   []string
+		line   string
 	}{
-		{"upgrade weighs the mass above", Decision{Reason: policy.ReasonUpgrade, Estimate: bar}, &advice, 41_000,
+		{"upgrade weighs the mass above", cfg, Decision{Reason: policy.ReasonUpgrade, Estimate: bar}, &advice, 41_000,
+			[]string{"Jev gave stronger tiers 88% (needs 82%)", "switch ≈ 41k uncached tokens"},
 			"Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41k uncached tokens"},
-		{"pending downgrade weighs the mass below", Decision{Reason: policy.ReasonDowngradePending, Estimate: bar}, &advice, 0,
-			"Jev gave cheaper tiers 88% (needs 82%)"},
-		{"activity move weighs the activity", Decision{Reason: ReasonActivityUp, Activity: config.ActivityDebug, Estimate: bar}, &advice, 0,
-			"Jev gave debug 88% (needs 82%)"},
-		{"no bar names the answer", Decision{Reason: policy.ReasonSameTier}, &advice, 0, "Jev gave high 70%"},
-		{"escalation needs no answer", Decision{Reason: policy.ReasonEscalation}, nil, 41_000,
+		{"pending downgrade weighs the mass below", cfg, Decision{Reason: policy.ReasonDowngradePending, Estimate: bar}, &advice, 0,
+			[]string{"Jev gave cheaper tiers 88% (needs 82%)"}, "Jev gave cheaper tiers 88% (needs 82%)"},
+		{"activity move weighs the activity", cfg, Decision{Reason: ReasonActivityUp, Activity: config.ActivityDebug, Estimate: bar}, &advice, 0,
+			[]string{"Jev gave debug 88% (needs 82%)"}, "Jev gave debug 88% (needs 82%)"},
+		{"no bar names the answer", cfg, Decision{Reason: policy.ReasonSameTier}, &advice, 0,
+			[]string{"Jev gave high 70%"}, "Jev gave high 70%"},
+		{"escalation needs no answer", cfg, Decision{Reason: policy.ReasonEscalation}, nil, 41_000,
+			[]string{"no classifier needed", "switch ≈ 41k uncached tokens"},
 			"no classifier needed · switch ≈ 41k uncached tokens"},
+		{"a label holding the separator stays one fragment", spaced, Decision{Reason: policy.ReasonSameTier}, &advice, 0,
+			[]string{"Jev · fast gave high 70%"}, "Jev · fast gave high 70%"},
+		{"no evidence, no fragments", cfg, Decision{Reason: ReasonContinue}, nil, 0, nil, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := supportText(tt.d, tt.advice, cfg, tt.tax); got != tt.want {
-				t.Fatalf("got %q\nwant %q", got, tt.want)
+			got := supportParts(tt.d, tt.advice, tt.cfg, tt.tax)
+			if !slices.Equal(got, tt.want) {
+				t.Fatalf("supportParts = %q\nwant %q", got, tt.want)
+			}
+			if line := supportLine(got); line != tt.line {
+				t.Fatalf("supportLine = %q, want %q", line, tt.line)
 			}
 		})
 	}

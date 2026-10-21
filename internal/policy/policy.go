@@ -46,12 +46,13 @@ const (
 )
 
 // Estimate explains a switch bar: the tax it priced, the bar, the support
-// and the vote streak.
+// and the vote streak. A Decision carries it on the control wire, so its JSON
+// names are spelled out and pinned by internal/control's protocol-v2 fixtures.
 type Estimate struct {
-	TaxTokens int
-	Threshold float64
-	Mass      float64
-	Streak    int
+	TaxTokens int     `json:"TaxTokens"`
+	Threshold float64 `json:"Threshold"`
+	Mass      float64 `json:"Mass"`
+	Streak    int     `json:"Streak"`
 }
 
 // Input is one decision's facts. TaxTokens prices a candidate tier's next

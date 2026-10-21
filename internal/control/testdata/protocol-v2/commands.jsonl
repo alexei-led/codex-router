@@ -1,0 +1,6 @@
+{"op":"hello","protocol":2}
+{"op":"subscribe","session":"h/t-1","id":"c-1"}
+{"op":"pin","session":"h/t-1","id":"c-2","tier":"high"}
+{"op":"pause","scope":"home","id":"c-3"}
+{"op":"preset","id":"c-4","preset":"thrifty"}
+{"op":"snapshot","id":"c-5"}

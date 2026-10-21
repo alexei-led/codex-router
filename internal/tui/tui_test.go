@@ -41,6 +41,10 @@ func fixture() route.Snapshot {
 		Reason: policy.ReasonEscalation, MidTurn: true, At: at(18, 41),
 		Why:     "same test failure twice, edit in between",
 		Support: "no classifier needed · switch ≈ 41k uncached tokens · hold 2 turns",
+		// The fragments the engine sends with it; a snapshot from an engine
+		// older than SupportParts carries Support alone, and the panel then
+		// shows that whole.
+		SupportParts: []string{"no classifier needed", "switch ≈ 41k uncached tokens", "hold 2 turns"},
 		Reading: &route.Reading{
 			Tiers:    map[config.Tier]float64{config.TierHigh: 0.18, config.TierMedium: 0.71, config.TierLow: 0.09, config.TierMicro: 0.02},
 			Activity: config.ActivityDebug, ActivityP: 0.72,
@@ -400,6 +404,71 @@ func TestAddNeverExceedsWidth(t *testing.T) {
 		if got := ansi.StringWidth(c.out[0]); got > w {
 			t.Errorf("width %d: line has %d cells", w, got)
 		}
+	}
+}
+
+// segText is segs as the cells they draw.
+func segText(segs []seg) string {
+	var b strings.Builder
+	for _, s := range segs {
+		b.WriteString(s.text)
+	}
+	return b.String()
+}
+
+// TestFlowWrapWrapsAPartThatDoesNotFit is the evidence line's mechanism: a part
+// wider than the line breaks at its last space in room and continues under the
+// lead; a part that fits is drawn as flow draws it. Nothing is cut.
+func TestFlowWrapWrapsAPartThatDoesNotFit(t *testing.T) {
+	const part = "Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41k uncached tokens"
+	hang := strings.Repeat(" ", 7)
+	cases := []struct {
+		width int
+		want  []string
+	}{
+		{80, []string{hang + part}},
+		{60, []string{
+			hang + "Jev gave stronger tiers 88% (needs 82%) · switch ≈",
+			hang + "41k uncached tokens",
+		}},
+		{50, []string{
+			hang + "Jev gave stronger tiers 88% (needs 82%) ·",
+			hang + "switch ≈ 41k uncached tokens",
+		}},
+	}
+	for _, tc := range cases {
+		c := &canvas{width: tc.width}
+		c.flowWrap(plain(hang), []seg{plain(part)})
+		if !slices.Equal(c.out, tc.want) {
+			t.Errorf("width %d:\ngot  %q\nwant %q", tc.width, c.out, tc.want)
+		}
+	}
+}
+
+// TestCutPartBreaksAtASpaceAndKeepsEachRun covers the pieces a wrap is made of:
+// the head ends at a space in room and the tail starts after it, a token with no
+// space is cut between cells, and a run a cut passes through keeps its style.
+func TestCutPartBreaksAtASpaceAndKeepsEachRun(t *testing.T) {
+	head, tail := cutPart([]seg{plain("aa bb cc")}, 5)
+	if got := segText(head); got != "aa bb" {
+		t.Errorf("head = %q, want %q", got, "aa bb")
+	}
+	if got := segText(tail); got != "cc" {
+		t.Errorf("tail = %q, want %q", got, "cc")
+	}
+	head, tail = cutPart([]seg{plain("abcdef")}, 3)
+	if got := segText(head) + "|" + segText(tail); got != "abc|def" {
+		t.Errorf("a token with no space cut to %q, want %q", got, "abc|def")
+	}
+	head, tail = cutPart([]seg{plain("ab"), col(roleWarn, "cdef"), bold("gh")}, 5)
+	if got := segText(head); got != "abcde" {
+		t.Errorf("head = %q, want %q", got, "abcde")
+	}
+	if got := segText(tail); got != "fgh" {
+		t.Errorf("tail = %q, want %q", got, "fgh")
+	}
+	if tail[0].role != roleWarn || !tail[1].bold {
+		t.Errorf("the cut lost a run's style: %+v", tail)
 	}
 }
 

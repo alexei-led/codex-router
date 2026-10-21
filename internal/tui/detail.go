@@ -126,7 +126,7 @@ func (c *canvas) band(s route.Snapshot) {
 		c.add(append([]seg{plain(strings.Repeat(" ", segsWidth(lead)))}, right...)...)
 	}
 	if len(evidence) > 0 {
-		c.flow(plain(strings.Repeat(" ", segsWidth(lead))), evidence...)
+		c.flowWrap(plain(strings.Repeat(" ", segsWidth(lead))), evidence...)
 	}
 }
 
@@ -159,7 +159,8 @@ func activityOf(d route.Decision) string {
 }
 
 // supportSegs is the evidence line: the classifier's answer for the tier
-// against the policy's bar, then the engine's own support text.
+// against the policy's bar, then the engine's own support text, a fragment at
+// a time so the line is punctuated and wrapped here.
 func supportSegs(s route.Snapshot, d route.Decision) [][]seg {
 	var parts [][]seg
 	if r := d.Reading; r != nil {
@@ -167,12 +168,25 @@ func supportSegs(s route.Snapshot, d route.Decision) [][]seg {
 			parts = append(parts, []seg{plain(fmt.Sprintf("%s %s %s", classifierName(s), d.Tier, percent(p)))})
 		}
 	}
-	for _, p := range strings.Split(d.Support, sep) {
-		if p != "" {
-			parts = append(parts, []seg{plain(p)})
-		}
+	for _, p := range supportFragments(d) {
+		parts = append(parts, []seg{plain(p)})
 	}
 	return parts
+}
+
+// supportFragments is d's evidence as the engine sent it. An engine older than
+// SupportParts sends Support alone, and that is one fragment, whole: it may
+// hold the separator inside a fragment (a classifier's label can), so it is
+// never split here. A fragment wider than the band is wrapped when it is drawn,
+// so an older engine's long support still reaches the panel entire.
+func supportFragments(d route.Decision) []string {
+	if len(d.SupportParts) > 0 {
+		return d.SupportParts
+	}
+	if d.Support != "" {
+		return []string{d.Support}
+	}
+	return nil
 }
 
 // pinRow is the tier buttons, low to high. The running tier is marked ▶, the
@@ -336,7 +350,8 @@ func turnDecision(recent []route.Decision, d route.Decision) route.Decision {
 			continue
 		}
 		if h.Route == d.Route {
-			d.Reason, d.Why, d.Reading, d.Support = h.Reason, h.Why, h.Reading, h.Support
+			d.Reason, d.Why, d.Reading = h.Reason, h.Why, h.Reading
+			d.Support, d.SupportParts = h.Support, h.SupportParts
 		}
 		break
 	}

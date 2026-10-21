@@ -58,9 +58,15 @@ func whyText(d Decision, cfg config.Config, tokens int) string {
 	return string(d.Reason)
 }
 
-// supportText is the evidence line: the support of the classifier answer
-// this step used, against its bar, and the switch's uncached tokens.
-func supportText(d Decision, a *classifier.Advice, cfg config.Config, tax int) string {
+// supportSep separates the fragments of Support, as the line has always
+// spelled them.
+const supportSep = " · "
+
+// supportParts is the evidence line's fragments: the support of the classifier
+// answer this step used, against its bar, and the switch's uncached tokens. A
+// fragment may itself hold the separator (a classifier's label can), so a
+// reader that shows fragments must not split one apart again.
+func supportParts(d Decision, a *classifier.Advice, cfg config.Config, tax int) []string {
 	var parts []string
 	if a != nil {
 		parts = append(parts, adviceSupport(d, a, labelOr(cfg.Classifiers[cfg.Classifier].Label)))
@@ -71,8 +77,12 @@ func supportText(d Decision, a *classifier.Advice, cfg config.Config, tax int) s
 	if tax > 0 {
 		parts = append(parts, fmt.Sprintf("switch ≈ %s uncached tokens", kilo(tax)))
 	}
-	return strings.Join(parts, " · ")
+	return parts
 }
+
+// supportLine is the fragments as Support spells them: one string for the
+// readers that show one line, the hook and a client older than SupportParts.
+func supportLine(parts []string) string { return strings.Join(parts, supportSep) }
 
 // adviceSupport is the support the policy weighed against its bar, as
 // claude-model-router words it: "Jev gave stronger tiers 88% (needs 82%)".
