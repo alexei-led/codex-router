@@ -307,18 +307,19 @@ Setup:
 
 Scenarios. Evidence for each is `agtermctl session text` captures plus `route decision` log lines from the isolated state dir.
 
-- [ ] Each mode on the same prompt set (micro, low, medium, high): the routes match the table above
-- [ ] A mode switch mid-session (balanced→cost): pending first, the switch after the gates; one switch in the log
-- [ ] Session override vs project file vs profile config; `default` clears the override
-- [ ] `codex-router resume` keeps the override; a new session does not inherit it
-- [ ] A pin bypasses the mode
-- [ ] The panel shows `mode (source)`; capture the doc screenshots
-- [ ] Log records carry `mode`, `modeSource`, `classified`, `model`, `effort`
-- [ ] ➕ (user, via manager) Home mode with two threads in different cwds, one with a project file: each shows its own mode and source, and routes by it
-- [ ] ➕ (user, full text) Live classifier run: a fixed set of about 20 prompts covering every tier × activity combination that can realistically be triggered, through the real Jev classifier. Record the classified tier and activity, and the routed pair under each mode. Report classification mismatches (expected vs actual) apart from routing bugs.
-- [ ] ➕ (user, full text) Impact: on the same prompt set, the estimated cost per mode and the model and effort mix. Then one representative multi-turn task per mode in an isolated agterm session: the models used, switches, tokens or cost. A mode with no real difference somewhere is a finding.
-- [ ] D8: from inside Codex, check `CODEX_THREAD_ID` in a shell command and whether `!codex-router ctl mode cost` works in the sandbox; document the result
-- [ ] Close the test sessions
+- [x] Each mode on the same prompt set (micro, low, medium, high): the routes match the table above
+- [x] A mode switch mid-session (balanced→cost): pending first, the switch after the gates; one switch in the log
+- [x] Session override vs project file vs profile config; `default` clears the override
+- [x] `codex-router resume` keeps the override; a new session does not inherit it
+- [x] A pin bypasses the mode
+- [x] The panel shows `mode (source)`; capture the doc screenshots
+- [x] Log records carry `mode`, `modeSource`, `classified`, `model`, `effort`
+- [ ] ⚠️ blocked: setup (launchd units) and a hand-written provider block were both refused by the session's permission policy; needs approval. Engine side covered by `TestHomeThreadsReadTheirOwnProjectFile`. ➕ (user, via manager) Home mode with two threads in different cwds, one with a project file: each shows its own mode and source, and routes by it
+- [x] ➕ (user, full text) Live classifier run: a fixed set of about 20 prompts covering every tier × activity combination that can realistically be triggered, through the real Jev classifier. Record the classified tier and activity, and the routed pair under each mode. Report classification mismatches (expected vs actual) apart from routing bugs.
+- [x] ➕ (user, full text) Impact: on the same prompt set, the estimated cost per mode and the model and effort mix. Then one representative multi-turn task per mode in an isolated agterm session: the models used, switches, tokens or cost. A mode with no real difference somewhere is a finding.
+- [x] ➕ Fixed: a sandboxed `ctl` with `CODEX_THREAD_ID` said "not listed" instead of `cannot reach the router` (`TestCtlNamesASandboxBlockedSocket`)
+- [x] D8: from inside Codex, check `CODEX_THREAD_ID` in a shell command and whether `!codex-router ctl mode cost` works in the sandbox; document the result
+- [x] Close the test sessions
 
 ### Release (Phase 4)
 

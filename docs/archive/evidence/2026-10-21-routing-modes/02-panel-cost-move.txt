@@ -1,0 +1,18 @@
+codex-router  1 session · 1 home · Jev ready                 Sessions  Policy  Usage   ? help
+
+  SESSION      STATE  MODEL                LAST TURNS  SWITCH
+● home-a
+▸ r1 · master  ● on   gpt-6-luna · medium  ▃▃▃▃▃▃▃▃    16:41 ↓
+
+r1 · master                                                cost (session) · home-a · 6b17dcbc
+ LOW  code → gpt-6-luna · medium                   cost mode: low runs on gpt-6-luna · medium
+      Jev low 76% · Jev gave the mode's move 89% (needs 80%)
+ Pin      micro  ▶low   medium   high                                          next turn only
+ Session  8 replies · 2 switches · saved ≈ $0.09 (94%) vs per-reply native basis
+          ▃▃▃▃▃▃▃▃  1 reply per cell
+ Context  █░░░░░░░░░ 10%  26.9K / 258.4K gpt-6-luna      Cache  98% last reply · 75% session
+ Recent   16:41  low    gpt-6-luna · medium · cost mode: low runs on gpt-6-luna · medium · +…
+          16:41  low    gpt-6-luna · high · waiting to go down: same task, no passed check s…
+          16:40  low    gpt-6-luna · high · down to low · +2 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help

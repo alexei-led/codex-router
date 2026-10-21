@@ -1,0 +1,20 @@
+codex-router  1 session · 1 home · Jev ready                 Sessions  Policy  Usage   ? help
+
+  SESSION      STATE  MODEL               LAST TURNS  SWITCH
+● home-a
+▸ r2 · master  ● on   gpt-6.1-sol · high  ▅▅▅▅▅▅▅▅▅   16:52 ↓
+
+r2 · master                                             quality (project) · home-a · 6b17dcbc
+ MEDIUM  code → gpt-6.1-sol · high            quality mode: medium runs on gpt-6.1-sol · high
+         Jev medium 62% · Jev gave the mode's move 62% (needs 60%)
+ Pin      micro   low  ▶medium   high                                          next turn only
+ Session  9 replies · 4 switches · same estimated cost vs per-reply native basis
+          ▅▅▅▅▅▅▅▅▅  1 reply per cell
+ Context  ░░░░░░░░░░ 4%  22.4K / 475K gpt-6.1-sol      Cache  53% last reply · 83% session
+ Recent   16:52  medium gpt-6.1-sol · high · quality mode: medium runs on gpt-6.1-sol · high…
+          16:51  medium gpt-6.1-sol · medium · ops at medium runs on gpt-6.1-sol · medium · …
+          16:48  medium gpt-6.1-sol · high · waiting to go down: needs more support · +1 ste…
+          16:47  medium gpt-6.1-sol · high · tool calls show ops; runs on gpt-6.1-sol · high
+          16:47  medium gpt-6.1-sol · medium · quality mode waits: needs more support
+
+p pin · space pause · P pause home · tab views · q quit · ? help

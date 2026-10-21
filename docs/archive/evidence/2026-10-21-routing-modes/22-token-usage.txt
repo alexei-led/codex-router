@@ -1,0 +1,3 @@
+cost Token usage so far: total=37,329 input=32,209 (+ 310,784 cached) output=5,120 (reasoning 1,752)
+balanced Token usage so far: total=30,004 input=26,379 (+ 192,000 cached) output=3,625 (reasoning 196)
+quality Token usage so far: total=24,268 input=19,098 (+ 271,232 cached) output=5,170 (reasoning 1,219)

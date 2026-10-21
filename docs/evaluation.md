@@ -158,6 +158,10 @@ The test writes the table below. It fails when the table is out of date. Reasons
 
 </details>
 
+### Live check
+
+The [routing modes live check](archive/evidence/2026-10-21-routing-modes/report.md) has two runs. First, 20 fixed prompts went through Jev and were routed under each mode: no routing bug, and cost ≤ balanced ≤ quality on every prompt. Jev classified 10 of them other than expected, mostly one tier off. Second, the same four-turn task ran once per mode. All three runs passed their tests. Router spend was $0.009 for cost, $0.108 for balanced and $0.117 for quality. The live classifier run is `go test -tags live ./internal/route -run TestLiveClassifierRoutes` with `CODEX_ROUTER_CONFIG` set.
+
 ## Evidence
 
 The [original report](archive/evidence/2026-10-15-openai-defaults/report.md) records the method and limits. Its `r2/` directory holds the runner, fixtures and grading material. The [live routing reports](archive/README.md) cover integration behavior separately.

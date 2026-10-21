@@ -1,0 +1,20 @@
+codex-router  1 session · 1 home · Jev ready                 Sessions  Policy  Usage   ? help
+
+  SESSION      STATE  MODEL               LAST TURNS  SWITCH
+● home-a
+▸ r1 · master  ● on   gpt-6.1-sol · high  ▃▃▃▃▃▃▃▃▃▇  16:43 ↑
+
+r1 · master                                                cost (session) · home-a · 6b17dcbc
+ HIGH  gpt-6.1-sol · high                                        pinned to high for this turn
+       switch ≈ 20k uncached tokens
+ Pin      micro   low   medium  ▶high                                          next turn only
+ Session  10 replies · 3 switches · saved ≈ $0.12 (81%) vs per-reply native basis
+          ▃▃▃▃▃▃▃▃▃▇  1 reply per cell
+ Context  ░░░░░░░░░░ 5%  27.1K / 475K gpt-6.1-sol      Cache  47% last reply · 63% session
+ Recent   16:43  high   gpt-6.1-sol · high · pinned to high for this turn
+          16:43  low    gpt-6-luna · medium · waiting to go down: needs more support
+          16:41  low    gpt-6-luna · medium · cost mode: low runs on gpt-6-luna · medium · +…
+          16:41  low    gpt-6-luna · high · waiting to go down: same task, no passed check s…
+          16:40  low    gpt-6-luna · high · down to low · +2 steps
+
+p pin · space pause · P pause home · tab views · q quit · ? help

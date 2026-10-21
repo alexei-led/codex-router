@@ -1,0 +1,20 @@
+codex-router  2 sessions · 1 home · Jev ready                Sessions  Policy  Usage   ? help
+
+  SESSION      STATE  MODEL                LAST TURNS  SWITCH
+● home-a
+▸ r3 · master  ● on   gpt-6-luna · medium  ▁▁          16:54 ↓
+  r2 · master  ● on   gpt-6.1-sol · high   ▅▅▅▅▅▅▅▅▅   16:52 ↓
+
+r3 · master                                                 cost (config) · home-a · 6b17dcbc
+ MICRO  explore → gpt-6-luna · medium                                         ↓ down to micro
+        Jev micro 92% · Jev gave cheaper tiers 92% (needs 80%)
+ Pin     ▶micro   low   medium   high                                          next turn only
+ Session  2 replies · 1 switch · saved ≈ $0.03 (95%) vs per-reply native basis
+          ▁▁  1 reply per cell
+ Context  ░░░░░░░░░░ 7%  19.0K / 258.4K gpt-6-luna      Cache  98% last reply · 49% session
+ Look     project file ignored:
+          ~/.cache/codex-router-live/routing-modes/repos/r3/.codex/router.json:
+          json: unknown field "routes"
+ Recent   16:54  micro  gpt-6-luna · medium · down to micro · +1 steps
+
+↑↓ select · p pin · space pause · P pause home · tab views · q quit · ? help
