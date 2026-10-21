@@ -13,7 +13,7 @@ r3 · master                                                 cost (config) · ho
           ▁▁  1 reply per cell
  Context  ░░░░░░░░░░ 7%  19.0K / 258.4K gpt-6-luna      Cache  98% last reply · 49% session
  Look     project file ignored:
-          ~/.cache/codex-router-live/routing-modes/repos/r3/.codex/router.json:
+          <repos>/r3/.codex/router.json:
           json: unknown field "routes"
  Recent   16:54  micro  gpt-6-luna · medium · down to micro · +1 steps
 

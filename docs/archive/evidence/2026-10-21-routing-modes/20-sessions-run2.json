@@ -4,7 +4,7 @@
     "home": "6b17dcbc00aa",
     "thread_id": "01a15ecb-ed3f-7863-959d-598cafaf1bec",
     "label": "home-a · m-quality · master",
-    "cwd": "~/.cache/codex-router-live/routing-modes/repos/m-quality",
+    "cwd": "<repos>/m-quality",
     "mode": "on",
     "tier": "medium",
     "route": {
@@ -52,7 +52,7 @@
     "home": "6b17dcbc00aa",
     "thread_id": "01a15ecb-edff-7991-8054-d51c5762136b",
     "label": "home-a · m-balanced · master",
-    "cwd": "~/.cache/codex-router-live/routing-modes/repos/m-balanced",
+    "cwd": "<repos>/m-balanced",
     "mode": "on",
     "tier": "medium",
     "route": {
@@ -97,7 +97,7 @@
     "home": "6b17dcbc00aa",
     "thread_id": "01a15ecb-ed15-7091-84d4-a7582dcf6e98",
     "label": "home-a · m-cost · master",
-    "cwd": "~/.cache/codex-router-live/routing-modes/repos/m-cost",
+    "cwd": "<repos>/m-cost",
     "mode": "on",
     "tier": "medium",
     "route": {
@@ -147,7 +147,7 @@
     "home": "6b17dcbc00aa",
     "thread_id": "01a15eb6-fb7e-7012-9877-34f877821433",
     "label": "home-a · r2 · master",
-    "cwd": "~/.cache/codex-router-live/routing-modes/repos/r2",
+    "cwd": "<repos>/r2",
     "mode": "on",
     "tier": "medium",
     "route": {

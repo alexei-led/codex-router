@@ -1,6 +1,6 @@
 # Routing modes: live check, 2026-10-21
 
-The worktree build of `feat/routing-modes` ran in launcher mode in agterm, with its own config and state directories, against the logged-in test home `home-a`. The classifier was Jev (`jev-1.13.0`). The router config pointed `envFile` at the user's key file; the test never read it. The real `~/.codex/config.toml` and `~/.codex-work/config.toml` hashes did not change.
+The worktree build of `feat/routing-modes` ran in launcher mode in agterm, with its own config and state directories, against the logged-in test home `home-a`. The classifier was Jev (`jev-1.13.0`). The router config pointed `envFile` at the user's key file; the test never read it. The hashes of the user's real Codex configs did not change. Paths are shortened to `<live>` (the throwaway directory) and `<repos>` (its test repos).
 
 ## Behavior
 
@@ -23,9 +23,9 @@ The worktree build of `feat/routing-modes` ran in launcher mode in agterm, with 
 - `!codex-router ctl mode balanced` in the Codex prompt runs outside the sandbox, and it worked.
 - Bug found and fixed: with `CODEX_THREAD_ID` set, a sandboxed `ctl` reported the thread as "not listed" instead of `cannot reach the router`, so the skill never asked to run it outside the sandbox. After the fix, it reports `cannot reach the router` (`08-d8-sandbox-after-fix.txt`).
 
-### Not run live
+### Skipped: home mode
 
-- **Home mode** with two threads in different cwds. Setting up a test home needs launchd units or a provider block in the test home's `config.toml`. The session's permission policy refused both, so this needs approval first. `TestHomeThreadsReadTheirOwnProjectFile` covers the engine side. The launcher sessions in `r2` and `r3` showed, in one panel, each thread with its own mode and source.
+Home mode with two threads in different cwds, one with a project file, was not run live. A test home needs launchd units or a hand-written provider block on the user's machine, and both were ruled out. `TestHomeThreadsReadTheirOwnProjectFile` covers it. The launcher sessions in `r2` and `r3` showed, in one panel, each thread with its own mode and source.
 
 ## Classifier run
 

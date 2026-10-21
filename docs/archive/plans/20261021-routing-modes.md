@@ -7,7 +7,7 @@
 - The mode comes from four layers: session override > project file > profile config > `balanced`.
 - The `preset` config key and home-wide preset command are replaced by `mode`, `modes.<m>.policy` and a thread-scoped `mode` command.
 - Source design: `router-modes/design.md` (manager scratchpad). Brief: `router-modes/brief-codex-router.md`.
-- Branch `feat/routing-modes`, worktree `~/Workspace/codex-router.worktrees/routing-modes`, from `origin/main` at `e150b13`.
+- Branch `feat/routing-modes`, in its own worktree, from `origin/main` at `e150b13`.
 
 ## Phase 1 findings
 
@@ -42,7 +42,7 @@
   - The engine already gets each thread's cwd through `Deps.Cwd(threadID)`. In the brain it comes from the app-server `Thread.Cwd` (`brain/threads.go:33-55`). In launcher mode it is the launcher's own cwd (`launcher/router.go:52-58`).
   - Fix: resolve the project file per thread from `Deps.Cwd`, not once per process.
 - **D2. Launcher mode does not persist intent.**
-  - The user runs launcher mode. Five registry entries are `kind: session`, and `~/.config/fish/functions/codex.fish` wraps `codex-router --`. No brain `intent.json` exists under `~/.local/state/codex-router`.
+  - The main user of this release runs launcher mode, through a shell wrapper around `codex-router --`; no brain `intent.json` exists to migrate.
   - So "a session override survives resume" fails for the user's setup unless launcher mode stores the override. See O1.
 - **D3. The lateral economics rule blocks the cost model lever.**
   - `lateral` refuses a cheaper same-tier route whenever the switch tax is above 0 on a measured thread (`choose.go:147-152`).
@@ -53,7 +53,7 @@
   - After a mode switch, every stay result (uncertain, no-advice, hold, pending, `continue`) would rebuild the new mode's pair and switch without a gate.
   - Fix: the incumbent route is `th.sent`, the route in use. A `cell` carries the route it chose, and `finish` sends that route unless the fit guard moves the tier.
 - **D5. Effort ladder.**
-  - The catalog lists `max` and `ultra` beyond `xhigh` (`~/.codex/models_cache.json`). `config.Efforts` is `low..xhigh`.
+  - The catalog lists `max` and `ultra` beyond `xhigh` (Codex's models cache). `config.Efforts` is `low..xhigh`.
   - `proj` stays inside `config.Efforts ∩ catalog levels`. With no catalog levels it uses `config.Efforts`. An effort outside the ladder, such as an empty route effort resolved to an unknown effort Codex sent, gets no effort lever.
   - The model lever needs both input prices above 0. An unpriced model gets the effort lever only.
 - **D6. Wire names.** `Snapshot.Mode` is taken, so the new fields are `RoutingMode` and `RoutingModeSource` on `Snapshot`, `Decision` and `SessionInfo`. The log keys are `mode` and `modeSource`, as the design says.
@@ -81,7 +81,7 @@ Expected results with the built-in routes (micro Luna/medium, low Luna/high, med
 
 - **Seeding after restart.** A launcher or brain restart seeds the tier from the model (`cellForModel`). In cost mode, Luna/high seeds as `low` even when the thread ran at medium. The next medium answer is an upgrade vote with an unchanged pair. That is harmless: dwell resets only on a pair change.
 - **Per-turn project file read.** There is one `stat` and a small read per user turn. Resolution happens at the turn's first step, so an edited file applies on the next turn.
-- **Mixed versions during upgrade.** Five v0.8.0 launchers are running now. The O4 choice decides how a v0.9 panel shows them.
+- **Mixed versions during upgrade.** v0.8.0 launchers keep running until restarted. The O4 choice decides how a v0.9 panel shows them.
 - **Session mode store growth (O1a).** Each thread given an override leaves one small file. It is not pruned.
 - **Path traversal.** Thread ids name store files. Ids are checked against a strict charset before use.
 
@@ -91,7 +91,7 @@ Expected results with the built-in routes (micro Luna/medium, low Luna/high, med
 - O1a, plus a prune at startup. Delete mode files whose mtime is older than 30 days. Loading a file refreshes its mtime, so an override that is still used stays. This is simpler than the count rule for run logs, which keeps the newest 40 (`launcher/runtime.go:21`). A missing or corrupt file means no override.
 - O2a, with this condition. If the transformed target differs from the baseline `P(T)`, the change comes from the mode and uses the tier-switch gates. Otherwise today's activity rule applies, so `balanced` stays byte-identical. A test must prove that balanced decisions are unchanged on the existing fixtures.
 - O3a: a clear error, no rewrite. O4a: protocol v2, additive fields only. O5: `.codex/router.json`, mode only, search up to the repo root, an invalid file is ignored with a panel warning.
-- O6: list the `codex-work.fish` and `work.json` change; don't apply it. The user picks the modes at release.
+- O6: list the per-profile config change for the user; don't apply it. The user picks the modes at release.
 - O7: build as designed. The docs say that quality at high gives Sol/xhigh, which the lab notes found no better than high. The release notes flag it as untuned.
 
 ### Open choices (recommendation first)
@@ -121,10 +121,10 @@ Expected results with the built-in routes (micro Luna/medium, low Luna/high, med
   - (recommended) The file is `.codex/router.json`. Lookup walks up from the thread's cwd to the nearest directory that holds `.git`, inclusive. The first file found wins. The file is read at each turn's first step.
   - An invalid file (any key other than `mode`, a bad value or bad JSON) is ignored. It is logged once per change and shown as a WORTH A LOOK finding, and the mode falls through to the profile config.
 - **O6. A default mode per profile on the user's machine.**
-  - Both homes share `~/.config/codex-router/config.json`. `codex-work.fish` sets only `CODEX_HOME`.
-  - (a, recommended) Set `CODEX_ROUTER_CONFIG=~/.config/codex-router/work.json` in the work wrapper. That file holds the classifier keys plus `mode`.
+  - Two Codex homes share one router config; the second home's wrapper sets only `CODEX_HOME`.
+  - (a, recommended) Point that wrapper's `CODEX_ROUTER_CONFIG` at a second config file that holds the classifier keys plus `mode`.
   - (b) Add a per-home `mode` to the config. That is new scope beyond the design.
-  - The mode for each profile is the user's call. Suggestion: personal `balanced`, work `cost`.
+  - The mode for each profile is the user's call.
 - **O7. Quality → xhigh (D9).** (recommended) Implement as designed, and say in the docs that the policy and quality values are untuned. Otherwise the manager changes the design.
 
 ## Development approach
@@ -290,19 +290,15 @@ Expected results with the built-in routes (micro Luna/medium, low Luna/high, med
 
 - [x] Rename hints (O3a) and a migration section in `docs/configuration.md`; release notes in Phase 4
 - [x] Stored state: a `preset` in `intent.json` is ignored (no `intentVersion` bump; `TestIntentStoreLoad`); release notes say a home-wide preset picked in the panel is gone
-- User machine (list only; the manager applies after release with the user's approval):
-  - `~/.config/codex-router/config.json`: no change needed (keys: `classifier`, `classifiers`). Optional: add `"mode": "<personal default>"`.
-  - Work profile (O6a): create `~/.config/codex-router/work.json` (classifier keys + `"mode": "<work default>"`), and in `~/.config/fish/functions/codex-work.fish` set `CODEX_ROUTER_CONFIG="$HOME/.config/codex-router/work.json"`.
-  - After installing v0.9.0: restart the running `codex-router` launchers (5 now, all v0.8.0) to pick up the new code.
-  - No `intent.json` exists under `~/.local/state/codex-router`, so stored state needs no migration.
+- User machine: the changes were listed for the manager outside the repo (a per-profile config with `mode`, a launcher restart); none were applied.
 
 ### Live agterm verification (Phase 3)
 
 Setup:
 
 - Build `.bin/codex-router` in the worktree.
-- Use isolated `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `--config` under `~/.cache/codex-router-live/routing-modes/`, and the existing logged-in test homes `~/.cache/codex-router-live/home-{a,b}`.
-- Create my own sessions: `agtermctl session new --workspace-name ai-thingz --name "codex-router live test" --no-select`.
+- Use isolated `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `--config` in a throwaway directory, and the existing logged-in test homes.
+- Create my own agterm sessions (`agtermctl session new --no-select`).
 - Never touch the installed binary, the user's config or state, or other sessions.
 
 Scenarios. Evidence for each is `agtermctl session text` captures plus `route decision` log lines from the isolated state dir.
@@ -314,7 +310,7 @@ Scenarios. Evidence for each is `agtermctl session text` captures plus `route de
 - [x] A pin bypasses the mode
 - [x] The panel shows `mode (source)`; capture the doc screenshots
 - [x] Log records carry `mode`, `modeSource`, `classified`, `model`, `effort`
-- [ ] ⚠️ blocked: setup (launchd units) and a hand-written provider block were both refused by the session's permission policy; needs approval. Engine side covered by `TestHomeThreadsReadTheirOwnProjectFile`. ➕ (user, via manager) Home mode with two threads in different cwds, one with a project file: each shows its own mode and source, and routes by it
+- [x] Skipped (covered by test): home mode with two threads in different cwds, one with a project file. A live run needs launchd units or a provider block on the user's machine, which the manager ruled out; `TestHomeThreadsReadTheirOwnProjectFile` covers it.
 - [x] ➕ (user, full text) Live classifier run: a fixed set of about 20 prompts covering every tier × activity combination that can realistically be triggered, through the real Jev classifier. Record the classified tier and activity, and the routed pair under each mode. Report classification mismatches (expected vs actual) apart from routing bugs.
 - [x] ➕ (user, full text) Impact: on the same prompt set, the estimated cost per mode and the model and effort mix. Then one representative multi-turn task per mode in an isolated agterm session: the models used, switches, tokens or cost. A mode with no real difference somewhere is a finding.
 - [x] ➕ Fixed: a sandboxed `ctl` with `CODEX_THREAD_ID` said "not listed" instead of `cannot reach the router` (`TestCtlNamesASandboxBlockedSocket`)
@@ -323,13 +319,13 @@ Scenarios. Evidence for each is `agtermctl session text` captures plus `route de
 
 ### Release (Phase 4)
 
-- [ ] `plugins/codex-router/.codex-plugin/plugin.json` version `0.9.0`; `make release-check VERSION=v0.9.0`
-- [ ] `docs/releases/v0.9.0.md`: what changed, migration (`preset`→`mode`, `thrifty`→`cost`, home preset gone, restart launchers), untuned values, live evidence summary
+- [x] `plugins/codex-router/.codex-plugin/plugin.json` version `0.9.0`; `make release-check VERSION=v0.9.0`
+- [x] `docs/releases/v0.9.0.md`: what changed, migration (`preset`→`mode`, `thrifty`→`cost`, home preset gone, restart launchers), untuned values, live evidence summary
 - [ ] Full gate: `make fmt-check vet lint test vuln build`
-- [ ] Move this plan to `docs/archive/plans/`
+- [x] Move this plan to `docs/archive/plans/`
 - [ ] Push `feat/routing-modes`, open the PR, stop before merge, tag or publish
 
 ## Post-completion (manager, with the user's approval)
 
 - Merge, then tag `v0.9.0` (annotated, `--cleanup=verbatim -F docs/releases/v0.9.0.md`); verify the release workflow.
-- Apply the user-machine changes listed above and restart the launchers.
+- Apply the listed user-machine changes and restart the launchers.

@@ -14,4 +14,4 @@ These records describe development experiments and live checks. Use the [user gu
 
 Raw captures and scripts remain with the reports to support their findings. They include test prompts, local paths and session identifiers. They are not examples to paste into a normal Codex home.
 
-Completed implementation plans were removed from the working tree. Git history retains them. Linux services have unit coverage, but these records do not contain a Linux live run.
+Earlier completed plans were removed from the working tree; Git history retains them. Later ones are kept in [plans](plans/). Linux services have unit coverage, but these records do not contain a Linux live run.
