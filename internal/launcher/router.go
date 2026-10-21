@@ -14,9 +14,12 @@ import (
 
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
+	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/home"
+	"github.com/alexei-led/codex-router/internal/modestore"
 	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/route"
+	"github.com/alexei-led/codex-router/internal/statedir"
 )
 
 const (
@@ -45,6 +48,14 @@ func newRouter(o Options, log *slog.Logger, sink route.Sink) (*route.Engine, *ca
 	d := route.Deps{
 		Config: o.Config, Catalog: store, Classifier: asker, ClassifierOffReason: why,
 		Logger: log, Home: h, Sink: sink, Cwd: launcherCwd(),
+	}
+	d.ProjectMode = config.ProjectModes(d.Cwd)
+	if app, err := statedir.Dir(o.getenv); err != nil || h.ID == "" {
+		log.Warn("mode-store-unavailable", "err", err)
+	} else if ms, err := modestore.Open(app, h.ID, log); err != nil {
+		log.Warn("mode-store-unavailable", "err", err)
+	} else {
+		d.LoadMode, d.SaveMode = ms.Load, ms.Save
 	}
 	return route.New(d), store, h
 }

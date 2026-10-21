@@ -12,7 +12,7 @@ codex-router  6 sessions · ✕ disconnected       Sessions  Policy  Usage   ? h
   infra · main          ● on            gpt-6-sol · medium
   reflex · main         ○ waiting for the first prompt
 
-api · feat/auth                                                  work · aaaaaaaa
+api · feat/auth                             balanced (default) · work · aaaaaaaa
  ✕ disconnected · retrying · last snapshot 18:42:00
  HIGH  debug → gpt-6.1-sol · high     ↑ same test failure twice, edit in between
        Jev high 18% · no classifier needed · switch ≈ 41k uncached tokens

@@ -21,7 +21,7 @@ func whyText(d Decision, cfg config.Config, tokens int) string {
 	case policy.ReasonEscalation:
 		return "escalate: same tool failure twice, edit in between"
 	case policy.ReasonHold:
-		return fmt.Sprintf("hold: escalation holds %d turns", cfg.Effective().EscalationHoldTurns)
+		return fmt.Sprintf("hold: escalation holds %d turns", cfg.Effective(d.RoutingMode).EscalationHoldTurns)
 	case policy.ReasonNoAdvice:
 		return "no classifier answer; keeps " + string(d.Tier)
 	case policy.ReasonUncertain:
@@ -54,6 +54,10 @@ func whyText(d Decision, cfg config.Config, tokens int) string {
 		return fmt.Sprintf("tool calls show %s; runs on %s", d.Activity, route)
 	case ReasonContinue:
 		return "same turn"
+	case ReasonMode:
+		return fmt.Sprintf("%s mode: %s runs on %s", d.RoutingMode, d.Tier, route)
+	case ReasonModePending:
+		return fmt.Sprintf("%s mode waits: needs more support", d.RoutingMode)
 	}
 	return string(d.Reason)
 }
@@ -99,6 +103,8 @@ func adviceSupport(d Decision, a *classifier.Advice, name string) string {
 		what = "stronger tiers"
 	case policy.ReasonDowngrade, policy.ReasonDowngradeHeld, policy.ReasonDowngradePending:
 		what = "cheaper tiers"
+	case ReasonMode, ReasonModePending:
+		what = "the mode's move"
 	default:
 		what = string(d.Activity)
 		if a.Activity != nil {
@@ -132,7 +138,10 @@ func worth(s Snapshot) []Finding {
 		out = append(out, Finding{Kind: k, Text: fmt.Sprintf(format, args...)})
 	}
 	if s.StateLost {
-		add(FindingState, "state lost: saved pause, pin and preset unreadable; routing paused until resume")
+		add(FindingState, "state lost: saved pauses and pins unreadable; routing paused until resume")
+	}
+	if s.ProjectError != "" {
+		add(FindingProject, "project file ignored: %s", s.ProjectError)
 	}
 	name, h := labelOr(s.ClassifierLabel), s.Classifier
 	switch {

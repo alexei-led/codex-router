@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 789 275" width="789" height="275" role="img" aria-labelledby="title desc">
   <title id="title">codex-router panel, Policy view</title>
-  <desc id="desc">Sample data. Policy view: the preset buttons with balanced marked, the classifier Jev with its model and median latency, the model and effort of each tier, the compatibility group, and the thresholds for switching.</desc>
+  <desc id="desc">Sample data. Policy view: the mode buttons cost, balanced, quality and default, with balanced marked and its source, the classifier Jev with its model and median latency, the model and effort of each tier, the compatibility group, and the thresholds for switching.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
   <rect width="789" height="275" rx="8" fill="#14171f"/>
   <rect x="0.5" y="0.5" width="788" height="274" rx="8" fill="none" stroke="#2e3340"/>
@@ -17,11 +17,12 @@
   <text x="593.2" y="66.0" fill="#14171f" font-weight="700" xml:space="preserve"> Policy </text>
   <text x="655.6" y="66.0" fill="#d0d0d0" xml:space="preserve"> Usage   </text>
   <text x="725.8" y="66.0" fill="#878787" xml:space="preserve">? help</text>
-  <text x="16.0" y="104.0" fill="#d0d0d0" xml:space="preserve"> Preset     </text>
-  <text x="109.6" y="104.0" fill="#87afff" xml:space="preserve"> thrifty  </text>
-  <text x="187.6" y="104.0" fill="#87afff" font-weight="700" xml:space="preserve">▶balanced  </text>
-  <text x="273.4" y="104.0" fill="#87afff" xml:space="preserve"> quality  </text>
-  <text x="515.2" y="104.0" fill="#878787" xml:space="preserve">for every session of home default</text>
+  <text x="16.0" y="104.0" fill="#d0d0d0" xml:space="preserve"> Mode       </text>
+  <text x="109.6" y="104.0" fill="#87afff" xml:space="preserve"> cost  </text>
+  <text x="164.2" y="104.0" fill="#87afff" font-weight="700" xml:space="preserve">▶balanced  </text>
+  <text x="250.0" y="104.0" fill="#87afff" xml:space="preserve"> quality  </text>
+  <text x="328.0" y="104.0" fill="#878787" xml:space="preserve"> default  </text>
+  <text x="562.0" y="104.0" fill="#878787" xml:space="preserve">from default · this session</text>
   <text x="16.0" y="123.0" fill="#d0d0d0" xml:space="preserve"> Classifier </text>
   <text x="109.6" y="123.0" fill="#5fd7af" xml:space="preserve">● Jev · jev-1.13.0</text>
   <text x="250.0" y="123.0" fill="#878787" xml:space="preserve"> · </text>
@@ -52,20 +53,20 @@
   <text x="31.6" y="256.0" fill="#878787" xml:space="preserve"> scroll</text>
   <text x="86.2" y="256.0" fill="#878787" xml:space="preserve"> · </text>
   <text x="109.6" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">s</text>
-  <text x="117.4" y="256.0" fill="#878787" xml:space="preserve"> preset</text>
-  <text x="172.0" y="256.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="195.4" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">space</text>
-  <text x="234.4" y="256.0" fill="#878787" xml:space="preserve"> pause</text>
-  <text x="281.2" y="256.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="304.6" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">P</text>
-  <text x="312.4" y="256.0" fill="#878787" xml:space="preserve"> pause home</text>
-  <text x="398.2" y="256.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="421.6" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">tab</text>
-  <text x="445.0" y="256.0" fill="#878787" xml:space="preserve"> views</text>
-  <text x="491.8" y="256.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="515.2" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">q</text>
-  <text x="523.0" y="256.0" fill="#878787" xml:space="preserve"> quit</text>
-  <text x="562.0" y="256.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="585.4" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">?</text>
-  <text x="593.2" y="256.0" fill="#878787" xml:space="preserve"> help</text>
+  <text x="117.4" y="256.0" fill="#878787" xml:space="preserve"> mode</text>
+  <text x="156.4" y="256.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="179.8" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">space</text>
+  <text x="218.8" y="256.0" fill="#878787" xml:space="preserve"> pause</text>
+  <text x="265.6" y="256.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="289.0" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">P</text>
+  <text x="296.8" y="256.0" fill="#878787" xml:space="preserve"> pause home</text>
+  <text x="382.6" y="256.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="406.0" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">tab</text>
+  <text x="429.4" y="256.0" fill="#878787" xml:space="preserve"> views</text>
+  <text x="476.2" y="256.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="499.6" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">q</text>
+  <text x="507.4" y="256.0" fill="#878787" xml:space="preserve"> quit</text>
+  <text x="546.4" y="256.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="569.8" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">?</text>
+  <text x="577.6" y="256.0" fill="#878787" xml:space="preserve"> help</text>
 </svg>

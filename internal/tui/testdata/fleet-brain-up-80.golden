@@ -11,7 +11,7 @@ codex-router  6 sessions · 2 homes · Jev ready  Sessions  Policy  Usage   ? he
   api · fix/retry          ? unknown  gpt-6.1-sol · high   ▅▅▅▅▇▇▇     18:41 ↑
   infra · main             ● on       gpt-6-sol · medium
 
-codex-router · main                                           default · bbbbbbbb
+codex-router · main                      balanced (default) · default · bbbbbbbb
  HIGH  debug → gpt-6.1-sol · high     ↑ same test failure twice, edit in between
        Jev high 18% · no classifier needed · switch ≈ 41k uncached tokens
        hold 2 turns

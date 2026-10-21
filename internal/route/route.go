@@ -28,8 +28,21 @@ const (
 	OpUnpin    Op = "unpin"
 	OpPause    Op = "pause"
 	OpResume   Op = "resume"
-	OpPreset   Op = "preset"
+	OpMode     Op = "mode"
 	OpSnapshot Op = "snapshot"
+)
+
+// ModeDefault as Command.Mode clears a session's routing mode override.
+const ModeDefault config.RoutingMode = "default"
+
+// ModeSource says where a thread's routing mode comes from.
+type ModeSource string
+
+const (
+	SourceSession ModeSource = "session" // a mode command on this session
+	SourceProject ModeSource = "project" // the project file (config.ProjectFile)
+	SourceConfig  ModeSource = "config"  // the config file's mode
+	SourceDefault ModeSource = "default" // nothing set: balanced
 )
 
 // Scope says what a command acts on: one session (thread) or the whole home
@@ -42,16 +55,16 @@ const (
 )
 
 // Command is what the TUI or hook asks the engine to do. Session is a thread
-// id. Pin and unpin act on a session; preset on the home; pause and resume on
-// either. An empty Scope means the session when Session is set, else the
-// home. ID is the caller's, for matching the reply.
+// id. Pin, unpin and mode act on a session; pause and resume on either. An
+// empty Scope means the session when Session is set, else the home. Mode is a
+// routing mode or ModeDefault. ID is the caller's, for matching the reply.
 type Command struct {
-	Op      Op            `json:"op"`
-	Session string        `json:"session,omitempty"`
-	Scope   Scope         `json:"scope,omitempty"`
-	ID      string        `json:"id,omitempty"`
-	Tier    config.Tier   `json:"tier,omitempty"`
-	Preset  config.Preset `json:"preset,omitempty"`
+	Op      Op                 `json:"op"`
+	Session string             `json:"session,omitempty"`
+	Scope   Scope              `json:"scope,omitempty"`
+	ID      string             `json:"id,omitempty"`
+	Tier    config.Tier        `json:"tier,omitempty"`
+	Mode    config.RoutingMode `json:"mode,omitempty"`
 }
 
 // home reports whether c acts on the whole home.
@@ -85,6 +98,11 @@ type Decision struct {
 	// whole (a label may hold the separator, so it must not be split). It is
 	// last so this additive field moves no existing name on the wire.
 	SupportParts []string `json:"SupportParts,omitempty"`
+	// RoutingMode is the thread's routing mode at the step, and
+	// RoutingModeSource where it came from. Additive, like SupportParts: an
+	// older engine sends neither.
+	RoutingMode       config.RoutingMode `json:"RoutingMode,omitempty"`
+	RoutingModeSource ModeSource         `json:"RoutingModeSource,omitempty"`
 }
 
 // Reading is the classifier answer the decision's turn runs on, for display:
@@ -149,6 +167,7 @@ const (
 	FindingBlocked    FindingKind = "blocked"    // configured routes outside the group
 	FindingCache      FindingKind = "cache"      // low cache reuse after switches
 	FindingState      FindingKind = "state"      // the saved intent was unreadable
+	FindingProject    FindingKind = "project"    // the project file is invalid and ignored
 )
 
 // Finding is one WORTH A LOOK line derived from the session's facts.
@@ -167,7 +186,6 @@ type Snapshot struct {
 	At            time.Time         `json:"At"`
 	Mode          Mode              `json:"Mode"`
 	StateLost     bool              `json:"StateLost"` // the saved intent was unreadable; the home is paused until resume
-	Preset        config.Preset     `json:"Preset"`
 	Pin           *config.Tier      `json:"Pin"`
 	Baseline      config.Route      `json:"Baseline"`
 	Footer        config.Route      `json:"Footer"`
@@ -192,6 +210,13 @@ type Snapshot struct {
 	ApproxTokens         int                          `json:"ApproxTokens"`
 	Window               int                          `json:"Window"`
 	Worth                []Finding                    `json:"Worth"`
+	// RoutingMode is the thread's routing mode (the config's without a
+	// thread) and RoutingModeSource where it came from; Policy and Routes are
+	// that mode's. Additive: an older engine sends neither.
+	RoutingMode       config.RoutingMode `json:"RoutingMode,omitempty"`
+	RoutingModeSource ModeSource         `json:"RoutingModeSource,omitempty"`
+	// ProjectError says why the thread's project file was ignored.
+	ProjectError string `json:"ProjectError,omitempty"`
 }
 
 // Sink receives decisions and snapshots; the launcher fans them out to the
@@ -212,6 +237,11 @@ type Sink interface {
 // HoldUnseeded (the brain) holds a thread whose first request seen already
 // carries a conversation, as Resumed does: after a restart, a turn's next
 // step can reach the engine before discovery resumes its thread.
+// ProjectMode (nil: none) is the mode a thread's project file sets, read at
+// each turn's first step; LoadMode (nil: none) is a thread's saved session
+// override, read when the engine first sees the thread; SaveMode (nil: not
+// kept) stores one, "" to clear it. All three run under the engine lock, so
+// they must be quick: small local files.
 type Deps struct {
 	Config     config.Config
 	Catalog    catalog.Source
@@ -227,6 +257,9 @@ type Deps struct {
 	IntentLost          bool
 	SaveIntent          func(Intent)
 	HoldUnseeded        bool
+	ProjectMode         func(threadID string) (config.RoutingMode, error)
+	LoadMode            func(threadID string) config.RoutingMode
+	SaveMode            func(threadID string, m config.RoutingMode)
 }
 
 // Bounds on remembered state. RecentKept and StripCells are per thread.

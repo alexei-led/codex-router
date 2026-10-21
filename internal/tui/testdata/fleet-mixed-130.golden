@@ -1,6 +1,6 @@
 codex-router  4 sessions · 2 homes · Jev ready                                                    Sessions  Policy  Usage   ? help
 
-▎  SESSION        STATE  MODEL  LAST TURNS  SWITCH           infra                                                 work · aaaaaaaa
+▎  SESSION        STATE  MODEL  LAST TURNS  SWITCH           infra                            balanced (default) · work · aaaaaaaa
 ▎● default                                                    HIGH  debug → gpt-6.1-sol · high
 ▎  notes          ● on   -                                          ↑ same test failure twice, edit in between
 ▎  reflex · main  ○ waiting for the first prompt                    Jev high 18% · no classifier needed

@@ -73,11 +73,11 @@ func TestLoad(t *testing.T) {
 		return p
 	}
 
-	partial, err := Load(write(`{"preset":"thrifty","routes":{"micro":{"model":"gpt-6-luna"}},"proxy":{"port":8123}}`))
+	partial, err := Load(write(`{"mode":"cost","routes":{"micro":{"model":"gpt-6-luna"}},"proxy":{"port":8123}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if partial.Preset != PresetThrifty || partial.Proxy.Port != 8123 {
+	if partial.Mode != ModeCost || partial.Proxy.Port != 8123 {
 		t.Errorf("overrides not applied: %+v", partial)
 	}
 	if partial.Routes[TierMicro].Effort != "" {
@@ -145,6 +145,12 @@ func TestLoadErrorsNameField(t *testing.T) {
 		{"new classifier without endpoint", `{"classifiers":{"x":{"api":"ollama","model":"m","timeoutMs":1}}}`, "classifiers.x.endpoint"},
 		{"unknown classifier field", `{"classifiers":{"jev":{"keyFile":"~/.env"}}}`, "classifiers.jev"},
 		{"relative envFile", `{"classifiers":{"jev":{"envFile":"key.env"}}}`, "classifiers.jev.envFile"},
+		{"v0.8 preset key", `{"preset":"thrifty"}`, "preset was renamed to mode in v0.9.0 (thrifty is now cost)"},
+		{"v0.8 thrifty value", `{"mode":"thrifty"}`, "thrifty is now cost"},
+		{"unknown mode", `{"mode":"lavish"}`, "mode"},
+		{"unknown modes key", `{"modes":{"lavish":{}}}`, "modes.lavish"},
+		{"unknown modes field", `{"modes":{"cost":{"policy":{"votes":1}}}}`, "modes.cost"},
+		{"mode patch makes an invalid policy", `{"modes":{"quality":{"policy":{"downgradeMass":2}}}}`, "modes.quality: policy.downgradeMass"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -160,18 +166,19 @@ func TestLoadErrorsNameField(t *testing.T) {
 	}
 }
 
-func TestEffectivePresetValues(t *testing.T) {
+func TestEffectiveModePolicy(t *testing.T) {
 	cases := []struct {
-		preset Preset
+		mode   RoutingMode
 		change func(*Policy)
 	}{
-		{PresetBalanced, func(*Policy) {}},
-		{PresetThrifty, func(p *Policy) {
+		{"", func(*Policy) {}},
+		{ModeBalanced, func(*Policy) {}},
+		{ModeCost, func(p *Policy) {
 			p.UpgradeVotes, p.UpgradeBase, p.JumpConfidence = 3, 0.85, 0.98
 			p.DowngradeVotes, p.DowngradeMass = 1, 0.8
 			p.MinDwellRequests, p.EscalationHoldTurns = 4, 1
 		}},
-		{PresetQuality, func(p *Policy) {
+		{ModeQuality, func(p *Policy) {
 			p.UpgradeVotes, p.UpgradeBase, p.JumpConfidence = 1, 0.6, 0.9
 			p.DowngradeVotes, p.DowngradeMass = 3, 0.95
 			p.MinDwellRequests, p.EscalationHoldTurns = 16, 4
@@ -180,11 +187,56 @@ func TestEffectivePresetValues(t *testing.T) {
 	for _, tc := range cases {
 		want := Default().Policy
 		tc.change(&want)
-		c := Default()
-		c.Preset = tc.preset
-		if got := c.Effective(); got != want {
-			t.Errorf("%s: got %+v, want %+v", tc.preset, got, want)
+		if got := Default().Effective(tc.mode); got != want {
+			t.Errorf("%q: got %+v, want %+v", tc.mode, got, want)
 		}
+	}
+}
+
+func TestLoadModesMergeWithBuiltIn(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		mode RoutingMode
+		want func(*Policy)
+	}{
+		{"the mode patch beats the configured policy", `{"policy":{"upgradeVotes":5}}`, ModeCost, func(p *Policy) {
+			*p = Default().Effective(ModeCost)
+		}},
+		{"balanced keeps the configured policy", `{"policy":{"upgradeVotes":5}}`, ModeBalanced, func(p *Policy) {
+			p.UpgradeVotes = 5
+		}},
+		{"a user field keeps the other built-in fields", `{"modes":{"cost":{"policy":{"upgradeVotes":4}}}}`, ModeCost, func(p *Policy) {
+			*p = Default().Effective(ModeCost)
+			p.UpgradeVotes = 4
+		}},
+		{"null drops a built-in field", `{"policy":{"upgradeVotes":5},"modes":{"cost":{"policy":{"upgradeVotes":null}}}}`, ModeCost, func(p *Policy) {
+			*p = Default().Effective(ModeCost)
+			p.UpgradeVotes = 5
+		}},
+		{"balanced can be patched", `{"modes":{"balanced":{"policy":{"contextFill":0.7}}}}`, ModeBalanced, func(p *Policy) {
+			p.ContextFill = 0.7
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "config.json")
+			if err := os.WriteFile(p, []byte(tc.body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := Load(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := Default().Policy
+			tc.want(&want)
+			if got := cfg.Effective(tc.mode); got != want {
+				t.Errorf("got %+v, want %+v", got, want)
+			}
+			if got := Default().Effective(ModeCost); got.UpgradeVotes != 3 {
+				t.Errorf("loading changed the built-in defaults: %+v", got)
+			}
+		})
 	}
 }
 
@@ -265,7 +317,11 @@ func TestValidateRejects(t *testing.T) {
 		{"bad activity effort", func(c *Config) {
 			c.Activities[ActivityOps] = map[Tier]Route{TierLow: {Effort: "turbo"}}
 		}, "activities.ops.low.effort"},
-		{"bad preset", func(c *Config) { c.Preset = "lavish" }, "preset"},
+		{"bad mode", func(c *Config) { c.Mode = "lavish" }, "mode"},
+		{"unknown modes key", func(c *Config) { c.Modes["lavish"] = ModeConfig{} }, "modes.lavish"},
+		{"mode patch below minimum", func(c *Config) {
+			c.Modes[ModeCost] = ModeConfig{Policy: PolicyPatch{UpgradeVotes: ptr(0)}}
+		}, "modes.cost: policy.upgradeVotes"},
 		{"classifier not listed", func(c *Config) { c.Classifier = "ghost" }, "classifier"},
 		{"bad classifier api", func(c *Config) {
 			cl := c.Classifiers["jev"]
@@ -311,35 +367,19 @@ func TestValidateRejects(t *testing.T) {
 	}
 }
 
-func TestEffective(t *testing.T) {
-	base := Default().Policy
-	cases := []struct {
-		preset   Preset
-		wantUp   int
-		wantDown int
-	}{
-		{PresetThrifty, 3, 1},
-		{PresetBalanced, base.UpgradeVotes, base.DowngradeVotes},
-		{PresetQuality, 1, 3},
+func TestEffectiveModeDirection(t *testing.T) {
+	c := Default()
+	cost, quality := c.Effective(ModeCost), c.Effective(ModeQuality)
+	if cost.UpgradeBase <= quality.UpgradeBase {
+		t.Error("cost must demand more confidence to upgrade than quality")
 	}
-	for _, tc := range cases {
-		c := Default()
-		c.Preset = tc.preset
-		p := c.Effective()
-		if p.UpgradeVotes != tc.wantUp || p.DowngradeVotes != tc.wantDown {
-			t.Errorf("%s: votes up=%d down=%d, want %d/%d", tc.preset, p.UpgradeVotes, p.DowngradeVotes, tc.wantUp, tc.wantDown)
+	if cost.DowngradeMass >= quality.DowngradeMass {
+		t.Error("cost must accept less mass to downgrade than quality")
+	}
+	for _, m := range RoutingModes {
+		if p := c.Effective(m); p.ContextFill != c.Policy.ContextFill || p.ReviewEveryRequests != c.Policy.ReviewEveryRequests {
+			t.Errorf("%s: the built-in patch changed a field it does not own", m)
 		}
-		if p.ContextFill != base.ContextFill || p.ReviewEveryRequests != base.ReviewEveryRequests {
-			t.Errorf("%s: preset changed a field it does not own", tc.preset)
-		}
-	}
-	thrifty, quality := Default(), Default()
-	thrifty.Preset, quality.Preset = PresetThrifty, PresetQuality
-	if thrifty.Effective().UpgradeBase <= quality.Effective().UpgradeBase {
-		t.Error("thrifty must demand more confidence to upgrade than quality")
-	}
-	if thrifty.Effective().DowngradeMass >= quality.Effective().DowngradeMass {
-		t.Error("thrifty must accept less mass to downgrade than quality")
 	}
 }
 

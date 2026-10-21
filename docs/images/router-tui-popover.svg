@@ -75,7 +75,7 @@
   <text x="16.0" y="275.0" fill="#d0d0d0" xml:space="preserve">  reflex · main            </text>
   <text x="226.6" y="275.0" fill="#878787" xml:space="preserve">○ waiting for the first prompt</text>
   <text x="16.0" y="313.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">codex-router · main</text>
-  <text x="632.2" y="313.0" fill="#878787" xml:space="preserve">default · 3fa9c0d1</text>
+  <text x="468.4" y="313.0" fill="#878787" xml:space="preserve">balanced (default) · default · 3fa9c0d1</text>
   <rect x="16.0" y="318.0" width="46.8" height="19" fill="#d75f87"/>
   <text x="16.0" y="332.0" fill="#14171f" font-weight="700" xml:space="preserve"> HIGH </text>
   <text x="70.6" y="332.0" fill="#d787d7" xml:space="preserve">debug</text>

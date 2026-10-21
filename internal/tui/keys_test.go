@@ -40,9 +40,10 @@ func TestKeysSendCommands(t *testing.T) {
 		{"space resumes manual", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabUsage, []string{" "}, route.Command{Op: route.OpResume, Session: testSession}},
 		{"P pauses the home", func(*route.Snapshot) {}, TabSessions, []string{"P"}, route.Command{Op: route.OpPause, Scope: route.ScopeHome}},
 		{"P resumes a paused home", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabSessions, []string{"P"}, route.Command{Op: route.OpResume, Scope: route.ScopeHome}},
-		{"s then a number sets the preset", func(*route.Snapshot) {}, TabPolicy, []string{"s", "3"}, route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetQuality}},
-		{"1 is thrifty", func(*route.Snapshot) {}, TabPolicy, []string{"s", "1"}, route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetThrifty}},
-		{"4 is no preset", func(*route.Snapshot) {}, TabPolicy, []string{"s", "4"}, route.Command{}},
+		{"s then a number sets the session mode", func(*route.Snapshot) {}, TabPolicy, []string{"s", "3"}, route.Command{Op: route.OpMode, Session: testSession, Mode: config.ModeQuality}},
+		{"1 is cost", func(*route.Snapshot) {}, TabPolicy, []string{"s", "1"}, route.Command{Op: route.OpMode, Session: testSession, Mode: config.ModeCost}},
+		{"4 clears the session mode", func(*route.Snapshot) {}, TabPolicy, []string{"s", "4"}, route.Command{Op: route.OpMode, Session: testSession, Mode: route.ModeDefault}},
+		{"5 is no mode", func(*route.Snapshot) {}, TabPolicy, []string{"s", "5"}, route.Command{}},
 		{"s outside Policy sends nothing", func(*route.Snapshot) {}, TabSessions, []string{"s", "3"}, route.Command{}},
 	}
 	for _, tt := range tests {
@@ -149,7 +150,7 @@ func TestFooterFollowsTheState(t *testing.T) {
 		{"one session hides select", view{snap: fixture(), tab: TabSessions, fleet: &one}, "p pin · space pause · P pause home · tab views · q quit · ? help"},
 		{"manual resumes", view{snap: manual, tab: TabSessions, fleet: &many}, "↑↓ select · p pin · space resume · P pause home · tab views · q quit · ? help"},
 		{"a paused home resumes", view{snap: fixture(), tab: TabSessions, fleet: &paused}, "p pin · space pause · P resume home · tab views · q quit · ? help"},
-		{"policy offers the preset", view{snap: fixture(), tab: TabPolicy, fleet: &many}, "↑↓ scroll · s preset · space pause · P pause home · tab views · q quit · ? help"},
+		{"policy offers the preset", view{snap: fixture(), tab: TabPolicy, fleet: &many}, "↑↓ scroll · s mode · space pause · P pause home · tab views · q quit · ? help"},
 		{"policy without a classifier", view{snap: off, tab: TabPolicy, fleet: &many}, "↑↓ scroll · space pause · P pause home · tab views · q quit · ? help"},
 		{"usage", view{snap: fixture(), tab: TabUsage, fleet: &many}, "↑↓ scroll · space pause · P pause home · tab views · q quit · ? help"},
 		{"locked panel", view{snap: fixture(), tab: TabSessions, fleet: &many, locked: true}, "↑↓ scroll · p pin · space pause · P pause home · tab views · q quit · ? help"},
@@ -160,7 +161,7 @@ func TestFooterFollowsTheState(t *testing.T) {
 		{"bare snapshot", view{snap: manual, tab: TabSessions}, "↑↓ scroll · p pin · space resume · P pause home · tab views · q quit · ? help"},
 		{"help overlay", view{snap: fixture(), tab: TabSessions, fleet: &many, help: true}, "esc close"},
 		{"pin popover", view{snap: fixture(), tab: TabSessions, fleet: &many, popover: popPin}, "1-4 pick · esc close"},
-		{"preset popover", view{snap: fixture(), tab: TabPolicy, fleet: &many, popover: popPreset}, "1-3 pick · esc close"},
+		{"mode popover", view{snap: fixture(), tab: TabPolicy, fleet: &many, popover: popMode}, "1-4 pick · esc close"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -233,8 +234,8 @@ func TestPopoverShowsAndEscCloses(t *testing.T) {
 	}
 	m.tab = TabPolicy
 	press(m, "s")
-	if got := screen(m); !strings.Contains(got, "1 thrifty  2 balanced  3 quality") {
-		t.Errorf("no preset popover:\n%s", got)
+	if got := screen(m); !strings.Contains(got, "1 cost  2 balanced  3 quality  4 default") {
+		t.Errorf("no mode popover:\n%s", got)
 	}
 }
 
@@ -373,7 +374,7 @@ func TestToastConfirmsWhatTheAckAccepted(t *testing.T) {
 	}
 }
 
-func TestToastResumeAndPreset(t *testing.T) {
+func TestToastResumeAndMode(t *testing.T) {
 	s := fixture()
 	s.Mode = route.ModePaused
 	m, _ := connected(t, s)
@@ -386,8 +387,12 @@ func TestToastResumeAndPreset(t *testing.T) {
 		t.Errorf("toast %q", m.toast)
 	}
 	m.tab = TabPolicy
-	pressAll(m, "s", "2")
-	if m.toast != "preset balanced sent to the home" {
+	pressAll(m, "s", "1")
+	if m.toast != "mode cost for this session; applies through the switch gates" {
+		t.Errorf("toast %q", m.toast)
+	}
+	pressAll(m, "s", "4")
+	if m.toast != "session mode cleared" {
 		t.Errorf("toast %q", m.toast)
 	}
 }

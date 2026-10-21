@@ -45,6 +45,10 @@ type SessionInfo struct {
 	EligibleReplies int           `json:"eligible_replies"`
 	SavedUSD        *float64      `json:"saved_usd,omitempty"`
 	SpentUSD        *float64      `json:"spent_usd,omitempty"`
+	// RoutingMode and RoutingModeSource are additive: an older engine sends
+	// neither.
+	RoutingMode       config.RoutingMode `json:"routing_mode,omitempty"`
+	RoutingModeSource ModeSource         `json:"routing_mode_source,omitempty"`
 }
 
 // sessionIdle is how long an ordinary thread may go without a user step or
@@ -99,6 +103,7 @@ func (e *Engine) sessions() []SessionInfo {
 			LastActive: th.lastActive, Attention: e.attention(th), PendingPin: th.pin != nil, FooterSynced: len(th.pending) == 0,
 			PricedReplies: th.stats.PricedReplies, EligibleReplies: th.stats.EligibleReplies,
 		}
+		s.RoutingMode, s.RoutingModeSource = e.routingMode(th)
 		if ls := th.stats.LastSwitch; ls != nil {
 			c := *ls
 			s.LastSwitch = &c

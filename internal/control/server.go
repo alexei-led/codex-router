@@ -17,7 +17,7 @@ import (
 
 var commandOps = map[route.Op]bool{
 	route.OpPin: true, route.OpUnpin: true, route.OpPause: true,
-	route.OpResume: true, route.OpPreset: true,
+	route.OpResume: true, route.OpMode: true,
 }
 
 // Server is the control socket. After a client's hello it pushes the

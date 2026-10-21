@@ -18,6 +18,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/link"
+	"github.com/alexei-led/codex-router/internal/modestore"
 	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/responses"
 	"github.com/alexei-led/codex-router/internal/route"
@@ -144,6 +145,14 @@ func Start(o Options) (b *Brain, err error) {
 	store := newIntentStore(dir, b.log)
 	d.Intent, d.IntentLost = store.load()
 	d.SaveIntent = store.save
+	d.ProjectMode = config.ProjectModes(d.Cwd)
+	if app, err := statedir.Dir(b.o.Getenv); err != nil {
+		b.log.Warn("mode-store-unavailable", "err", err)
+	} else if ms, err := modestore.Open(app, o.Home.ID, b.log); err != nil {
+		b.log.Warn("mode-store-unavailable", "err", err)
+	} else {
+		d.LoadMode, d.SaveMode = ms.Load, ms.Save
+	}
 	b.eng = route.New(d)
 	id := EndpointID(o.Home.ID)
 	hello := control.Hello{EndpointID: id, Kind: registry.KindBrain, Home: o.Home, Version: o.Version}

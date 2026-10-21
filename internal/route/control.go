@@ -12,15 +12,14 @@ import (
 var errCommandPanic = errors.New("command failed")
 
 // Intent is the user's routing intent, which a restarted brain restores
-// (plan M11): the home's pause and the preset a command picked, and per
-// thread its pause, a manual hold (a /model pick) and a pending pin. A
-// preset from the config is not intent: a restart reads the config again. Learned state (tiers,
-// votes, escalations, the cache ledger) is not intent. Rev orders exports:
-// a later state has a higher Rev.
+// (plan M11): the home's pause, and per thread its pause, a manual hold (a
+// /model pick) and a pending pin. A session's routing mode is kept apart
+// (Deps.SaveMode), in launchers too. Learned state (tiers, votes,
+// escalations, the cache ledger) is not intent. Rev orders exports: a later
+// state has a higher Rev.
 type Intent struct {
 	Rev     uint64                  `json:"-"`
 	Paused  bool                    `json:"paused,omitempty"`
-	Preset  config.Preset           `json:"preset,omitempty"`
 	Threads map[string]ThreadIntent `json:"threads,omitempty"`
 }
 
@@ -43,9 +42,6 @@ func (e *Engine) Intent() Intent {
 func (e *Engine) intent() Intent {
 	e.intentRev++
 	in := Intent{Rev: e.intentRev, Paused: e.paused}
-	if e.presetSet {
-		in.Preset = e.cfg.Preset
-	}
 	for _, th := range e.all() {
 		if !th.hasIntent() {
 			continue
@@ -65,17 +61,13 @@ func (e *Engine) intent() Intent {
 
 // restore starts the engine from a saved intent. A lost intent pauses the
 // home, so nothing is routed against a pause the user may have set, and
-// flags every session until a home resume. Invalid pins and presets are
-// dropped.
+// flags every session until a home resume. Invalid pins are dropped.
 func (e *Engine) restore(in Intent, lost bool) {
 	if lost {
 		e.paused, e.lost = true, true
 		return
 	}
 	e.paused = in.Paused
-	if validPreset(in.Preset) {
-		e.cfg.Preset, e.presetSet = in.Preset, true
-	}
 	for id, ti := range in.Threads {
 		if id == "" {
 			continue
@@ -114,16 +106,13 @@ func (e *Engine) validTier(t config.Tier) bool {
 	return ok && slices.Contains(config.Tiers, t)
 }
 
-func validPreset(p config.Preset) bool {
-	return slices.Contains([]config.Preset{config.PresetThrifty, config.PresetBalanced, config.PresetQuality}, p)
-}
-
 // Apply runs a control command: pin or unpin a session's next turn, pause
-// or resume a session or the whole home, or pick the home's policy preset.
-// Pause writes each affected routed thread's own route back to its settings;
-// resume also ends manual mode. A home resume keeps session pauses and
-// clears a lost intent. Every command but snapshot saves the intent. A panic
-// is logged and returned as an error.
+// or resume a session or the whole home, or set or clear a session's routing
+// mode. Pause writes each affected routed thread's own route back to its
+// settings; resume also ends manual mode. A home resume keeps session pauses
+// and clears a lost intent. A mode applies to the thread's next decision,
+// through its gates. Every command but snapshot saves the intent; mode saves
+// the session's mode. A panic is logged and returned as an error.
 func (e *Engine) Apply(c Command) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -135,8 +124,18 @@ func (e *Engine) Apply(c Command) (err error) {
 	if err != nil {
 		return err
 	}
-	e.log.Info("route command", "op", c.Op, "scope", scopeOf(c), "thread", c.Session, "tier", c.Tier, "preset", c.Preset)
-	if c.Op != OpSnapshot {
+	e.log.Info("route command", "op", c.Op, "scope", scopeOf(c), "thread", c.Session, "tier", c.Tier, "mode", c.Mode)
+	switch c.Op {
+	case OpSnapshot:
+	case OpMode:
+		if e.saveMode != nil {
+			m := c.Mode
+			if m == ModeDefault {
+				m = ""
+			}
+			e.saveMode(c.Session, m)
+		}
+	default:
 		e.persist()
 	}
 	for _, d := range writes {
@@ -203,14 +202,18 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 			return nil, Snapshot{}, err
 		}
 		th.paused, th.manual = false, false
-	case OpPreset:
-		if !c.home() {
-			return nil, Snapshot{}, errors.New("preset: home scope only")
+	case OpMode:
+		if c.Mode != ModeDefault && !slices.Contains(config.RoutingModes, c.Mode) {
+			return nil, Snapshot{}, fmt.Errorf("mode: unknown mode %q, want cost, balanced, quality or default", c.Mode)
 		}
-		if !validPreset(c.Preset) {
-			return nil, Snapshot{}, fmt.Errorf("preset: unknown preset %q", c.Preset)
+		th, err := e.session(c)
+		if err != nil {
+			return nil, Snapshot{}, err
 		}
-		e.cfg.Preset, e.presetSet = c.Preset, true
+		th.mode = c.Mode
+		if c.Mode == ModeDefault {
+			th.mode = ""
+		}
 	case OpSnapshot:
 	default:
 		return nil, Snapshot{}, fmt.Errorf("unknown op %q", c.Op)

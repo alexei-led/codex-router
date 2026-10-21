@@ -10,12 +10,14 @@ import (
 	"github.com/alexei-led/codex-router/internal/policy"
 )
 
-// cell is a tier and the activity whose route runs at it, with the policy's
-// reason and next state. Ported from claude-model-router lib/route.mjs
-// (routeTurn, decideCell) with taxes in uncached tokens.
+// cell is a tier and the activity whose route runs at it, under a routing
+// mode, with the policy's reason and next state. Ported from
+// claude-model-router lib/route.mjs (routeTurn, decideCell) with taxes in
+// uncached tokens.
 type cell struct {
 	tier     config.Tier
 	activity config.Activity
+	mode     config.RoutingMode // the mode the cell's route is aimed with
 	reason   policy.Reason
 	state    policy.State
 	estimate *policy.Estimate
@@ -26,12 +28,15 @@ type cell struct {
 type running struct {
 	tier     config.Tier
 	activity config.Activity
+	mode     config.RoutingMode
 	route    config.Route
 }
 
+// incumbent is the route in use: aimed with the mode it was chosen under, not
+// the thread's mode now, so a mode change waits for a gate.
 func (e *Engine) incumbent(st *step) running {
 	th := st.th
-	return running{tier: th.tier, activity: th.activity, route: resolve(st.cfg.RouteFor(th.tier, th.activity), st.sent())}
+	return running{tier: th.tier, activity: th.activity, mode: th.routeMode, route: st.routeIn(th.routeMode, th.tier, th.activity)}
 }
 
 // downAllowed is the gate for a cheaper route on the same task: the dwell has
@@ -42,12 +47,14 @@ func downAllowed(st *step) bool {
 }
 
 // choose runs the policy for the turn's activity, then, when the tier stays
-// but the route would change, the lateral rule.
+// but the route would change, a gate: the tier-switch gate when the routing
+// mode moved the target off the tier's configured route, else the lateral
+// rule for activities.
 func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTurn bool) cell {
 	cfg, p, th := st.cfg, st.policy, st.th
 	down := downAllowed(st)
-	act := chooseActivity(cfg, p, advice, inc, st.sent(), midTurn, down)
-	routeFor := func(t config.Tier) config.Route { return resolve(cfg.RouteFor(t, act), st.sent()) }
+	act := chooseActivity(cfg, p, advice, inc, func(t config.Tier, a config.Activity) config.Route { return st.routeFor(t, a) }, midTurn, down)
+	routeFor := func(t config.Tier) config.Route { return st.routeFor(t, act) }
 	var escalate func(config.Tier) (config.Tier, bool)
 	if act != "" {
 		// With an activity, a failure moves to the lowest tier whose route is
@@ -66,15 +73,32 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	if st.facts.Failure != nil {
 		signature = st.facts.Failure.Signature
 	}
-	r := policy.Decide(policy.Input{
+	in := policy.Input{
 		Policy: p, Baseline: cfg.Baseline, Incumbent: inc.tier, Advice: advice,
 		FailureSignature: signature, MidTurn: midTurn, DownAllowed: down, Fresh: !th.measured, State: th.state,
 		TaxTokens: func(t config.Tier) int { return e.ledger.SwitchTax(th.id, routeFor(t).Model, st.tokens, st.now) },
 		Escalate:  escalate,
-	})
-	c := cell{tier: r.Tier, activity: act, reason: r.Reason, state: r.State, estimate: r.Estimate, advice: advice}
+	}
+	r := policy.Decide(in)
+	c := cell{tier: r.Tier, activity: act, mode: st.routeMode, reason: r.Reason, state: r.State, estimate: r.Estimate, advice: advice}
 	to := routeFor(r.Tier)
 	if r.Tier != inc.tier || to == inc.route {
+		return c
+	}
+	if to != resolve(cfg.RouteFor(r.Tier, act), st.sent()) {
+		o, ok := compareRoutes(cfg, to, inc.route)
+		tax := e.ledger.SwitchTax(th.id, to.Model, st.tokens, st.now)
+		move, reason, est := policy.Lateral(in, r, tax, ok && o < 0)
+		switch {
+		case move:
+			reason = ReasonMode
+		case reason == policy.ReasonUpgradePending || reason == policy.ReasonDowngradePending:
+			reason = ReasonModePending
+		}
+		if !move {
+			c.activity, c.mode = inc.activity, inc.mode
+		}
+		c.reason, c.estimate = reason, est
 		return c
 	}
 	mass := 1.0 // returning to the base route needs no evidence
@@ -86,7 +110,7 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	}
 	move, reason, est := e.lateral(st, inc.route, to, mass, r.Reason == policy.ReasonHold)
 	if !move {
-		c.activity = inc.activity
+		c.activity, c.mode = inc.activity, inc.mode
 	}
 	c.reason, c.estimate = reason, est
 	return c
@@ -101,8 +125,8 @@ func (e *Engine) observedMove(st *step, cur cell) cell {
 	if act == "" || act == cur.activity {
 		return cur
 	}
-	from := resolve(st.cfg.RouteFor(cur.tier, cur.activity), st.sent())
-	routeFor := func(t config.Tier) config.Route { return resolve(st.cfg.RouteFor(t, act), st.sent()) }
+	from := st.routeIn(cur.mode, cur.tier, cur.activity)
+	routeFor := func(t config.Tier) config.Route { return st.routeFor(t, act) }
 	tier, fits := policy.FitTier(cur.tier, st.tokens, e.window(st, routeFor), st.policy.ContextFill)
 	if !fits {
 		return cur
@@ -120,7 +144,7 @@ func (e *Engine) observedMove(st *step, cur cell) cell {
 	if !move {
 		return cur
 	}
-	cur.tier, cur.activity, cur.reason, cur.estimate = tier, act, ReasonObserved, est
+	cur.tier, cur.activity, cur.mode, cur.reason, cur.estimate = tier, act, st.routeMode, ReasonObserved, est
 	return cur
 }
 
@@ -162,7 +186,7 @@ func (e *Engine) lateral(st *step, from, to config.Route, mass float64, hold boo
 // ActivityMass. On the same task (a review inside a turn, or a continuation
 // prompt) a stronger route is taken at once, a cheaper one only at
 // DowngradeMass once the dwell and a passed check allow it.
-func chooseActivity(cfg config.Config, p config.Policy, a *classifier.Advice, inc running, sent config.Effort, midTurn, down bool) config.Activity {
+func chooseActivity(cfg config.Config, p config.Policy, a *classifier.Advice, inc running, routeFor func(config.Tier, config.Activity) config.Route, midTurn, down bool) config.Activity {
 	if a == nil || a.Activity == nil {
 		return inc.activity
 	}
@@ -180,7 +204,7 @@ func chooseActivity(cfg config.Config, p config.Policy, a *classifier.Advice, in
 		}
 		return ""
 	}
-	o, ok := compareRoutes(cfg, resolve(cfg.RouteFor(inc.tier, label), sent), inc.route)
+	o, ok := compareRoutes(cfg, routeFor(inc.tier, label), inc.route)
 	if ok && o > 0 {
 		return label
 	}

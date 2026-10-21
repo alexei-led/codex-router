@@ -10,7 +10,7 @@ const (
 	actSelect            // list row: select, then open
 	actPin               // pin tier, or unpin it when pinned
 	actUnpin             // clear the pin
-	actPreset            // set the focused home's preset
+	actMode              // set or clear the focused session's routing mode
 	actKey               // run the binding named key
 	actClose             // close the open popover or help overlay
 )
@@ -21,7 +21,7 @@ type action struct {
 	tab     Tab
 	session string
 	tier    config.Tier
-	preset  config.Preset
+	mode    config.RoutingMode
 	key     string
 }
 

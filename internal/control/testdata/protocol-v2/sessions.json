@@ -31,7 +31,9 @@
     "priced_replies": 3,
     "eligible_replies": 3,
     "saved_usd": 0.25,
-    "spent_usd": 0.75
+    "spent_usd": 0.75,
+    "routing_mode": "quality",
+    "routing_mode_source": "project"
   },
   {
     "id": "h/t-2",

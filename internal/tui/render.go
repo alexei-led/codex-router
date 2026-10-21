@@ -68,7 +68,7 @@ type popover int
 const (
 	popNone popover = iota
 	popPin
-	popPreset
+	popMode
 )
 
 // view is everything render needs; render is pure over it. Fleet is nil
@@ -565,8 +565,8 @@ func footerBindings(v view) []key.Binding {
 		return []key.Binding{described(keys.Back, "close")}
 	case v.popover == popPin:
 		return []key.Binding{keys.PinPick, described(keys.Back, "close")}
-	case v.popover == popPreset:
-		return []key.Binding{keys.PresetPick, described(keys.Back, "close")}
+	case v.popover == popMode:
+		return []key.Binding{keys.ModePick, described(keys.Back, "close")}
 	}
 	if st != nil && (st.ended || st.focus == "") {
 		return []key.Binding{keys.Quit, keys.Help}
@@ -591,7 +591,7 @@ func footerBindings(v view) []key.Binding {
 			out = append(out, keys.Pin)
 		}
 		if v.tab == TabPolicy && !v.snap.ClassifierOff {
-			out = append(out, keys.Preset)
+			out = append(out, keys.Mode)
 		}
 		out = append(out, described(keys.Toggle, toggle), described(keys.Home, home))
 	}

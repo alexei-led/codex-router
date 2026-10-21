@@ -581,7 +581,7 @@ func TestFleetHomeCommandsReachEveryEndpointOfTheFocusedHome(t *testing.T) {
 	w2.sessions <- []route.SessionInfo{session(homeWork, "t2", "/q", at(18, 10))}
 	d1.sessions <- []route.SessionInfo{session(homeDefault, "t3", "/z", at(18, 20))}
 	tf.settle(func(st fleetState) bool { return len(flat(st)) == 3 && slices.Equal(w1.subs(), []string{focus.ID}) })
-	w1.updates <- route.Snapshot{ThreadID: "t1", Seq: 1, Preset: config.PresetBalanced}
+	w1.updates <- route.Snapshot{ThreadID: "t1", Seq: 1, RoutingMode: config.ModeBalanced}
 	tf.settle(func(st fleetState) bool { return st.snap != nil })
 
 	m := newModel(tf.fleet)
@@ -590,11 +590,9 @@ func TestFleetHomeCommandsReachEveryEndpointOfTheFocusedHome(t *testing.T) {
 	m.tab = TabPolicy
 	pressAll(m, "s", "3")
 
-	want := []route.Command{
-		{Op: route.OpPause, Scope: route.ScopeHome},
-		{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetQuality},
-	}
-	for _, c := range []*fakeConn{w1, w2} {
+	home := route.Command{Op: route.OpPause, Scope: route.ScopeHome}
+	mode := route.Command{Op: route.OpMode, Session: focus.ID, Mode: config.ModeQuality}
+	for c, want := range map[*fakeConn][]route.Command{w1: {home, mode}, w2: {home}} {
 		if got := c.sentCmds(); !slices.Equal(got, want) {
 			t.Errorf("%s got %+v, want %+v", c.hello.EndpointID, got, want)
 		}
@@ -611,9 +609,9 @@ func TestFleetHomeCommandReportsFailures(t *testing.T) {
 	tf.poll()
 	w1.sessions <- []route.SessionInfo{session(homeWork, "t1", "/r", at(18, 1))}
 	tf.settleCount(1)
-	w2.setErr(errors.New("unknown preset"))
+	w2.setErr(errors.New("unknown op"))
 
-	err := tf.sendHome(homeWork.ID, route.Command{Op: route.OpPreset, Preset: "bogus"})
+	err := tf.sendHome(homeWork.ID, route.Command{Op: route.OpPause})
 	if err == nil || len(w1.sentCmds()) != 1 {
 		t.Errorf("err %v, w1 sent %v", err, w1.sentCmds())
 	}

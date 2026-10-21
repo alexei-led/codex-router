@@ -75,6 +75,7 @@ Usage:
                                                      run a Codex home through an edge and a brain
   codex-router service ensure|status [--home PATH]   start or check a home's service units
   codex-router ctl status|pause|resume|pin [--home PATH] [--cwd DIR] [--tier TIER]
+  codex-router ctl mode cost|balanced|quality|default [--home PATH] [--cwd DIR]
                                                      show or change one session's routing
   codex-router version                               print the version
 
@@ -92,7 +93,7 @@ registry; --socket shows only the endpoint at that control socket.
 else a unique prefix of one, else an exact label, else a label suffix that
 starts at a " · " (for example "repo · branch" or a branch name).
 --no-mouse leaves the mouse to the terminal, so text selection works; the
-panel otherwise takes clicks on tabs, sessions, pins and presets.
+panel otherwise takes clicks on tabs, sessions, pins and modes.
 sessions prints one line per session: id, home, label, mode, route; --json
 prints the full session list with each session's endpoint_id.
 doctor checks configuration, private state paths, registry endpoints,
@@ -402,7 +403,7 @@ const envThread = "CODEX_THREAD_ID"
 var blocked = sessions.Blocked
 
 // ctlOps maps ctl's subcommands to commands; status sends none.
-var ctlOps = map[string]route.Op{"status": "", "pause": route.OpPause, "resume": route.OpResume, "pin": route.OpPin}
+var ctlOps = map[string]route.Op{"status": "", "pause": route.OpPause, "resume": route.OpResume, "pin": route.OpPin, "mode": route.OpMode}
 
 // ctl shows or changes the routing of one session of a Codex home, for the
 // plugin's skill, which runs it from a Codex shell command. An explicit
@@ -415,7 +416,17 @@ func (c cli) ctl(args []string) int {
 	}
 	op, known := ctlOps[sub]
 	if !known {
-		return c.usageError(errors.New("ctl: want status, pause, resume or pin"))
+		return c.usageError(errors.New("ctl: want status, pause, resume, pin or mode"))
+	}
+	rest := args[1:]
+	var mode config.RoutingMode
+	if op == route.OpMode {
+		if len(rest) > 0 {
+			mode, rest = config.RoutingMode(rest[0]), rest[1:]
+		}
+		if mode != route.ModeDefault && !slices.Contains(config.RoutingModes, mode) {
+			return c.usageError(fmt.Errorf("ctl mode: %q is not cost, balanced, quality or default", mode))
+		}
 	}
 	fs := flag.NewFlagSet("ctl "+sub, flag.ContinueOnError)
 	cwd := fs.String("cwd", "", "the session's working `dir` (default: the current dir)")
@@ -423,7 +434,7 @@ func (c cli) ctl(args []string) int {
 	if op == route.OpPin {
 		tier = fs.String("tier", "", "`tier` of the next turn: micro, low, medium or high")
 	}
-	c, h, code, ok := c.homeFlags(fs, args[1:], false)
+	c, h, code, ok := c.homeFlags(fs, rest, false)
 	if !ok {
 		return code
 	}
@@ -480,7 +491,7 @@ func (c cli) ctl(args []string) int {
 	if op == "" {
 		return c.printSession(s)
 	}
-	cmd := route.Command{Op: op, Session: s.ID, Scope: route.ScopeSession, Tier: config.Tier(*tier)}
+	cmd := route.Command{Op: op, Session: s.ID, Scope: route.ScopeSession, Tier: config.Tier(*tier), Mode: mode}
 	if err := sessions.Send(s, cmd); err != nil {
 		return c.fail(fmt.Errorf("ctl %s: %w", sub, err))
 	}
@@ -489,6 +500,12 @@ func (c cli) ctl(args []string) int {
 		_, _ = fmt.Fprintf(c.stdout, "paused routing of %s: requests keep the model in Codex's footer\n", s.Label)
 	case route.OpResume:
 		_, _ = fmt.Fprintf(c.stdout, "resumed routing of %s\n", s.Label)
+	case route.OpMode:
+		if mode == route.ModeDefault {
+			_, _ = fmt.Fprintf(c.stdout, "cleared the mode of %s: the project file, the config or balanced decides\n", s.Label)
+			break
+		}
+		_, _ = fmt.Fprintf(c.stdout, "set %s to %s mode: the route follows once the switch gates pass; a pin forces one now\n", s.Label, mode)
 	default:
 		_, _ = fmt.Fprintf(c.stdout, "pinned the next turn of %s to %s\n", s.Label, *tier)
 	}
@@ -500,6 +517,9 @@ func (c cli) printSession(s sessions.Session) int {
 	w := tabwriter.NewWriter(c.stdout, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintf(w, "session\t%s\nlabel\t%s\nmode\t%s\ntier\t%s\nroute\t%s\nreplies\t%d\n",
 		s.ID, s.Label, s.Mode, cmp.Or(string(s.Tier), "-"), sessions.RouteText(s.Route), s.Replies)
+	if s.RoutingMode != "" {
+		_, _ = fmt.Fprintf(w, "routing\t%s (%s)\n", s.RoutingMode, s.RoutingModeSource)
+	}
 	if s.Attention != "" {
 		_, _ = fmt.Fprintf(w, "attention\t%s\n", s.Attention)
 	}

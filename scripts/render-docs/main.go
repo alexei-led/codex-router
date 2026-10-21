@@ -55,7 +55,7 @@ var pictures = []picture{
 		"The Sessions view in a terminal of 130 columns. The list of sessions is on the left and the selected session's detail on the right, with an accent gutter on the focused side.",
 		func(v *tui.FleetView) { v.Width = wideWidth }},
 	{"router-tui-policy", "codex-router panel, Policy view",
-		"Policy view: the preset buttons with balanced marked, the classifier Jev with its model and median latency, the model and effort of each tier, the compatibility group, and the thresholds for switching.",
+		"Policy view: the mode buttons cost, balanced, quality and default, with balanced marked and its source, the classifier Jev with its model and median latency, the model and effort of each tier, the compatibility group, and the thresholds for switching.",
 		func(v *tui.FleetView) { v.Tab = tui.TabPolicy }},
 	{"router-tui-usage", "codex-router panel, Usage view",
 		"Usage view: the net estimated saving against the native models, separate savings and extra cost totals, a ledger of replies, switches and cache reuse, and block bars of replies by tier and by activity.",
@@ -282,9 +282,9 @@ func sampleSnapshot() route.Snapshot {
 	}
 
 	return route.Snapshot{
-		At:              now,
-		Mode:            route.ModeOn,
-		Preset:          cfg.Preset,
+		At:          now,
+		Mode:        route.ModeOn,
+		RoutingMode: config.ModeBalanced, RoutingModeSource: route.SourceDefault,
 		Baseline:        solMed,
 		Footer:          solHigh,
 		FooterSynced:    true,
@@ -294,7 +294,7 @@ func sampleSnapshot() route.Snapshot {
 		ClassifierLabel: "Jev", ClassifierModel: "jev-1.13.0", ClassifierMedian: 388 * time.Millisecond,
 		Routes: cfg.Routes,
 		Group:  catalog.Group{CompHash: "9f3c1a7e"},
-		Policy: cfg.Effective(),
+		Policy: cfg.Effective(config.ModeBalanced),
 		Stats: route.Stats{
 			Since: at(18, 2), Replies: 144, Switches: 19,
 			ByTier:           map[config.Tier]int{config.TierHigh: 24, config.TierMedium: 76, config.TierLow: 36, config.TierMicro: 8},

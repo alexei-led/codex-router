@@ -150,25 +150,28 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 		Seq:              e.seq,
 		At:               now,
 		Mode:             ModeOn,
-		Preset:           cfg.Preset,
 		Baseline:         cfg.RouteFor(cfg.Baseline, ""),
 		FooterSynced:     true,
 		ClassifierLabel:  cfg.Classifiers[cfg.Classifier].Label,
 		ClassifierModel:  cfg.Classifiers[cfg.Classifier].Model,
 		ClassifierMedian: median(e.latencies),
-		Routes:           maps.Clone(cfg.Routes),
-		Policy:           cfg.Effective(),
 		Stats:            newTally().Stats,
+	}
+	cat := e.cat.Current()
+	s.RoutingMode, s.RoutingModeSource = e.routingMode(th)
+	s.Policy = cfg.Effective(s.RoutingMode)
+	s.Routes = map[config.Tier]config.Route{}
+	for _, t := range config.Tiers {
+		s.Routes[t] = target(cfg, s.RoutingMode, t, "", "", levelsIn(cat))
 	}
 	if e.paused {
 		s.Mode = ModePaused
 	}
 	s.StateLost = e.lost
-	cat := e.cat.Current()
 	s.CatalogAvailable = len(cat.Models) > 0
 	model := s.Baseline.Model
 	if th != nil {
-		s.ThreadID, s.Mode = th.id, e.mode(th)
+		s.ThreadID, s.Mode, s.ProjectError = th.id, e.mode(th), th.projectErr
 		s.Recent, s.Stats = copyDecisions(th.recent), th.stats.copy()
 		if th.pin != nil {
 			p := *th.pin

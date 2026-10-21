@@ -44,6 +44,9 @@ func (c *canvas) title(v view) {
 	h, _ := st.homeOf(s.Home)
 	left := []seg{bold(strings.TrimPrefix(s.Label, h.home.Name+" · "))}
 	right := []seg{dim(h.home.Name + sep + shortID(s.Home))}
+	if m := v.snap.RoutingMode; m != "" && !v.loading {
+		right = append([]seg{dim(string(m) + " (" + string(v.snap.RoutingModeSource) + ")" + sep)}, right...)
+	}
 	if !v.disconnected && !v.loading && !v.snap.FooterSynced {
 		right = append(right, col(roleWarn, sep+"footer not synced"))
 	}
