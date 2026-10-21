@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"syscall"
 )
 
 // ProjectFile is a project's routing mode file, relative to a directory
@@ -28,7 +29,7 @@ func ProjectMode(cwd string) (RoutingMode, string, error) {
 	root := repoRoot(cwd)
 	for dir := cwd; ; dir = filepath.Dir(dir) {
 		path := filepath.Join(dir, ProjectFile)
-		data, err := os.ReadFile(path)
+		data, err := readProjectFile(path)
 		switch {
 		case err == nil:
 			mode, err := parseProject(data)
@@ -45,8 +46,58 @@ func ProjectMode(cwd string) (RoutingMode, string, error) {
 	}
 }
 
-// repoRoot is the nearest directory at or above dir holding .git (a
-// directory, or a worktree's file), else dir.
+// maxProjectBytes caps a project file read: the file holds one short key.
+const maxProjectBytes = 4 << 10
+
+// readProjectFile reads a project file that a cloned repository controls. It
+// must be a regular file, not a symlink, and at most maxProjectBytes: a link
+// to /dev/zero or a FIFO would otherwise exhaust memory or block the read
+// forever. O_NONBLOCK keeps the open from waiting on a FIFO swapped in after
+// the Lstat; the opened file is checked again.
+func readProjectFile(path string) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, notRegular(info.Mode())
+	}
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	if info, err = f.Stat(); err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, notRegular(info.Mode())
+	}
+	data, err := io.ReadAll(io.LimitReader(f, maxProjectBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxProjectBytes {
+		return nil, fmt.Errorf("larger than %d bytes", maxProjectBytes)
+	}
+	return data, nil
+}
+
+func notRegular(m fs.FileMode) error {
+	kind := "not a regular file"
+	switch {
+	case m&fs.ModeSymlink != 0:
+		kind = "a symlink"
+	case m&fs.ModeNamedPipe != 0:
+		kind = "a named pipe"
+	case m&fs.ModeDevice != 0:
+		kind = "a device"
+	case m.IsDir():
+		kind = "a directory"
+	}
+	return fmt.Errorf("%s; the project file must be a regular file", kind)
+}
+
 // ProjectModes is ProjectMode per thread, from each thread's cwd; nil when
 // cwd is nil.
 func ProjectModes(cwd func(threadID string) string) func(threadID string) (RoutingMode, error) {
@@ -59,6 +110,8 @@ func ProjectModes(cwd func(threadID string) string) func(threadID string) (Routi
 	}
 }
 
+// repoRoot is the nearest directory at or above dir holding .git (a
+// directory, or a worktree's file), else dir.
 func repoRoot(dir string) string {
 	for d := dir; ; d = filepath.Dir(d) {
 		if _, err := os.Stat(filepath.Join(d, ".git")); err == nil {

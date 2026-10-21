@@ -4,7 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 func TestProjectMode(t *testing.T) {
@@ -61,6 +63,76 @@ func TestProjectMode(t *testing.T) {
 				t.Errorf("err = %v, want %q", err, tc.wantErr)
 			}
 		})
+	}
+}
+
+func TestProjectModeRefusesUnsafeFiles(t *testing.T) {
+	cases := []struct {
+		name    string
+		make    func(t *testing.T, root, file string)
+		wantErr string
+	}{
+		{"symlink to a device", func(t *testing.T, _, file string) { symlink(t, "/dev/zero", file) }, "a symlink"},
+		{"symlink out of the repo", func(t *testing.T, root, file string) {
+			outside := filepath.Join(root, "outside.json")
+			if err := os.WriteFile(outside, []byte(`{"mode":"cost"}`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			symlink(t, outside, file)
+		}, "a symlink"},
+		{"FIFO", func(t *testing.T, _, file string) {
+			if err := syscall.Mkfifo(file, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}, "a named pipe"},
+		{"directory", func(t *testing.T, _, file string) {
+			if err := os.Mkdir(file, 0o700); err != nil {
+				t.Fatal(err)
+			}
+		}, "a directory"},
+		{"oversize", func(t *testing.T, _, file string) {
+			body := `{"mode":"cost"}` + strings.Repeat(" ", maxProjectBytes)
+			if err := os.WriteFile(file, []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}, "larger than 4096 bytes"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			repo := filepath.Join(root, "repo")
+			if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(repo, ".codex"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			file := filepath.Join(repo, ProjectFile)
+			tc.make(t, root, file)
+
+			done := make(chan struct{})
+			var mode RoutingMode
+			var err error
+			go func() {
+				defer close(done)
+				mode, _, err = ProjectMode(repo)
+			}()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Fatal("ProjectMode blocked")
+			}
+			if mode != "" || err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("ProjectMode = %q, %v; want no mode and %q", mode, err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func symlink(t *testing.T, target, link string) {
+	t.Helper()
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
 	}
 }
 
