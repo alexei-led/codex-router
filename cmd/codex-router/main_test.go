@@ -316,7 +316,7 @@ func TestUsageErrors(t *testing.T) {
 		{"ctl unknown subcommand", []string{"ctl", "preset"}, "want status, pause, resume, pin or mode"},
 		{"ctl mode without a mode", []string{"ctl", "mode"}, `ctl mode: "" is not cost, balanced, quality or default`},
 		{"ctl mode with a v0.8 preset", []string{"ctl", "mode", "thrifty"}, `ctl mode: "thrifty" is not cost`},
-		{"ctl mode with a flag first", []string{"ctl", "mode", "--home", "/h", "cost"}, `ctl mode: "--home" is not cost`},
+		{"ctl mode with a bad mode after a flag", []string{"ctl", "mode", "--home", "/h", "fast"}, `ctl mode: "fast" is not cost`},
 		{"pin without a tier", []string{"ctl", "pin"}, `--tier "" is not`},
 		{"pin with a bad tier", []string{"ctl", "pin", "--tier", "huge"}, `--tier "huge" is not`},
 		{"tier on status", []string{"ctl", "status", "--tier", "high"}, ""},
