@@ -1,6 +1,6 @@
 ---
 name: router
-description: Show or change how codex-router routes this Codex session. Use when the user asks which model or effort the router picked and why, or asks to pause or resume routing, or to pin the next turn to a tier (micro, low, medium, high).
+description: Show or change how codex-router routes this Codex session. Use when the user asks which model or effort the router picked and why, asks to pause or resume routing, to pin the next turn to a tier (micro, low, medium, high), or to set the routing mode (cost, balanced, quality) of this session.
 ---
 
 # codex-router control for this session
@@ -23,8 +23,10 @@ The commands talk to the router over a local unix socket, which Codex's sandbox 
 | stop routing this session         | `ctl pause`                               |
 | route this session again          | `ctl resume`                              |
 | run the next turn on a fixed tier | `ctl pin --tier micro\|low\|medium\|high` |
+| trade cost against quality        | `ctl mode cost\|balanced\|quality`        |
+| drop this session's mode          | `ctl mode default`                        |
 
-`ctl status` prints the session, its label, mode (`on`, `paused`, `manual`), tier, route, reply count and attention flag, if any. While paused, requests keep the model and effort in Codex's footer. A pin applies once, to the next turn, then routing goes back to normal. `ctl resume` also ends manual mode (a `/model` pick).
+`ctl status` prints the session, its label, mode (`on`, `paused`, `manual`), tier, route, reply count, routing mode with its source (`session`, `project`, `config` or `default`) and attention flag, if any. `cost` uses cheaper models or less effort where the turn allows, `quality` spends more effort or a stronger model, `balanced` is the default. A mode change waits for the router's switch checks, so the route may change a few requests later; a pin forces a tier now. `ctl mode default` drops the session's mode, so the project file `.codex/router.json`, the config or `balanced` decides. While paused, requests keep the model and effort in Codex's footer. A pin applies once, to the next turn, then routing goes back to normal. `ctl resume` also ends manual mode (a `/model` pick).
 
 Change routing only when the user asks for it. `status` is read-only.
 
