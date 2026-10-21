@@ -327,7 +327,7 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 		return responses.Rewrite{}, false
 	}
 
-	st, retried, old, picked := e.begin(th, req, m)
+	st, retried, old, picked := e.begin(th, req, m, e.prefetchProject(th, m))
 	if picked {
 		e.persist()
 		e.emitSnapshot(e.lockedSnapshot(key))
@@ -380,7 +380,7 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 // retry's, or a held turn's route), nil step when the request passes unchanged, a review the new turn
 // replaced, for the caller to stop outside the lock, and whether the request
 // showed a /model pick, for the caller to save.
-func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*step, *Decision, *review, bool) {
+func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, proj projectRead) (*step, *Decision, *review, bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	cfg := e.cfg
@@ -456,8 +456,8 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 	if _, ok := cat.GroupOf(req.Model); !ok {
 		return nil, nil, old, false
 	}
-	if first {
-		e.readProject(th)
+	if first && proj.done {
+		e.setProject(th, proj)
 	}
 	mode, source := e.routingMode(th)
 	st := &step{
@@ -495,21 +495,42 @@ func (e *Engine) routingMode(th *thread) (config.RoutingMode, ModeSource) {
 	return config.ModeBalanced, SourceDefault
 }
 
-// readProject reads the mode th's project file sets. An invalid file is
-// ignored, logged when its error changes, and shown as a finding. Under e.mu.
-func (e *Engine) readProject(th *thread) {
+// projectRead is a project file read for one turn: done says it was read.
+type projectRead struct {
+	mode config.RoutingMode
+	err  error
+	done bool
+}
+
+// prefetchProject reads th's project file when m starts a turn, outside
+// e.mu: the file lives in a repository and may sit on a slow disk, so one
+// thread's read must not stall the others. The caller holds th.step, so the
+// turn cannot start between this check and begin.
+func (e *Engine) prefetchProject(th *thread, m responses.Meta) projectRead {
 	if e.projectMode == nil {
-		return
+		return projectRead{}
+	}
+	e.mu.Lock()
+	first := th.turn != m.TurnID
+	e.mu.Unlock()
+	if !first {
+		return projectRead{}
 	}
 	mode, err := e.projectMode(th.id)
+	return projectRead{mode: mode, err: err, done: true}
+}
+
+// setProject records the mode th's project file sets. An invalid file is
+// ignored, logged when its error changes, and shown as a finding. Under e.mu.
+func (e *Engine) setProject(th *thread, p projectRead) {
 	msg := ""
-	if err != nil {
-		msg = err.Error()
+	if p.err != nil {
+		msg = p.err.Error()
 		if msg != th.projectErr {
 			e.log.Warn("route project file ignored", "thread", th.id, "err", msg)
 		}
 	}
-	th.project, th.projectErr = mode, msg
+	th.project, th.projectErr = p.mode, msg
 }
 
 // abandon drops a step whose ctx ended before it committed: the caller
@@ -607,6 +628,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		d.Why = whyText(d, st.cfg, st.tokens)
 		th.retries = appendCapped(th.retries, retry{st.fp, d}, retriesKept)
 		th.remember(d)
+		e.logDecision(d, nil)
 		return d, true
 	}
 	var c cell
@@ -734,7 +756,10 @@ func (e *Engine) finish(st *step, c cell) Decision {
 		}
 		d.Route = routeFor(tier)
 	} else if fix, ok := e.upward(st); ok {
+		// fix is the baseline's configured pair: the thread runs balanced
+		// until a gate moves it, as after any other route it was sent.
 		d.Tier, d.Route, d.Reason, d.Estimate = cfg.Baseline, fix, policy.ReasonFit, nil
+		c.mode = config.ModeBalanced
 	} else {
 		d.Route, d.Reason, d.Estimate = st.original, refused, nil
 	}
@@ -774,14 +799,24 @@ func (e *Engine) finish(st *step, c cell) Decision {
 		th.lastWritten, th.wrote = d.Route, true
 	}
 	th.remember(d)
+	advice := c.advice
+	if advice == nil {
+		advice = th.advice // a later step runs on the turn's answer
+	}
+	e.logDecision(d, advice)
+	return d
+}
+
+// logDecision writes a decision's log line. classified is the classifier's
+// tier answer the decision runs on, empty when there is none.
+func (e *Engine) logDecision(d Decision, advice *classifier.Advice) {
 	classified := ""
-	if c.advice != nil {
-		classified = string(c.advice.Choice)
+	if advice != nil {
+		classified = string(advice.Choice)
 	}
 	e.log.Info("route decision", "thread", d.ThreadID, "turn", d.TurnID, "step", d.Step, "tier", d.Tier,
 		"activity", d.Activity, "reason", d.Reason, "model", d.Route.Model, "effort", d.Route.Effort, "rewritten", d.Rewritten,
 		"mode", d.RoutingMode, "modeSource", d.RoutingModeSource, "classified", classified)
-	return d
 }
 
 // window is a tier's context window under routeFor; a route the request may
@@ -930,7 +965,6 @@ func (e *Engine) add(key string) *thread {
 	if e.loadMode != nil {
 		th.mode = e.loadMode(key)
 	}
-	e.readProject(th)
 	e.threads[key] = e.lru.PushFront(th)
 	for el := e.lru.Back(); el != nil && e.lru.Len() > MaxThreads; {
 		prev := el.Prev()

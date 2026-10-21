@@ -1,6 +1,7 @@
 package route
 
 import (
+	"cmp"
 	"slices"
 
 	"github.com/alexei-led/codex-router/internal/catalog"
@@ -45,6 +46,18 @@ func target(cfg config.Config, mode config.RoutingMode, t config.Tier, a config.
 func cheaperInput(cfg config.Config, a, b string) bool {
 	pa, pb := cfg.Prices[a].Input, cfg.Prices[b].Input
 	return pa > 0 && pb > 0 && pa < pb
+}
+
+// modeOrder orders a and b as the transform picks targets: by input price
+// when both models are priced and differ, else as compareRoutes. The mode
+// gate uses it, so a move cost picked as cheaper is gated as cheaper.
+func modeOrder(cfg config.Config, a, b config.Route) (int, bool) {
+	if a.Model != b.Model {
+		if pa, pb := cfg.Prices[a.Model].Input, cfg.Prices[b.Model].Input; pa > 0 && pb > 0 && pa != pb {
+			return cmp.Compare(pa, pb), true
+		}
+	}
+	return compareRoutes(cfg, a, b)
 }
 
 // levelsIn lists, per model, the efforts cat says it accepts; none when cat

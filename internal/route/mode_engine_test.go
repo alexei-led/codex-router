@@ -146,6 +146,79 @@ func TestAModeChangeDoesNotMoveAStayingRoute(t *testing.T) {
 	})
 }
 
+// TestAModeChangeMidTurnWaitsForTheNextGate: tool calls that show a new
+// activity mid-turn move the route with the mode the turn started under, so a
+// mode switched mid-turn applies only through the gate.
+func TestAModeChangeMidTurnWaitsForTheNextGate(t *testing.T) {
+	h := modeHarness(t)
+	h.asker.script(answer(mediumTier))
+	m := meta("th", "t1")
+	items := []responses.Item{userMsg(secretPrompt)}
+	h.decide(req(solMedium, items...), m)
+	h.reply(m, sol, 50_000, 0)
+	h.apply(Command{Op: OpMode, Session: "th", Mode: config.ModeQuality})
+	items = append(items, editGo("c1"), edited("c1"))
+
+	rw, ok := h.decide(req(solMedium, items...), m)
+
+	wantUnchanged(t, rw, ok)
+	if d := h.last(); d.Route != solMedium {
+		t.Fatalf("mid-turn step after the switch = %+v, want the turn's route", d)
+	}
+}
+
+// TestCostGatesByInputPrice: cost picks a target by input price, so its gate
+// orders the move the same way. A model with cheaper input but pricier output
+// is a cost move down, held on the same task like any other.
+func TestCostGatesByInputPrice(t *testing.T) {
+	cfg := config.Default()
+	cheapIn := config.Route{Model: "gpt-6-sol", Effort: config.EffortHigh}
+	cfg.Routes[config.TierLow] = cheapIn
+	cfg.Prices["gpt-6-sol"] = config.Price{Input: 1.25, CachedInput: 0.125, Output: 12}
+	cfg.Policy.ReviewEveryRequests = 0
+	h := newHarness(t, cfg)
+	same := continuing(mediumTier, 0.9)
+	h.asker.script(answer(mediumTier), answer(same))
+	items := []responses.Item{userMsg(secretPrompt)}
+	m := meta("th", "t1")
+	h.decide(req(solMedium, items...), m)
+	h.reply(m, sol, 50_000, 0)
+	h.apply(Command{Op: OpMode, Session: "th", Mode: config.ModeCost})
+
+	rw, ok := h.decide(req(solMedium, append(items, userMsg("keep going"))...), meta("th", "t2"))
+
+	wantUnchanged(t, rw, ok)
+	if d := h.last(); d.Reason != policy.ReasonDowngradeHeld {
+		t.Fatalf("continuation after the switch = %+v, want the cost move held", d)
+	}
+}
+
+// TestTheUpwardFitFixRunsBalanced: when no route of the mode fits the context
+// and the baseline's configured pair is sent instead, the thread runs that
+// pair, so a later turn keeps it until a gate passes rather than snapping to
+// the mode's pair.
+func TestTheUpwardFitFixRunsBalanced(t *testing.T) {
+	cfg := config.Default()
+	cfg.Baseline = config.TierHigh
+	cfg.Routes[config.TierMedium] = config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
+	cfg.Prices["gpt-6-sol"] = config.Price{Input: 1.25, CachedInput: 0.125, Output: 10}
+	cfg.Mode = config.ModeCost
+	cfg.Policy.ReviewEveryRequests = 0
+	h := newHarness(t, cfg)
+	h.asker.script(answer(mediumTier), answer(classifier.Advice{Choice: "uncertain", Probabilities: map[classifier.Choice]float64{"uncertain": 1}}))
+	big := req(lunaHigh, userMsg(secretPrompt))
+	big.Bytes = 4 * 300_000
+
+	rw, ok := h.decide(big, meta("th", "t1"))
+
+	wantRoute(t, rw, ok, solHigh)
+	rw, ok = h.decide(req(solHigh, userMsg(secretPrompt), userMsg("next")), meta("th", "t2"))
+	wantUnchanged(t, rw, ok)
+	if d := h.last(); d.Route != solHigh {
+		t.Fatalf("after the fit fix = %+v, want the sent pair kept", d)
+	}
+}
+
 func TestAPinBypassesTheMode(t *testing.T) {
 	h := modeHarness(t)
 	h.apply(Command{Op: OpMode, Session: "th", Mode: config.ModeCost})
@@ -278,6 +351,38 @@ func TestSnapshotRoutesFollowTheMode(t *testing.T) {
 	}
 	if s := h.engine.SnapshotFor("th"); fmt.Sprint(s.Routes) != fmt.Sprint(want) {
 		t.Fatalf("routes = %v, want %v", s.Routes, want)
+	}
+}
+
+func TestDecisionLogNamesTheAnswerOfEveryStep(t *testing.T) {
+	h := modeHarness(t)
+	h.asker.script(answer(mediumTier), fail(classifier.ErrTimeout))
+	m := meta("th", "t1")
+	items := []responses.Item{userMsg(secretPrompt)}
+	h.decide(req(solMedium, items...), m)
+	h.decide(req(solMedium, append(items, call("c", "ls"), result("c", 0, ""))...), m)
+	h.decide(req(solMedium, append(items, userMsg("next"))...), meta("th", "t2"))
+
+	var lines []string
+	for line := range strings.SplitSeq(h.logs.String(), "\n") {
+		if strings.Contains(line, `msg="route decision"`) {
+			lines = append(lines, line)
+		}
+	}
+	want := [][]string{
+		{"step=0", "classified=medium"},
+		{"step=1", "reason=continue", "classified=medium"},
+		{"turn=t2", "reason=error", `classified=""`},
+	}
+	if len(lines) != len(want) {
+		t.Fatalf("route decision lines = %d, want %d:\n%s", len(lines), len(want), h.logs.String())
+	}
+	for i, ws := range want {
+		for _, w := range ws {
+			if !strings.Contains(lines[i], w) {
+				t.Errorf("line %d lacks %q: %s", i, w, lines[i])
+			}
+		}
 	}
 }
 

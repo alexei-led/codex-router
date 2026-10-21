@@ -86,7 +86,7 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 		return c
 	}
 	if base := resolve(cfg.RouteFor(r.Tier, act), st.sent()); to != base {
-		o, ok := compareRoutes(cfg, to, inc.route)
+		o, ok := modeOrder(cfg, to, inc.route)
 		tax := e.ledger.SwitchTax(th.id, to.Model, st.tokens, st.now)
 		move, reason, est := policy.Lateral(in, r, tax, ok && o < 0)
 		switch {
@@ -102,7 +102,7 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 		// While the mode's move waits, the balanced pair still moves by
 		// today's activity rule when it lies the same way, so quality never
 		// runs weaker than balanced, nor cost stronger.
-		if ob, okb := compareRoutes(cfg, base, inc.route); ok && okb && ob != 0 && (ob > 0) == (o > 0) {
+		if ob, okb := modeOrder(cfg, base, inc.route); ok && okb && ob != 0 && (ob > 0) == (o > 0) {
 			c.mode = config.ModeBalanced
 			return e.activityMove(st, c, inc, base, act, advice, r.Reason == policy.ReasonHold)
 		}
@@ -134,14 +134,16 @@ func (e *Engine) activityMove(st *step, c cell, inc running, to config.Route, ac
 // observedMove moves a turn up once its tool calls show an activity whose
 // route, at the tier the context fits, is stronger than the running one. The
 // tools are the evidence, so the move needs no classifier probability. Only
-// up. Ported from lib/route.mjs observedMove.
+// up. It aims with the mode the running route was aimed with: a mode switched
+// mid-turn moves the route only through the gate. Ported from lib/route.mjs
+// observedMove.
 func (e *Engine) observedMove(st *step, cur cell) cell {
 	act := observedActivity(st.facts.Observed)
 	if act == "" || act == cur.activity {
 		return cur
 	}
 	from := st.routeIn(cur.mode, cur.tier, cur.activity)
-	routeFor := func(t config.Tier) config.Route { return st.routeFor(t, act) }
+	routeFor := func(t config.Tier) config.Route { return st.routeIn(cur.mode, t, act) }
 	tier, fits := policy.FitTier(cur.tier, st.tokens, e.window(st, routeFor), st.policy.ContextFill)
 	if !fits {
 		return cur
@@ -159,7 +161,7 @@ func (e *Engine) observedMove(st *step, cur cell) cell {
 	if !move {
 		return cur
 	}
-	cur.tier, cur.activity, cur.mode, cur.reason, cur.estimate = tier, act, st.routeMode, ReasonObserved, est
+	cur.tier, cur.activity, cur.reason, cur.estimate = tier, act, ReasonObserved, est
 	return cur
 }
 
