@@ -11,6 +11,7 @@ import (
 
 	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
+	"github.com/alexei-led/codex-router/internal/responses"
 )
 
 var updateMatrix = flag.Bool("update-matrix", false, "rewrite the decision matrix in docs/evaluation.md from the current engine")
@@ -139,6 +140,53 @@ func TestModeDecisionMatrix(t *testing.T) {
 	}
 	if want, _, _ := strings.Cut(rest, matrixEnd); want != got {
 		t.Errorf("the decision matrix in %s is stale; run go test ./internal/route -run TestModeDecisionMatrix -update-matrix", matrixDoc)
+	}
+}
+
+// TestAStartingRouteStaysWithinTheModesBounds starts a thread on the
+// balanced medium pair, in each mode, fresh or seeded by a brain restart and
+// measured, with a decision that keeps the incumbent: the starting route is
+// inferred from the configured table, never from a mode's targets, so cost
+// never runs pricier than balanced and quality never cheaper.
+func TestAStartingRouteStaysWithinTheModesBounds(t *testing.T) {
+	keeps := []struct {
+		name   string
+		advice func() (classifier.Advice, error)
+	}{
+		{"uncertain", answer(classifier.Advice{Choice: "uncertain", Probabilities: map[classifier.Choice]float64{"uncertain": 1}})},
+		{"weak downgrade", answer(classifier.Advice{Choice: "low", Probabilities: map[classifier.Choice]float64{"low": 0.4, "medium": 0.6}})},
+		{"classifier error", fail(classifier.ErrTimeout)},
+	}
+	for _, profile := range []struct {
+		name string
+		cfg  func() config.Config
+	}{{"default", config.Default}, {"profile", profileConfig}} {
+		for _, seeded := range []bool{false, true} {
+			for _, k := range keeps {
+				got := map[config.RoutingMode]config.Route{}
+				for _, mode := range config.RoutingModes {
+					cfg := profile.cfg()
+					cfg.Mode = mode
+					native := cfg.RouteFor(config.TierMedium, "")
+					h := newHarness(t, cfg)
+					items := []responses.Item{userMsg(secretPrompt)}
+					if seeded {
+						h.engine.Resumed("th", native)
+						m := meta("th", "t0")
+						h.decide(req(native, items...), m)
+						h.reply(m, native.Model, 50_000, 0)
+						items = append(items, userMsg("next"))
+					}
+					h.asker.script(k.advice)
+					h.decide(req(native, items...), meta("th", "t1"))
+					got[mode] = h.last().Route
+				}
+				cfg, bal := profile.cfg(), got[config.ModeBalanced]
+				if spend(cfg, got[config.ModeCost], bal) > 0 || spend(cfg, got[config.ModeQuality], bal) < 0 {
+					t.Errorf("%s seeded=%v %s: cost %v, balanced %v, quality %v", profile.name, seeded, k.name, got[config.ModeCost], bal, got[config.ModeQuality])
+				}
+			}
+		}
 	}
 }
 
