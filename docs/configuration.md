@@ -120,7 +120,7 @@ With the default routes:
 
 `quality` mostly buys `xhigh`. In the 2026-10-16 runs behind the default routes, `xhigh` cost more than `high` on every task and scored no higher; on the plan task it scored lower (see [Evaluation](evaluation.md)).
 
-The cost lever needs `prices` for both models. Without them, `cost` lowers effort only. An effort step uses only the efforts the Codex catalog lists for the model. A route without an `effort` gets no effort step: it runs the effort Codex sends, which is the one the router last wrote, so a step would repeat every turn. `cost` then keeps that route unless the cost lever applies, and `quality` takes the next higher tier's route.
+The cost lever needs `prices` for both models. Without them, `cost` lowers effort only. An effort step uses only the efforts the Codex catalog lists for the model. A route without an `effort` gets no effort step: it runs the effort Codex sends, which is the one the router last wrote, so a step would repeat every turn. `cost` then keeps that route unless the cost lever applies, and `quality` takes the next higher tier's route unless that route is weaker.
 
 Each mode also replaces some `policy` fields. The effective policy is `policy` with `modes.<mode>.policy` on top: a field the mode names wins over `policy`. A `modes` entry in your file changes only the fields it names over the built-in entry; set a field to `null` to drop a built-in one. Built-in values:
 

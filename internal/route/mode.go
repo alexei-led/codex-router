@@ -38,7 +38,13 @@ func target(cfg config.Config, mode config.RoutingMode, t config.Tier, a config.
 		if e, ok := proj(own, 1, levels(base.Model)); ok && effortRank(e) > effortRank(own) {
 			return config.Route{Model: base.Model, Effort: e}
 		}
-		return pair(config.Tiers[min(len(config.Tiers)-1, rank+1)])
+		// An effort Codex sent can put P(t) above P(t+1); quality never
+		// aims weaker than balanced.
+		up := pair(config.Tiers[min(len(config.Tiers)-1, rank+1)])
+		if o, ok := compareRoutes(cfg, up, base); ok && o < 0 {
+			return base
+		}
+		return up
 	}
 	return base
 }

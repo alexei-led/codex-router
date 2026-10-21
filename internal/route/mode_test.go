@@ -80,6 +80,7 @@ func TestTargetLevelsAndPrices(t *testing.T) {
 		{"a pricier lower model uses the effort lever", pricierBelow, config.ModeCost, config.TierMedium, "", nil, config.Route{Model: sol, Effort: config.EffortLow}},
 		{"an empty effort gets no effort lever in quality", emptyEffort, config.ModeQuality, config.TierMedium, config.EffortLow, nil, config.Route{Model: sol, Effort: config.EffortHigh}},
 		{"an empty effort ignores a sent effort the router wrote", emptyEffort, config.ModeQuality, config.TierMedium, config.EffortHigh, nil, config.Route{Model: sol, Effort: config.EffortHigh}},
+		{"an empty effort above the next tier's stays in quality", emptyEffort, config.ModeQuality, config.TierMedium, config.EffortXHigh, nil, config.Route{Model: sol, Effort: config.EffortXHigh}},
 		{"an empty effort keeps the model lever in cost", emptyEffort, config.ModeCost, config.TierMedium, config.EffortHigh, nil, config.Route{Model: luna, Effort: config.EffortHigh}},
 		{"an empty effort in cost without the model lever keeps the pair", emptyUnpriced, config.ModeCost, config.TierMedium, config.EffortHigh, nil, config.Route{Model: sol, Effort: config.EffortHigh}},
 		{"an effort off the ladder in cost keeps the pair", emptyUnpriced, config.ModeCost, config.TierMedium, "max", nil, config.Route{Model: sol, Effort: "max"}},
