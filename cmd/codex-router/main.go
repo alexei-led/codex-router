@@ -25,6 +25,7 @@ import (
 
 	"github.com/alexei-led/codex-router/internal/brain"
 	"github.com/alexei-led/codex-router/internal/catalog"
+	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
@@ -655,7 +656,20 @@ func (c cli) brain(ctx context.Context, configPath string, args []string) int {
 		return c.fail(err)
 	}
 	log := slog.New(slog.NewJSONHandler(c.stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	deps, store := launcher.RouterDeps(launcher.Options{Config: cfg, Env: c.env, Stderr: c.stderr}, log)
+	store := &catalog.Store{}
+	if cache, err := catalog.LoadCache(filepath.Join(h.Path, catalog.CacheFile)); err != nil {
+		log.Warn("catalog-cache-unreadable", "err", err)
+	} else {
+		store.Set(cache)
+		log.Info("catalog-seeded", "models", len(cache.Models))
+	}
+	asker, why := classifier.Configured(cfg.Classifier, cfg.Classifiers, c.getenv)
+	if asker == nil {
+		log.Warn("classifier-disabled", "reason", why)
+	}
+	deps := route.Deps{
+		Config: cfg, Catalog: store, Classifier: asker, ClassifierOffReason: why, Logger: log, Home: h,
+	}
 	models := catalog.NewCacheWatch(filepath.Join(h.Path, catalog.CacheFile), store, nil)
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

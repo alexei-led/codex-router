@@ -6,17 +6,14 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/classifier"
-	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/proxy"
 	"github.com/alexei-led/codex-router/internal/route"
@@ -30,16 +27,6 @@ const (
 // newRouter builds the engine for the Codex home with the launcher's cwd for
 // every thread. sink may be nil.
 func newRouter(o Options, log *slog.Logger, sink route.Sink) (*route.Engine, *catalog.Store, home.Home) {
-	d, store := RouterDeps(o, log)
-	d.Sink, d.Cwd = sink, launcherCwd()
-	return route.New(d), store, d.Home
-}
-
-// RouterDeps returns the engine's config, classifier, logger and the Codex
-// home of o's env, with a catalog seeded read-only from
-// $CODEX_HOME/models_cache.json; the caller sets Sink and Cwd. An
-// unresolvable home is the zero Home.
-func RouterDeps(o Options, log *slog.Logger) (route.Deps, *catalog.Store) {
 	o = o.withDefaults()
 	store := &catalog.Store{}
 	h, err := home.Resolve(o.getenv)
@@ -51,11 +38,15 @@ func RouterDeps(o Options, log *slog.Logger) (route.Deps, *catalog.Store) {
 		store.Set(c)
 		log.Info("catalog-seeded", "models", len(c.Models))
 	}
-	asker, why := newClassifier(o.Config, o.getenv)
+	asker, why := classifier.Configured(o.Config.Classifier, o.Config.Classifiers, o.getenv)
 	if asker == nil {
 		log.Warn("classifier-disabled", "reason", why)
 	}
-	return route.Deps{Config: o.Config, Catalog: store, Classifier: asker, ClassifierOffReason: why, Logger: log, Home: h}, store
+	d := route.Deps{
+		Config: o.Config, Catalog: store, Classifier: asker, ClassifierOffReason: why,
+		Logger: log, Home: h, Sink: sink, Cwd: launcherCwd(),
+	}
+	return route.New(d), store, h
 }
 
 // launcherCwd gives every thread the launcher's cwd: the app-server and
@@ -76,79 +67,6 @@ func launcherLabel(h home.Home) string {
 		return ""
 	}
 	return home.Label(h.Name, wd)
-}
-
-// newClassifier returns the configured classifier, or nil and the reason it
-// is off. The key and each {NAME} placeholder of the endpoint come from the
-// env var of that name, else from the classifier's envFile. A value found in
-// neither turns it off: the router still runs and pins still work. The
-// reason never holds a value.
-func newClassifier(cfg config.Config, getenv func(string) string) (classifier.Asker, string) {
-	if cfg.Classifier == config.ClassifierOff {
-		return nil, "classifier is off in the config"
-	}
-	cc, ok := cfg.Classifiers[cfg.Classifier]
-	if !ok {
-		return nil, "no classifier configured"
-	}
-	var key string
-	if cc.KeyEnv != "" {
-		var why string
-		if key, why = lookup(cc, cc.KeyEnv, getenv); why != "" {
-			return nil, why
-		}
-	}
-	names, err := config.EndpointPlaceholders(cc.Endpoint)
-	if err != nil {
-		return nil, "endpoint " + err.Error()
-	}
-	for _, name := range names {
-		value, why := lookup(cc, name, getenv)
-		if why != "" {
-			return nil, why
-		}
-		cc.Endpoint = strings.ReplaceAll(cc.Endpoint, "{"+name+"}", url.PathEscape(value))
-	}
-	var a classifier.Adapter
-	switch cc.API {
-	case config.APISystemOne:
-		a = classifier.SystemOne()
-	case config.APIOpenAIDecisions:
-		a = classifier.OpenAIDecisions()
-	case config.APIOllama:
-		a = classifier.Ollama()
-	default:
-		return nil, "unknown api " + cc.API
-	}
-	return classifier.New(cc, key, a, &http.Client{}, time.Now), ""
-}
-
-// lookup returns the value of name from the env, else from cc.EnvFile. The
-// reason is empty on success and never holds the value.
-func lookup(cc config.Classifier, name string, getenv func(string) string) (value, why string) {
-	if value = getenv(name); value != "" {
-		return value, ""
-	}
-	if cc.EnvFile == "" {
-		return "", name + " is not set"
-	}
-	value, err := readEnvFile(cc.EnvFile, name, getenv)
-	if err != nil {
-		return "", name + " is not set; envFile " + err.Error()
-	}
-	return value, ""
-}
-
-// readEnvFile reads name from the dotenv file at path, with "~/" taken from HOME.
-func readEnvFile(path, name string, getenv func(string) string) (string, error) {
-	home := getenv("HOME")
-	if home == "" {
-		var err error
-		if home, err = os.UserHomeDir(); err != nil {
-			return "", err
-		}
-	}
-	return config.ReadEnvKey(config.ExpandHome(path, home), name)
 }
 
 type serveFunc func(ctx context.Context) error

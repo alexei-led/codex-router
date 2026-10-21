@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexei-led/codex-router/internal/catalog"
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/home"
@@ -1098,6 +1099,131 @@ func TestBrainServesTheEdgeAndListsItself(t *testing.T) {
 	}
 	if eps, _, _ := registry.List(root); len(eps) != 0 {
 		t.Errorf("registry after the brain stopped = %+v, want empty", eps)
+	}
+}
+
+// TestBrainBootstrapsItsOwnDeps keeps the brain root in the CLI: it seeds the
+// catalog from the home's models cache and builds the classifier, so both the
+// log and the engine behind the control socket say why the classifier is off,
+// without the launcher composing the engine's dependencies.
+func TestBrainBootstrapsItsOwnDeps(t *testing.T) {
+	const (
+		keyVar = "BRAIN_BOOTSTRAP_TEST_KEY"
+		secret = "synthetic-brain-key"
+	)
+	cfg := config.Default()
+	cc := cfg.Classifiers[cfg.Classifier]
+	cc.KeyEnv = keyVar
+	cfg.Classifiers[cfg.Classifier] = cc
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfgPath := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(cfgPath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name       string
+		env        []string
+		wantReason string
+	}{
+		{"key unset", nil, keyVar + " is not set"},
+		{"key set", []string{keyVar + "=" + secret}, ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			homePath := t.TempDir()
+			cache := `{"models":[{"slug":"gpt-6-luna","context_window":200000}]}`
+			if err := os.WriteFile(filepath.Join(homePath, catalog.CacheFile), []byte(cache), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			short, err := os.MkdirTemp("/tmp", "crbrain")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.RemoveAll(short) })
+			env := append(testEnv(t), "TMPDIR="+short, envConfig+"="+cfgPath)
+			env = append(env, tc.env...)
+			args := []string{"brain", "--home", homePath, "--state-dir", short}
+			ctx, cancel := context.WithCancel(context.Background())
+			var stderr syncBuffer
+			done := make(chan int, 1)
+			go func() { done <- run(ctx, args, env, nil, io.Discard, &stderr) }()
+			t.Cleanup(func() {
+				cancel()
+				if code := waitExit(t, "brain", done); code != exitOK {
+					t.Errorf("brain exit %d, stderr %q", code, stderr.String())
+				}
+			})
+			waitFor(t, "brain ready", func() bool { return strings.Contains(stderr.String(), `"msg":"brain-ready"`) })
+			logs := stderr.String()
+			if !strings.Contains(logs, `"msg":"catalog-seeded"`) || !strings.Contains(logs, `"models":1`) {
+				t.Errorf("log does not say the catalog was seeded from the home's cache: %s", logs)
+			}
+			disabled := strings.Contains(logs, `"msg":"classifier-disabled"`)
+			if tc.wantReason == "" {
+				if disabled {
+					t.Errorf("log disables the classifier with the key set: %s", logs)
+				}
+			} else if !disabled || !strings.Contains(logs, tc.wantReason) {
+				t.Errorf("log lacks the classifier-off reason %q: %s", tc.wantReason, logs)
+			}
+			if strings.Contains(logs, secret) {
+				t.Errorf("log leaks the classifier key: %s", logs)
+			}
+
+			// The log is the CLI's account; the snapshot is the state the panel
+			// reads, so the engine must carry what the CLI composed for it.
+			snap := brainSnapshot(t, short)
+			if !snap.CatalogAvailable {
+				t.Error("the engine does not see the catalog the CLI seeded from the home's cache")
+			}
+			off := tc.wantReason != ""
+			if snap.ClassifierOff != off || snap.ClassifierOffReason != tc.wantReason {
+				t.Errorf("snapshot classifier off %v, reason %q; want off %v, reason %q",
+					snap.ClassifierOff, snap.ClassifierOffReason, off, tc.wantReason)
+			}
+			if strings.Contains(snap.ClassifierOffReason, secret) {
+				t.Errorf("the snapshot carries the classifier key: %q", snap.ClassifierOffReason)
+			}
+		})
+	}
+}
+
+// brainSnapshot dials the brain registered under state-dir state and returns
+// the snapshot its control socket serves. The brain has no daemon to follow
+// here, so it lists no thread: any thread of its home subscribes and gets the
+// home's state, which is where the classifier's off flag lives.
+func brainSnapshot(t *testing.T, state string) route.Snapshot {
+	t.Helper()
+	root, err := registry.Root(func(k string) string {
+		if k == "XDG_STATE_HOME" {
+			return state
+		}
+		return ""
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	eps, _, err := registry.List(root)
+	if err != nil || len(eps) != 1 || eps[0].Kind != registry.KindBrain {
+		t.Fatalf("registry = %+v, %v; want the started brain", eps, err)
+	}
+	c, err := control.Dial(eps[0].Socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+	if err := c.Subscribe(control.SessionID(eps[0].Home.ID, "bootstrap")); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case snap := <-c.Snapshots():
+		return snap
+	case <-time.After(10 * time.Second):
+		t.Fatal("the brain served no snapshot")
+		return route.Snapshot{}
 	}
 }
 
