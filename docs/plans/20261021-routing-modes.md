@@ -85,6 +85,15 @@ Expected results with the built-in routes (micro Luna/medium, low Luna/high, med
 - **Session mode store growth (O1a).** Each thread given an override leaves one small file. It is not pruned.
 - **Path traversal.** Thread ids name store files. Ids are checked against a strict charset before use.
 
+### Decisions (manager, 2026-10-21)
+
+- D1: read the project file per thread, from `Deps.Cwd`. D4: keep sending `th.sent`, and change it only when a gate passes.
+- O1a, plus a prune at startup. Delete mode files whose mtime is older than 30 days. Loading a file refreshes its mtime, so an override that is still used stays. This is simpler than the count rule for run logs, which keeps the newest 40 (`launcher/runtime.go:21`). A missing or corrupt file means no override.
+- O2a, with this condition. If the transformed target differs from the baseline `P(T)`, the change comes from the mode and uses the tier-switch gates. Otherwise today's activity rule applies, so `balanced` stays byte-identical. A test must prove that balanced decisions are unchanged on the existing fixtures.
+- O3a: a clear error, no rewrite. O4a: protocol v2, additive fields only. O5: `.codex/router.json`, mode only, search up to the repo root, an invalid file is ignored with a panel warning.
+- O6: list the `codex-work.fish` and `work.json` change; don't apply it. The user picks the modes at release.
+- O7: build as designed. The docs say that quality at high gives Sol/xhigh, which the lab notes found no better than high. The release notes flag it as untuned.
+
 ### Open choices (recommendation first)
 
 - **O1. Session override across `codex-router resume` in launcher mode.**
@@ -169,109 +178,113 @@ Expected results with the built-in routes (micro Luna/medium, low Luna/high, med
 
 **Files:** Modify `internal/config/config.go`, `default.go`, `validate.go`, `load.go`, `config_test.go`, `testdata/default.json`
 
-- [ ] Replace `Preset` with `RoutingMode` (`cost|balanced|quality`) and `Config.Mode`, and add `ModeConfig` and `PolicyPatch` (pointer fields for every `Policy` field except the deprecated one)
-- [ ] Built-in `Modes`: `cost` and `quality` with the current preset numbers; `balanced` empty
-- [ ] `Modes.UnmarshalJSON`: decode each entry over the built-in one; unknown keys are errors
-- [ ] `Effective(mode)`: `{...policy, ...modes[mode].policy}`
-- [ ] Validation: `mode` is empty or a known mode; `modes` keys are known; each mode's effective policy validates; `preset` and `thrifty` get the rename hint (O3a)
-- [ ] Tests: table for `Effective(mode)` (patch beats policy, user patch merges with built-in), validation errors, rename hints (rename `TestEffectivePresetValues` to `TestEffectiveModePolicy`)
+- [x] Replace `Preset` with `RoutingMode` (`cost|balanced|quality`) and `Config.Mode`, and add `ModeConfig` and `PolicyPatch` (pointer fields for every `Policy` field except the deprecated one)
+- [x] Built-in `Modes`: `cost` and `quality` with the current preset numbers; `balanced` empty
+- [x] `Modes.UnmarshalJSON`: decode each entry over the built-in one; unknown keys are errors
+- [x] `Effective(mode)`: `{...policy, ...modes[mode].policy}`
+- [x] Validation: `mode` is empty or a known mode; `modes` keys are known; each mode's effective policy validates; `preset` and `thrifty` get the rename hint (O3a)
+- [x] Tests: table for `Effective(mode)` (patch beats policy, user patch merges with built-in), validation errors, rename hints (rename `TestEffectivePresetValues` to `TestEffectiveModePolicy`)
 
 #### Task 2: Project file reader
 
 **Files:** Create `internal/config/project.go`, `project_test.go`
 
-- [ ] `ProjectMode(cwd string) (mode RoutingMode, path string, err error)`: walk up to the nearest `.git` directory and read `.codex/router.json`
-- [ ] Strict decode: `mode` is the only key; the value must be a known mode
-- [ ] Tests (temp dirs): found in cwd, found in parent, stops at the repo root, absent, unknown key, bad value, bad JSON
+- [x] `ProjectMode(cwd string) (mode RoutingMode, path string, err error)`: walk up to the nearest `.git` directory and read `.codex/router.json`
+- [x] Strict decode: `mode` is the only key; the value must be a known mode
+- [x] Tests (temp dirs): found in cwd, found in parent, stops at the repo root, absent, unknown key, bad value, bad JSON
 
 #### Task 3: Transform
 
 **Files:** Create `internal/route/mode.go`, `mode_test.go`
 
-- [ ] `target(...)` per design §2 with `proj` over `config.Efforts ∩ levels`; model lever only when both input prices are > 0; floor `low`; `micro` untouched
-- [ ] Table test: mode × tier × activity × levels → pair, with the defaults table above, a model without `xhigh` (quality falls to `P(T+1)`), unpriced models, an empty route effort resolved from `sent`, an effort outside the ladder, no catalog levels, and a check that a cost result never lands on micro
+- [x] `target(...)` per design §2 with `proj` over `config.Efforts ∩ levels`; model lever only when both input prices are > 0; floor `low`; `micro` untouched
+- [x] Table test: mode × tier × activity × levels → pair, with the defaults table above, a model without `xhigh` (quality falls to `P(T+1)`), unpriced models, an empty route effort resolved from `sent`, an effort outside the ladder, no catalog levels, and a check that a cost result never lands on micro
 
 #### Task 4: Pair-aware gate
 
 **Files:** Modify `internal/policy/policy.go`, `policy_test.go`
 
-- [ ] `Lateral(in Input, tier Tier, cheaper bool) (ok bool, reason Reason, est *Estimate)` with the O2a bars; reuse `massAtOrBelow`, `massAbove`, `UpgradeBar`, `share`, `trailing`
-- [ ] Tests: cheaper held on the same task without `DownAllowed`, cheaper passes after it, tax raises the bar, stronger needs the upgrade bar, an escalation hold refuses a cheaper pair, fresh threads need one vote
+- [x] `Lateral(in Input, r Result, tax int, cheaper bool) (bool, Reason, *Estimate)` with the O2a bars; reuse `massAtOrBelow`, `massAbove`, `UpgradeBar`, `share`, `trailing`
+- [x] Tests: cheaper held on the same task without `DownAllowed`, cheaper passes after it, tax raises the bar, stronger needs the upgrade bar, an escalation hold refuses a cheaper pair, fresh threads need one vote
 
 #### Task 5: Engine uses the route in use
 
 **Files:** Modify `internal/route/choose.go`, `engine.go`, `engine_test.go`
 
-- [ ] `step.mode`, `step.modeSource` and `step.routeFor`; a pinned turn uses `balanced`
-- [ ] `incumbent()` from `th.sent`; `cell.route`; `finish` sends `c.route` unless the fit guard moves the tier
-- [ ] In `choose`, a same-tier, same-activity pair change goes through `policy.Lateral`; uncertain and no-advice keep the incumbent pair
-- [ ] Tests: in balanced, the existing engine tests pass unchanged; a stay reason after a mode switch keeps the incumbent route (D4); repeated cost steps do not compound; a pin bypasses the mode
+- [x] `step.mode`, `step.modeSource` and `step.routeFor`; a pinned turn uses `balanced`
+- [x] ➕ Changed: the thread keeps `routeMode`, the mode its running route was aimed with. `incumbent()` and `finish` aim with `cell.mode`, so the route stays until a gate passes. Copying `th.sent` would have changed `balanced` after a fit fix or an empty-effort resolve.
+- [x] In `choose`, a same-tier change whose target differs from `P(T)` goes through `policy.Lateral` (manager rule); uncertain and no-advice keep the incumbent pair; a passed move has reason `mode`, a pending one `mode-pending`
+- [x] Tests: in balanced, the existing engine tests pass unchanged; a stay reason after a mode switch keeps the incumbent route (D4); repeated cost steps do not compound; a pin bypasses the mode
 
 #### Task 6: Mode resolution and session override
 
 **Files:** Modify `internal/route/route.go`, `control.go`, `engine.go`, `snapshot.go`, `text.go`, `intent_test.go`, `engine_test.go`
 
-- [ ] `Deps.ProjectMode`, `Deps.LoadMode`, `Deps.SaveMode`; `thread.mode`; resolution at `begin()`
-- [ ] `OpMode` (session scope only; `default` clears; validation errors); remove `OpPreset`, `presetSet` and `Intent.Preset`
-- [ ] `hasIntent()` includes the override, so eviction keeps it
-- [ ] `Snapshot` and `Decision`: `RoutingMode` and `RoutingModeSource`; `Policy` is the thread's effective policy; `Routes` holds the mode's base routes; the finding text no longer says "preset"
-- [ ] Tests: precedence (session > project > config > default) as a table, `default` clears, a new thread does not inherit, a project error falls through with a finding, the mode op rejects home scope and unknown values (rename `TestPresetChangesTheEffectivePolicy` to `TestThreadModeChangesTheEffectivePolicy`, and replace `TestRestartKeepsOnlyAPresetACommandSet`)
+- [x] `Deps.ProjectMode`, `Deps.LoadMode`, `Deps.SaveMode`; `thread.mode`; resolution at `begin()`
+- [x] `OpMode` (session scope only; `default` clears; validation errors); remove `OpPreset`, `presetSet` and `Intent.Preset`
+- [x] ➕ Changed: `hasIntent()` is unchanged. An evicted thread reloads its override from the store, and adding it would write empty entries into `intent.json`.
+- [x] `Snapshot` and `Decision`: `RoutingMode` and `RoutingModeSource` (plus `Snapshot.ProjectError` for the finding); `Policy` is the thread's effective policy; `Routes` holds the mode's base routes; the finding text no longer says "preset"
+- [x] Tests: precedence (session > project > config > default) as a table, `default` clears, a new thread does not inherit, a project error falls through with a finding, the mode op rejects home scope and unknown values (rename `TestPresetChangesTheEffectivePolicy` to `TestThreadModeChangesTheEffectivePolicy`, and replace `TestRestartKeepsOnlyAPresetACommandSet`)
 
 #### Task 7: Session mode store (O1a)
 
-**Files:** Create `internal/modestore/modestore.go`, `modestore_test.go`; Modify `internal/launcher/router.go`, `internal/brain/brain.go`, `cmd/codex-router/architecture_test.go` if a rule is needed
+**Files:** Create `internal/modestore/modestore.go`, `modestore_test.go`; Modify `internal/launcher/router.go`, `internal/brain/brain.go`, `internal/config/project.go` (`ProjectModes`)
 
-- [ ] Load and save per thread under `<state>/codex-router/modes/<home id>/`, written atomically, `0700`/`0600`; thread id charset check
-- [ ] Wire it into the launcher and brain together with `ProjectMode(Deps.Cwd(id))`
-- [ ] Tests: round trip, clear deletes the file, a bad id is refused, an unreadable file is logged and ignored
+- [x] Load and save per thread under `<state>/codex-router/modes/<home id>/`, written atomically, `0700`/`0600`; thread id charset check
+- [x] Wire it into the launcher and brain together with `ProjectMode(Deps.Cwd(id))`
+- [x] Tests: round trip, clear deletes the file, a bad id is refused, an unreadable file is logged and ignored, private modes, prune after 30 days unless read, a shared dir is refused
 
 #### Task 8: Decision log
 
 **Files:** Modify `internal/route/engine.go`, `engine_test.go`
 
-- [ ] Add `mode`, `modeSource` and `classified` to `route decision`; log `route command` with `mode`
-- [ ] Test: capture the slog record and assert the fields
+- [x] Add `mode`, `modeSource` and `classified` to `route decision`; log `route command` with `mode`
+- [x] Test: capture the slog record and assert the fields
 
 #### Task 9: Control wire and `ctl mode`
 
 **Files:** Modify `internal/control/server.go`, `testdata/protocol-v2/*`, `wire_test.go`, `internal/route/sessions.go`, `cmd/codex-router/main.go`, `main_test.go`
 
-- [ ] Allow the `mode` op; update the fixtures (commands, snapshots, decision, sessions list)
-- [ ] `ctl mode <cost|balanced|quality|default>` through `CODEX_THREAD_ID` or cwd, as the other subcommands do; `ctl status` prints the mode and its source
-- [ ] Tests: argument errors, sent command, output text, status line
+- [x] Allow the `mode` op; update the fixtures (commands, snapshots, decision, sessions list)
+- [x] `ctl mode <cost|balanced|quality|default>` through `CODEX_THREAD_ID` or cwd, as the other subcommands do; `ctl status` prints the mode and its source
+- [x] Tests: argument errors, sent command, output text, status line
 
 #### Task 10: TUI
 
 **Files:** Modify `internal/tui/keys.go`, `model.go`, `overlay.go`, `screens.go`, `detail.go`, `mouse.go`, `tui.go`, `render.go`, tests and goldens
 
-- [ ] `s` opens the mode popover for the selected session (`1-4`); the buttons on the Policy view act on the session; the toast names the session
-- [ ] The detail header and Policy view show `mode (source)`; an older engine shows `—`
-- [ ] Tests: key and mouse actions send a session-scoped `mode` command, `4` sends `default`, goldens updated (rename `TestToastResumeAndPreset`)
+- [x] `s` opens the mode popover for the selected session (`1-4`); the buttons on the Policy view act on the session; the toast names the session
+- [x] The detail header and Policy view show `mode (source)`; an older engine shows `—`
+- [x] Tests: key and mouse actions send a session-scoped `mode` command, `4` sends `default`, goldens updated (rename `TestToastResumeAndPreset`)
 
 #### Task 11: Plugin skill
 
 **Files:** Modify `plugins/codex-router/skills/router/SKILL.md`
 
-- [ ] Add a `ctl mode` row and say what `default` does
+- [x] Add a `ctl mode` row and say what `default` does
 
 ### Tests (cross-cutting, beyond the per-task tests)
 
-- [ ] Brief regression: during an unverified medium continuation before the dwell ends, switch balanced→cost while the advice stays medium. The router keeps Sol/medium, then moves to Luna/high only after the dwell, a passed check and the bars, with exactly one switch recorded (`Stats.Switches` +1, one `switchedAt` change)
-- [ ] Same with quality: Sol/medium → Sol/high with no cache tax
-- [ ] Resume keeps the override (launcher restart with the store; brain restart); a new thread starts without it
-- [ ] Every failure path returns a clear error: bad config `mode`, bad `modes` key, bad project file, bad op value, bad ctl argument
+- [x] Brief regression (`TestCostModeWaitsForTheGatesOnTheSameTask`; a mutation that bypasses the gate or the route-in-use fix makes it fail): during an unverified medium continuation before the dwell ends, switch balanced→cost while the advice stays medium. The router keeps Sol/medium, then moves to Luna/high only after the dwell, a passed check and the bars, with exactly one switch recorded (`Stats.Switches` +1, one `switchedAt` change)
+- [x] Same with quality: Sol/medium → Sol/high with no cache tax
+- [x] Resume keeps the override (launcher restart with the store; brain restart); a new thread starts without it
+- [x] Every failure path returns a clear error: bad config `mode`, bad `modes` key, bad project file, bad op value, bad ctl argument
+- [x] ➕ (user, via manager, 2026-10-21) Golden decision matrix test (`TestModeDecisionMatrix`, `internal/route/testdata/mode-matrix.golden`, 240 cells reviewed by hand). It is table-driven over every classifier tier (micro, low, medium, high, uncertain) × every activity (code, debug, explore, plan, review, ops, docs, uncertain) × every mode (cost, balanced, quality). It runs on the default config plus one user-like profile config, and asserts the exact resolved pair for each cell.
+- [x] ➕ (user, via manager) Measured per-mode difference (`TestModesMakeAMeasurableDifference`, numbers in `docs/evaluation.md#routing-modes`). Measure switches and tokens or cost per mode across the decision space, and report the numbers. A mode with no real difference somewhere (for example zero catalog prices) is reported as a finding. Extend the benchmark approach in `docs/evaluation.md` for the per-mode comparison. ⚠️ The manager's message was cut off mid-sentence ("Assert the exact resolved pair for each ce…itches, and tokens or cost"); the missing part is requested in the Phase 2 report.
+
+- [x] ➕ Balanced is byte-identical: `TestBalancedDecisionsAreUnchanged` replays about 1,400 decisions against goldens recorded on `origin/main` (v0.8.0 engine)
 
 ### Docs
 
-- [ ] `docs/configuration.md`: `mode`, `modes` (untuned values, merge rule), project file (`.codex/router.json`, mode only, may be gitignored), migration note
-- [ ] `docs/user-guide.md`: what each mode does, where it comes from, when a change applies (pending, not immediate; pin to force), panel keys, `ctl mode`, glossary
-- [ ] `docs/architecture.md`: transform, pair-aware gate, route in use, precedence, store, wire, log fields (with a mermaid diagram of the precedence and the gate)
-- [ ] README: one line on modes, if the front page lists features
-- [ ] Screenshots: `go run ./scripts/render-docs` (needs `rsvg-convert` for PNG); update the sample data with the mode; regenerate `router-tui-policy`, `router-tui-popover`, `router-tui-help`, plus any image showing the detail header; `go test ./scripts/render-docs`
+- [x] `docs/configuration.md`: `mode`, `modes` (untuned values, merge rule), project file (`.codex/router.json`, mode only, may be gitignored), migration note
+- [x] `docs/user-guide.md`: what each mode does, where it comes from, when a change applies (pending, not immediate; pin to force), panel keys, `ctl mode`, glossary
+- [x] `docs/architecture.md`: transform, pair-aware gate, route in use, precedence, store, wire, log fields (with a mermaid diagram of the precedence and the gate)
+- [x] README: one line on modes, if the front page lists features
+- [x] Screenshots: `go run ./scripts/render-docs` (needs `rsvg-convert` for PNG); update the sample data with the mode; regenerate `router-tui-policy`, `router-tui-popover`, `router-tui-help`, plus any image showing the detail header; `go test ./scripts/render-docs`
 
 ### Config and migration
 
-- [ ] Rename hints (O3a) and a migration section in `docs/configuration.md` and the release notes
+- [x] Rename hints (O3a) and a migration section in `docs/configuration.md`; release notes in Phase 4
 - [ ] Stored state: a `preset` in `intent.json` is ignored (no `intentVersion` bump); release notes say a home-wide preset picked in the panel is gone
 - User machine (list only; the manager applies after release with the user's approval):
   - `~/.config/codex-router/config.json`: no change needed (keys: `classifier`, `classifiers`). Optional: add `"mode": "<personal default>"`.
@@ -297,6 +310,8 @@ Scenarios. Evidence for each is `agtermctl session text` captures plus `route de
 - [ ] A pin bypasses the mode
 - [ ] The panel shows `mode (source)`; capture the doc screenshots
 - [ ] Log records carry `mode`, `modeSource`, `classified`, `model`, `effort`
+- [ ] ➕ (user, via manager) Home mode with two threads in different cwds, one with a project file: each shows its own mode and source, and routes by it
+- [ ] ➕ (user, via manager) Per-mode live comparison on the same prompt set: switches, tokens, cost estimate per mode (method from `docs/evaluation.md`)
 - [ ] D8: from inside Codex, check `CODEX_THREAD_ID` in a shell command and whether `!codex-router ctl mode cost` works in the sandbox; document the result
 - [ ] Close the test sessions
 
