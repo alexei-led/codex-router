@@ -61,13 +61,13 @@ func replay(t *testing.T, cfg config.Config, seed uint64) ([]replayed, *harness)
 		id := []string{"a", "b"}[rng.IntN(2)]
 		th := threads[id]
 		choice := tiers[rng.IntN(len(tiers))]
-		p := 0.5 + rng.Float64()*0.49
+		p := 0.5 + float64(rng.Float64()*0.49) // conversions stop FMA fusion: same values on every CPU
 		advice := classifier.Advice{Choice: classifier.Choice(choice), Probabilities: map[classifier.Choice]float64{classifier.Choice(choice): p}}
 		if i := rng.IntN(len(config.Tiers)); config.Tiers[i] != choice {
 			advice.Probabilities[classifier.Choice(config.Tiers[i])] = 1 - p
 		}
 		if rng.IntN(4) > 0 {
-			advice = withActivity(advice, acts[rng.IntN(len(acts))], 0.3+rng.Float64()*0.69)
+			advice = withActivity(advice, acts[rng.IntN(len(acts))], 0.3+float64(rng.Float64()*0.69))
 		}
 		if rng.IntN(2) == 0 {
 			advice = continuing(advice, rng.Float64())

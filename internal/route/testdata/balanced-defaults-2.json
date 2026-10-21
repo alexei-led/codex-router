@@ -450,7 +450,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.9,
-   "Mass": 0.7973741428818731,
+   "Mass": 0.7973741428818732,
    "Streak": 1
   }
  },
@@ -855,7 +855,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.9,
-   "Mass": 0.8169844281956363,
+   "Mass": 0.8169844281956364,
    "Streak": 1
   }
  },
@@ -1025,7 +1025,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.9,
-   "Mass": 0.8636224237614226,
+   "Mass": 0.8636224237614227,
    "Streak": 2
   }
  },
@@ -2290,7 +2290,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.75,
-   "Mass": 0.9629292262479773,
+   "Mass": 0.9629292262479774,
    "Streak": 1
   }
  },
@@ -2440,7 +2440,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.75,
-   "Mass": 0.94409888281026,
+   "Mass": 0.9440988828102601,
    "Streak": 1
   }
  },
@@ -2870,7 +2870,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.75,
-   "Mass": 0.8226155787636301,
+   "Mass": 0.8226155787636302,
    "Streak": 1
   }
  },
@@ -3485,7 +3485,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.75,
-   "Mass": 0.8711184221027991,
+   "Mass": 0.8711184221027992,
    "Streak": 1
   }
  },
@@ -3780,7 +3780,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.9,
-   "Mass": 0.9185696955023744,
+   "Mass": 0.9185696955023743,
    "Streak": 1
   }
  },
@@ -4830,7 +4830,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.75,
-   "Mass": 0.9778595010652055,
+   "Mass": 0.9778595010652056,
    "Streak": 1
   }
  }

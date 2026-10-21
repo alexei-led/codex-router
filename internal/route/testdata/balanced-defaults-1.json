@@ -595,7 +595,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.75,
-   "Mass": 0.8999424203093921,
+   "Mass": 0.8999424203093922,
    "Streak": 1
   }
  },
@@ -1000,7 +1000,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.9,
-   "Mass": 0.6026326601194875,
+   "Mass": 0.6026326601194876,
    "Streak": 1
   }
  },
@@ -1045,7 +1045,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.9,
-   "Mass": 0.977788766518214,
+   "Mass": 0.9777887665182139,
    "Streak": 1
   }
  },
@@ -2020,7 +2020,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.9,
-   "Mass": 0.9715740728543089,
+   "Mass": 0.971574072854309,
    "Streak": 1
   }
  },
@@ -3105,7 +3105,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.75,
-   "Mass": 0.827367694193159,
+   "Mass": 0.8273676941931591,
    "Streak": 1
   }
  },
@@ -3595,7 +3595,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.9,
-   "Mass": 0.7406822813074719,
+   "Mass": 0.740682281307472,
    "Streak": 2
   }
  },
@@ -4375,7 +4375,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.75,
-   "Mass": 0.933850416146185,
+   "Mass": 0.9338504161461849,
    "Streak": 1
   }
  },
@@ -4844,7 +4844,7 @@
   "Support": "Jev gave stronger tiers 100% (needs 83%)",
   "Estimate": {
    "TaxTokens": 124894,
-   "Threshold": 0.8333019111225733,
+   "Threshold": 0.8333019111225732,
    "Mass": 1,
    "Streak": 1
   }
@@ -4910,7 +4910,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0.75,
-   "Mass": 0.7791967284892661,
+   "Mass": 0.7791967284892662,
    "Streak": 2
   }
  },

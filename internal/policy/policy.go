@@ -170,7 +170,7 @@ func Decide(in Input) Result {
 		tax := taxOf(in.TaxTokens, target)
 		est := &Estimate{
 			TaxTokens: tax,
-			Threshold: p.DowngradeMass + p.DowngradeSlope*share(tax, p.DowngradePivotTokens),
+			Threshold: downgradeBar(p, tax),
 			Mass:      massAtOrBelow(probs, target),
 			Streak:    trailing(next.Votes, func(v Vote) bool { return rank(v.Tier) <= rank(target) }),
 		}
@@ -216,7 +216,7 @@ func Lateral(in Input, r Result, tax int, cheaper bool) (bool, Reason, *Estimate
 	if cheaper {
 		est := &Estimate{
 			TaxTokens: tax,
-			Threshold: p.DowngradeMass + p.DowngradeSlope*share(tax, p.DowngradePivotTokens),
+			Threshold: downgradeBar(p, tax),
 			Mass:      massAtOrBelow(probs, tier),
 			Streak:    trailing(r.State.Votes, func(v Vote) bool { return rank(v.Tier) <= rank(tier) }),
 		}
@@ -299,7 +299,15 @@ func taxOf(f func(config.Tier) int, t config.Tier) int {
 // UpgradeBar is the probability mass an upgrade needs when it costs tax
 // tokens of cache: the base, plus the slope scaled by the tax share.
 func UpgradeBar(p config.Policy, tax int) float64 {
-	return p.UpgradeBase + p.UpgradeSlope*share(tax, p.UpgradePivotTokens)
+	// The conversion rounds the product, so no platform fuses it into a
+	// multiply-add: thresholds, and decisions at them, match on every CPU.
+	return p.UpgradeBase + float64(p.UpgradeSlope*share(tax, p.UpgradePivotTokens))
+}
+
+// downgradeBar is the mass a cheaper tier needs for a switch that writes tax
+// uncached tokens; rounded like UpgradeBar.
+func downgradeBar(p config.Policy, tax int) float64 {
+	return p.DowngradeMass + float64(p.DowngradeSlope*share(tax, p.DowngradePivotTokens))
 }
 
 // share is tax/(tax+pivot): 0 for no tax, half the slope at the pivot.
