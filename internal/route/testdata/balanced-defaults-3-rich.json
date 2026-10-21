@@ -1,0 +1,7127 @@
+[
+ {
+  "Thread": "a",
+  "Turn": "a0",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 95%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a0",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a0",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a0",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 90%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a0",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b1",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 73% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.7260067347257491,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b2",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 79%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b2",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b2",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a3",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 79% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.7934917958374734,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a3",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a3",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "escalation",
+  "Why": "escalate: same tool failure twice, edit in between",
+  "Support": "no classifier needed",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a3",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave medium 57%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c5",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c5",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c5",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c5",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 83% (needs 91%)",
+  "Estimate": {
+   "TaxTokens": 18817,
+   "Threshold": 0.9126695674861341,
+   "Mass": 0.8309058473097504,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c5",
+  "Step": 4,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c5",
+  "Step": 5,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a6",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps high",
+  "Support": "Jev gave uncertain 74%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a6",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a6",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a6",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps high",
+  "Support": "Jev gave uncertain 82%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c7",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 58% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.5760088325107046,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c7",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c7",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c7",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-held",
+  "Why": "waiting to go down: same task, no passed check since the last switch",
+  "Support": "Jev gave cheaper tiers 97% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.9655882020960225,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a8",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a8",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a8",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a8",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to medium",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a8",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c9",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to medium",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 3
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c9",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c9",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c9",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 68% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.6783848215674595,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c9",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c9",
+  "Step": 5,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a10",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 51%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a10",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a10",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a10",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 73% (needs 93%)",
+  "Estimate": {
+   "TaxTokens": 56691,
+   "Threshold": 0.9289441001716755,
+   "Mass": 0.7252503600146125,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a10",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a10",
+  "Step": 5,
+  "Tier": "medium",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b11",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 83%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b11",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b12",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 92% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.9152615554018482,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b12",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b12",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b12",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 58% (needs 94%)",
+  "Estimate": {
+   "TaxTokens": 102469,
+   "Threshold": 0.9404877783759489,
+   "Mass": 0.5820080840402058,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b12",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a13",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 57%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a13",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c14",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "activity-pending",
+  "Why": "activity route waits: switch not worth it yet",
+  "Support": "Jev gave debug 68% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.6800596713523452,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c14",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c14",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c14",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c14",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c15",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 55% (needs 93%)",
+  "Estimate": {
+   "TaxTokens": 77404,
+   "Threshold": 0.9349051881581024,
+   "Mass": 0.5486985538328927,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b16",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to low",
+  "Support": "Jev gave cheaper tiers 94% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.9403474764097759,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b16",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b17",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 58% (needs 82%)",
+  "Estimate": {
+   "TaxTokens": 83470,
+   "Threshold": 0.8182427644846569,
+   "Mass": 0.5825894561912758,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b17",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b17",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "escalation",
+  "Why": "escalate: same tool failure twice, edit in between",
+  "Support": "no classifier needed · switch ≈ 113k uncached tokens",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b17",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave medium 60%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b17",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b17",
+  "Step": 5,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c18",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to low",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 3
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c18",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c18",
+  "Step": 2,
+  "Tier": "low",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c18",
+  "Step": 3,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 75% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.7506753420627084,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c18",
+  "Step": 4,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c19",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with low",
+  "Support": "Jev gave low 57%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c19",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c19",
+  "Step": 2,
+  "Tier": "low",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c19",
+  "Step": 3,
+  "Tier": "low",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps low",
+  "Support": "Jev gave uncertain 80%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c19",
+  "Step": 4,
+  "Tier": "low",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b20",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 83%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b20",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a21",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 51% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.5112394842211012,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a21",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a21",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a22",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 62% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.6219657612514878,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a22",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a22",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a22",
+  "Step": 3,
+  "Tier": "low",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to low",
+  "Support": "Jev gave cheaper tiers 100% (needs 94%) · switch ≈ 119k uncached tokens",
+  "Estimate": {
+   "TaxTokens": 118770,
+   "Threshold": 0.9434319147963615,
+   "Mass": 1,
+   "Streak": 3
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b23",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b23",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b23",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b23",
+  "Step": 3,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to low",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b23",
+  "Step": 4,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b23",
+  "Step": 5,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a24",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 58% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.5787851227509555,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a24",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a25",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps low",
+  "Support": "Jev gave uncertain 88%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a25",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c26",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 58% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.5832820947389258,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c26",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c26",
+  "Step": 2,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c26",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "jump",
+  "Why": "up to high",
+  "Support": "Jev gave stronger tiers 100% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 1,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c26",
+  "Step": 4,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a27",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 56% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.5563531795129324,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a27",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a27",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "escalation",
+  "Why": "escalate: same tool failure twice, edit in between",
+  "Support": "no classifier needed · switch ≈ 8k uncached tokens",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a27",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave micro 56%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a27",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c28",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with high",
+  "Support": "Jev gave high 71%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c28",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c28",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c28",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 91% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.9089085891131098,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c28",
+  "Step": 4,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c28",
+  "Step": 5,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b29",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps low",
+  "Support": "Jev gave uncertain 81%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b29",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b29",
+  "Step": 2,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c30",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 72% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.7177986373815156,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c31",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to medium",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 3
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c31",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c31",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c31",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 70% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.6995863559752288,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c31",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a32",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave uncertain 61%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a32",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a32",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b33",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps low",
+  "Support": "Jev gave uncertain 79%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b33",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b33",
+  "Step": 2,
+  "Tier": "low",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b33",
+  "Step": 3,
+  "Tier": "low",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 79% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.7891678842415689,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b33",
+  "Step": 4,
+  "Tier": "low",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a34",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave medium 87%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a34",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a34",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b35",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 75% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.7482543592585349,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b35",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b35",
+  "Step": 2,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b35",
+  "Step": 3,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with low",
+  "Support": "Jev gave low 90%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b35",
+  "Step": 4,
+  "Tier": "low",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c36",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 63%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c36",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c36",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c36",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 94%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c37",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 54% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.53920503641732,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c37",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c37",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b38",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 63% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.6282395892687562,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b39",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with low",
+  "Support": "Jev gave low 86%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b39",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "escalation",
+  "Why": "escalate: same tool failure twice, edit in between",
+  "Support": "no classifier needed · switch ≈ 57k uncached tokens",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b39",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b39",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave low 95%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b39",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b40",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave low 57%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b40",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b40",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c41",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 63% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.6339233728621304,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c41",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c41",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c41",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "escalation",
+  "Why": "escalate: same tool failure twice, edit in between",
+  "Support": "Jev gave low 54% · no classifier needed",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c41",
+  "Step": 4,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b42",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave high 95%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b42",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b42",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b42",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 78% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.7777596006649183,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a43",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 80% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.7974279611956503,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a43",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a43",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a43",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 89%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a44",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 93% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.9323840309445178,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a44",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a44",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a44",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 61%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c45",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave high 88%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c45",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c45",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c45",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave medium 83%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c46",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave uncertain 71%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c46",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a47",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to low",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a47",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a47",
+  "Step": 2,
+  "Tier": "low",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a47",
+  "Step": 3,
+  "Tier": "low",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 100% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 1,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a47",
+  "Step": 4,
+  "Tier": "low",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a47",
+  "Step": 5,
+  "Tier": "low",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a48",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "upgrade",
+  "Why": "up to high",
+  "Support": "Jev gave stronger tiers 91% (needs 82%) · switch ≈ 91k uncached tokens",
+  "Estimate": {
+   "TaxTokens": 90718,
+   "Threshold": 0.8213498463700333,
+   "Mass": 0.9080580078872886,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a48",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a48",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a48",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps high",
+  "Support": "Jev gave uncertain 60%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a48",
+  "Step": 4,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a48",
+  "Step": 5,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b49",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 92%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b49",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b49",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b49",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 73% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.7316352488403751,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a51",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with high",
+  "Support": "Jev gave high 89%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a51",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a51",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a51",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 58% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.5830981829132249,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d52",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps high",
+  "Support": "Jev gave uncertain 95%",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d52",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c53",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to medium",
+  "Support": "Jev gave cheaper tiers 93% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.9326776820453979,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c53",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c53",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c53",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 100% (needs 93%)",
+  "Estimate": {
+   "TaxTokens": 62402,
+   "Threshold": 0.9307395229122795,
+   "Mass": 1,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c53",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b54",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 97%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b54",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d55",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with high",
+  "Support": "Jev gave high 57%",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d55",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d55",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c56",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 84% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.8435079803597808,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c56",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c56",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c56",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 80%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c56",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d57",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 74% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.7415347716519,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d57",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d57",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d57",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-held",
+  "Why": "waiting to go down: same task, no passed check since the last switch",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a58",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 88% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.8808612364488919,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a58",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d59",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 62% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.6220487836635881,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a60",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with high",
+  "Support": "Jev gave high 65%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a60",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b61",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 89% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.8911741386787333,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b61",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b61",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b61",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 50% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.5048095870667566,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d62",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to medium",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d62",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d62",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b63",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 56%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b63",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b63",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b63",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 87% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.8652238681440341,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a64",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps high",
+  "Support": "Jev gave uncertain 97%",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a64",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a64",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c65",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 51%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c65",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c65",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c65",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 95%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c65",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b66",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "activity-up",
+  "Why": "debug at medium runs on gpt-6.1-sol · high",
+  "Support": "Jev gave debug 80% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.7962442445062015,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b66",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b66",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b66",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 63% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.6321893943864619,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b66",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a67",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 66% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.6628748525583825,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a67",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a67",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a67",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 65% (needs 94%)",
+  "Estimate": {
+   "TaxTokens": 121946,
+   "Threshold": 0.9439551963090121,
+   "Mass": 0.6496139896197304,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a67",
+  "Step": 4,
+  "Tier": "high",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c68",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 82% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.8239685378026482,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "c",
+  "Turn": "c68",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c68",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c68",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "escalation",
+  "Why": "escalate: same tool failure twice, edit in between",
+  "Support": "Jev gave uncertain 71% · no classifier needed",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b69",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "activity-down",
+  "Why": "review at medium runs on gpt-6.1-sol · medium",
+  "Support": "Jev gave uncertain 69%",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0,
+   "Mass": 0.943420089671275,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b69",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b69",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b69",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 82%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c70",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave uncertain 76%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c70",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c70",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c70",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave high 53%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c70",
+  "Step": 4,
+  "Tier": "high",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d71",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 91%",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d71",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d71",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d71",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 86%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b72",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 91%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b72",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b72",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b72",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "escalation",
+  "Why": "escalate: same tool failure twice, edit in between",
+  "Support": "Jev gave uncertain 92% · no classifier needed",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b72",
+  "Step": 4,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d73",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps medium",
+  "Support": "Jev gave uncertain 67%",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d73",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d73",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a74",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 65% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.651859469957867,
+   "Streak": 3
+  }
+ },
+ {
+  "Thread": "a",
+  "Turn": "a74",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a74",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "explore",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d75",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 83% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.8290448936565499,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d75",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d75",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d75",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 66% (needs 93%)",
+  "Estimate": {
+   "TaxTokens": 73851,
+   "Threshold": 0.9339835836434648,
+   "Mass": 0.6623299374953524,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d76",
+  "Step": 0,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to low",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 3
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d76",
+  "Step": 1,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d76",
+  "Step": 2,
+  "Tier": "low",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d76",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6-luna",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "jump",
+  "Why": "up to high",
+  "Support": "Jev gave stronger tiers 100% (needs 80%) · switch ≈ 45k uncached tokens",
+  "Estimate": {
+   "TaxTokens": 45092,
+   "Threshold": 0.796617318666777,
+   "Mass": 1,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b77",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave uncertain 98%",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b77",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b77",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b77",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave high 86%",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d78",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d78",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "review",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d79",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps high",
+  "Support": "Jev gave uncertain 67%",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d79",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d79",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "docs",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c80",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave low 68%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c80",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c80",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c80",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps high",
+  "Support": "Jev gave uncertain 66%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c80",
+  "Step": 4,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c80",
+  "Step": 5,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d81",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 89% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.890881988391102,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d81",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d81",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d81",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to medium",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d81",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d81",
+  "Step": 5,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a82",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "pinned",
+  "Why": "pinned to medium for this turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "a",
+  "Turn": "a82",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b83",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "hold",
+  "Why": "hold: escalation holds 2 turns",
+  "Support": "Jev gave low 83%",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d84",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": true,
+  "Reason": "activity-up",
+  "Why": "debug at medium runs on gpt-6.1-sol · high",
+  "Support": "Jev gave debug 79% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.7904074052598858,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d84",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d84",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d84",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 64% (needs 93%)",
+  "Estimate": {
+   "TaxTokens": 59672,
+   "Threshold": 0.9298972894433589,
+   "Mass": 0.6365254147456272,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d84",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b85",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 60% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 0.6030442126278036,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b85",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b85",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "code",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b85",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "downgrade-pending",
+  "Why": "waiting to go down: needs more support",
+  "Support": "Jev gave cheaper tiers 76% (needs 94%)",
+  "Estimate": {
+   "TaxTokens": 89798,
+   "Threshold": 0.9378499246567403,
+   "Mass": 0.7586621292330689,
+   "Streak": 2
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b85",
+  "Step": 4,
+  "Tier": "high",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b85",
+  "Step": 5,
+  "Tier": "high",
+  "Activity": "plan",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b86",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": true,
+  "Reason": "downgrade",
+  "Why": "down to medium",
+  "Support": "Jev gave cheaper tiers 100% (needs 90%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.9,
+   "Mass": 1,
+   "Streak": 3
+  }
+ },
+ {
+  "Thread": "b",
+  "Turn": "b86",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "b",
+  "Turn": "b86",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "ops",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "medium"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d87",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "upgrade-pending",
+  "Why": "waiting to go up: needs more support",
+  "Support": "Jev gave stronger tiers 54% (needs 75%)",
+  "Estimate": {
+   "TaxTokens": 0,
+   "Threshold": 0.75,
+   "Mass": 0.543682697778177,
+   "Streak": 1
+  }
+ },
+ {
+  "Thread": "d",
+  "Turn": "d87",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d87",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d88",
+  "Step": 0,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 74%",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d88",
+  "Step": 1,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d88",
+  "Step": 2,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d88",
+  "Step": 3,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with medium",
+  "Support": "Jev gave medium 76%",
+  "Estimate": null
+ },
+ {
+  "Thread": "d",
+  "Turn": "d88",
+  "Step": 4,
+  "Tier": "medium",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c89",
+  "Step": 0,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "uncertain",
+  "Why": "classifier unsure; keeps high",
+  "Support": "Jev gave uncertain 82%",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c89",
+  "Step": 1,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c89",
+  "Step": 2,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "continue",
+  "Why": "same turn",
+  "Support": "",
+  "Estimate": null
+ },
+ {
+  "Thread": "c",
+  "Turn": "c89",
+  "Step": 3,
+  "Tier": "high",
+  "Activity": "debug",
+  "Route": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Original": {
+   "model": "gpt-6.1-sol",
+   "effort": "high"
+  },
+  "Rewritten": false,
+  "Reason": "same-tier",
+  "Why": "classifier agrees with high",
+  "Support": "Jev gave high 57%",
+  "Estimate": null
+ }
+]

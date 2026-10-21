@@ -220,7 +220,7 @@ func measure(t *testing.T, cfg config.Config, mode config.RoutingMode) modeTotal
 	var m modeTotals
 	cfg.Mode = mode
 	for _, seed := range []uint64{1, 2, 3} {
-		decisions, h := replay(t, cfg, seed)
+		decisions, h := replay(t, cfg, seed, false)
 		for _, d := range decisions {
 			m.decisions++
 			if d.Route.Model == sol {
