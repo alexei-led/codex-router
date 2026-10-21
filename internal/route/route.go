@@ -132,6 +132,8 @@ type Stats struct {
 	FitHeld              int                     `json:"FitHeld"`
 	RoutedUSD            float64                 `json:"RoutedUSD"`
 	BaselineUSD          float64                 `json:"BaselineUSD"`
+	SavingsUSD           float64                 `json:"SavingsUSD"`      // sum of cheaper replies' savings before netting extra costs
+	ExtraUSD             float64                 `json:"ExtraUSD"`        // sum of costlier replies' extra costs
 	PricedReplies        int                     `json:"PricedReplies"`   // replies with prices for both routed and native models
 	EligibleReplies      int                     `json:"EligibleReplies"` // routed replies considered for dollar estimates
 }

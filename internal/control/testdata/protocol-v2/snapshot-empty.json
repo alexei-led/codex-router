@@ -71,6 +71,8 @@
     "FitHeld": 0,
     "RoutedUSD": 0,
     "BaselineUSD": 0,
+    "SavingsUSD": 0,
+    "ExtraUSD": 0,
     "PricedReplies": 0,
     "EligibleReplies": 0
   },

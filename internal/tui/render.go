@@ -696,16 +696,22 @@ func savedSegs(st route.Stats) []seg {
 	if !pricingComplete(st) {
 		return pricingCoverage(st)
 	}
-	if st.BaselineUSD <= 0 {
-		return []seg{dim(`savings need "prices" in the config`)}
+	prefix := "Routing "
+	if st.BaselineUSD == st.RoutedUSD {
+		prefix = "Routing: "
 	}
-	diff := st.BaselineUSD - st.RoutedUSD
-	pct := int(abs(diff)/st.BaselineUSD*100 + 0.5)
-	word, r := "saved", roleOK
-	if diff < 0 {
-		word, r = "cost", roleWarn
+	return append([]seg{plain(prefix)}, savedPart(st)...)
+}
+
+// dollars preserves sub-cent differences so a cost increase never reads as zero.
+func dollars(v float64) string {
+	if v > 0 && v < .0001 {
+		return "< $0.0001"
 	}
-	return []seg{plain("Routing " + word + " "), col(r, fmt.Sprintf("≈ $%.2f (%d%%)", abs(diff), pct)), plain(" vs per-reply native basis")}
+	if v > 0 && v < .01 {
+		return fmt.Sprintf("$%.4f", v)
+	}
+	return fmt.Sprintf("$%.2f", v)
 }
 
 type activityCount struct {

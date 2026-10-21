@@ -81,7 +81,7 @@ Run `codex-router tui` in a second terminal to see decisions and controls. Argum
 
 ## Limits
 
-Early software. Live checks covered Codex 0.162.1 on macOS. Linux service files have unit tests, but no recorded live run. Footer sync uses experimental Codex interfaces, so updates can break it.
+Early software. Live checks covered Codex 0.162.1 and 0.163.0 on macOS, including model and effort changes in the bottom status line. Linux service files have unit tests, but no recorded live run. Footer sync uses experimental Codex interfaces, so updates can break it.
 
 Switching models can lose prompt-cache reuse. The policy accounts for this, but routing does not guarantee lower usage or better answers. The panel's dollar figures are list-price estimates, not ChatGPT plan billing.
 

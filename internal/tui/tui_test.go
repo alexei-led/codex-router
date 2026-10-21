@@ -75,6 +75,7 @@ func fixture() route.Snapshot {
 			UncachedSwitchTokens: 212_000,
 			FitHeld:              2,
 			RoutedUSD:            1.87, BaselineUSD: 2.71,
+			SavingsUSD: .94, ExtraUSD: .10,
 			PricedReplies: 48, EligibleReplies: 48,
 		},
 		ApproxTokens: 44_600, Window: 272_000,
@@ -138,8 +139,8 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		{"session summary", func(*route.Snapshot) {}, TabSessions,
 			[]string{"48 replies · 9 switches · saved ≈ $0.84 (31%) vs per-reply native basis", "per cell"}, nil},
 		{"strip glyphs tell the tiers apart", func(*route.Snapshot) {}, TabSessions, []string{"▃▃▃▃▃▅▅▅▅▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇"}, nil},
-		{"costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabSessions, []string{"cost ≈ $0.29 (11%)"}, []string{"saved"}},
-		{"prices missing", func(s *route.Snapshot) { s.Stats.RoutedUSD, s.Stats.BaselineUSD = 0, 0 }, TabSessions, []string{`savings need "prices" in the config`}, nil},
+		{"costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabSessions, []string{"extra cost ≈ $0.29 (11%)"}, []string{"saved"}},
+		{"prices missing", func(s *route.Snapshot) { s.Stats.PricedReplies = 0 }, TabSessions, []string{"estimate unknown · 0 of 48 replies priced"}, nil},
 		{"context and cache", func(*route.Snapshot) {}, TabSessions, []string{"Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol", "Cache  98% last reply · 97% session"}, nil},
 		{"no last reply reading", func(s *route.Snapshot) { s.Stats.LastInputTokens = 0 }, TabSessions, []string{"Cache  97% this session"}, []string{"last reply"}},
 		{"window unknown", func(s *route.Snapshot) { s.Window = 0 }, TabSessions, []string{"window unknown"}, nil},
@@ -182,9 +183,9 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		{"counts as bars", func(*route.Snapshot) {}, TabUsage,
 			[]string{"Tiers      micro", "0   0%", "high      ███████", "6  12%", "Activity   code      ████████████████████████   16  33%", "ops"}, nil},
 		{"empty session", func(s *route.Snapshot) { s.Stats = route.Stats{} }, TabUsage, []string{"no replies yet"}, []string{"Ledger", "cache reuse", "savings need"}},
-		{"usage, prices missing", func(s *route.Snapshot) { s.Stats.RoutedUSD, s.Stats.BaselineUSD = 0, 0 }, TabUsage,
-			[]string{`savings need "prices" in the config`}, []string{"list-price"}},
-		{"usage, routing costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabUsage, []string{"Routing cost"}, nil},
+		{"usage, prices missing", func(s *route.Snapshot) { s.Stats.PricedReplies = 0 }, TabUsage,
+			[]string{"estimate unknown · 0 of 48 replies priced"}, []string{"list-price"}},
+		{"usage, routing costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabUsage, []string{"Routing extra cost"}, nil},
 		{"no timed switch", func(s *route.Snapshot) { s.Stats.LastSwitch, s.Stats.UncachedSwitchTokens = nil, 0 }, TabUsage, nil, []string{"last switch", "uncached"}},
 	}
 	for _, tt := range tests {
@@ -219,6 +220,68 @@ func TestIncompletePricingDoesNotLookLikeACompleteSessionTotal(t *testing.T) {
 	}
 	if strings.Contains(got, "$0.12") || strings.Contains(got, "$0.30") || strings.Contains(got, "Routing saved") {
 		t.Fatalf("partial subtotals presented as session totals:\n%s", got)
+	}
+}
+
+func TestUsageShowsSavingsAndExtraEvenWhenTheyCancel(t *testing.T) {
+	s := fixture()
+	s.Stats.RoutedUSD, s.Stats.BaselineUSD = 2, 2
+	s.Stats.SavingsUSD, s.Stats.ExtraUSD = .25, .25
+	got := renderPlain(s, TabUsage, 130)
+	for _, want := range []string{"same estimated cost", "savings ≈ $0.25", "extra cost ≈ $0.25"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in\n%s", want, got)
+		}
+	}
+}
+
+func TestDollarPrecision(t *testing.T) {
+	for _, tt := range []struct {
+		value float64
+		want  string
+	}{
+		{0, "$0.00"},
+		{.0000001, "< $0.0001"},
+		{.0001, "$0.0001"},
+		{.001, "$0.0010"},
+		{.01, "$0.01"},
+		{1.23, "$1.23"},
+	} {
+		if got := dollars(tt.value); got != tt.want {
+			t.Errorf("dollars(%g) = %q, want %q", tt.value, got, tt.want)
+		}
+	}
+}
+
+func TestSmallExtraCostDoesNotRoundToZero(t *testing.T) {
+	s := fixture()
+	s.Stats.RoutedUSD, s.Stats.BaselineUSD = .003, .002
+	for _, tab := range []Tab{TabSessions, TabUsage} {
+		got := renderPlain(s, tab, 130)
+		if !strings.Contains(got, "extra cost ≈ $0.0010 (50%)") {
+			t.Errorf("small extra cost missing in\n%s", got)
+		}
+	}
+}
+
+func TestUsageDoesNotInventBreakdownForOlderService(t *testing.T) {
+	s := fixture()
+	s.Stats.SavingsUSD, s.Stats.ExtraUSD = 0, 0
+	got := renderPlain(s, TabUsage, 130)
+	if strings.Contains(got, "savings ≈") || strings.Contains(got, "extra cost ≈") {
+		t.Fatalf("missing breakdown shown as zero:\n%s", got)
+	}
+}
+
+func TestPricedZeroBaselineShowsExtraWithoutPercentage(t *testing.T) {
+	s := fixture()
+	s.Stats.RoutedUSD, s.Stats.BaselineUSD = .003, 0
+	s.Stats.SavingsUSD, s.Stats.ExtraUSD = 0, .003
+	for _, tab := range []Tab{TabSessions, TabUsage} {
+		got := renderPlain(s, tab, 130)
+		if !strings.Contains(got, "extra cost ≈ $0.0030 vs per-reply native basis") {
+			t.Errorf("missing cost against zero baseline:\n%s", got)
+		}
 	}
 }
 

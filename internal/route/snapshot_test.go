@@ -2,6 +2,7 @@ package route
 
 import (
 	"maps"
+	"math"
 	"reflect"
 	"slices"
 	"testing"
@@ -13,6 +14,45 @@ import (
 	"github.com/alexei-led/codex-router/internal/policy"
 	"github.com/alexei-led/codex-router/internal/responses"
 )
+
+func TestPricingKeepsSavingsAndExtraCostSeparately(t *testing.T) {
+	prices := map[string]config.Price{
+		"native": {Input: 2, CachedInput: .2, Output: 8},
+		"cheap":  {Input: 1, CachedInput: .1, Output: 4},
+		"costly": {Input: 3, CachedInput: .3, Output: 12},
+	}
+	st := newTally()
+	u := responses.Usage{InputTokens: 1000, CachedInputTokens: 500, OutputTokens: 100}
+	for _, model := range []string{"cheap", "costly", "native"} {
+		st.reply(Decision{Route: config.Route{Model: model}}, u, time.Now(), prices, "native")
+	}
+	if math.Abs(st.SavingsUSD-.00095) > 1e-10 || math.Abs(st.ExtraUSD-.00095) > 1e-10 {
+		t.Fatalf("savings = %g, extra = %g; want .00095 each", st.SavingsUSD, st.ExtraUSD)
+	}
+	if math.Abs(st.BaselineUSD-st.RoutedUSD) > 1e-10 {
+		t.Fatalf("equal savings and extra should net to zero: %+v", st.Stats)
+	}
+}
+
+func TestPricingUsesServedModel(t *testing.T) {
+	for _, served := range []string{"backend-model", low.Model + "-variant"} {
+		t.Run(served, func(t *testing.T) {
+			cfg := testConfig()
+			cfg.Prices = map[string]config.Price{
+				medium.Model: {Input: 2}, low.Model: {Input: 1}, served: {Input: 3},
+			}
+			h := newHarness(t, cfg)
+			h.asker.script(answer(tier("low", .97)))
+			m := meta("th", "t1")
+			h.decide(req(medium, userMsg(secretPrompt)), m)
+			h.reply(m, served, 1000, 0)
+			st := h.engine.Snapshot().Stats
+			if math.Abs(st.RoutedUSD-.003) > 1e-10 || math.Abs(st.BaselineUSD-.002) > 1e-10 {
+				t.Fatalf("costs = routed %g, native %g; want .003, .002", st.RoutedUSD, st.BaselineUSD)
+			}
+		})
+	}
+}
 
 // Snapshot returns the most recently active thread's snapshot, for tests
 // that drive one thread.

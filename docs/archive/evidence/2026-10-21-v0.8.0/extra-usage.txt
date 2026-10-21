@@ -1,0 +1,16 @@
+codex-router  ○ classifier off                                                                                                                               Sessions  Policy  Usage   ? help
+
+project · main                                                                                                                                                             default · 68a7f567
+ Usage      Routing extra cost ≈ $0.04 (1900%) vs per-reply native basis
+            savings ≈ $0.00 · extra cost ≈ $0.04
+            list-price estimate $0.04 vs $0.0021 per-reply native basis · plan billing is limits, not $
+
+ Ledger     1 reply since 14:26 · 1 switch · cache reuse 0% · switches wrote 20.5K uncached tokens
+            last switch 14:26  micro → high ·
+
+ Tiers      micro                                 0   0%
+            low                                   0   0%
+            medium                                0   0%
+            high      ████████████████████████    1 100%
+
+↑↓ scroll · space pause · P pause home · tab views · q quit · ? help

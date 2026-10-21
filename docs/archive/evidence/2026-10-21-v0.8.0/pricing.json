@@ -1,0 +1,24 @@
+[
+  {
+    "route": {
+      "model": "gpt-6.1-sol",
+      "effort": "high"
+    },
+    "replies": 1,
+    "priced_replies": 1,
+    "eligible_replies": 1,
+    "saved_usd": -0.0391115,
+    "spent_usd": 0.04117
+  },
+  {
+    "route": {
+      "model": "gpt-6-luna",
+      "effort": "high"
+    },
+    "replies": 1,
+    "priced_replies": 1,
+    "eligible_replies": 1,
+    "saved_usd": 0.040521299999999996,
+    "spent_usd": 0.0021327000000000004
+  }
+]

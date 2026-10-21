@@ -7,7 +7,7 @@ Install and use codex-router. Start with [Install](#install) and [First run](#fi
 ## Requirements
 
 - macOS or Linux. Windows is not supported.
-- The Codex CLI on `PATH`, signed in with ChatGPT. API-key sign-in is not supported, because the router forwards to the ChatGPT backend only. It was tested with Codex 0.162.1. Other versions may work, but the footer sync relies on experimental Codex surfaces (see [Codex versions](#codex-versions)).
+- The Codex CLI on `PATH`, signed in with ChatGPT. API-key sign-in is not supported, because the router forwards to the ChatGPT backend only. It was tested with Codex 0.162.1 and 0.163.0. Other versions may work, but the footer sync relies on experimental Codex surfaces (see [Codex versions](#codex-versions)).
 - A classifier: a key for the hosted default (Jev), or a local [Ollama](https://ollama.com) model. Without either, the router still runs, but only pins and the context guard change the model.
 - For [`codex-router setup`](#route-a-whole-home-setup) only: launchd (macOS) or systemd user units (Linux).
 
@@ -246,7 +246,11 @@ At 120 columns or wider, the list and detail sit side by side. An accent bar `�
 
 **Usage** shows the list-price estimate on a per-reply native basis, a ledger (replies, switches, cache reuse, the last switch), and replies by tier and activity as block bars. When pricing coverage is incomplete, it shows `estimate partial` or `estimate unknown` and the priced-reply count instead of a dollar subtotal. Plan billing counts usage, not dollars, so a complete dollar figure is still only an estimate.
 
-![Router panel, Usage view: the saving against the baseline, the ledger, and replies by tier and activity as bars](images/router-tui-usage.svg)
+The headline shows the net saving or **extra cost** against each reply's native model. Separate **savings** and **extra cost** totals sum the cheaper and costlier replies before netting them, so they remain visible when they cancel out. Sub-cent amounts use four decimal places; positive amounts below $0.0001 show `< $0.0001`.
+
+The routed estimate uses the model reported by the backend, with the requested model as fallback when the backend omits it. Both estimates use the reply's observed uncached input, cached input and output tokens, including reasoning. They compare model prices, not task quality or ROI. They do not simulate the tokens or cache hits another model or reasoning effort would have used. A higher effort on the same model has the same token prices and therefore shows no price difference in this comparison. A more capable model can cost more; this accounting does not change routing decisions.
+
+![Router panel, Usage view: net savings, separate savings and extra cost, the ledger, and replies by tier and activity as bars](images/router-tui-usage.svg)
 
 `--session` locks the panel to one session: no list, only that session's detail, plus Policy and Usage. Keys `[`, `]`, `↑` and `↓` do nothing there.
 
@@ -590,7 +594,7 @@ A set-up home's edge and brain log JSON lines of the same kind. On macOS they go
 
 ### Codex versions
 
-The footer sync needs `codex --remote` and the app-server's `thread/settings/update`, both experimental. A Codex release can change them. When that happens, routing keeps working and the panel shows `footer not synced`. The router was tested with Codex 0.162.1.
+The footer sync needs `codex --remote` and the app-server's `thread/settings/update`, both experimental. A Codex release can change them. When that happens, routing keeps working and the panel shows `footer not synced`. The router was tested with Codex 0.162.1 and 0.163.0. The 0.163.0 live check verified that the bottom status line follows both model and effort changes through a router launcher; it did not test the persistent home services.
 
 ## Exit codes
 

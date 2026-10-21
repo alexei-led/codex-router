@@ -61,8 +61,11 @@ func (t *tally) reply(d Decision, u responses.Usage, at time.Time, prices map[st
 	baseline, okB := prices[native]
 	if okR && okB {
 		t.PricedReplies++
-		t.RoutedUSD += cost.USD(routed, u)
-		t.BaselineUSD += cost.USD(baseline, u)
+		spent, basis := cost.USD(routed, u), cost.USD(baseline, u)
+		t.RoutedUSD += spent
+		t.BaselineUSD += basis
+		t.SavingsUSD += max(0, basis-spent)
+		t.ExtraUSD += max(0, spent-basis)
 	}
 }
 

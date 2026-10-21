@@ -218,10 +218,7 @@ func (c *canvas) sessionRows(s route.Snapshot) {
 	}
 	saved := pricingCoverage(st)
 	if pricingComplete(st) {
-		saved = []seg{dim(`savings need "prices" in the config`)}
-		if st.BaselineUSD > 0 {
-			saved = savedPart(st)
-		}
+		saved = savedPart(st)
 	}
 	parts := [][]seg{{plain(plural(st.Replies, "reply", "replies"))}, {plain(plural(st.Switches, "switch", "switches"))}, saved}
 	c.flow(lead, parts...)
@@ -247,12 +244,19 @@ func (c *canvas) sessionRows(s route.Snapshot) {
 // savedPart is `saved ≈ $1.18 (22%) vs per-reply native basis`.
 func savedPart(st route.Stats) []seg {
 	diff := st.BaselineUSD - st.RoutedUSD
+	if diff == 0 {
+		return []seg{plain("same estimated cost vs per-reply native basis")}
+	}
 	word, r := "saved", roleOK
 	if diff < 0 {
-		word, r = "cost", roleWarn
+		word, r = "extra cost", roleWarn
 	}
-	pct := int(abs(diff)/st.BaselineUSD*100 + 0.5)
-	return []seg{plain(word + " "), col(r, fmt.Sprintf("≈ $%.2f (%d%%)", abs(diff), pct)), plain(" vs per-reply native basis")}
+	amount := "≈ " + dollars(abs(diff))
+	if st.BaselineUSD > 0 {
+		pct := int(abs(diff)/st.BaselineUSD*100 + 0.5)
+		amount += fmt.Sprintf(" (%d%%)", pct)
+	}
+	return []seg{plain(word + " "), col(r, amount), plain(" vs per-reply native basis")}
 }
 
 // contextRows are the context window and the cache, side by side when they fit.

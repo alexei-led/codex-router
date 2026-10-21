@@ -167,9 +167,14 @@ func (c *canvas) usage(v view) {
 		return
 	}
 	c.add(append([]seg{kv("Usage")}, savedSegs(st)...)...)
-	if pricingComplete(st) && st.BaselineUSD > 0 {
+	if pricingComplete(st) {
+		if st.SavingsUSD > 0 || st.ExtraUSD > 0 {
+			c.flow(blankKV(),
+				[]seg{col(roleOK, "savings ≈ "+dollars(st.SavingsUSD))},
+				[]seg{col(roleWarn, "extra cost ≈ "+dollars(st.ExtraUSD))})
+		}
 		c.flow(blankKV(),
-			[]seg{dim(fmt.Sprintf("list-price estimate $%.2f vs $%.2f per-reply native basis", st.RoutedUSD, st.BaselineUSD))},
+			[]seg{dim(fmt.Sprintf("list-price estimate %s vs %s per-reply native basis", dollars(st.RoutedUSD), dollars(st.BaselineUSD)))},
 			[]seg{dim("plan billing is limits, not $")})
 	}
 	ledger := [][]seg{

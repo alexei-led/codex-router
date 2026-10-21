@@ -932,7 +932,12 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 		e.ledger.Observe(key, model, u, now)
 	}
 	if d != nil {
-		th.stats.reply(*d, u, now, e.cfg.Prices, th.native.Model)
+		priced := *d
+		priced.Route.Model = model
+		if _, ok := e.cfg.Prices[served]; ok {
+			priced.Route.Model = served
+		}
+		th.stats.reply(priced, u, now, e.cfg.Prices, th.native.Model)
 	}
 	return e.snapshot(th, now)
 }

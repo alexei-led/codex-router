@@ -161,6 +161,8 @@
     "FitHeld": 2,
     "RoutedUSD": 0.25,
     "BaselineUSD": 0.5,
+    "SavingsUSD": 0.3,
+    "ExtraUSD": 0.05,
     "PricedReplies": 3,
     "EligibleReplies": 3
   },

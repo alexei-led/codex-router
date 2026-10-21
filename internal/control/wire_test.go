@@ -122,6 +122,7 @@ func wireSnapshot() route.Snapshot {
 			RepliesPerCell: 1, CacheReusePct: 80, LastInputTokens: 1000,
 			LastCachedTokens: 800, UncachedSwitchTokens: 200, FitHeld: 2,
 			RoutedUSD: 0.25, BaselineUSD: 0.5, PricedReplies: 3, EligibleReplies: 3,
+			SavingsUSD: .30, ExtraUSD: .05,
 		},
 		ApproxTokens: 1234,
 		Window:       200000,
