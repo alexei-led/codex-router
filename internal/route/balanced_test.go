@@ -107,6 +107,17 @@ func replay(t *testing.T, cfg config.Config, seed uint64) ([]replayed, *harness)
 	return out, h
 }
 
+// firstDiff names the first line where got and want differ.
+func firstDiff(got, want []byte) string {
+	g, w := bytes.Split(got, []byte("\n")), bytes.Split(want, []byte("\n"))
+	for i := range min(len(g), len(w)) {
+		if !bytes.Equal(g[i], w[i]) {
+			return fmt.Sprintf("line %d: got %s, want %s", i+1, g[i], w[i])
+		}
+	}
+	return fmt.Sprintf("got %d lines, want %d", len(g), len(w))
+}
+
 // TestBalancedDecisionsAreUnchanged pins balanced routing to decisions the
 // engine made before routing modes existed (recorded on v0.8.0's engine):
 // with no mode set and with balanced set in the config, every decision of
@@ -139,7 +150,7 @@ func TestBalancedDecisionsAreUnchanged(t *testing.T) {
 					t.Fatal(err)
 				}
 				if !bytes.Equal(append(got, '\n'), want) {
-					t.Errorf("balanced decisions differ from %s", path)
+					t.Errorf("balanced decisions differ from %s: %s", path, firstDiff(append(got, '\n'), want))
 				}
 				explicit := tc.cfg()
 				explicit.Mode = config.ModeBalanced
