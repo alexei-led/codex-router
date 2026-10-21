@@ -444,3 +444,53 @@ func TestFitTier(t *testing.T) {
 }
 
 func near(a, b float64) bool { return math.Abs(a-b) < 1e-9 }
+
+func TestLateral(t *testing.T) {
+	medium := probs{"low": 0.01, "medium": 0.93, "high": 0.06}
+	votes := func(ts ...config.Tier) State {
+		var s State
+		for _, t := range ts {
+			s.Votes = append(s.Votes, Vote{Tier: t})
+		}
+		return s
+	}
+	kept := func(reason Reason, s State) Result { return Result{Tier: config.TierMedium, Reason: reason, State: s} }
+	cases := []struct {
+		name    string
+		advice  *classifier.Advice
+		midTurn bool
+		down    bool
+		fresh   bool
+		r       Result
+		tax     int
+		cheaper bool
+		want    bool
+		reason  Reason
+	}{
+		{"cheaper on a new task", advice("medium", medium), false, false, false, kept(ReasonSameTier, votes("medium", "medium")), 0, true, true, ReasonDowngrade},
+		{"cheaper on the same task waits for dwell and a check", continuing(advice("medium", medium), 0.9), false, false, false, kept(ReasonSameTier, votes("medium", "medium")), 0, true, false, ReasonDowngradeHeld},
+		{"cheaper mid-turn waits too", advice("medium", medium), true, false, false, kept(ReasonSameTier, votes("medium", "medium")), 0, true, false, ReasonDowngradeHeld},
+		{"cheaper on the same task after dwell and a check", continuing(advice("medium", medium), 0.9), false, true, false, kept(ReasonSameTier, votes("medium", "medium")), 0, true, true, ReasonDowngrade},
+		{"cheaper needs the streak", advice("medium", medium), false, false, false, kept(ReasonSameTier, votes("high", "medium")), 0, true, false, ReasonDowngradePending},
+		{"a fresh thread needs one vote", advice("medium", medium), false, false, true, kept(ReasonSameTier, votes("medium")), 0, true, true, ReasonDowngrade},
+		{"tax raises the downgrade bar", advice("medium", medium), false, false, false, kept(ReasonSameTier, votes("medium", "medium")), 1_000_000, true, false, ReasonDowngradePending},
+		{"cheaper needs mass at or below the tier", advice("medium", probs{"medium": 0.6, "high": 0.4}), false, true, false, kept(ReasonSameTier, votes("medium", "medium")), 0, true, false, ReasonDowngradePending},
+		{"stronger with the upgrade bar", advice("medium", medium), true, false, false, kept(ReasonSameTier, votes("medium", "medium")), 0, false, true, ReasonUpgrade},
+		{"stronger needs the streak", advice("medium", medium), false, false, false, kept(ReasonSameTier, votes("low", "medium")), 0, false, false, ReasonUpgradePending},
+		{"stronger needs mass at or above the tier", advice("medium", probs{"low": 0.5, "medium": 0.5}), false, false, false, kept(ReasonSameTier, votes("medium", "medium")), 0, false, false, ReasonUpgradePending},
+		{"a hold refuses a cheaper route", advice("medium", medium), false, true, false, kept(ReasonHold, votes("medium", "medium")), 0, true, false, ReasonHold},
+		{"a hold takes a stronger route", advice("medium", medium), false, false, false, kept(ReasonHold, votes("medium", "medium")), 0, false, true, ReasonUpgrade},
+		{"no answer keeps the route", nil, true, true, false, kept(ReasonSameTier, votes("medium", "medium")), 0, true, false, ReasonNoAdvice},
+		{"an uncertain answer keeps the route", advice("uncertain", probs{"uncertain": 1}), false, true, false, kept(ReasonUncertain, votes("medium", "medium")), 0, false, false, ReasonUncertain},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			in := input(config.TierMedium)
+			in.Advice, in.MidTurn, in.DownAllowed, in.Fresh = tc.advice, tc.midTurn, tc.down, tc.fresh
+			ok, reason, _ := Lateral(in, tc.r, tc.tax, tc.cheaper)
+			if ok != tc.want || reason != tc.reason {
+				t.Errorf("Lateral = %v/%s, want %v/%s", ok, reason, tc.want, tc.reason)
+			}
+		})
+	}
+}
