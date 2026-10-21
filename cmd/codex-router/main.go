@@ -402,6 +402,12 @@ const envThread = "CODEX_THREAD_ID"
 // blocked names a router a sandbox hides from ctl; tests replace it.
 var blocked = sessions.Blocked
 
+// unreachable is ctl's error for a router a sandbox hides. Inside Codex it
+// comes before the CODEX_THREAD_ID check: a hidden router lists no threads.
+func unreachable(home string, err error) error {
+	return fmt.Errorf("ctl: cannot reach the router of Codex home %s: %w; a sandbox (such as Codex's) blocks local sockets, so run this command outside it", home, err)
+}
+
 // ctlOps maps ctl's subcommands to commands; status sends none.
 var ctlOps = map[string]route.Op{"status": "", "pause": route.OpPause, "resume": route.OpResume, "pin": route.OpPin, "mode": route.OpMode}
 
@@ -467,6 +473,9 @@ func (c cli) ctl(args []string) int {
 	if thread != "" {
 		i := slices.IndexFunc(all, func(s sessions.Session) bool { return s.ThreadID == thread })
 		if i < 0 {
+			if err := blocked(root, h.ID); err != nil {
+				return c.fail(unreachable(h.Name, err))
+			}
 			return c.fail(fmt.Errorf("ctl: CODEX_THREAD_ID %q is not listed for Codex home %s; refusing cwd fallback", thread, h.Name))
 		}
 		matches = all[i : i+1]
@@ -476,7 +485,7 @@ func (c cli) ctl(args []string) int {
 	switch len(matches) {
 	case 0:
 		if err := blocked(root, h.ID); err != nil {
-			return c.fail(fmt.Errorf("ctl: cannot reach the router of Codex home %s: %w; a sandbox (such as Codex's) blocks local sockets, so run this command outside it", h.Name, err))
+			return c.fail(unreachable(h.Name, err))
 		}
 		return c.fail(fmt.Errorf("ctl: no running session of Codex home %s works in %s; see codex-router sessions", h.Name, dir))
 	case 1:

@@ -1518,14 +1518,17 @@ func TestCtlDoesNotMutateACwdSessionWhenExplicitThreadIsMissing(t *testing.T) {
 }
 
 func TestCtlNamesASandboxBlockedSocket(t *testing.T) {
+	eperm := &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.EPERM)}
 	cases := []struct {
 		name       string
+		thread     string
 		blockedErr error
 		wantText   string
 	}{
-		{"sandbox refuses the socket", &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.EPERM)},
-			"cannot reach the router of Codex home"},
-		{"router gone", nil, "no running session of Codex home"},
+		{"sandbox refuses the socket", "", eperm, "cannot reach the router of Codex home"},
+		{"router gone", "", nil, "no running session of Codex home"},
+		{"sandbox refuses the socket inside Codex", "t1", eperm, "cannot reach the router of Codex home"},
+		{"thread gone inside Codex", "t1", nil, "not listed"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1543,6 +1546,9 @@ func TestCtlNamesASandboxBlockedSocket(t *testing.T) {
 			blocked = func(string, string) error { return tc.blockedErr }
 			t.Cleanup(func() { blocked = orig })
 
+			if tc.thread != "" {
+				env = append(env, envThread+"="+tc.thread)
+			}
 			var stdout, stderr bytes.Buffer
 			code := run(context.Background(), []string{"ctl", "status", "--home", codexHome, "--cwd", codexHome}, env, nil, &stdout, &stderr)
 
