@@ -269,8 +269,12 @@ Expected results with the built-in routes (micro Luna/medium, low Luna/high, med
 - [x] Same with quality: Sol/medium → Sol/high with no cache tax
 - [x] Resume keeps the override (launcher restart with the store; brain restart); a new thread starts without it
 - [x] Every failure path returns a clear error: bad config `mode`, bad `modes` key, bad project file, bad op value, bad ctl argument
-- [x] ➕ (user, via manager, 2026-10-21) Golden decision matrix test (`TestModeDecisionMatrix`, `internal/route/testdata/mode-matrix.golden`, 240 cells reviewed by hand). It is table-driven over every classifier tier (micro, low, medium, high, uncertain) × every activity (code, debug, explore, plan, review, ops, docs, uncertain) × every mode (cost, balanced, quality). It runs on the default config plus one user-like profile config, and asserts the exact resolved pair for each cell.
-- [x] ➕ (user, via manager) Measured per-mode difference (`TestModesMakeAMeasurableDifference`, numbers in `docs/evaluation.md#routing-modes`). Measure switches and tokens or cost per mode across the decision space, and report the numbers. A mode with no real difference somewhere (for example zero catalog prices) is reported as a finding. Extend the benchmark approach in `docs/evaluation.md` for the per-mode comparison. ⚠️ The manager's message was cut off mid-sentence ("Assert the exact resolved pair for each ce…itches, and tokens or cost"); the missing part is requested in the Phase 2 report.
+- [x] ➕ (user, via manager, 2026-10-21) Golden decision matrix test (`TestModeDecisionMatrix`): every classifier tier (micro, low, medium, high, uncertain) × activity (code, debug, explore, plan, review, ops, docs, uncertain) × mode, on the default config and a user-like profile, 240 cells. Asserts the exact resolved pair and reason for each cell.
+- [x] ➕ (user, full text 2026-10-21) Matrix invariants: micro identical in all modes; balanced equals the configured pair; cost never spends more and quality never less than balanced (input price, then effort); cost never below low tier or low effort; fail when fewer cells differ than expected (per profile and mode)
+- [x] ➕ Pins bypass every mode (`TestAPinBypassesEveryMode`, every tier × mode × both configs)
+- [x] ➕ The matrix is a Markdown table in `docs/evaluation.md#decision-matrix`, written by `-update-matrix`; the test fails when the doc drifts (replaces `testdata/mode-matrix.golden`)
+- [x] ➕ ⚠️ Found by the invariants: with tier `uncertain` and a stronger activity (debug, review in the profile), quality stayed on the weaker incumbent while balanced took the activity route. Fix: while the mode's move waits, `P(T)` still moves by the activity rule when it lies the same way as the target. Mutation check: disabling the fix fails 3 cells. Balanced goldens unchanged.
+- [x] ➕ (user, via manager) Measured per-mode difference (`TestModesMakeAMeasurableDifference`, numbers in `docs/evaluation.md#routing-modes`): switches, tokens and cost per mode; zero prices reported as a finding
 
 - [x] ➕ Balanced is byte-identical: `TestBalancedDecisionsAreUnchanged` replays about 1,400 decisions against goldens recorded on `origin/main` (v0.8.0 engine)
 
@@ -311,7 +315,8 @@ Scenarios. Evidence for each is `agtermctl session text` captures plus `route de
 - [ ] The panel shows `mode (source)`; capture the doc screenshots
 - [ ] Log records carry `mode`, `modeSource`, `classified`, `model`, `effort`
 - [ ] ➕ (user, via manager) Home mode with two threads in different cwds, one with a project file: each shows its own mode and source, and routes by it
-- [ ] ➕ (user, via manager) Per-mode live comparison on the same prompt set: switches, tokens, cost estimate per mode (method from `docs/evaluation.md`)
+- [ ] ➕ (user, full text) Live classifier run: a fixed set of about 20 prompts covering every tier × activity combination that can realistically be triggered, through the real Jev classifier. Record the classified tier and activity, and the routed pair under each mode. Report classification mismatches (expected vs actual) apart from routing bugs.
+- [ ] ➕ (user, full text) Impact: on the same prompt set, the estimated cost per mode and the model and effort mix. Then one representative multi-turn task per mode in an isolated agterm session: the models used, switches, tokens or cost. A mode with no real difference somewhere is a finding.
 - [ ] D8: from inside Codex, check `CODEX_THREAD_ID` in a shell command and whether `!codex-router ctl mode cost` works in the sandbox; document the result
 - [ ] Close the test sessions
 

@@ -85,7 +85,7 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	if r.Tier != inc.tier || to == inc.route {
 		return c
 	}
-	if to != resolve(cfg.RouteFor(r.Tier, act), st.sent()) {
+	if base := resolve(cfg.RouteFor(r.Tier, act), st.sent()); to != base {
 		o, ok := compareRoutes(cfg, to, inc.route)
 		tax := e.ledger.SwitchTax(th.id, to.Model, st.tokens, st.now)
 		move, reason, est := policy.Lateral(in, r, tax, ok && o < 0)
@@ -95,12 +95,27 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 		case reason == policy.ReasonUpgradePending || reason == policy.ReasonDowngradePending:
 			reason = ReasonModePending
 		}
-		if !move {
-			c.activity, c.mode = inc.activity, inc.mode
+		if move {
+			c.reason, c.estimate = reason, est
+			return c
 		}
+		// While the mode's move waits, the balanced pair still moves by
+		// today's activity rule when it lies the same way, so quality never
+		// runs weaker than balanced, nor cost stronger.
+		if ob, okb := compareRoutes(cfg, base, inc.route); ok && okb && ob != 0 && (ob > 0) == (o > 0) {
+			c.mode = config.ModeBalanced
+			return e.activityMove(st, c, inc, base, act, advice, r.Reason == policy.ReasonHold)
+		}
+		c.activity, c.mode = inc.activity, inc.mode
 		c.reason, c.estimate = reason, est
 		return c
 	}
+	return e.activityMove(st, c, inc, to, act, advice, r.Reason == policy.ReasonHold)
+}
+
+// activityMove is today's same-tier rule: c's route to moves on the
+// activity's probability mass, or the incumbent's pair stays.
+func (e *Engine) activityMove(st *step, c cell, inc running, to config.Route, act config.Activity, advice *classifier.Advice, hold bool) cell {
 	mass := 1.0 // returning to the base route needs no evidence
 	if act != "" {
 		mass = 0
@@ -108,7 +123,7 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 			mass = advice.Activity.Probabilities[act]
 		}
 	}
-	move, reason, est := e.lateral(st, inc.route, to, mass, r.Reason == policy.ReasonHold)
+	move, reason, est := e.lateral(st, inc.route, to, mass, hold)
 	if !move {
 		c.activity, c.mode = inc.activity, inc.mode
 	}
