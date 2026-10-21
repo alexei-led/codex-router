@@ -427,9 +427,9 @@ func (c cli) ctl(args []string) int {
 	rest := args[1:]
 	var mode config.RoutingMode
 	if op == route.OpMode {
-		if len(rest) > 0 {
-			mode, rest = config.RoutingMode(rest[0]), rest[1:]
-		}
+		var m string
+		m, rest = modeArg(rest)
+		mode = config.RoutingMode(m)
 		if mode != route.ModeDefault && !slices.Contains(config.RoutingModes, mode) {
 			return c.usageError(fmt.Errorf("ctl mode: %q is not cost, balanced, quality or default", mode))
 		}
@@ -578,6 +578,21 @@ var edgeUpstream string
 // homeFlags adds --home, and with withState --state-dir, to fs, then parses
 // args. A set flag overrides CODEX_HOME or XDG_STATE_HOME in the returned
 // cli's env. On failure it returns the exit code and false.
+// modeArg takes ctl mode's mode out of args, before or after the flags:
+// the first argument that is neither a flag nor a flag's value. Every ctl
+// mode flag takes a value.
+func modeArg(args []string) (string, []string) {
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; {
+		case !strings.HasPrefix(a, "-"):
+			return a, append(slices.Clone(args[:i]), args[i+1:]...)
+		case !strings.Contains(a, "="):
+			i++ // the flag's value
+		}
+	}
+	return "", args
+}
+
 func (c cli) homeFlags(fs *flag.FlagSet, args []string, withState bool) (cli, home.Home, int, bool) {
 	name := fs.Name()
 	fs.SetOutput(c.stderr)

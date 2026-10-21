@@ -67,6 +67,8 @@ type Engine struct {
 	projectMode  func(threadID string) (config.RoutingMode, error)
 	loadMode     func(threadID string) config.RoutingMode
 	saveMode     func(threadID string, m config.RoutingMode)
+	// modeSave serializes mode saves; see storeMode.
+	modeSave sync.Mutex
 	// reviews counts background classifier reviews in flight.
 	reviews sync.WaitGroup
 

@@ -6,7 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/alexei-led/codex-router/internal/classifier"
 	"github.com/alexei-led/codex-router/internal/config"
@@ -351,6 +354,33 @@ func TestSnapshotRoutesFollowTheMode(t *testing.T) {
 	}
 	if s := h.engine.SnapshotFor("th"); fmt.Sprint(s.Routes) != fmt.Sprint(want) {
 		t.Fatalf("routes = %v, want %v", s.Routes, want)
+	}
+}
+
+func TestConcurrentModeCommandsSaveTheLastMode(t *testing.T) {
+	var mu sync.Mutex
+	saved := map[string]config.RoutingMode{}
+	var calls atomic.Int64
+	h := modeHarness(t, func(d *Deps) {
+		d.SaveMode = func(id string, m config.RoutingMode) {
+			// A disk write takes uneven time: a slow early save must not
+			// land after a later one.
+			time.Sleep(time.Duration(calls.Add(1)%4) * 200 * time.Microsecond)
+			mu.Lock()
+			defer mu.Unlock()
+			saved[id] = m
+		}
+	})
+	var wg sync.WaitGroup
+	for i := range 64 {
+		wg.Go(func() {
+			h.apply(Command{Op: OpMode, Session: "th", Mode: config.RoutingModes[i%len(config.RoutingModes)]})
+		})
+	}
+	wg.Wait()
+
+	if got, want := saved["th"], h.engine.SnapshotFor("th").RoutingMode; got != want {
+		t.Fatalf("saved %q, engine runs %q", got, want)
 	}
 }
 

@@ -1562,6 +1562,29 @@ func TestCtlNamesASandboxBlockedSocket(t *testing.T) {
 	}
 }
 
+func TestCtlModeTakesTheModeBeforeOrAfterFlags(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args func(home, cwd string) []string
+	}{
+		{"after", func(home, cwd string) []string { return []string{"--home", home, "--cwd", cwd, "quality"} }},
+		{"between", func(home, cwd string) []string { return []string{"--home=" + home, "quality", "--cwd", cwd} }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env, codexHome, projects, applied := ctlFixture(t)
+			args := append([]string{"ctl", "mode"}, tc.args(codexHome, filepath.Join(projects, "repo/sub"))...)
+			var stdout, stderr bytes.Buffer
+			if code := run(context.Background(), args, env, nil, &stdout, &stderr); code != exitOK {
+				t.Fatalf("exit %d, stderr %q", code, stderr.String())
+			}
+			got := slices.DeleteFunc(applied(), func(c route.Command) bool { return c.Op == control.OpSubscribe })
+			if len(got) != 1 || got[0].Op != route.OpMode || got[0].Mode != config.ModeQuality {
+				t.Fatalf("endpoint got %+v, want one quality mode command", got)
+			}
+		})
+	}
+}
+
 func TestCtlSendsSessionCommands(t *testing.T) {
 	cases := []struct {
 		name       string

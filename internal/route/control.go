@@ -128,13 +128,11 @@ func (e *Engine) Apply(c Command) (err error) {
 	switch c.Op {
 	case OpSnapshot:
 	case OpMode:
-		if e.saveMode != nil {
-			m := c.Mode
-			if m == ModeDefault {
-				m = ""
-			}
-			e.saveMode(c.Session, m)
+		m := c.Mode
+		if m == ModeDefault {
+			m = ""
 		}
+		e.storeMode(c.Session, m)
 	default:
 		e.persist()
 	}
@@ -227,6 +225,25 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 
 // session returns the thread a session command targets, creating it so a
 // pin or pause set before the thread's first step holds for it.
+// storeMode saves the session's mode as it is now; set is the mode the
+// command set, saved when the thread was evicted meanwhile. Saves run one at
+// a time and each reads the mode under e.mu, so the last save holds the last
+// mode set however concurrent commands interleave.
+func (e *Engine) storeMode(session string, set config.RoutingMode) {
+	if e.saveMode == nil {
+		return
+	}
+	e.modeSave.Lock()
+	defer e.modeSave.Unlock()
+	e.mu.Lock()
+	m := set
+	if th := e.lookup(session); th != nil {
+		m = th.mode
+	}
+	e.mu.Unlock()
+	e.saveMode(session, m)
+}
+
 func (e *Engine) session(c Command) (*thread, error) {
 	if c.Scope == ScopeHome || c.Session == "" {
 		return nil, fmt.Errorf("%s: needs a session", c.Op)
