@@ -1,0 +1,22 @@
+[
+  {"tier": "micro", "activity": "explore", "prompt": "which files did I change? just list them"},
+  {"tier": "micro", "activity": "ops", "prompt": "run go version"},
+  {"tier": "micro", "activity": "docs", "prompt": "fix the typo 'recieve' in README.md"},
+  {"tier": "low", "activity": "code", "prompt": "rename the variable cnt to count in internal/stats/stats.go"},
+  {"tier": "low", "activity": "docs", "prompt": "add a one-line doc comment to the exported function ParseDuration in internal/timeutil/timeutil.go"},
+  {"tier": "low", "activity": "explore", "prompt": "where is the HTTP client timeout configured in this repo?"},
+  {"tier": "low", "activity": "ops", "prompt": "bump the Go version in go.mod and in .github/workflows/ci.yml from 1.27.2 to 1.27.3"},
+  {"tier": "low", "activity": "review", "prompt": "look over my last commit, it only renames the --verbose flag to --debug; anything off?"},
+  {"tier": "medium", "activity": "code", "prompt": "add a --json flag to the sessions command that prints the session list as JSON, with a test"},
+  {"tier": "medium", "activity": "debug", "prompt": "TestRetry in pkg/queue fails about one run in ten with 'attempts = 2, want 3'; find out why and fix it"},
+  {"tier": "medium", "activity": "review", "prompt": "review the changes on this branch against main for correctness bugs and missing tests"},
+  {"tier": "medium", "activity": "plan", "prompt": "plan how to add per-project config files to this CLI: list the steps and the files to touch, don't write code yet"},
+  {"tier": "medium", "activity": "ops", "prompt": "the release workflow fails on the notarize step with exit code 65; find what is wrong in the workflow and fix it"},
+  {"tier": "medium", "activity": "explore", "prompt": "explain how a request flows from the proxy through the classifier and back in this codebase"},
+  {"tier": "medium", "activity": "docs", "prompt": "write a user guide section on routing modes with an example config and when to pick each mode"},
+  {"tier": "high", "activity": "debug", "prompt": "under load the connection pool deadlocks and the race detector reports a data race in pool.go; reproduce it, find the root cause and fix it without losing throughput"},
+  {"tier": "high", "activity": "plan", "prompt": "design a zero-downtime migration of our storage layer from SQLite to Postgres: schema changes, dual writes, backfill, verification and rollback"},
+  {"tier": "high", "activity": "code", "prompt": "implement a write-ahead log with crash recovery for the key-value store, with correct fsync ordering and tests that simulate crashes mid-write"},
+  {"tier": "high", "activity": "review", "prompt": "do a security review of the auth middleware and the token refresh flow: look for privilege escalation, token replay and timing attacks"},
+  {"tier": "uncertain", "activity": "uncertain", "prompt": "hmm"}
+]
