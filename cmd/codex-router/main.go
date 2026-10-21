@@ -430,9 +430,6 @@ func (c cli) ctl(args []string) int {
 		var m string
 		m, rest = modeArg(rest)
 		mode = config.RoutingMode(m)
-		if mode != route.ModeDefault && !slices.Contains(config.RoutingModes, mode) {
-			return c.usageError(fmt.Errorf("ctl mode: %q is not cost, balanced, quality or default", mode))
-		}
 	}
 	fs := flag.NewFlagSet("ctl "+sub, flag.ContinueOnError)
 	cwd := fs.String("cwd", "", "the session's working `dir` (default: the current dir)")
@@ -443,6 +440,9 @@ func (c cli) ctl(args []string) int {
 	c, h, code, ok := c.homeFlags(fs, rest, false)
 	if !ok {
 		return code
+	}
+	if op == route.OpMode && mode != route.ModeDefault && !slices.Contains(config.RoutingModes, mode) {
+		return c.usageError(fmt.Errorf("ctl mode: %q is not cost, balanced, quality or default", mode))
 	}
 	if op == route.OpPin && !slices.Contains(config.Tiers, config.Tier(*tier)) {
 		return c.usageError(fmt.Errorf("ctl pin: --tier %q is not micro, low, medium or high", *tier))
@@ -575,24 +575,24 @@ func (c cli) proxy(ctx context.Context, configPath string, args []string) int {
 // it at a fake.
 var edgeUpstream string
 
-// homeFlags adds --home, and with withState --state-dir, to fs, then parses
-// args. A set flag overrides CODEX_HOME or XDG_STATE_HOME in the returned
-// cli's env. On failure it returns the exit code and false.
 // modeArg takes ctl mode's mode out of args, before or after the flags:
 // the first argument that is neither a flag nor a flag's value. Every ctl
-// mode flag takes a value.
+// mode flag but help takes a value.
 func modeArg(args []string) (string, []string) {
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; {
 		case !strings.HasPrefix(a, "-"):
 			return a, append(slices.Clone(args[:i]), args[i+1:]...)
-		case !strings.Contains(a, "="):
+		case !strings.Contains(a, "=") && !slices.Contains([]string{"-h", "--h", "-help", "--help"}, a):
 			i++ // the flag's value
 		}
 	}
 	return "", args
 }
 
+// homeFlags adds --home, and with withState --state-dir, to fs, then parses
+// args. A set flag overrides CODEX_HOME or XDG_STATE_HOME in the returned
+// cli's env. On failure it returns the exit code and false.
 func (c cli) homeFlags(fs *flag.FlagSet, args []string, withState bool) (cli, home.Home, int, bool) {
 	name := fs.Name()
 	fs.SetOutput(c.stderr)

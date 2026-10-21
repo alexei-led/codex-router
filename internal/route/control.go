@@ -111,8 +111,8 @@ func (e *Engine) validTier(t config.Tier) bool {
 // mode. Pause writes each affected routed thread's own route back to its
 // settings; resume also ends manual mode. A home resume keeps session pauses
 // and clears a lost intent. A mode applies to the thread's next decision,
-// through its gates. Every command but snapshot saves the intent; mode saves
-// the session's mode. A panic is logged and returned as an error.
+// through its gates. Mode saves the session's mode; every other command but
+// snapshot saves the intent. A panic is logged and returned as an error.
 func (e *Engine) Apply(c Command) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -223,8 +223,6 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 	return writes, e.snapshot(th, e.now()), nil
 }
 
-// session returns the thread a session command targets, creating it so a
-// pin or pause set before the thread's first step holds for it.
 // storeMode saves the session's mode as it is now; set is the mode the
 // command set, saved when the thread was evicted meanwhile. Saves run one at
 // a time and each reads the mode under e.mu, so the last save holds the last
@@ -244,6 +242,8 @@ func (e *Engine) storeMode(session string, set config.RoutingMode) {
 	e.saveMode(session, m)
 }
 
+// session returns the thread a session command targets, creating it so a
+// pin or pause set before the thread's first step holds for it.
 func (e *Engine) session(c Command) (*thread, error) {
 	if c.Scope == ScopeHome || c.Session == "" {
 		return nil, fmt.Errorf("%s: needs a session", c.Op)

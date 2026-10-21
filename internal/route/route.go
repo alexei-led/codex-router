@@ -240,8 +240,9 @@ type Sink interface {
 // ProjectMode (nil: none) is the mode a thread's project file sets, read at
 // each turn's first step; LoadMode (nil: none) is a thread's saved session
 // override, read when the engine first sees the thread; SaveMode (nil: not
-// kept) stores one, "" to clear it. All three run under the engine lock, so
-// they must be quick: small local files.
+// kept) stores one, "" to clear it. LoadMode runs under the engine lock, so
+// it must be quick: a small local file. ProjectMode and SaveMode run outside
+// it; SaveMode calls never overlap.
 type Deps struct {
 	Config     config.Config
 	Catalog    catalog.Source

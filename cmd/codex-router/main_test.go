@@ -1585,6 +1585,18 @@ func TestCtlModeTakesTheModeBeforeOrAfterFlags(t *testing.T) {
 	}
 }
 
+func TestCtlModeHelpPrintsItsFlags(t *testing.T) {
+	for _, args := range [][]string{{"-h"}, {"--help", "cost"}, {"cost", "-help"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			run(context.Background(), append([]string{"ctl", "mode"}, args...), testEnv(t), nil, &stdout, &stderr)
+			if got := stderr.String(); !strings.Contains(got, "-cwd") || strings.Contains(got, "is not cost") {
+				t.Errorf("stderr %q, want the flag usage and no mode error", got)
+			}
+		})
+	}
+}
+
 func TestCtlSendsSessionCommands(t *testing.T) {
 	cases := []struct {
 		name       string
