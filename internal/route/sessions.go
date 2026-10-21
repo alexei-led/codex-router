@@ -78,7 +78,13 @@ func (e *Engine) sessions() []SessionInfo {
 	latest, now := e.latest(), e.now()
 	for _, th := range e.all() {
 		intent := th.paused || th.manual || th.pin != nil
-		if th.lastActive.IsZero() || th != latest && now.Sub(th.lastActive) >= sessionIdle && !intent {
+		if th.lastActive.IsZero() {
+			// A restored intent thread has no activity in this process yet.
+			// Keep it visible so the user can see and resume it.
+			if !intent {
+				continue
+			}
+		} else if th != latest && !intent && now.Sub(th.lastActive) >= sessionIdle {
 			continue
 		}
 		mode := e.mode(th)

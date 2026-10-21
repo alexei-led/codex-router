@@ -197,8 +197,12 @@ func TestPinOnOneThreadIsNotUsedByAnother(t *testing.T) {
 	h := newHarness(t, testConfig())
 	h.asker.script(answer(tier("medium", 0.99)))
 	h.apply(Command{Op: OpPin, Session: "a", Tier: config.TierHigh})
-	if len(h.engine.Sessions()) != 0 {
-		t.Fatal("a pin alone listed a session")
+	// A pending pin is intent the user must be able to see and clear, even
+	// before the thread's first step. It still must not affect thread b.
+	if got := h.engine.Sessions(); !slices.ContainsFunc(got, func(s SessionInfo) bool {
+		return s.ThreadID == "a" && s.PendingPin
+	}) {
+		t.Fatalf("a pending pin is not listed: %+v", got)
 	}
 
 	rw, ok := h.firstStep("b", "b1")
@@ -550,6 +554,27 @@ func TestApplyRejectsBadScopes(t *testing.T) {
 			}
 			if s := h.engine.Snapshot(); s.Mode != ModeOn || s.Preset != config.PresetBalanced {
 				t.Fatalf("a rejected command changed state: %+v", s)
+			}
+		})
+	}
+}
+
+func TestRestoredIntentIsListedBeforeItsNextStep(t *testing.T) {
+	tests := []struct {
+		name   string
+		intent ThreadIntent
+	}{
+		{"paused", ThreadIntent{Paused: true}},
+		{"manual", ThreadIntent{Manual: true}},
+		{"pinned", ThreadIntent{Pin: new(config.TierHigh)}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, testConfig(), func(d *Deps) {
+				d.Intent = Intent{Threads: map[string]ThreadIntent{"restored": tt.intent}}
+			})
+			if got := h.engine.Sessions(); !slices.ContainsFunc(got, func(s SessionInfo) bool { return s.ThreadID == "restored" }) {
+				t.Fatalf("restored %s session is hidden before its next step: %+v", tt.name, got)
 			}
 		})
 	}
