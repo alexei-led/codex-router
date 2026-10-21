@@ -3,6 +3,8 @@ package route
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -198,6 +200,43 @@ func TestModePrecedence(t *testing.T) {
 				t.Fatalf("snapshot mode %s, policy %+v", s.RoutingMode, s.Policy)
 			}
 		})
+	}
+}
+
+func TestHomeThreadsReadTheirOwnProjectFile(t *testing.T) {
+	withFile, plain := t.TempDir(), t.TempDir()
+	if err := os.MkdirAll(filepath.Join(withFile, ".git"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(withFile, ".codex"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(withFile, config.ProjectFile), []byte(`{"mode":"cost"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cwds := map[string]string{"a": filepath.Join(withFile, "pkg"), "b": plain}
+	h := modeHarness(t, func(d *Deps) {
+		d.Cwd = func(id string) string { return cwds[id] }
+		d.ProjectMode = config.ProjectModes(d.Cwd)
+	})
+	h.asker.script(answer(mediumTier), answer(mediumTier))
+
+	for _, tc := range []struct {
+		thread string
+		mode   config.RoutingMode
+		source ModeSource
+		route  config.Route
+	}{
+		{"a", config.ModeCost, SourceProject, lunaHigh},
+		{"b", config.ModeBalanced, SourceDefault, solMedium},
+	} {
+		h.firstStep(tc.thread, tc.thread+"1")
+		if d := h.last(); d.Route != tc.route {
+			t.Errorf("thread %s routed to %v, want %v", tc.thread, d.Route, tc.route)
+		}
+		if s := h.engine.SnapshotFor(tc.thread); s.RoutingMode != tc.mode || s.RoutingModeSource != tc.source {
+			t.Errorf("thread %s: mode %s (%s), want %s (%s)", tc.thread, s.RoutingMode, s.RoutingModeSource, tc.mode, tc.source)
+		}
 	}
 }
 

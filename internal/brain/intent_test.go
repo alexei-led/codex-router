@@ -143,7 +143,8 @@ func TestIntentStoreLoad(t *testing.T) {
 		wantLost bool
 	}{
 		{"no file", nil, false},
-		{"valid", new(`{"version":1,"preset":"quality"}`), false},
+		{"valid", new(`{"version":1,"paused":true}`), false},
+		{"v0.8.0 preset is ignored", new(`{"version":1,"preset":"quality"}`), false},
 		{"empty", new(""), true},
 		{"truncated", new(`{"version":1,"threads":{"t1":`), true},
 		{"other version", new(`{"version":2,"paused":true}`), true},

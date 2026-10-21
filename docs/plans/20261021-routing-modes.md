@@ -285,7 +285,7 @@ Expected results with the built-in routes (micro Luna/medium, low Luna/high, med
 ### Config and migration
 
 - [x] Rename hints (O3a) and a migration section in `docs/configuration.md`; release notes in Phase 4
-- [ ] Stored state: a `preset` in `intent.json` is ignored (no `intentVersion` bump); release notes say a home-wide preset picked in the panel is gone
+- [x] Stored state: a `preset` in `intent.json` is ignored (no `intentVersion` bump; `TestIntentStoreLoad`); release notes say a home-wide preset picked in the panel is gone
 - User machine (list only; the manager applies after release with the user's approval):
   - `~/.config/codex-router/config.json`: no change needed (keys: `classifier`, `classifiers`). Optional: add `"mode": "<personal default>"`.
   - Work profile (O6a): create `~/.config/codex-router/work.json` (classifier keys + `"mode": "<work default>"`), and in `~/.config/fish/functions/codex-work.fish` set `CODEX_ROUTER_CONFIG="$HOME/.config/codex-router/work.json"`.
