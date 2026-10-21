@@ -24,7 +24,7 @@ sudo install -m 0755 codex-router /usr/local/bin/codex-router
 codex-router version
 ```
 
-With Go 1.27.2 or newer:
+With Go 1.27.3 or newer:
 
 ```sh
 go install github.com/alexei-led/codex-router/cmd/codex-router@latest

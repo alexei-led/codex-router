@@ -1,6 +1,6 @@
 # Contributing
 
-Use Go 1.27.2 or newer. Keep changes small. For bug reports, include the router version, Codex version, OS, classifier and steps to reproduce. Remove credentials and private text from logs before sharing them.
+Use Go 1.27.3 or newer. Keep changes small. For bug reports, include the router version, Codex version, OS, classifier and steps to reproduce. Remove credentials and private text from logs before sharing them.
 
 ## Build and check
 
