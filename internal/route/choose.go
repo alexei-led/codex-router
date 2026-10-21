@@ -47,9 +47,9 @@ func downAllowed(st *step) bool {
 }
 
 // choose runs the policy for the turn's activity, then, when the tier stays
-// but the route would change, a gate: the tier-switch gate when the routing
-// mode moved the target off the tier's configured route, else the lateral
-// rule for activities.
+// but the route would change, a gate: the tier-switch gate when a routing
+// mode aimed the target or the incumbent off the configured route, else the
+// lateral rule for activities.
 func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTurn bool) cell {
 	cfg, p, th := st.cfg, st.policy, st.th
 	down := downAllowed(st)
@@ -85,7 +85,10 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	if r.Tier != inc.tier || to == inc.route {
 		return c
 	}
-	if base := resolve(cfg.RouteFor(r.Tier, act), st.sent()); to != base {
+	// A move is the mode's when its target or the incumbent sits off the
+	// configured route, so a move back to balanced passes the gate too.
+	base := resolve(cfg.RouteFor(r.Tier, act), st.sent())
+	if to != base || inc.route != resolve(cfg.RouteFor(inc.tier, inc.activity), st.sent()) {
 		o, ok := modeOrder(cfg, to, inc.route)
 		tax := e.ledger.SwitchTax(th.id, to.Model, st.tokens, st.now)
 		move, reason, est := policy.Lateral(in, r, tax, ok && o < 0)
@@ -100,9 +103,12 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 			return c
 		}
 		// While the mode's move waits, the balanced pair still moves by
-		// today's activity rule when it lies the same way, so quality never
-		// runs weaker than balanced, nor cost stronger.
-		if ob, okb := modeOrder(cfg, base, inc.route); ok && okb && ob != 0 && (ob > 0) == (o > 0) {
+		// today's activity rule toward the mode's side, so quality never runs
+		// weaker than balanced, nor cost stronger. Nothing else moves before
+		// the gate: not quality down, not cost up, not a return to balanced.
+		ob, okb := modeOrder(cfg, base, inc.route)
+		toward := (st.routeMode == config.ModeQuality && ob > 0) || (st.routeMode == config.ModeCost && ob < 0)
+		if ok && okb && toward && (ob > 0) == (o > 0) {
 			c.mode = config.ModeBalanced
 			return e.activityMove(st, c, inc, base, act, advice, r.Reason == policy.ReasonHold)
 		}

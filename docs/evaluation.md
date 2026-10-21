@@ -33,13 +33,13 @@ Three runs on one fixture cannot establish a general ranking. Prices and availab
 | ------------------------------------- | -------- | ----------- | ------------ | ----------- | -------- | ---------------------- |
 | defaults                              | cost     | $11.94      | 17%          | 1.29        | 58       | 1.05M                  |
 | defaults                              | balanced | $41.02      | 78%          | 1.38        | 35       | 0.31M                  |
-| defaults                              | quality  | $51.68      | 100%         | 2.71        | 45       | 0                      |
-| a profile with a third, mid-priced model | cost  | $20.49      | 1%           | 0.86        | 128      | 3.18M                  |
+| defaults                              | quality  | $51.68      | 100%         | 2.68        | 40       | 0                      |
+| a profile with a third, mid-priced model | cost  | $20.21      | 0%           | 0.86        | 125      | 3.12M                  |
 | same profile                          | balanced | $34.34      | 18%          | 1.14        | 73       | 1.28M                  |
-| same profile                          | quality  | $46.17      | 71%          | 2.65        | 79       | 1.20M                  |
+| same profile                          | quality  | $46.33      | 72%          | 2.63        | 63       | 0.93M                  |
 | no prices                             | cost     | none        | 12%          | 0.19        | 59       | 1.52M                  |
 | no prices                             | balanced | none        | 16%          | 1.17        | 35       | 0.45M                  |
-| no prices                             | quality  | none        | 69%          | 2.70        | 45       | 0.68M                  |
+| no prices                             | quality  | none        | 69%          | 2.68        | 41       | 0.68M                  |
 
 Mean effort runs from 0 (`low`) to 3 (`xhigh`).
 
@@ -47,7 +47,7 @@ What the replay shows, and what it does not:
 
 - With the default routes, `cost` cut the list-price cost by 71% and `quality` raised it by 26%.
 - `cost` switched models more often and wrote 3.4 times as many uncached tokens on switches. The cost column does not charge for that cache loss. Priced at Sol's full input rate, the extra 0.74M tokens add about $1.47, and `cost` is still 66% below `balanced`.
-- In the profile, `cost` switched 1.75 times as often as `balanced` and wrote 1.9M more uncached tokens: it often moves first to the mid-priced model, as `balanced` does, then on to Luna. Priced at Sol's input rate, that cache loss adds at most $3.80, and `cost` stays about 29% below `balanced`.
+- In the profile, `cost` switched 1.7 times as often as `balanced` and wrote 1.8M more uncached tokens: it often moves first to the mid-priced model, as `balanced` does, then on to Luna. Priced at Sol's input rate, that cache loss adds at most $3.70, and `cost` stays about 30% below `balanced`.
 - `quality` raised effort, not price per token. Its higher cost comes from the stronger policy keeping Sol, not from `xhigh`. More reasoning tokens at `xhigh` are not modeled.
 - Without `prices`, `cost` cannot use its model lever and no dollar figure exists: it changes effort and the switching policy only.
 - The answers are random, not a real workload. The replay checks direction and size, not real savings.

@@ -170,6 +170,76 @@ func TestAModeChangeMidTurnWaitsForTheNextGate(t *testing.T) {
 	}
 }
 
+// TestAReturnToBalancedWaitsForTheGate: a route a mode aimed stays the
+// incumbent after a switch back to balanced until a gate passes, as any mode
+// move does.
+func TestAReturnToBalancedWaitsForTheGate(t *testing.T) {
+	t.Run("from cost on an uncertain answer", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.Policy.ReviewEveryRequests = 0
+		cfg.Mode = config.ModeCost
+		h := newHarness(t, cfg)
+		h.asker.script(answer(mediumTier), answer(classifier.Advice{Choice: "uncertain", Probabilities: map[classifier.Choice]float64{"uncertain": 1}}))
+		m := meta("th", "t1")
+		rw, ok := h.decide(req(lunaHigh, userMsg(secretPrompt)), m)
+		wantUnchanged(t, rw, ok)
+		h.reply(m, luna, 50_000, 0)
+		h.apply(Command{Op: OpMode, Session: "th", Mode: config.ModeBalanced})
+
+		rw, ok = h.decide(req(lunaHigh, userMsg(secretPrompt), userMsg("next")), meta("th", "t2"))
+
+		wantUnchanged(t, rw, ok)
+		if d := h.last(); d.Reason != policy.ReasonUncertain {
+			t.Fatalf("decision = %+v, want Luna kept on an uncertain answer", d)
+		}
+	})
+	t.Run("from quality on the same task", func(t *testing.T) {
+		h := modeHarness(t)
+		h.asker.script(answer(mediumTier), answer(mediumTier), answer(continuing(mediumTier, 0.9)))
+		items := []responses.Item{userMsg(secretPrompt)}
+		m := meta("th", "t1")
+		h.decide(req(solMedium, items...), m)
+		h.reply(m, sol, 50_000, 0)
+		h.apply(Command{Op: OpMode, Session: "th", Mode: config.ModeQuality})
+		items = append(items, userMsg("next"))
+		m = meta("th", "t2")
+		rw, ok := h.decide(req(solMedium, items...), m)
+		wantRoute(t, rw, ok, solHigh)
+		h.reply(m, sol, 50_000, 45_000)
+		h.apply(Command{Op: OpMode, Session: "th", Mode: config.ModeBalanced})
+
+		rw, ok = h.decide(req(solHigh, append(items, userMsg("keep going"))...), meta("th", "t3"))
+
+		wantUnchanged(t, rw, ok)
+		if d := h.last(); d.Reason != policy.ReasonDowngradeHeld {
+			t.Fatalf("decision = %+v, want the move to Sol/medium held", d)
+		}
+	})
+}
+
+// TestQualityKeepsItsRouteWhileItsMoveDownWaits: while quality's own cheaper
+// target waits for votes, the thread keeps its route rather than dropping to
+// balanced's pair below that target.
+func TestQualityKeepsItsRouteWhileItsMoveDownWaits(t *testing.T) {
+	cfg := config.Default()
+	cfg.Policy.ReviewEveryRequests = 0
+	cfg.Mode = config.ModeQuality
+	h := newHarness(t, cfg)
+	solXHigh := config.Route{Model: sol, Effort: config.EffortXHigh}
+	h.asker.script(answer(withActivity(mediumTier, config.ActivityDebug, 0.9)), answer(withActivity(mediumTier, "chat", 0.9)))
+	m := meta("th", "t1")
+	rw, ok := h.decide(req(solMedium, userMsg(secretPrompt)), m)
+	wantRoute(t, rw, ok, solXHigh)
+	h.reply(m, sol, 50_000, 0)
+
+	rw, ok = h.decide(req(solXHigh, userMsg(secretPrompt), userMsg("something else")), meta("th", "t2"))
+
+	wantUnchanged(t, rw, ok)
+	if d := h.last(); d.Reason != ReasonModePending {
+		t.Fatalf("decision = %+v, want quality's move to Sol/high pending", d)
+	}
+}
+
 // TestCostGatesByInputPrice: cost picks a target by input price, so its gate
 // orders the move the same way. A model with cheaper input but pricier output
 // is a cost move down, held on the same task like any other.
