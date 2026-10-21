@@ -159,7 +159,7 @@ A repository can choose a mode for its sessions in `.codex/router.json`. The fil
 
 The router looks in the session's working directory and each parent up to the repository root (the nearest directory that holds `.git`); the nearest file wins. Outside a repository it looks only in the working directory. It reads the file at the start of each turn. The router ignores a file with another key, an unknown mode or bad JSON. The session then uses `mode` from this file, and the panel shows the problem under WORTH A LOOK.
 
-`mode` only chooses among the routes you configured, so a cloned repository cannot point the router at other models. Add `.codex/router.json` to `.gitignore` if the choice is yours alone.
+`mode` only chooses among the routes you configured, so a cloned repository cannot point the router at other models. The file must be a regular file of at most 4 KiB; a symlink, a pipe, a device or a larger file is ignored with the same panel finding. Add `.codex/router.json` to `.gitignore` if the choice is yours alone.
 
 ### Upgrade from presets
 

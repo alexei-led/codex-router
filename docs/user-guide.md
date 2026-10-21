@@ -179,7 +179,7 @@ flowchart LR
 
 - **Profile**: set `"mode"` in the config. For a second Codex home with its own default, point its `codex-router` at another file with `CODEX_ROUTER_CONFIG`.
 - **Project**: put `{"mode": "quality"}` in `.codex/router.json` in the repository. It holds only `mode`. Gitignore it if the choice is yours alone. See [Project file](configuration.md#project-file).
-- **Session**: press `s` on the panel's Policy view, or run `codex-router ctl mode cost` (see [ctl](#control-one-session-from-a-shell-ctl)). `default` drops the session's mode. The session keeps its mode across `codex-router resume` and restarts; a new session does not inherit it. An unused session mode is deleted after 30 days.
+- **Session**: press `s` on the panel's Policy view, or run `codex-router ctl mode cost` (see [ctl](#control-one-session-from-a-shell-ctl)). `default` drops the session's mode. The session keeps its mode across `codex-router resume` and restarts; a new session does not inherit it. An unused session mode is deleted after 30 days. Use means a launcher or brain read it, which happens when the router first sees the thread. A session that runs for more than 30 days without a restart therefore loses its stored mode at the next restart; set it again then.
 
 A mode change does not switch the model at once. The next turns pass the same checks as any switch. They need enough classifier votes and must be worth the cache cost. On the same task they also wait a minimum number of requests and need a passed test, build or lint. The panel shows the mode and its source at once, for example `cost (session)`, while the route may stay for a few requests. To force a route now, pin a tier. Pins and `/model` picks ignore the mode.
 

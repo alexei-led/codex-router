@@ -52,7 +52,7 @@ What the replay shows, and what it does not:
 - Without `prices`, `cost` cannot use its model lever and no dollar figure exists: it changes effort and the switching policy only.
 - The answers are random, not a real workload. The replay checks direction and size, not real savings.
 
-`TestBalancedDecisionsAreUnchanged` pins about 1,400 balanced decisions to goldens recorded on the v0.8.0 engine.
+`TestBalancedDecisionsAreUnchanged` pins balanced decisions to goldens recorded on the v0.8.0 engine: about 1,400 from the plain replay, and about 1,900 from a second replay that adds background reviews, pins, context compaction and threads seeded by a resume. Both replays round `a*b+c` sums before adding (`float64(a*b) + c`), so the goldens are the same on arm64 and amd64.
 
 ### Decision matrix
 

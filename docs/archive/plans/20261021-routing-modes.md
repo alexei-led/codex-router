@@ -82,7 +82,7 @@ Expected results with the built-in routes (micro Luna/medium, low Luna/high, med
 - **Seeding after restart.** A launcher or brain restart seeds the tier from the model (`cellForModel`). In cost mode, Luna/high seeds as `low` even when the thread ran at medium. The next medium answer is an upgrade vote with an unchanged pair. That is harmless: dwell resets only on a pair change.
 - **Per-turn project file read.** There is one `stat` and a small read per user turn. Resolution happens at the turn's first step, so an edited file applies on the next turn.
 - **Mixed versions during upgrade.** v0.8.0 launchers keep running until restarted. The O4 choice decides how a v0.9 panel shows them.
-- **Session mode store growth (O1a).** Each thread given an override leaves one small file. It is not pruned.
+- **Session mode store growth (O1a).** Each thread given an override leaves one small file. Files not read for 30 days are pruned when a launcher or brain starts.
 - **Path traversal.** Thread ids name store files. Ids are checked against a strict charset before use.
 
 ### Decisions (manager, 2026-10-21)
