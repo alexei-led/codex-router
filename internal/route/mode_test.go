@@ -55,6 +55,8 @@ func TestTargetLevelsAndPrices(t *testing.T) {
 	sameModel.Routes[config.TierLow] = config.Route{Model: sol, Effort: config.EffortLow}
 	emptyEffort := config.Default()
 	emptyEffort.Routes[config.TierMedium] = config.Route{Model: sol}
+	emptyUnpriced := emptyEffort
+	emptyUnpriced.Prices = nil
 	pricierBelow := config.Default()
 	pricierBelow.Prices[luna] = config.Price{Input: 3, Output: 1}
 	cases := []struct {
@@ -76,9 +78,11 @@ func TestTargetLevelsAndPrices(t *testing.T) {
 		{"cost never lands on micro", sameModel, config.ModeCost, config.TierMedium, "", nil, config.Route{Model: sol, Effort: config.EffortLow}},
 		{"unpriced models use the effort lever", unpriced, config.ModeCost, config.TierMedium, "", nil, config.Route{Model: sol, Effort: config.EffortLow}},
 		{"a pricier lower model uses the effort lever", pricierBelow, config.ModeCost, config.TierMedium, "", nil, config.Route{Model: sol, Effort: config.EffortLow}},
-		{"an empty effort resolves to the sent one", emptyEffort, config.ModeQuality, config.TierMedium, config.EffortLow, nil, config.Route{Model: sol, Effort: config.EffortMedium}},
-		{"an effort off the ladder gets no effort lever", emptyEffort, config.ModeQuality, config.TierMedium, "max", nil, config.Route{Model: sol, Effort: config.EffortHigh}},
-		{"an effort off the ladder in cost keeps the pair", emptyEffort, config.ModeCost, config.TierHigh, "max", nil, config.Route{Model: sol, Effort: config.EffortMedium}},
+		{"an empty effort gets no effort lever in quality", emptyEffort, config.ModeQuality, config.TierMedium, config.EffortLow, nil, config.Route{Model: sol, Effort: config.EffortHigh}},
+		{"an empty effort ignores a sent effort the router wrote", emptyEffort, config.ModeQuality, config.TierMedium, config.EffortHigh, nil, config.Route{Model: sol, Effort: config.EffortHigh}},
+		{"an empty effort keeps the model lever in cost", emptyEffort, config.ModeCost, config.TierMedium, config.EffortHigh, nil, config.Route{Model: luna, Effort: config.EffortHigh}},
+		{"an empty effort in cost without the model lever keeps the pair", emptyUnpriced, config.ModeCost, config.TierMedium, config.EffortHigh, nil, config.Route{Model: sol, Effort: config.EffortHigh}},
+		{"an effort off the ladder in cost keeps the pair", emptyUnpriced, config.ModeCost, config.TierMedium, "max", nil, config.Route{Model: sol, Effort: "max"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -94,12 +98,23 @@ func TestTargetLevelsAndPrices(t *testing.T) {
 }
 
 func TestTargetDoesNotCompound(t *testing.T) {
-	cfg := config.Default()
+	noEfforts := config.Default()
+	for tier, r := range noEfforts.Routes {
+		noEfforts.Routes[tier] = config.Route{Model: r.Model}
+	}
 	all := func(string) []config.Effort { return nil }
-	first := target(cfg, config.ModeCost, config.TierHigh, "", "", all)
-	for range 3 {
-		if got := target(cfg, config.ModeCost, config.TierHigh, "", first.Effort, all); got != first {
-			t.Fatalf("repeated cost target = %+v, want %+v", got, first)
+	for name, cfg := range map[string]config.Config{"defaults": config.Default(), "no efforts": noEfforts} {
+		for _, mode := range config.RoutingModes {
+			for _, tier := range config.Tiers {
+				for _, sent := range config.Efforts {
+					first := target(cfg, mode, tier, "", sent, all)
+					// The settings writer mirrors the route into Codex, so
+					// the next request sends the routed effort.
+					if again := target(cfg, mode, tier, "", first.Effort, all); again != first {
+						t.Errorf("%s %s %s sent %s: %+v, then %+v", name, mode, tier, sent, first, again)
+					}
+				}
+			}
 		}
 	}
 }

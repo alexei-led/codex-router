@@ -13,12 +13,14 @@ import (
 // model one tier down (never below low), else one effort step down; quality
 // takes one effort step up, else the route one tier up. Micro and balanced
 // keep P(t). It always starts from the configured pairs, never from a route
-// already moved, so repeated steps do not compound. levels lists the efforts
-// a model accepts; none means every config.Efforts. The rules are fixed:
-// router-modes design §2.
+// already moved, so repeated steps do not compound. Only a configured effort
+// on the low–xhigh ladder has an effort lever: an empty one follows the
+// request, which carries the router's last write, so moving it would
+// compound. levels lists the efforts a model accepts; none means every
+// config.Efforts. The rules are fixed: router-modes design §2.
 func target(cfg config.Config, mode config.RoutingMode, t config.Tier, a config.Activity, sent config.Effort, levels func(model string) []config.Effort) config.Route {
 	pair := func(t config.Tier) config.Route { return resolve(cfg.RouteFor(t, a), sent) }
-	base := pair(t)
+	base, own := pair(t), cfg.RouteFor(t, a).Effort
 	rank := slices.Index(config.Tiers, t)
 	if rank < 1 {
 		return base
@@ -29,11 +31,11 @@ func target(cfg config.Config, mode config.RoutingMode, t config.Tier, a config.
 		if down.Model != base.Model && cheaperInput(cfg, down.Model, base.Model) {
 			return down
 		}
-		if e, ok := proj(base.Effort, -1, levels(base.Model)); ok && effortRank(e) < effortRank(base.Effort) {
+		if e, ok := proj(own, -1, levels(base.Model)); ok && effortRank(e) < effortRank(own) {
 			return config.Route{Model: base.Model, Effort: e}
 		}
 	case config.ModeQuality:
-		if e, ok := proj(base.Effort, 1, levels(base.Model)); ok && effortRank(e) > effortRank(base.Effort) {
+		if e, ok := proj(own, 1, levels(base.Model)); ok && effortRank(e) > effortRank(own) {
 			return config.Route{Model: base.Model, Effort: e}
 		}
 		return pair(config.Tiers[min(len(config.Tiers)-1, rank+1)])
