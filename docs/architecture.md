@@ -50,7 +50,7 @@ What crosses each boundary:
 - **Proxy to chatgpt.com.** The request with `model` and `reasoning.effort` possibly changed, and the SSE stream back.
 - **Engine to classifier.** The clipped prompt, recent dialogue and fixed classification questions. The System One adapter also sends tier routes. No Codex headers or credentials. See [payload and privacy](configuration.md#classifier-data-and-privacy).
 - **App-server client to app-server.** `thread/settings/update` writes (the footer value) and `thread/settings/updated` notifications (including `/model` picks).
-- **Control socket to panel, hook and `ctl`.** Session lists and the subscribed session's snapshots out, and commands in: pin and unpin for one session, pause and resume for one session or the whole home, preset for the home. See [Control protocol](#control-protocol).
+- **Control socket to panel, hook and `ctl`.** Session lists and the subscribed session's snapshots out, and commands in: pin and unpin for one session, pause and resume for one session or the whole home, and a routing mode for one session. See [Control protocol](#control-protocol).
 
 ## Sessions and the registry
 
@@ -117,11 +117,13 @@ sequenceDiagram
 
   - `pin` and `unpin`: one `session`, never the home.
   - `pause` and `resume`: `session` or `home`. With no `scope`, a command that names a `session` acts on it, and one that does not acts on the home.
-  - `preset`: the home only.
+  - `mode`: one `session`, never the home. `mode` is `cost`, `balanced`, `quality`, or `default` to drop the session's mode.
 
   A session of another home is refused. The last write wins.
 - **Wire names.** A payload's names are the protocol, not the Go field names behind them, so every type a reply or a snapshot carries spells its JSON names out: the snapshot and its decision, the policy's estimate, the classifier's health, the catalog's group. `internal/control` owns those spellings. Fixtures written by hand in `testdata/protocol-v2/` are compared byte for byte in both directions, so renaming a field fails a test in that package instead of reaching a client. Protocol 2 keeps them: a reader ignores names it does not know, a name is left out only where it always was (the optional envelope members, a session row's optional ones), and a nil pointer, slice or map goes out as `null` rather than disappearing.
 - **Support fragments.** A decision carries its evidence line twice. `Support` is the single line, and `SupportParts` the same words as separate fragments, so a panel can punctuate and wrap them itself. `SupportParts` is optional inside protocol 2: an engine older than it sends `Support` alone, and a reader then shows that whole and never splits it, because a classifier's own label can hold the separator. The engine spells `Support` from the fragments, so the two cannot disagree, and leaves `SupportParts` out when there is no evidence.
+
+- **Routing mode fields.** `RoutingMode` and `RoutingModeSource` on a snapshot, a decision and a session row (`routing_mode`, `routing_mode_source`), and `ProjectError` on a snapshot, are additive inside protocol 2, as `SupportParts` is: an engine older than v0.9.0 sends none of them, and the panel then shows `—` for the mode. An older engine answers the `mode` op with an `error`.
 
 ## One turn
 
@@ -237,11 +239,46 @@ Amber boxes move up, blue moves down, grey stays. The input is the classifier's 
 - **Bars.** Each bar is a base plus a cost term: `base + slope × tax / (tax + pivot)`. The tax is the number of uncached tokens that the switch would write. The cost comes from a per-thread cache ledger, because Codex's prompt cache is per model. A switch to a model with a cold cache writes the whole prefix again. Fields: `upgradeBase`, `upgradeSlope`, `downgradeMass`, `downgradeSlope`, and the pivots.
 - **Same task.** A prompt counts as the same task when the classifier scores it as a continuation (`continuationMass`), or when the answer comes from a review inside a turn. A move down on the same task also waits `minDwellRequests` requests and needs a passed test, build or lint since the last switch. That avoids dropping to a light model halfway through a fix.
 - **Activity.** The same checks apply to a switch between two routes inside one tier. An activity route applies at `activityMass` on a new task.
-- **Presets** replace some of these thresholds. The values are in the [configuration reference](configuration.md#presets).
+- **Routing modes** replace some of these thresholds per session. The values are in the [configuration reference](configuration.md#mode-and-modes).
 
-### Modes
+### Routing mode
 
-Modes are per session (thread). A home pause covers every thread of the engine on top of each thread's own state.
+A routing mode (`cost`, `balanced`, `quality`) moves the route a tier aims at. It changes neither the classifier's input nor its answer, and the policy above still picks the tier.
+
+- **Transform.** `target` in `internal/route/mode.go` is one pure function of the config, the mode, the tier, the activity, the effort Codex sent and the catalog's efforts per model. It always starts from the configured route `P(T)`, never from a route already moved, so repeated steps do not compound. `cost` takes `P(T-1)` (not below `low`) when its model has a lower input price, else one effort step down. `quality` takes one effort step up, else `P(T+1)`. `micro`, `balanced`, a pinned turn and an effort off the `low`–`xhigh` ladder keep `P(T)`. Cost uses the model lever first because input and cache tokens dominate an agent turn's price; quality uses the effort lever first because it keeps the model and its cache.
+- **Route in use.** A thread remembers the mode its running route was aimed with. The incumbent route is that mode's target for the running tier and activity, not the thread's current mode, so a mode change alone moves nothing until a gate passes. In `balanced` this is exactly the route the engine computed before modes existed.
+- **Pair gate.** When the policy keeps the tier but the mode moved the target off `P(T)`, the move is gated like a tier switch (`policy.Lateral`). During an escalation hold only a stronger target moves. A move inside the tier that comes from an activity, not the mode, keeps the activity rule.
+
+```mermaid
+flowchart TD
+  kept(["policy kept tier T"]):::stay --> same{"target equals<br/>route in use?"}
+  same -->|yes| s0["stay"]:::stay
+  same -->|no| mode{"target equals P(T),<br/>the configured route?"}
+  mode -->|yes| act["activity rule<br/>(as before modes)"]
+  mode -->|no| adv{"tier answer for T?"}
+  adv -->|"no answer or uncertain"| s1["stay"]:::stay
+  adv -->|yes| dir{"target cheaper?"}
+  dir -->|yes| dbar{"votes ≤ T and mass ≤ T<br/>reach the downgrade bar?"}
+  dbar -->|no| s2["stay, mode-pending"]:::stay
+  dbar -->|yes| task{"same task, and dwell or<br/>passed check missing?"}
+  task -->|yes| s3["stay, held"]:::stay
+  task -->|no| d1["move: reason mode"]:::down
+  dir -->|"no: stronger or unordered"| ubar{"votes ≥ T and mass ≥ T<br/>reach the upgrade bar?"}
+  ubar -->|no| s4["stay, mode-pending"]:::stay
+  ubar -->|yes| u1["move: reason mode"]:::up
+
+  classDef up fill:#fef3c7,stroke:#d97706,color:#451a03
+  classDef down fill:#e0f2fe,stroke:#0284c7,color:#082f49
+  classDef stay fill:#f1f5f9,stroke:#64748b,color:#0f172a
+```
+
+- **Where a mode comes from.** At each turn's first step: the session's mode (`OpMode`), else the mode the thread's project file sets, else the config's `mode`, else `balanced`. The project file is `.codex/router.json`, found from the thread's cwd up to the repository root; the brain knows each thread's cwd from the app-server, a launcher uses its own cwd. An invalid file is ignored and shown as a WORTH A LOOK finding. The step's policy is `policy` with the mode's patch on top.
+- **Session mode store.** `internal/modestore` keeps one file per thread, `<state>/codex-router/modes/<home id>/<thread id>.json`, written atomically. The engine loads it when it first sees a thread and saves it after a `mode` command, so the mode survives a launcher or brain restart and a Codex resume of the same thread, and a new thread starts without one. Thread ids that are not plain file names are refused. Opening the store deletes files not read for 30 days.
+- **Logs.** Every `route decision` line carries `mode`, `modeSource`, `classified` (the classifier's tier answer) and the route sent (`model`, `effort`).
+
+### Session states
+
+Session states are per thread. A home pause covers every thread of the engine on top of each thread's own state.
 
 ```mermaid
 stateDiagram-v2
@@ -337,7 +374,7 @@ sequenceDiagram
 - **Edge.** The same proxy as the launcher's, with a link client as its decider. It checks the token, and holds no routing state. A config that does not load makes it warn and use the defaults: the port must not go dead.
 - **Link.** A unix socket in the home's state dir (`brain.sock`, `0600`). A frame is a 4-byte length, a JSON header line and the raw body, so bodies never leave the machine. The `hello` names the home id, and a brain refuses another home. The edge gives a decide its remaining deadline (classifier timeout plus 200 ms). Dial and hello get 200 ms, redials back off from 50 ms to 2 s, and three decide timeouts in a row make the edge skip the brain for 10 s. Usage reports wait in a queue of 256 and are dropped when it is full. A decide goes out after the reports queued before it, so the brain counts a reply before the next step. A decide that reaches the brain past its deadline is dropped, and one whose deadline passes in the engine records nothing: no decision, footer write or spent pin. Every failure means "forward unchanged".
 - **Brain.** The engine, the classifier and the footer writer of the launcher, plus a client of the home's daemon (`$CODEX_HOME/app-server-control/app-server-control.sock`). At start it lists the loaded threads. Later it picks up `thread/started`, and looks up a thread it first meets in a routed request. It resumes each main thread with `excludeTurns` to get its notifications and cwd, and skips subagent and side threads. A thread with no turn and no settings event for 10 minutes is unsubscribed, so the daemon can unload it. A lost daemon is redialed (250 ms, doubling to 8 s), and every thread is resubscribed and its footer resynced. Like the launcher, the brain never answers the daemon's approval requests. It serves control protocol v2 as a `brain` endpoint with the fixed id `brain-<home id>`, so a restarted brain replaces its own registry entry.
-- **Brain restart.** Learned state (tier, votes, escalation, cache ledger) is gone after a restart. With an empty ledger the engine would take the cache for cold and switch on one vote, so each resumed thread is seeded with the route `thread/resume` reports and held there, attention `unknown`, until its first reply measures the cache, or a pin decides a turn. Steps of a turn that started held keep that route. Then routing goes on as usual. User intent (home pause, session pauses, manual holds, pending pins, a preset picked by command) is written to `intent.json` atomically on every change, not at exit, because a crash skips exit handlers. The brain reads it at start.
+- **Brain restart.** Learned state (tier, votes, escalation, cache ledger) is gone after a restart. With an empty ledger the engine would take the cache for cold and switch on one vote, so each resumed thread is seeded with the route `thread/resume` reports and held there, attention `unknown`, until its first reply measures the cache, or a pin decides a turn. Steps of a turn that started held keep that route. Then routing goes on as usual. User intent (home pause, session pauses, manual holds, pending pins) is written to `intent.json` atomically on every change, not at exit, because a crash skips exit handlers. The brain reads it at start.
 - **Account binding.** The proxy hashes `ChatGPT-Account-ID` (sha256, first 12 hex) into the request metadata. A thread binds to its first account. A different account resets that thread's learned state and keeps its intent. A missing account changes nothing. This covers a new login inside one home, in both modes.
 
 ### Units and setup
@@ -362,7 +399,7 @@ All packages are under `internal/`. The entry point is `cmd/codex-router`, the l
 
 | Package            | Role                                                                                                                           | Imports                                                                                                                                                     |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config`           | Types, defaults, JSON load and validation.                                                                                     | none                                                                                                                                                        |
+| `config`           | Types, defaults, JSON load and validation, the project file.                                                                   | none                                                                                                                                                        |
 | `home`             | Codex home id and name from `CODEX_HOME`. Session labels from `.git`.                                                          | none                                                                                                                                                        |
 | `statedir`         | State dir: its path, the private-dir check, a home's dir (port, token), atomic writes.                                         | none                                                                                                                                                        |
 | `registry`         | Endpoint entries: root dir checks, atomic write, list, prune, optional software version.                                       | `home`, `statedir`                                                                                                                                          |
@@ -379,10 +416,11 @@ All packages are under `internal/`. The entry point is `cmd/codex-router`, the l
 | `tui`              | Bubble Tea v2 panel over registry endpoints; identity-mismatched sockets retry with a one-second exponential backoff capped at one minute. Rendering is pure. | `config`, `control`, `home`, `policy`, `registry`, `route`                                                                                                  |
 | `hook`             | The optional Codex hook.                                                                                                       | `control`, `home`, `registry`, `route`                                                                                                                      |
 | `sessions`         | Running sessions from the registry or one control socket: list, resolve by id or label, pick by thread or cwd, send a command. | `config`, `control`, `home`, `registry`, `route`                                                                                                            |
-| `launcher`         | Wires one session, records its software version, retains per-run logs, and falls back to plain `codex`.                        | the runtime packages                                                                                                                                        |
+| `launcher`         | Wires one session, records its software version, retains per-run logs, and falls back to plain `codex`.                        | the runtime packages, `modestore`                                                                                                                           |
+| `modestore`        | Session routing modes, one private file per thread, pruned after 30 days unused.                                               | `config`, `statedir`                                                                                                                                        |
 | `link`             | Edge-brain socket: frames, a fail-open client (decider, observer), a server over an engine, and the socket path record.        | `proxy`, `responses`, `statedir`                                                                                                                            |
 | `listen`           | The edge's listening socket from systemd (`LISTEN_FDS`) or launchd (`launch_activate_socket`).                                 | none                                                                                                                                                        |
-| `brain`            | A home's router: engine, daemon client, footer sync, link and control servers, saved intent.                                   | `appserver`, `catalog`, `config`, `control`, `home`, `link`, `registry`, `responses`, `route`, `statedir`                                                   |
+| `brain`            | A home's router: engine, daemon client, footer sync, link and control servers, saved intent.                                   | `appserver`, `catalog`, `config`, `control`, `home`, `link`, `modestore`, `registry`, `responses`, `route`, `statedir`                                      |
 | `service`          | launchd and systemd units of a home: render, install, load, read-only status, ensure.                                          | `proxy`                                                                                                                                                     |
 | `setup`            | `codex-router setup`: `config.toml` blocks, port and token, units, undo.                                                       | `home`, `proxy`, `service`, `statedir`                                                                                                                      |
 | `cmd/codex-router` | The entry point: flags, subcommands, the edge, output, read-only doctor.                                                       | `brain`, `catalog`, `classifier`, `config`, `control`, `home`, `hook`, `launcher`, `link`, `listen`, `proxy`, `registry`, `route`, `service`, `sessions`, `setup`, `statedir`, `tui` |
@@ -402,7 +440,9 @@ State lives in the engine, in memory, per process. A brain also saves the user's
 - **Request.** A fingerprint of the turn and the last input items identifies one request. A retry resends the same body, so it hits one of the thread's last 8 fingerprints.
 - **Cache ledger.** Per thread and per model, not per effort, because Codex's cache ignores effort.
 - **Tallies.** Replies, switches, the reply strip, the last switch and the recent decisions are per thread, so a busy thread never pushes another thread's turns out. Home totals in the panel are sums over the home's sessions.
-- **Pin and pause.** Per thread. A pin is used up by that thread's next turn, and never by another thread. A pin or pause sent before a thread's first step holds for it. The home pause and the preset are engine-wide. A home can have several endpoints (launchers, and a brain), so the panel sends them to every endpoint of the home. The manual hold is per thread.
+- **Pin and pause.** Per thread. A pin is used up by that thread's next turn, and never by another thread. A pin or pause sent before a thread's first step holds for it. The home pause is engine-wide. A home can have several endpoints (launchers, and a brain), so the panel sends them to every endpoint of the home. The manual hold is per thread.
+
+- **Routing mode.** Per thread: the session's own mode (kept in the mode store), the project file's mode read at each turn, and the mode the running route was aimed with.
 
 When history shrinks (compaction or a rewind), the engine drops the vote streak, the measured size and the ledger for that thread.
 

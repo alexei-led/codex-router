@@ -20,6 +20,7 @@ The panel is optional. This illustration uses sample data, including its savings
 
 - **Less model picking.** A classifier scores the prompt and recent dialogue. The router uses that score, cache state and tool results to decide whether to switch.
 - **A reason for each choice.** The panel shows the route and why it changed. One panel covers multiple sessions and Codex homes.
+- **Cost or quality, your call.** A [routing mode](docs/user-guide.md#choose-a-routing-mode), `cost`, `balanced` or `quality`, shifts every tier one step cheaper or stronger. Set it per profile, per repository or per session.
 - **Manual control.** Use `/model` to keep your own choice. Pin the next turn or pause routing from the panel.
 - **A way back.** Routing errors forward the request unchanged. Launcher startup errors fall back to plain Codex. The wrapper does not edit your Codex config.
 
