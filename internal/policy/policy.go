@@ -170,7 +170,7 @@ func Decide(in Input) Result {
 		tax := taxOf(in.TaxTokens, target)
 		est := &Estimate{
 			TaxTokens: tax,
-			Threshold: p.DowngradeMass + p.DowngradeSlope*share(tax, p.DowngradePivotTokens),
+			Threshold: downgradeBar(p, tax),
 			Mass:      massAtOrBelow(probs, target),
 			Streak:    trailing(next.Votes, func(v Vote) bool { return rank(v.Tier) <= rank(target) }),
 		}
@@ -186,6 +186,58 @@ func Decide(in Input) Result {
 		return Result{Tier: target, Reason: ReasonDowngrade, State: next, Estimate: est}
 	}
 	return stay(ReasonDowngradePending, pending)
+}
+
+// Lateral gates a move between two routes of the tier Decide kept, when a
+// routing mode moved the target off the tier's configured route. The move is
+// a switch like one between tiers: r is Decide's result for the step, tax the
+// move's switch tax. A cheaper route needs the downgrade bar on the mass at
+// or below the tier and the downgrade streak of votes at or below it, and on
+// the same task in.DownAllowed. A stronger (or unordered) route needs the
+// upgrade bar on the mass at or above the tier and the upgrade streak of
+// votes at or above it. Without an answer for the tier, or during an
+// escalation hold for a cheaper route, the running route stays.
+func Lateral(in Input, r Result, tax int, cheaper bool) (bool, Reason, *Estimate) {
+	p := in.Policy
+	if r.Reason == ReasonHold && cheaper {
+		return false, ReasonHold, nil
+	}
+	if in.Advice == nil {
+		return false, ReasonNoAdvice, nil
+	}
+	if rank(config.Tier(in.Advice.Choice)) < 0 {
+		return false, ReasonUncertain, nil
+	}
+	tier, probs := r.Tier, in.Advice.Probabilities
+	upgradeVotes, downgradeVotes := p.UpgradeVotes, p.DowngradeVotes
+	if in.Fresh {
+		upgradeVotes, downgradeVotes = 1, 1
+	}
+	if cheaper {
+		est := &Estimate{
+			TaxTokens: tax,
+			Threshold: downgradeBar(p, tax),
+			Mass:      massAtOrBelow(probs, tier),
+			Streak:    trailing(r.State.Votes, func(v Vote) bool { return rank(v.Tier) <= rank(tier) }),
+		}
+		switch {
+		case est.Mass < est.Threshold || est.Streak < downgradeVotes:
+			return false, ReasonDowngradePending, est
+		case SameTask(p, in.Advice, in.MidTurn) && !in.DownAllowed:
+			return false, ReasonDowngradeHeld, est
+		}
+		return true, ReasonDowngrade, est
+	}
+	est := &Estimate{
+		TaxTokens: tax,
+		Threshold: UpgradeBar(p, tax),
+		Mass:      probs[classifier.Choice(tier)] + massAbove(probs, tier),
+		Streak:    trailing(r.State.Votes, func(v Vote) bool { return rank(v.Tier) >= rank(tier) }),
+	}
+	if est.Mass < est.Threshold || est.Streak < upgradeVotes {
+		return false, ReasonUpgradePending, est
+	}
+	return true, ReasonUpgrade, est
 }
 
 // FitTier returns the lowest tier at or above tier whose window holds tokens
@@ -247,7 +299,15 @@ func taxOf(f func(config.Tier) int, t config.Tier) int {
 // UpgradeBar is the probability mass an upgrade needs when it costs tax
 // tokens of cache: the base, plus the slope scaled by the tax share.
 func UpgradeBar(p config.Policy, tax int) float64 {
-	return p.UpgradeBase + p.UpgradeSlope*share(tax, p.UpgradePivotTokens)
+	// The conversion rounds the product, so no platform fuses it into a
+	// multiply-add: thresholds, and decisions at them, match on every CPU.
+	return p.UpgradeBase + float64(p.UpgradeSlope*share(tax, p.UpgradePivotTokens))
+}
+
+// downgradeBar is the mass a cheaper tier needs for a switch that writes tax
+// uncached tokens; rounded like UpgradeBar.
+func downgradeBar(p config.Policy, tax int) float64 {
+	return p.DowngradeMass + float64(p.DowngradeSlope*share(tax, p.DowngradePivotTokens))
 }
 
 // share is tax/(tax+pivot): 0 for no tax, half the slope at the pivot.

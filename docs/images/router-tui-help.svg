@@ -35,24 +35,24 @@
   <text x="764.8" y="161.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="16.0" y="180.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="31.6" y="180.0" fill="#87afff" font-weight="700" xml:space="preserve">enter      </text>
-  <text x="117.4" y="180.0" fill="#d0d0d0" xml:space="preserve">open                                                                               </text>
+  <text x="117.4" y="180.0" fill="#d0d0d0" xml:space="preserve">open                  </text>
+  <text x="289.0" y="180.0" fill="#87afff" font-weight="700" xml:space="preserve">s          </text>
+  <text x="374.8" y="180.0" fill="#d0d0d0" xml:space="preserve">mode                                              </text>
   <text x="764.8" y="180.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="16.0" y="199.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="31.6" y="199.0" fill="#87afff" font-weight="700" xml:space="preserve">esc        </text>
-  <text x="117.4" y="199.0" fill="#d0d0d0" xml:space="preserve">back                  </text>
-  <text x="289.0" y="199.0" fill="#878787" font-weight="700" xml:space="preserve">Home</text>
+  <text x="117.4" y="199.0" fill="#d0d0d0" xml:space="preserve">back                                                                               </text>
   <text x="764.8" y="199.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="16.0" y="218.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="31.6" y="218.0" fill="#87afff" font-weight="700" xml:space="preserve">[          </text>
   <text x="117.4" y="218.0" fill="#d0d0d0" xml:space="preserve">previous session      </text>
-  <text x="289.0" y="218.0" fill="#87afff" font-weight="700" xml:space="preserve">P          </text>
-  <text x="374.8" y="218.0" fill="#d0d0d0" xml:space="preserve">pause home                                        </text>
+  <text x="289.0" y="218.0" fill="#878787" font-weight="700" xml:space="preserve">Home</text>
   <text x="764.8" y="218.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="16.0" y="237.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="31.6" y="237.0" fill="#87afff" font-weight="700" xml:space="preserve">]          </text>
   <text x="117.4" y="237.0" fill="#d0d0d0" xml:space="preserve">next session          </text>
-  <text x="289.0" y="237.0" fill="#87afff" font-weight="700" xml:space="preserve">s          </text>
-  <text x="374.8" y="237.0" fill="#d0d0d0" xml:space="preserve">preset                                            </text>
+  <text x="289.0" y="237.0" fill="#87afff" font-weight="700" xml:space="preserve">P          </text>
+  <text x="374.8" y="237.0" fill="#d0d0d0" xml:space="preserve">pause home                                        </text>
   <text x="764.8" y="237.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="16.0" y="256.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="31.6" y="256.0" fill="#87afff" font-weight="700" xml:space="preserve">?          </text>

@@ -57,7 +57,6 @@ func wireSnapshot() route.Snapshot {
 		At:           at,
 		Mode:         route.ModePaused,
 		StateLost:    true,
-		Preset:       config.PresetQuality,
 		Pin:          &high,
 		Baseline:     config.Route{Model: "gpt-5-codex"},
 		Footer:       config.Route{Model: "gpt-5-codex", Effort: config.EffortHigh},
@@ -76,6 +75,7 @@ func wireSnapshot() route.Snapshot {
 				Alternates: []route.Share{{Activity: config.ActivityCode, P: 0.1}},
 			},
 			MidTurn: true, At: at,
+			RoutingMode: config.ModeCost, RoutingModeSource: route.SourceSession,
 		},
 		Recent: []route.Decision{{
 			ThreadID: "t-1", TurnID: "turn-0", Step: 1,
@@ -124,9 +124,12 @@ func wireSnapshot() route.Snapshot {
 			RoutedUSD: 0.25, BaselineUSD: 0.5, PricedReplies: 3, EligibleReplies: 3,
 			SavingsUSD: .30, ExtraUSD: .05,
 		},
-		ApproxTokens: 1234,
-		Window:       200000,
-		Worth:        []route.Finding{{Kind: route.FindingCache, Text: "cache reuse 80%, switching wrote 200 uncached tokens"}},
+		ApproxTokens:      1234,
+		Window:            200000,
+		Worth:             []route.Finding{{Kind: route.FindingCache, Text: "cache reuse 80%, switching wrote 200 uncached tokens"}},
+		RoutingMode:       config.ModeCost,
+		RoutingModeSource: route.SourceSession,
+		ProjectError:      `/h/api/.codex/router.json: unknown field "routes"`,
 	}
 }
 
@@ -146,6 +149,7 @@ func wireSessions() []route.SessionInfo {
 			LastSwitch: &route.Switch{At: at, From: config.TierMedium, To: config.TierHigh, Activity: config.ActivityReview, MidTurn: true},
 			LastActive: at, Attention: route.AttentionPaused, PendingPin: true, FooterSynced: true,
 			PricedReplies: 3, EligibleReplies: 3, SavedUSD: &saved, SpentUSD: &spent,
+			RoutingMode: config.ModeQuality, RoutingModeSource: route.SourceProject,
 		},
 		{ID: "h/t-2", Home: "h", ThreadID: "t-2"},
 	}
@@ -234,7 +238,7 @@ func TestSessionsWireIsFrozen(t *testing.T) {
 // TestSessionRowOmitsOptionalFields pins which names a row may leave out, and
 // that a row authored with only its required fields decodes to zero values.
 func TestSessionRowOmitsOptionalFields(t *testing.T) {
-	optional := []string{"last_switch", "attention", "pending_pin", "saved_usd", "spent_usd"}
+	optional := []string{"last_switch", "attention", "pending_pin", "saved_usd", "spent_usd", "routing_mode", "routing_mode_source"}
 	var rows []map[string]any
 	if err := json.Unmarshal([]byte(wireFixture(t, "sessions-sparse.json")), &rows); err != nil {
 		t.Fatalf("sparse fixture does not decode: %v", err)
@@ -290,7 +294,7 @@ func TestCommandWireIsFrozen(t *testing.T) {
 		{Command: route.Command{Op: OpSubscribe, Session: "h/t-1", ID: "c-1"}},
 		{Command: route.Command{Op: route.OpPin, Session: "h/t-1", ID: "c-2", Tier: config.TierHigh}},
 		{Command: route.Command{Op: route.OpPause, Scope: route.ScopeHome, ID: "c-3"}},
-		{Command: route.Command{Op: route.OpPreset, Preset: config.PresetThrifty, ID: "c-4"}},
+		{Command: route.Command{Op: route.OpMode, Session: "h/t-1", Mode: config.ModeCost, ID: "c-4"}},
 		{Command: route.Command{Op: route.OpSnapshot, ID: "c-5"}},
 	}
 	lines := wireLines(t, "commands.jsonl")

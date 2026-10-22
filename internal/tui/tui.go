@@ -10,6 +10,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/control"
 	"github.com/alexei-led/codex-router/internal/registry"
+	"github.com/alexei-led/codex-router/internal/route"
 )
 
 // Tab is one panel view. Tab and shift+tab cycle them.
@@ -24,8 +25,9 @@ const (
 // Tabs lists the views in display order.
 var Tabs = []Tab{TabSessions, TabPolicy, TabUsage}
 
-// Presets lists the policy presets in cycling order.
-var Presets = []config.Preset{config.PresetThrifty, config.PresetBalanced, config.PresetQuality}
+// Modes lists the mode popover's choices in key order: the routing modes,
+// then default, which clears the session's override.
+var Modes = append(append([]config.RoutingMode(nil), config.RoutingModes...), route.ModeDefault)
 
 // Options configure Run. Socket, when set, shows that one endpoint and
 // skips the registry; else the panel watches the registry dir Registry.

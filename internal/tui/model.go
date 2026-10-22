@@ -199,8 +199,8 @@ func (m *model) click(ms tea.Mouse) tea.Cmd {
 		return m.pin(a.tier)
 	case actUnpin:
 		return m.unpin()
-	case actPreset:
-		return m.setPreset(a.preset)
+	case actMode:
+		return m.setMode(a.mode)
 	case actKey:
 		if b, ok := keys.named(a.key); ok {
 			return m.run(b)
@@ -245,9 +245,9 @@ func (m *model) choose(k tea.KeyPressMsg) tea.Cmd {
 			return m.unpin()
 		}
 		return m.pin(tierOrder[n-1])
-	case pop == popPreset && key.Matches(k, keys.PresetPick):
+	case pop == popMode && key.Matches(k, keys.ModePick):
 		m.popover = popNone
-		return m.setPreset(Presets[n-1])
+		return m.setMode(Modes[n-1])
 	}
 	return nil
 }
@@ -300,9 +300,9 @@ func (m *model) run(b key.Binding) tea.Cmd {
 		if m.tab == TabSessions && m.st.focus != "" {
 			m.scroll, m.popover = 0, popPin
 		}
-	case is(b, keys.Preset):
+	case is(b, keys.Mode):
 		if m.tab == TabPolicy && m.st.focus != "" {
-			m.scroll, m.popover = 0, popPreset
+			m.scroll, m.popover = 0, popMode
 		}
 	case is(b, keys.Toggle):
 		cmd := toggleCommand(m.st.focus, m.snap().Mode)
@@ -322,8 +322,12 @@ func (m *model) unpin() tea.Cmd {
 	return m.command(route.Command{Op: route.OpUnpin, Session: m.st.focus}, "pin cleared")
 }
 
-func (m *model) setPreset(p config.Preset) tea.Cmd {
-	return m.homeCommand(route.Command{Op: route.OpPreset, Preset: p}, "preset "+string(p)+" sent to the home")
+func (m *model) setMode(mode config.RoutingMode) tea.Cmd {
+	toast := "mode " + string(mode) + " for this session; applies through the switch gates"
+	if mode == route.ModeDefault {
+		toast = "session mode cleared"
+	}
+	return m.command(route.Command{Op: route.OpMode, Session: m.st.focus, Mode: mode}, toast)
 }
 
 // show opens view t. Going on into Sessions lands on the list, going back

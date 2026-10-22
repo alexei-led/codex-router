@@ -685,7 +685,10 @@ func TestApplyRejectsBadCommands(t *testing.T) {
 	h := newHarness(t, testConfig())
 	for _, c := range []Command{
 		{Op: OpPin, Tier: "huge"},
-		{Op: OpPreset, Preset: "lavish"},
+		{Op: OpMode, Session: "th", Mode: "lavish"},
+		{Op: OpMode, Session: "th", Mode: "thrifty"},
+		{Op: OpMode, Session: "th"},
+		{Op: OpMode, Scope: ScopeHome, Mode: config.ModeCost},
 		{Op: "explode"},
 	} {
 		if err := h.engine.Apply(c); err == nil {
@@ -694,14 +697,19 @@ func TestApplyRejectsBadCommands(t *testing.T) {
 	}
 }
 
-func TestPresetChangesTheEffectivePolicy(t *testing.T) {
+func TestThreadModeChangesTheEffectivePolicy(t *testing.T) {
 	h := newHarness(t, testConfig())
-	if err := h.engine.Apply(Command{Op: OpPreset, Preset: config.PresetQuality}); err != nil {
+	if err := h.engine.Apply(Command{Op: OpMode, Session: "a", Mode: config.ModeQuality}); err != nil {
 		t.Fatal(err)
 	}
-	s := h.engine.Snapshot()
-	if s.Preset != config.PresetQuality || s.Policy.UpgradeVotes != 1 {
-		t.Fatalf("preset %s, upgrade votes %d", s.Preset, s.Policy.UpgradeVotes)
+	if s := h.engine.SnapshotFor("a"); s.RoutingMode != config.ModeQuality || s.Policy.UpgradeVotes != 1 {
+		t.Fatalf("thread a: mode %s, upgrade votes %d", s.RoutingMode, s.Policy.UpgradeVotes)
+	}
+	if err := h.engine.Apply(Command{Op: OpMode, Session: "b", Mode: config.ModeBalanced}); err != nil {
+		t.Fatal(err)
+	}
+	if s := h.engine.SnapshotFor("b"); s.RoutingMode != config.ModeBalanced || s.Policy != testConfig().Policy {
+		t.Fatalf("thread b: mode %s, policy %+v", s.RoutingMode, s.Policy)
 	}
 }
 

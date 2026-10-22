@@ -12,7 +12,7 @@ codex-router  6 sessions · 2 homes · Jev ready                   Sessions  Pol
   infra · main             ● on      gpt-6-sol · medium
   reflex · main            ○ waiting for the first prompt
 
-codex-router · main                                                            default · bbbbbbbb
+codex-router · main                                       balanced (default) · default · bbbbbbbb
  HIGH  debug → gpt-6.1-sol · high                      ↑ same test failure twice, edit in between
        Jev high 18% · no classifier needed · switch ≈ 41k uncached tokens · hold 2 turns
  Pin      micro   low   medium  ▶high                                              next turn only

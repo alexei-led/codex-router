@@ -1,6 +1,6 @@
 codex-router  6 sessions · 2 homes · Jev ready                                                    Sessions  Policy  Usage   ? help
 
-   SESSION                  STATE     MODEL                 ▎codex-router · main                                default · bbbbbbbb
+   SESSION                  STATE     MODEL                 ▎codex-router · main           balanced (default) · default · bbbbbbbb
  ● default                                                  ▎ HIGH  debug → gpt-6.1-sol · high
  ▸ codex-router · main      ↑ high    gpt-6.1-sol · high    ▎       ↑ same test failure twice, edit in between
    codex-router · fix/hook  ● on      gpt-6-luna · medium   ▎       Jev high 18% · no classifier needed

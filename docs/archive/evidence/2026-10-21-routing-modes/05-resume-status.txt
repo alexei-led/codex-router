@@ -1,0 +1,7 @@
+session  6b17dcbc00aa/01a15eaf-8bb4-7891-b5b3-2b21d9b75384
+label    home-a · r1 · master
+mode     on
+tier     micro
+route    gpt-6-luna · medium
+replies  1
+routing  cost (session)

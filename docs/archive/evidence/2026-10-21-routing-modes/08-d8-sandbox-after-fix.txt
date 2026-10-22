@@ -1,0 +1,9 @@
+• I’ll run that exact command in the sandbox and show the raw output.
+• Failed (exit 1) <live>/bin/codex-router ctl mode quality
+  └ codex-router: ctl: cannot reach the router of Codex home home-a: dial unix $TMPDIR/codex-router/db997d21/control.sock: connect: operation not p…
+    + 1 line (⌃t to expand)                                                                                                                                                                  
+• Working (34s • esc to interrupt)
+  └ Tip: Use /rename to rename your threads for easier thread resuming.
+› Ask Codex to do anything
+  GPT-6.1-Sol medium · <repos>/r2 · Run sandbox router commands
+  ? for shortcuts                                                                                                                                                   ⚠ 1 warning · f2 to view

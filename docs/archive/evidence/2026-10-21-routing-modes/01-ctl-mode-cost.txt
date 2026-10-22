@@ -1,0 +1,1 @@
+set home-a · r1 · master to cost mode: the route follows once the switch gates pass; a pin forces one now

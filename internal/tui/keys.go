@@ -21,13 +21,13 @@ type keyMap struct {
 	Pin         key.Binding
 	Toggle      key.Binding
 	Home        key.Binding
-	Preset      key.Binding
+	Mode        key.Binding
 	Help        key.Binding
 	Quit        key.Binding
 
-	// PinPick and PresetPick are the choices of the open popover.
-	PinPick    key.Binding
-	PresetPick key.Binding
+	// PinPick and ModePick are the choices of the open popover.
+	PinPick  key.Binding
+	ModePick key.Binding
 }
 
 var keys = keyMap{
@@ -42,12 +42,12 @@ var keys = keyMap{
 	Pin:         key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "pin")),
 	Toggle:      key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "pause")),
 	Home:        key.NewBinding(key.WithKeys("P"), key.WithHelp("P", "pause home")),
-	Preset:      key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "preset")),
+	Mode:        key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "mode")),
 	Help:        key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 	Quit:        key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 
-	PinPick:    key.NewBinding(key.WithKeys("1", "2", "3", "4", "0"), key.WithHelp("1-4", "pick")),
-	PresetPick: key.NewBinding(key.WithKeys("1", "2", "3"), key.WithHelp("1-3", "pick")),
+	PinPick:  key.NewBinding(key.WithKeys("1", "2", "3", "4", "0"), key.WithHelp("1-4", "pick")),
+	ModePick: key.NewBinding(key.WithKeys("1", "2", "3", "4"), key.WithHelp("1-4", "pick")),
 }
 
 // helpGroup is one titled block of the help overlay.
@@ -59,8 +59,8 @@ type helpGroup struct {
 func (k keyMap) groups() []helpGroup {
 	return []helpGroup{
 		{"Navigate", []key.Binding{k.Up, k.Down, k.Open, k.Back, k.PrevSession, k.NextSession, k.Help, k.Quit}},
-		{"Session", []key.Binding{k.Pin, k.Toggle}},
-		{"Home", []key.Binding{k.Home, k.Preset}},
+		{"Session", []key.Binding{k.Pin, k.Toggle, k.Mode}},
+		{"Home", []key.Binding{k.Home}},
 		{"Views", []key.Binding{k.Next, k.Prev}},
 	}
 }

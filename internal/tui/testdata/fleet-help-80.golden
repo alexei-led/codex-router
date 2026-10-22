@@ -4,10 +4,10 @@ codex-router  6 sessions · 2 homes · Jev ready  Sessions  Policy  Usage   ? he
 │ Navigate                         Session                                     │
 │ ↑↓         select or scroll      p          pin                              │
 │ j k        same as ↑↓            space      pause                            │
-│ enter      open                                                              │
-│ esc        back                  Home                                        │
-│ [          previous session      P          pause home                       │
-│ ]          next session          s          preset                           │
+│ enter      open                  s          mode                             │
+│ esc        back                                                              │
+│ [          previous session      Home                                        │
+│ ]          next session          P          pause home                       │
 │ ?          help                                                              │
 │ q          quit                  Views                                       │
 │                                  tab        views                            │

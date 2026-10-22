@@ -1,6 +1,6 @@
 # Configuration
 
-Every field of the config file, with its default. To get started, and to find where the file lives, see [Configure](user-guide.md#configure) in the user guide. Words such as tier, route, activity and preset are defined in [Concepts](user-guide.md#concepts).
+Every field of the config file, with its default. To get started, and to find where the file lives, see [Configure](user-guide.md#configure) in the user guide. Words such as tier, route, activity and mode are defined in [Concepts](user-guide.md#concepts).
 
 How the file is read:
 
@@ -10,7 +10,7 @@ How the file is read:
 - A `classifiers` entry changes only the fields it names, over the entry of the same name. Set a field to `""` to clear it.
 - Unknown keys, trailing data and invalid values are errors. The router then runs plain `codex` with one line that says why.
 - `$XDG_CONFIG_HOME` is used only when it is an absolute path.
-- Edits apply to the next session. In a home set up with `codex-router setup`, they apply when its brain and edge restart (see [Check and restart the services](user-guide.md#check-and-restart-the-services)). The panel changes only the preset, and only for the running sessions of one Codex home. A preset picked in the panel for a set-up home outlives a brain restart and wins over `preset` here.
+- Edits apply to the next session. In a home set up with `codex-router setup`, they apply when its brain and edge restart (see [Check and restart the services](user-guide.md#check-and-restart-the-services)). The panel and `codex-router ctl mode` change only one session's mode; they never write this file.
 
 ## Example
 
@@ -26,7 +26,7 @@ Cheaper low tier, a stronger plan route, a local classifier:
     "plan": { "medium": { "effort": "high" } },
     "docs": { "medium": { "effort": "low" } }
   },
-  "preset": "thrifty",
+  "mode": "cost",
   "classifier": "ollama",
   "policy": { "minDwellRequests": 6 }
 }
@@ -43,7 +43,8 @@ Because objects merge, `"policy": {"minDwellRequests": 6}` changes one field. Be
 | `activities`  | map activity to map tier to route | `debug` at `medium`                                          | Per-activity override of a tier's route. Optional.                                              |
 | `prices`      | map model to price                | `gpt-6.1-sol`, `gpt-6-luna`                                  | USD list prices for the per-reply estimate. Optional.                                                |
 | `policy`      | object                            | see below                                                    | Switching thresholds.                                                                           |
-| `preset`      | `thrifty`, `balanced`, `quality`  | `balanced`                                                   | Overrides some policy fields. See [presets](#presets).                                          |
+| `mode`        | `cost`, `balanced`, `quality`     | not set (`balanced`)                                         | The profile's routing mode. See [mode and modes](#mode-and-modes).                              |
+| `modes`       | map mode to `{"policy": {...}}`   | `cost`, `quality`                                            | Policy fields each mode replaces. See [mode and modes](#mode-and-modes).                        |
 | `classifier`  | string                            | `jev`                                                        | Key of the active entry in `classifiers`, or `off`.                                             |
 | `classifiers` | map name to classifier            | `jev`, `clef`, `clef-flash`, `clef-omni`, `openai`, `ollama` | Classifier endpoints.                                                                           |
 | `context`     | object                            | `recentTurns 6`, `maxTextChars 1200`                         | What the classifier sees.                                                                       |
@@ -98,23 +99,73 @@ Counts are integers. Probability thresholds and context fill are in (0, 1]. Slop
 
 `escalationHoldTurns` and `minDwellRequests` depend on how the router reads tool results. That is described in [Escalation on repeated failures](user-guide.md#escalation-on-repeated-failures).
 
-### presets
+### mode and modes
 
-`balanced` keeps `policy` as configured. The others replace these fields, whatever `policy` says:
+A routing mode trades cost against answer quality. It never changes what the classifier is asked or what it answers.
 
-| Field                   | thrifty | balanced (as configured) | quality |
-| ----------------------- | ------- | ------------------------ | ------- |
-| `upgradeVotes`          | 3       | 2                        | 1       |
-| `upgradeBase`           | 0.85    | 0.75                     | 0.6     |
-| `jumpConfidence`        | 0.98    | 0.95                     | 0.9     |
-| `downgradeVotes`        | 1       | 2                        | 3       |
-| `downgradeMass`         | 0.8     | 0.9                      | 0.95    |
-| `minDwellRequests`      | 4       | 8                        | 16      |
-| `escalationHoldTurns`   | 1       | 2                        | 4       |
+- `balanced` routes as the tables above say.
+- `cost` aims each tier above `micro` one step cheaper: the next lower tier's route when that route's model has a lower `prices` input price, else one effort step down on the same model. It never goes below `low`, and never to `micro`.
+- `quality` aims each tier above `micro` one step stronger: one effort step up on the same model, else the next higher tier's route.
+- `micro` turns, pins, `/model` picks and paused sessions are never moved by a mode.
 
-The preset values express a preference. They have not been tuned against a representative workload.
+With the default routes:
 
-Old configs can still contain `policy.downgradeHorizonTurns`. It is ignored. It is absent from the defaults and presets, and you can remove it from your file.
+| Tier                | cost        | balanced    | quality     |
+| ------------------- | ----------- | ----------- | ----------- |
+| `micro`             | Luna medium | Luna medium | Luna medium |
+| `low`               | Luna medium | Luna high   | Luna xhigh  |
+| `medium`            | Luna high   | Sol medium  | Sol high    |
+| `medium`, `debug`   | Luna high   | Sol high    | Sol xhigh   |
+| `high`              | Sol medium  | Sol high    | Sol xhigh   |
+
+`quality` mostly buys `xhigh`. In the 2026-10-16 runs behind the default routes, `xhigh` cost more than `high` on every task and scored no higher; on the plan task it scored lower (see [Evaluation](evaluation.md)).
+
+The cost lever needs `prices` for both models. Without them, `cost` lowers effort only. An effort step uses only the efforts the Codex catalog lists for the model. A route without an `effort` gets no effort step: it runs the effort Codex sends, which is the one the router last wrote, so a step would repeat every turn. `cost` then keeps that route unless the cost lever applies, and `quality` takes the next higher tier's route unless that route is weaker.
+
+Each mode also replaces some `policy` fields. The effective policy is `policy` with `modes.<mode>.policy` on top: a field the mode names wins over `policy`. A `modes` entry in your file changes only the fields it names over the built-in entry; set a field to `null` to drop a built-in one. Built-in values:
+
+| Field                 | cost | balanced (`policy` as written) | quality |
+| --------------------- | ---- | ------------------------------ | ------- |
+| `upgradeVotes`        | 3    | 2                              | 1       |
+| `upgradeBase`         | 0.85 | 0.75                           | 0.6     |
+| `jumpConfidence`      | 0.98 | 0.95                           | 0.9     |
+| `downgradeVotes`      | 1    | 2                              | 3       |
+| `downgradeMass`       | 0.8  | 0.9                            | 0.95    |
+| `minDwellRequests`    | 4    | 8                              | 16      |
+| `escalationHoldTurns` | 1    | 2                              | 4       |
+
+These values express a direction. They have not been tuned against a representative workload.
+
+Example: a cost mode that waits longer before going down on the same task.
+
+```json
+{ "mode": "cost", "modes": { "cost": { "policy": { "minDwellRequests": 8 } } } }
+```
+
+Where a session's mode comes from, first match wins:
+
+1. the session's own mode, set in the panel or with `codex-router ctl mode`;
+2. the [project file](#project-file);
+3. `mode` in this file;
+4. `balanced`.
+
+### Project file
+
+A repository can choose a mode for its sessions in `.codex/router.json`. The file holds `mode` and nothing else:
+
+```json
+{ "mode": "quality" }
+```
+
+The router looks in the session's working directory and each parent up to the repository root (the nearest directory that holds `.git`); the nearest file wins. Outside a repository it looks only in the working directory. It reads the file at the start of each turn. The router ignores a file with another key, an unknown mode or bad JSON. The session then uses `mode` from this file, and the panel shows the problem under WORTH A LOOK.
+
+`mode` only chooses among the routes you configured, so a cloned repository cannot point the router at other models. The file must be a regular file of at most 4 KiB; a symlink, a pipe, a device or a larger file is ignored with the same panel finding. Add `.codex/router.json` to `.gitignore` if the choice is yours alone.
+
+### Upgrade from presets
+
+v0.9.0 renamed `preset` to `mode` and `thrifty` to `cost`. A file that still has `preset` fails with `preset was renamed to mode in v0.9.0 (thrifty is now cost)`, and the router runs plain `codex`. Replace `"preset": "thrifty"` with `"mode": "cost"` and `"preset": "quality"` with `"mode": "quality"`, and delete `"preset": "balanced"`. As before, the mode's built-in values win over `policy` for the fields they name; to change one, set it under `modes`.
+
+Old configs can still contain `policy.downgradeHorizonTurns`. It is ignored. It is absent from the defaults and modes, and you can remove it from your file.
 
 ### classifiers
 

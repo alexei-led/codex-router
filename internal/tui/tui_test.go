@@ -53,7 +53,7 @@ func fixture() route.Snapshot {
 	}
 	earlier := route.Decision{Tier: config.TierMedium, Activity: config.ActivityDebug, Route: sol, Reason: policy.ReasonUpgrade, At: at(18, 38)}
 	return route.Snapshot{
-		ThreadID: "th", At: at(18, 42), Mode: route.ModeOn, Preset: config.PresetBalanced,
+		ThreadID: "th", At: at(18, 42), Mode: route.ModeOn, RoutingMode: config.ModeBalanced, RoutingModeSource: route.SourceDefault,
 		Baseline: sol61, Footer: sol61, FooterSynced: true,
 		Last: &last, Recent: []route.Decision{earlier, last},
 		Classifier: classifier.Health{Latency: 412 * time.Millisecond}, ClassifierLabel: "Jev", ClassifierModel: "jev-1.13.0", ClassifierMedian: 388 * time.Millisecond,
@@ -151,8 +151,10 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		}, TabSessions, []string{"Look     footer picked with /model · space resumes"}, nil},
 		{"nothing worth a look", func(s *route.Snapshot) { s.Worth = nil }, TabSessions, nil, []string{"Look"}},
 
-		{"preset buttons", func(*route.Snapshot) {}, TabPolicy, []string{"Preset      thrifty  ▶balanced   quality", "for every session of this home"}, []string{"no effect"}},
-		{"preset has no effect without a classifier", func(s *route.Snapshot) { s.ClassifierOff = true }, TabPolicy, []string{"no effect while the classifier is off"}, []string{"for every session"}},
+		{"mode buttons", func(*route.Snapshot) {}, TabPolicy, []string{"Mode        cost  ▶balanced   quality   default", "from default · this session"}, []string{"no effect"}},
+		{"the session's mode and source", func(s *route.Snapshot) { s.RoutingMode, s.RoutingModeSource = config.ModeCost, route.SourceProject }, TabPolicy, []string{"▶cost", "from project · this session"}, nil},
+		{"an engine without modes", func(s *route.Snapshot) { s.RoutingMode, s.RoutingModeSource = "", "" }, TabPolicy, []string{"— the router predates modes"}, []string{"▶"}},
+		{"mode has no effect without a classifier", func(s *route.Snapshot) { s.ClassifierOff = true }, TabPolicy, []string{"no effect while the classifier is off"}, []string{"from default"}},
 		{"classifier healthy", func(*route.Snapshot) {}, TabPolicy, []string{"Classifier ● Jev · jev-1.13.0 · 388 ms median · 0 failures"}, nil},
 		{"classifier unreachable", func(s *route.Snapshot) {
 			s.Classifier = classifier.Health{Failures: 3, LastError: "http 503", PausedUntil: s.At.Add(42 * time.Second)}
@@ -662,7 +664,7 @@ func stateLostFixture() fleetState {
 func stateLostSnapshot() route.Snapshot {
 	s := fixture()
 	s.Mode, s.StateLost, s.Pin = route.ModePaused, true, nil
-	s.Worth = append([]route.Finding{{Kind: route.FindingState, Text: "state lost: saved pause, pin and preset unreadable; routing paused until resume"}}, s.Worth...)
+	s.Worth = append([]route.Finding{{Kind: route.FindingState, Text: "state lost: saved pauses and pins unreadable; routing paused until resume"}}, s.Worth...)
 	return s
 }
 
@@ -689,7 +691,7 @@ func fleetCases() []fleetCase {
 		{name: "usage", st: fleetFixture(), tab: TabUsage, widths: []int{80, 97}},
 		{name: "help", st: fleetFixture(), tab: TabSessions, widths: []int{80, 97}, mutate: func(v *view) { v.help = true }},
 		{name: "popover-pin", st: fleetFixture(), tab: TabSessions, widths: []int{97}, mutate: func(v *view) { v.popover = popPin }},
-		{name: "popover-preset", st: fleetFixture(), tab: TabPolicy, widths: []int{97}, mutate: func(v *view) { v.popover = popPreset }},
+		{name: "popover-mode", st: fleetFixture(), tab: TabPolicy, widths: []int{97}, mutate: func(v *view) { v.popover = popMode }},
 		{name: "toast", st: fleetFixture(), tab: TabSessions, widths: []int{97}, mutate: func(v *view) { v.toast = "pinned high for the next turn" }},
 		{name: "locked", st: lockedFixture(), tab: TabSessions, locked: true, widths: []int{80, 97}},
 		{name: "locked-policy", st: lockedFixture(), tab: TabPolicy, locked: true, widths: []int{80}},
@@ -1011,7 +1013,7 @@ func TestLayoutsFitTerminalHeight(t *testing.T) {
 						case "popover":
 							switch tab {
 							case TabPolicy:
-								v.popover = popPreset
+								v.popover = popMode
 							case TabSessions:
 								v.popover = popPin
 							default:
@@ -1065,7 +1067,7 @@ func TestLockedLayoutsFitTerminalHeight(t *testing.T) {
 							v.help = true
 						case "popover":
 							if tab == TabPolicy {
-								v.popover = popPreset
+								v.popover = popMode
 							} else {
 								v.popover = popPin
 							}

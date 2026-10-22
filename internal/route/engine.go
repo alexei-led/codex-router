@@ -23,8 +23,11 @@ import (
 )
 
 // Reasons the engine adds to policy's: activity moves inside a tier, a move
-// up on the turn's own tool calls, and a later step keeping the turn's route.
+// up on the turn's own tool calls, a later step keeping the turn's route, and
+// a routing mode's move inside a tier.
 const (
+	ReasonMode            policy.Reason = "mode"
+	ReasonModePending     policy.Reason = "mode-pending"
 	ReasonActivityUp      policy.Reason = "activity-up"
 	ReasonActivityDown    policy.Reason = "activity-down"
 	ReasonActivityPending policy.Reason = "activity-pending"
@@ -47,8 +50,8 @@ var (
 
 // Engine routes user steps. All state lives under mu; step serializes the
 // requests of one thread so a classifier call never runs under mu. Routing
-// state, tallies and decisions are per thread; paused, lost and the preset
-// (in cfg) are the home's.
+// state, tallies, decisions and routing modes are per thread; paused and lost
+// are the home's.
 type Engine struct {
 	cat          catalog.Source
 	ask          classifier.Asker
@@ -61,6 +64,11 @@ type Engine struct {
 	cwd          func(threadID string) string
 	saveIntent   func(Intent)
 	holdUnseeded bool
+	projectMode  func(threadID string) (config.RoutingMode, error)
+	loadMode     func(threadID string) config.RoutingMode
+	saveMode     func(threadID string, m config.RoutingMode)
+	// modeSave serializes mode saves; see storeMode.
+	modeSave sync.Mutex
 	// reviews counts background classifier reviews in flight.
 	reviews sync.WaitGroup
 
@@ -70,8 +78,6 @@ type Engine struct {
 	lru     *list.List
 	paused  bool // the whole home
 	lost    bool // the saved intent was unreadable; a home resume clears it
-	// presetSet: a command picked cfg.Preset, so the intent carries it.
-	presetSet bool
 	// latencies are the recent classifier answers' latencies.
 	latencies []time.Duration
 	seq       uint64 // the last snapshot's Seq
@@ -88,8 +94,12 @@ type thread struct {
 	model    string       // the last request's model
 	tier     config.Tier
 	activity config.Activity // the activity whose route runs, "" for the base route
-	state    policy.State
-	measured bool // a reply on this thread was observed
+	// routeMode is the routing mode the running route was chosen under. The
+	// route in use is its target for tier and activity; it changes only when
+	// a gate passes, not when the thread's mode does.
+	routeMode config.RoutingMode
+	state     policy.State
+	measured  bool // a reply on this thread was observed
 
 	codexTurn  string // the turn of the last user step, routed or not
 	turn       string
@@ -118,11 +128,14 @@ type thread struct {
 	pending     []config.Route // writes not echoed yet
 	footer      config.Route
 
-	paused     bool         // routing paused for this thread alone
-	held       bool         // seeded: keeps its route until a reply measures the cache
-	account    string       // the account hash the thread is bound to, "" until one is seen
-	pin        *config.Tier // the next turn's tier; its first step consumes it
-	lastActive time.Time    // the last user step or reply; zero until the first step
+	paused     bool               // routing paused for this thread alone
+	mode       config.RoutingMode // the session's routing mode override, "" for none
+	project    config.RoutingMode // the mode the project file set at the last turn's start
+	projectErr string             // why the project file was ignored, "" when it was not
+	held       bool               // seeded: keeps its route until a reply measures the cache
+	account    string             // the account hash the thread is bound to, "" until one is seen
+	pin        *config.Tier       // the next turn's tier; its first step consumes it
+	lastActive time.Time          // the last user step or reply; zero until the first step
 	stats      tally
 	recent     []Decision
 	last       *Decision
@@ -171,6 +184,9 @@ func New(d Deps) *Engine {
 		cwd:          d.Cwd,
 		saveIntent:   d.SaveIntent,
 		holdUnseeded: d.HoldUnseeded,
+		projectMode:  d.ProjectMode,
+		loadMode:     d.LoadMode,
+		saveMode:     d.SaveMode,
 		cfg:          d.Config,
 		threads:      map[string]*list.Element{},
 		lru:          list.New(),
@@ -265,9 +281,27 @@ type step struct {
 	opts     facts.Options
 	facts    facts.Facts
 	tokens   int
+	// mode is the thread's routing mode and source where it comes from;
+	// routeMode is the mode routes are aimed with: balanced on a pinned turn,
+	// since a pin bypasses the mode.
+	mode      config.RoutingMode
+	source    ModeSource
+	routeMode config.RoutingMode
 }
 
 func (s *step) sent() config.Effort { return s.req.Effort }
+
+// routeFor is the route the step's routing mode aims at for tier t and
+// activity a.
+func (s *step) routeFor(t config.Tier, a config.Activity) config.Route {
+	return s.routeIn(s.routeMode, t, a)
+}
+
+// routeIn is mode's target for tier t and activity a, over the catalog's
+// efforts per model.
+func (s *step) routeIn(mode config.RoutingMode, t config.Tier, a config.Activity) config.Route {
+	return target(s.cfg, mode, t, a, s.sent(), levelsIn(s.cat))
+}
 
 // Decide returns the rewrite for one request, or false to forward it
 // unchanged. Any panic or error forwards unchanged. Once ctx is done the
@@ -295,7 +329,7 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 		return responses.Rewrite{}, false
 	}
 
-	st, retried, old, picked := e.begin(th, req, m)
+	st, retried, old, picked := e.begin(th, req, m, e.prefetchProject(th, m))
 	if picked {
 		e.persist()
 		e.emitSnapshot(e.lockedSnapshot(key))
@@ -348,7 +382,7 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 // retry's, or a held turn's route), nil step when the request passes unchanged, a review the new turn
 // replaced, for the caller to stop outside the lock, and whether the request
 // showed a /model pick, for the caller to save.
-func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*step, *Decision, *review, bool) {
+func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, proj projectRead) (*step, *Decision, *review, bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	cfg := e.cfg
@@ -424,9 +458,14 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 	if _, ok := cat.GroupOf(req.Model); !ok {
 		return nil, nil, old, false
 	}
+	if first && proj.done {
+		e.setProject(th, proj)
+	}
+	mode, source := e.routingMode(th)
 	st := &step{
-		th: th, meta: m, req: req, fp: fp, cfg: cfg, policy: cfg.Effective(), cat: cat, now: now,
+		th: th, meta: m, req: req, fp: fp, cfg: cfg, policy: cfg.Effective(mode), cat: cat, now: now,
 		first: first, original: original, tokens: th.lastTotal,
+		mode: mode, source: source, routeMode: mode,
 		opts: facts.Options{
 			RecentTurns:  cfg.Context.RecentTurns,
 			MaxTextChars: cfg.Context.MaxTextChars,
@@ -438,7 +477,62 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta) (*s
 		// Consumed here, under the lock, so exactly one turn takes it.
 		st.pin, th.pin = th.pin, nil
 	}
+	if st.pin != nil || !first && th.turnPinned {
+		st.routeMode = config.ModeBalanced
+	}
 	return st, nil, old, false
+}
+
+// routingMode is th's routing mode and where it comes from: the session
+// override, the project file, the config, else balanced. Under e.mu.
+func (e *Engine) routingMode(th *thread) (config.RoutingMode, ModeSource) {
+	switch {
+	case th != nil && th.mode != "":
+		return th.mode, SourceSession
+	case th != nil && th.project != "":
+		return th.project, SourceProject
+	case e.cfg.Mode != "":
+		return e.cfg.Mode, SourceConfig
+	}
+	return config.ModeBalanced, SourceDefault
+}
+
+// projectRead is a project file read for one turn: done says it was read.
+type projectRead struct {
+	mode config.RoutingMode
+	err  error
+	done bool
+}
+
+// prefetchProject reads th's project file when m starts a turn, outside
+// e.mu: the file lives in a repository and may sit on a slow disk, so one
+// thread's read must not stall the others. The caller holds th.step, so the
+// turn cannot start between this check and begin.
+func (e *Engine) prefetchProject(th *thread, m responses.Meta) projectRead {
+	if e.projectMode == nil {
+		return projectRead{}
+	}
+	e.mu.Lock()
+	first := th.turn != m.TurnID
+	e.mu.Unlock()
+	if !first {
+		return projectRead{}
+	}
+	mode, err := e.projectMode(th.id)
+	return projectRead{mode: mode, err: err, done: true}
+}
+
+// setProject records the mode th's project file sets. An invalid file is
+// ignored, logged when its error changes, and shown as a finding. Under e.mu.
+func (e *Engine) setProject(th *thread, p projectRead) {
+	msg := ""
+	if p.err != nil {
+		msg = p.err.Error()
+		if msg != th.projectErr {
+			e.log.Warn("route project file ignored", "thread", th.id, "err", msg)
+		}
+	}
+	th.project, th.projectErr = p.mode, msg
 }
 
 // abandon drops a step whose ctx ended before it committed: the caller
@@ -536,13 +630,14 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		d.Why = whyText(d, st.cfg, st.tokens)
 		th.retries = appendCapped(th.retries, retry{st.fp, d}, retriesKept)
 		th.remember(d)
+		e.logDecision(d, nil)
 		return d, true
 	}
 	var c cell
 	if st.pin != nil {
 		state := th.state
 		state.Turn++
-		c = cell{tier: *st.pin, reason: policy.ReasonPinned, state: state}
+		c = cell{tier: *st.pin, reason: policy.ReasonPinned, state: state, mode: st.routeMode}
 		th.turnPinned = true
 	} else {
 		c = e.choose(st, e.incumbent(st), advice, false)
@@ -561,7 +656,7 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	th := st.th
-	cur := cell{tier: th.tier, activity: th.activity, reason: ReasonContinue, state: th.state}
+	cur := cell{tier: th.tier, activity: th.activity, mode: th.routeMode, reason: ReasonContinue, state: th.state}
 	reviewed := false
 	if r := th.review; r != nil && r.ready {
 		th.review = nil
@@ -648,7 +743,7 @@ func (r *review) stop(ctx context.Context) {
 func (e *Engine) finish(st *step, c cell) Decision {
 	th := st.th
 	cfg := st.cfg
-	routeFor := func(t config.Tier) config.Route { return resolve(cfg.RouteFor(t, c.activity), st.sent()) }
+	routeFor := func(t config.Tier) config.Route { return st.routeIn(c.mode, t, c.activity) }
 	window := e.window(st, routeFor)
 	d := e.base(st)
 	d.Tier, d.Reason, d.Estimate, d.Activity = c.tier, c.reason, c.estimate, label(c.activity, th.advice)
@@ -663,7 +758,10 @@ func (e *Engine) finish(st *step, c cell) Decision {
 		}
 		d.Route = routeFor(tier)
 	} else if fix, ok := e.upward(st); ok {
+		// fix is the baseline's configured pair: the thread runs balanced
+		// until a gate moves it, as after any other route it was sent.
 		d.Tier, d.Route, d.Reason, d.Estimate = cfg.Baseline, fix, policy.ReasonFit, nil
+		c.mode = config.ModeBalanced
 	} else {
 		d.Route, d.Reason, d.Estimate = st.original, refused, nil
 	}
@@ -676,7 +774,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	if th.hasSent {
 		prev = th.sent
 	}
-	th.tier, th.activity = d.Tier, c.activity
+	th.tier, th.activity, th.routeMode = d.Tier, c.activity, c.mode
 	th.requests++
 	tax := 0
 	if d.Route != prev {
@@ -703,9 +801,24 @@ func (e *Engine) finish(st *step, c cell) Decision {
 		th.lastWritten, th.wrote = d.Route, true
 	}
 	th.remember(d)
-	e.log.Info("route decision", "thread", d.ThreadID, "turn", d.TurnID, "step", d.Step, "tier", d.Tier,
-		"activity", d.Activity, "reason", d.Reason, "model", d.Route.Model, "effort", d.Route.Effort, "rewritten", d.Rewritten)
+	advice := c.advice
+	if advice == nil {
+		advice = th.advice // a later step runs on the turn's answer
+	}
+	e.logDecision(d, advice)
 	return d
+}
+
+// logDecision writes a decision's log line. classified is the classifier's
+// tier answer the decision runs on, empty when there is none.
+func (e *Engine) logDecision(d Decision, advice *classifier.Advice) {
+	classified := ""
+	if advice != nil {
+		classified = string(advice.Choice)
+	}
+	e.log.Info("route decision", "thread", d.ThreadID, "turn", d.TurnID, "step", d.Step, "tier", d.Tier,
+		"activity", d.Activity, "reason", d.Reason, "model", d.Route.Model, "effort", d.Route.Effort, "rewritten", d.Rewritten,
+		"mode", d.RoutingMode, "modeSource", d.RoutingModeSource, "classified", classified)
 }
 
 // window is a tier's context window under routeFor; a route the request may
@@ -724,6 +837,7 @@ func (e *Engine) base(st *step) Decision {
 	return Decision{
 		ThreadID: st.th.id, TurnID: st.meta.TurnID, Step: st.th.stepIndex,
 		Original: st.original, MidTurn: st.th.stepIndex > 0, At: st.now,
+		RoutingMode: st.mode, RoutingModeSource: st.source,
 	}
 }
 
@@ -850,6 +964,9 @@ func (e *Engine) thread(key string) *thread {
 // MaxThreads by the threads with intent.
 func (e *Engine) add(key string) *thread {
 	th := &thread{id: key, stats: newTally()}
+	if e.loadMode != nil {
+		th.mode = e.loadMode(key)
+	}
 	e.threads[key] = e.lru.PushFront(th)
 	for el := e.lru.Back(); el != nil && e.lru.Len() > MaxThreads; {
 		prev := el.Prev()

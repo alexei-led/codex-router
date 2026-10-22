@@ -57,7 +57,20 @@ func Default() Config {
 			ActivityMass:         0.6,
 			ContextFill:          0.8,
 		},
-		Preset:     PresetBalanced,
+		// The mode patches express a direction; they are not tuned against a
+		// representative workload.
+		Modes: Modes{
+			ModeCost: {Policy: PolicyPatch{
+				UpgradeVotes: ptr(3), UpgradeBase: ptr(0.85), JumpConfidence: ptr(0.98),
+				DowngradeVotes: ptr(1), DowngradeMass: ptr(0.8),
+				MinDwellRequests: ptr(4), EscalationHoldTurns: ptr(1),
+			}},
+			ModeQuality: {Policy: PolicyPatch{
+				UpgradeVotes: ptr(1), UpgradeBase: ptr(0.6), JumpConfidence: ptr(0.9),
+				DowngradeVotes: ptr(3), DowngradeMass: ptr(0.95),
+				MinDwellRequests: ptr(16), EscalationHoldTurns: ptr(4),
+			}},
+		},
 		Classifier: "jev",
 		Classifiers: map[string]Classifier{
 			"jev": {
@@ -113,32 +126,38 @@ func Default() Config {
 	}
 }
 
-// Effective returns Policy with the preset applied. Balanced keeps Policy as
-// configured; thrifty makes upgrades harder and downgrades easier; quality
-// does the opposite. Preset fields replace the configured values. The
-// claude-model-router has no named presets, only the policy fields these
-// adjust, so the values are new and chosen for direction, not ported.
-func (c Config) Effective() Policy {
+func ptr[T any](v T) *T { return &v }
+
+// Effective returns Policy with mode's patch applied: a field the patch sets
+// replaces the configured value. An empty mode is balanced.
+func (c Config) Effective(mode RoutingMode) Policy {
 	p := c.Policy
-	switch c.Preset {
-	case PresetThrifty:
-		p.UpgradeVotes = 3
-		p.UpgradeBase = 0.85
-		p.JumpConfidence = 0.98
-		p.DowngradeVotes = 1
-		p.DowngradeMass = 0.8
-		p.MinDwellRequests = 4
-		p.EscalationHoldTurns = 1
-	case PresetQuality:
-		p.UpgradeVotes = 1
-		p.UpgradeBase = 0.6
-		p.JumpConfidence = 0.9
-		p.DowngradeVotes = 3
-		p.DowngradeMass = 0.95
-		p.MinDwellRequests = 16
-		p.EscalationHoldTurns = 4
+	if mode == "" {
+		mode = ModeBalanced
 	}
+	m := c.Modes[mode].Policy
+	set(&p.UpgradeVotes, m.UpgradeVotes)
+	set(&p.UpgradeBase, m.UpgradeBase)
+	set(&p.UpgradeSlope, m.UpgradeSlope)
+	set(&p.UpgradePivotTokens, m.UpgradePivotTokens)
+	set(&p.JumpConfidence, m.JumpConfidence)
+	set(&p.DowngradeVotes, m.DowngradeVotes)
+	set(&p.DowngradeMass, m.DowngradeMass)
+	set(&p.DowngradeSlope, m.DowngradeSlope)
+	set(&p.DowngradePivotTokens, m.DowngradePivotTokens)
+	set(&p.ContinuationMass, m.ContinuationMass)
+	set(&p.EscalationHoldTurns, m.EscalationHoldTurns)
+	set(&p.ReviewEveryRequests, m.ReviewEveryRequests)
+	set(&p.MinDwellRequests, m.MinDwellRequests)
+	set(&p.ActivityMass, m.ActivityMass)
+	set(&p.ContextFill, m.ContextFill)
 	return p
+}
+
+func set[T any](dst *T, v *T) {
+	if v != nil {
+		*dst = *v
+	}
 }
 
 // RouteFor returns the route for a tier and activity. An activity override

@@ -1,6 +1,6 @@
 codex-router  6 sessions · 2 homes · Jev ready  Sessions  Policy  Usage   ? help
 
- Preset      thrifty  ▶balanced   quality      for every session of home default
+ Mode        cost  ▶balanced   quality   default     from default · this session
  Classifier ● Jev · jev-1.13.0 · 388 ms median · 0 failures
  Routes     micro  gpt-6-luna · low      low    gpt-6-luna · medium
             medium gpt-6-sol · medium    high   gpt-6.1-sol · high
@@ -9,4 +9,4 @@ codex-router  6 sessions · 2 homes · Jev ready  Sessions  Policy  Usage   ? he
             min dwell 8 requests
             escalation hold 2 turns · review every 6 requests · jump bar 0.85
 
-↑↓ scroll · s preset · space pause · P pause home · tab views · q quit · ? help
+↑↓ scroll · s mode · space pause · P pause home · tab views · q quit · ? help

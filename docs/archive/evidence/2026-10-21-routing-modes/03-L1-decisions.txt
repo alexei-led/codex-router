@@ -1,0 +1,32 @@
+   DEBUG catalog
+   DEBUG models
+16:40:03 0 low explore downgrade gpt-6-luna high balanced default micro
+   DEBUG rewrite
+   DEBUG responses
+   DEBUG responses
+16:40:11 1 low explore continue gpt-6-luna high balanced default -
+   DEBUG rewrite
+   DEBUG stream-closed-after-completed
+   DEBUG responses
+16:40:17 2 low explore continue gpt-6-luna high balanced default -
+   DEBUG rewrite
+   DEBUG stream-closed-after-completed
+   DEBUG responses
+16:41:00 0 low explore downgrade-held gpt-6-luna high cost session micro
+   DEBUG responses
+16:41:47 0 low code mode gpt-6-luna medium cost session low
+   DEBUG rewrite
+   DEBUG stream-closed-after-completed
+   DEBUG responses
+16:41:52 1 low code continue gpt-6-luna medium cost session -
+   DEBUG rewrite
+   DEBUG stream-closed-after-completed
+   DEBUG responses
+16:41:56 2 low code continue gpt-6-luna medium cost session -
+   DEBUG rewrite
+   DEBUG stream-closed-after-completed
+   DEBUG responses
+16:42:01 3 low code continue gpt-6-luna medium cost session -
+   DEBUG rewrite
+   DEBUG stream-closed-after-completed
+   DEBUG responses

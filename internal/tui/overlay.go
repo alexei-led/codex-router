@@ -6,6 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/alexei-led/codex-router/internal/route"
 )
 
 const (
@@ -113,8 +115,8 @@ func (c *canvas) helpLines() []string {
 
 func (c *canvas) popoverAnchor(v view) (anchor, bool) {
 	name := "pin"
-	if v.popover == popPreset {
-		name = "preset"
+	if v.popover == popMode {
+		name = "mode"
 	}
 	a, ok := c.anchors[name]
 	return a, ok
@@ -136,8 +138,12 @@ func (c *canvas) popover(v view, a anchor, footerRow int) (*lipgloss.Layer, []zo
 		}
 		choice("0", "none", roleMuted, action{kind: actUnpin})
 	} else {
-		for i, p := range Presets {
-			choice(strconv.Itoa(i+1), string(p), roleAccent, action{kind: actPreset, preset: p})
+		for i, mode := range Modes {
+			r := roleAccent
+			if mode == route.ModeDefault {
+				r = roleMuted
+			}
+			choice(strconv.Itoa(i+1), string(mode), r, action{kind: actMode, mode: mode})
 		}
 	}
 	pc := c.child(c.width)

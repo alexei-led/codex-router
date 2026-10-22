@@ -55,7 +55,30 @@
     "activityMass": 0.6,
     "contextFill": 0.8
   },
-  "preset": "balanced",
+  "modes": {
+    "cost": {
+      "policy": {
+        "upgradeVotes": 3,
+        "upgradeBase": 0.85,
+        "jumpConfidence": 0.98,
+        "downgradeVotes": 1,
+        "downgradeMass": 0.8,
+        "escalationHoldTurns": 1,
+        "minDwellRequests": 4
+      }
+    },
+    "quality": {
+      "policy": {
+        "upgradeVotes": 1,
+        "upgradeBase": 0.6,
+        "jumpConfidence": 0.9,
+        "downgradeVotes": 3,
+        "downgradeMass": 0.95,
+        "escalationHoldTurns": 4,
+        "minDwellRequests": 16
+      }
+    }
+  },
   "classifier": "jev",
   "classifiers": {
     "clef": {

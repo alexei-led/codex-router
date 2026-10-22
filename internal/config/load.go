@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Path returns the config file location: $XDG_CONFIG_HOME/codex-router/config.json,
@@ -41,6 +42,9 @@ func Load(path string) (Config, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
+		if strings.Contains(err.Error(), `unknown field "preset"`) {
+			err = fmt.Errorf("%w (%s)", err, presetRenamed)
+		}
 		return Config{}, fmt.Errorf("parse %s: %w", path, err)
 	}
 	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
@@ -70,6 +74,29 @@ func (cs *Classifiers) UnmarshalJSON(b []byte) error {
 			return fmt.Errorf("classifiers.%s: %w", name, err)
 		}
 		(*cs)[name] = c
+	}
+	return nil
+}
+
+// UnmarshalJSON decodes each entry over the one already in ms, so a file
+// changes only the patch fields it names; null clears a built-in field.
+// Unknown fields are errors.
+func (ms *Modes) UnmarshalJSON(b []byte) error {
+	var raw map[RoutingMode]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if *ms == nil {
+		*ms = Modes{}
+	}
+	for mode, msg := range raw {
+		m := (*ms)[mode]
+		dec := json.NewDecoder(bytes.NewReader(msg))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&m); err != nil {
+			return fmt.Errorf("modes.%s: %w", mode, err)
+		}
+		(*ms)[mode] = m
 	}
 	return nil
 }

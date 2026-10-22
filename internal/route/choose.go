@@ -10,12 +10,14 @@ import (
 	"github.com/alexei-led/codex-router/internal/policy"
 )
 
-// cell is a tier and the activity whose route runs at it, with the policy's
-// reason and next state. Ported from claude-model-router lib/route.mjs
-// (routeTurn, decideCell) with taxes in uncached tokens.
+// cell is a tier and the activity whose route runs at it, under a routing
+// mode, with the policy's reason and next state. Ported from
+// claude-model-router lib/route.mjs (routeTurn, decideCell) with taxes in
+// uncached tokens.
 type cell struct {
 	tier     config.Tier
 	activity config.Activity
+	mode     config.RoutingMode // the mode the cell's route is aimed with
 	reason   policy.Reason
 	state    policy.State
 	estimate *policy.Estimate
@@ -26,12 +28,15 @@ type cell struct {
 type running struct {
 	tier     config.Tier
 	activity config.Activity
+	mode     config.RoutingMode
 	route    config.Route
 }
 
+// incumbent is the route in use: aimed with the mode it was chosen under, not
+// the thread's mode now, so a mode change waits for a gate.
 func (e *Engine) incumbent(st *step) running {
 	th := st.th
-	return running{tier: th.tier, activity: th.activity, route: resolve(st.cfg.RouteFor(th.tier, th.activity), st.sent())}
+	return running{tier: th.tier, activity: th.activity, mode: th.routeMode, route: st.routeIn(th.routeMode, th.tier, th.activity)}
 }
 
 // downAllowed is the gate for a cheaper route on the same task: the dwell has
@@ -42,12 +47,14 @@ func downAllowed(st *step) bool {
 }
 
 // choose runs the policy for the turn's activity, then, when the tier stays
-// but the route would change, the lateral rule.
+// but the route would change, a gate: the tier-switch gate when a routing
+// mode aimed the target or the incumbent off the configured route, else the
+// lateral rule for activities.
 func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTurn bool) cell {
 	cfg, p, th := st.cfg, st.policy, st.th
 	down := downAllowed(st)
-	act := chooseActivity(cfg, p, advice, inc, st.sent(), midTurn, down)
-	routeFor := func(t config.Tier) config.Route { return resolve(cfg.RouteFor(t, act), st.sent()) }
+	act := chooseActivity(cfg, p, advice, inc, func(t config.Tier, a config.Activity) config.Route { return st.routeFor(t, a) }, midTurn, down)
+	routeFor := func(t config.Tier) config.Route { return st.routeFor(t, act) }
 	var escalate func(config.Tier) (config.Tier, bool)
 	if act != "" {
 		// With an activity, a failure moves to the lowest tier whose route is
@@ -66,17 +73,55 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	if st.facts.Failure != nil {
 		signature = st.facts.Failure.Signature
 	}
-	r := policy.Decide(policy.Input{
+	in := policy.Input{
 		Policy: p, Baseline: cfg.Baseline, Incumbent: inc.tier, Advice: advice,
 		FailureSignature: signature, MidTurn: midTurn, DownAllowed: down, Fresh: !th.measured, State: th.state,
 		TaxTokens: func(t config.Tier) int { return e.ledger.SwitchTax(th.id, routeFor(t).Model, st.tokens, st.now) },
 		Escalate:  escalate,
-	})
-	c := cell{tier: r.Tier, activity: act, reason: r.Reason, state: r.State, estimate: r.Estimate, advice: advice}
+	}
+	r := policy.Decide(in)
+	c := cell{tier: r.Tier, activity: act, mode: st.routeMode, reason: r.Reason, state: r.State, estimate: r.Estimate, advice: advice}
 	to := routeFor(r.Tier)
 	if r.Tier != inc.tier || to == inc.route {
 		return c
 	}
+	// A move is the mode's when its target or the incumbent sits off the
+	// configured route, so a move back to balanced passes the gate too.
+	base := resolve(cfg.RouteFor(r.Tier, act), st.sent())
+	if to != base || inc.route != resolve(cfg.RouteFor(inc.tier, inc.activity), st.sent()) {
+		o, ok := modeOrder(cfg, to, inc.route)
+		tax := e.ledger.SwitchTax(th.id, to.Model, st.tokens, st.now)
+		move, reason, est := policy.Lateral(in, r, tax, ok && o < 0)
+		switch {
+		case move:
+			reason = ReasonMode
+		case reason == policy.ReasonUpgradePending || reason == policy.ReasonDowngradePending:
+			reason = ReasonModePending
+		}
+		if move {
+			c.reason, c.estimate = reason, est
+			return c
+		}
+		// While the mode's move waits, the balanced pair still moves by
+		// today's activity rule toward the mode's side, so quality never runs
+		// weaker than balanced, nor cost stronger. Nothing else moves before
+		// the gate: not quality down, not cost up, not a return to balanced.
+		ob, okb := modeOrder(cfg, base, inc.route)
+		toward := (st.routeMode == config.ModeQuality && ob > 0) || (st.routeMode == config.ModeCost && ob < 0)
+		if ok && okb && toward && (ob > 0) == (o > 0) {
+			c.mode = config.ModeBalanced
+			return e.activityMove(st, c, inc, base, act, advice, r.Reason == policy.ReasonHold)
+		}
+		c.activity, c.mode = inc.activity, inc.mode
+		c.reason, c.estimate = reason, est
+		return c
+	}
+	return e.activityMove(st, c, inc, to, act, advice, r.Reason == policy.ReasonHold)
+}
+
+// activityMove is today's same-tier rule: c's route to moves on the
+// activity's probability mass, or the incumbent's pair stays.
+func (e *Engine) activityMove(st *step, c cell, inc running, to config.Route, act config.Activity, advice *classifier.Advice, hold bool) cell {
 	mass := 1.0 // returning to the base route needs no evidence
 	if act != "" {
 		mass = 0
@@ -84,9 +129,9 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 			mass = advice.Activity.Probabilities[act]
 		}
 	}
-	move, reason, est := e.lateral(st, inc.route, to, mass, r.Reason == policy.ReasonHold)
+	move, reason, est := e.lateral(st, inc.route, to, mass, hold)
 	if !move {
-		c.activity = inc.activity
+		c.activity, c.mode = inc.activity, inc.mode
 	}
 	c.reason, c.estimate = reason, est
 	return c
@@ -95,14 +140,16 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 // observedMove moves a turn up once its tool calls show an activity whose
 // route, at the tier the context fits, is stronger than the running one. The
 // tools are the evidence, so the move needs no classifier probability. Only
-// up. Ported from lib/route.mjs observedMove.
+// up. It aims with the mode the running route was aimed with: a mode switched
+// mid-turn moves the route only through the gate. Ported from lib/route.mjs
+// observedMove.
 func (e *Engine) observedMove(st *step, cur cell) cell {
 	act := observedActivity(st.facts.Observed)
 	if act == "" || act == cur.activity {
 		return cur
 	}
-	from := resolve(st.cfg.RouteFor(cur.tier, cur.activity), st.sent())
-	routeFor := func(t config.Tier) config.Route { return resolve(st.cfg.RouteFor(t, act), st.sent()) }
+	from := st.routeIn(cur.mode, cur.tier, cur.activity)
+	routeFor := func(t config.Tier) config.Route { return st.routeIn(cur.mode, t, act) }
 	tier, fits := policy.FitTier(cur.tier, st.tokens, e.window(st, routeFor), st.policy.ContextFill)
 	if !fits {
 		return cur
@@ -162,7 +209,7 @@ func (e *Engine) lateral(st *step, from, to config.Route, mass float64, hold boo
 // ActivityMass. On the same task (a review inside a turn, or a continuation
 // prompt) a stronger route is taken at once, a cheaper one only at
 // DowngradeMass once the dwell and a passed check allow it.
-func chooseActivity(cfg config.Config, p config.Policy, a *classifier.Advice, inc running, sent config.Effort, midTurn, down bool) config.Activity {
+func chooseActivity(cfg config.Config, p config.Policy, a *classifier.Advice, inc running, routeFor func(config.Tier, config.Activity) config.Route, midTurn, down bool) config.Activity {
 	if a == nil || a.Activity == nil {
 		return inc.activity
 	}
@@ -180,7 +227,7 @@ func chooseActivity(cfg config.Config, p config.Policy, a *classifier.Advice, in
 		}
 		return ""
 	}
-	o, ok := compareRoutes(cfg, resolve(cfg.RouteFor(inc.tier, label), sent), inc.route)
+	o, ok := compareRoutes(cfg, routeFor(inc.tier, label), inc.route)
 	if ok && o > 0 {
 		return label
 	}

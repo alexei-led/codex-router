@@ -25,35 +25,36 @@ func kv(name string) seg { return plain(fmt.Sprintf(" %-*s", kvWidth-1, name)) }
 
 func blankKV() seg { return plain(strings.Repeat(" ", kvWidth)) }
 
-// policy is the preset, the classifier, the routes of each tier and the
-// thresholds of the focused session's home.
+// policy is the focused session's routing mode, the classifier, the routes
+// of each tier under that mode and the thresholds.
 func (c *canvas) policy(v view) {
 	s := v.snap
-	homeName := "this home"
-	if v.fleet != nil {
-		if f, ok := v.fleet.focused(); ok {
-			h, _ := v.fleet.homeOf(f.Home)
-			homeName = "home " + h.home.Name
-		}
-	}
-	c.presetRow(s, homeName)
+	c.modeRow(s)
 	c.classifierRow(s)
 	c.routesRows(s)
 	c.switchingRows(s.Policy)
 }
 
-func (c *canvas) presetRow(s route.Snapshot, homeName string) {
-	segs := []seg{kv("Preset")}
-	c.anchors["preset"] = anchor{row: len(c.out), x: segsWidth(segs)}
-	for _, p := range Presets {
-		b := seg{text: " " + string(p) + "  ", role: roleAccent}
-		if p == s.Preset {
-			b = seg{text: "▶" + string(p) + "  ", role: roleAccent, bold: true}
+// modeRow is a button per mode, the session's marked, and where it comes
+// from. An engine older than routing modes sends no mode.
+func (c *canvas) modeRow(s route.Snapshot) {
+	segs := []seg{kv("Mode")}
+	c.anchors["mode"] = anchor{row: len(c.out), x: segsWidth(segs)}
+	for _, mode := range Modes {
+		b := seg{text: " " + string(mode) + "  ", role: roleAccent}
+		switch mode {
+		case route.ModeDefault:
+			b.role = roleMuted
+		case s.RoutingMode:
+			b = seg{text: "▶" + string(mode) + "  ", role: roleAccent, bold: true}
 		}
-		segs = append(segs, clickable(b, action{kind: actPreset, preset: p}))
+		segs = append(segs, clickable(b, action{kind: actMode, mode: mode}))
 	}
-	right := []seg{dim("for every session of " + homeName)}
-	if s.ClassifierOff {
+	right := []seg{dim("from " + string(s.RoutingModeSource) + " · this session")}
+	switch {
+	case s.RoutingMode == "":
+		right = []seg{dim("— the router predates modes")}
+	case s.ClassifierOff:
 		right = []seg{col(roleWarn, "no effect while the classifier is off")}
 	}
 	c.split(segs, right)

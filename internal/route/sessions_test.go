@@ -543,7 +543,8 @@ func TestApplyRejectsBadScopes(t *testing.T) {
 		{"unpin without a session", Command{Op: OpUnpin}},
 		{"session pause without a session", Command{Op: OpPause, Scope: ScopeSession}},
 		{"session resume without a session", Command{Op: OpResume, Scope: ScopeSession}},
-		{"preset on a session", Command{Op: OpPreset, Session: "a", Preset: config.PresetQuality}},
+		{"mode on the home", Command{Op: OpMode, Scope: ScopeHome, Mode: config.ModeQuality}},
+		{"mode without a session", Command{Op: OpMode, Mode: config.ModeQuality}},
 		{"unknown scope", Command{Op: OpPause, Scope: "galaxy"}},
 	}
 	for _, tt := range tests {
@@ -552,7 +553,7 @@ func TestApplyRejectsBadScopes(t *testing.T) {
 			if err := h.engine.Apply(tt.cmd); err == nil {
 				t.Fatalf("Apply(%+v) = nil, want an error", tt.cmd)
 			}
-			if s := h.engine.Snapshot(); s.Mode != ModeOn || s.Preset != config.PresetBalanced {
+			if s := h.engine.Snapshot(); s.Mode != ModeOn || s.RoutingMode != config.ModeBalanced {
 				t.Fatalf("a rejected command changed state: %+v", s)
 			}
 		})

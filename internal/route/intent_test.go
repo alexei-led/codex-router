@@ -53,11 +53,10 @@ func TestIntentSurvivesARestartAndLearnedStateDoesNot(t *testing.T) {
 	h.engine.SettingsUpdated("manual", config.Route{Model: "gpt-6-sol", Effort: config.EffortLow})
 	h.apply(Command{Op: OpPin, Session: "pinned", Tier: config.TierHigh})
 	h.apply(Command{Op: OpPause, Session: "paused"})
-	h.apply(Command{Op: OpPreset, Preset: config.PresetQuality, Scope: ScopeHome})
 	h.apply(Command{Op: OpPause, Scope: ScopeHome})
 
 	saved := h.engine.Intent()
-	want := Intent{Paused: true, Preset: config.PresetQuality, Threads: map[string]ThreadIntent{
+	want := Intent{Paused: true, Threads: map[string]ThreadIntent{
 		"manual": {Manual: true},
 		"pinned": {Pin: new(config.TierHigh)},
 		"paused": {Paused: true},
@@ -73,8 +72,8 @@ func TestIntentSurvivesARestartAndLearnedStateDoesNot(t *testing.T) {
 	if s := r.engine.SnapshotFor("routed"); s.Stats.Replies != 0 || s.Last != nil || len(s.Recent) != 0 || s.Mode != ModePaused {
 		t.Fatalf("routed thread after restart = %+v, want no learned state", s)
 	}
-	if s := r.engine.SnapshotFor("manual"); s.Mode != ModePaused || s.Preset != config.PresetQuality {
-		t.Fatalf("manual thread under the home pause = mode %s preset %s", s.Mode, s.Preset)
+	if s := r.engine.SnapshotFor("manual"); s.Mode != ModePaused {
+		t.Fatalf("manual thread under the home pause = mode %s", s.Mode)
 	}
 
 	r.asker.script(answer(tier("low", 0.97)))
@@ -94,50 +93,67 @@ func TestIntentSurvivesARestartAndLearnedStateDoesNot(t *testing.T) {
 
 func TestRestoreDropsInvalidIntent(t *testing.T) {
 	bad := config.Tier("galactic")
-	in := Intent{Preset: "frugal", Threads: map[string]ThreadIntent{"a": {Pin: &bad}, "": {Paused: true}}}
+	in := Intent{Threads: map[string]ThreadIntent{"a": {Pin: &bad}, "": {Paused: true}}}
 
 	h := newHarness(t, testConfig(), func(d *Deps) { d.Intent = in })
 
 	if got := withoutRev(h.engine.Intent()); !reflect.DeepEqual(got, Intent{}) {
 		t.Fatalf("intent = %+v, want none", got)
 	}
-	if s := h.engine.Snapshot(); s.Preset != config.PresetBalanced {
-		t.Fatalf("preset = %s, want the config's", s.Preset)
-	}
 }
 
-func TestRestartKeepsOnlyAPresetACommandSet(t *testing.T) {
+// modeStore is a session mode store in memory, for Deps.LoadMode and SaveMode.
+type modeStore struct {
+	mu    sync.Mutex
+	modes map[string]config.RoutingMode
+}
+
+func (s *modeStore) load(id string) config.RoutingMode {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.modes[id]
+}
+
+func (s *modeStore) save(id string, m config.RoutingMode) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.modes == nil {
+		s.modes = map[string]config.RoutingMode{}
+	}
+	if m == "" {
+		delete(s.modes, id)
+		return
+	}
+	s.modes[id] = m
+}
+
+func (s *modeStore) deps(d *Deps) { d.LoadMode, d.SaveMode = s.load, s.save }
+
+func TestSessionModeSurvivesARestartAndANewThreadDoesNotInheritIt(t *testing.T) {
+	store := &modeStore{}
+	h := newHarness(t, testConfig(), store.deps)
+	h.apply(Command{Op: OpMode, Session: "a", Mode: config.ModeCost})
+	h.apply(Command{Op: OpMode, Session: "b", Mode: config.ModeQuality})
+	h.apply(Command{Op: OpMode, Session: "b", Mode: ModeDefault})
+
+	r := newHarness(t, testConfig(), store.deps)
 	cases := []struct {
-		name      string
-		command   config.Preset // "" sends no preset command
-		want      config.Preset
-		wantSaved config.Preset
+		thread string
+		mode   config.RoutingMode
+		source ModeSource
 	}{
-		{"the config's preset follows a config edit", "", config.PresetQuality, ""},
-		{"a commanded preset survives", config.PresetThrifty, config.PresetThrifty, config.PresetThrifty},
+		{"a", config.ModeCost, SourceSession},
+		{"b", config.ModeBalanced, SourceDefault},
+		{"new", config.ModeBalanced, SourceDefault},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			saved := &savedIntents{}
-			h := newHarness(t, testConfig(), func(d *Deps) { d.SaveIntent = saved.save })
-			if tc.command != "" {
-				h.apply(Command{Op: OpPreset, Preset: tc.command, Scope: ScopeHome})
-			}
-			h.apply(Command{Op: OpPause, Session: "a"})
-
-			edited := testConfig()
-			edited.Preset = config.PresetQuality
-			again := &savedIntents{}
-			r := newHarness(t, edited, func(d *Deps) { d.Intent, d.SaveIntent = saved.last(t), again.save })
-			r.apply(Command{Op: OpResume, Session: "a"})
-
-			if s := r.engine.Snapshot(); s.Preset != tc.want {
-				t.Fatalf("preset after restart = %s, want %s", s.Preset, tc.want)
-			}
-			if p := again.last(t).Preset; p != tc.wantSaved {
-				t.Fatalf("saved preset after restart = %q, want %q", p, tc.wantSaved)
-			}
-		})
+		r.firstStep(tc.thread, tc.thread+"1")
+		if s := r.engine.SnapshotFor(tc.thread); s.RoutingMode != tc.mode || s.RoutingModeSource != tc.source {
+			t.Errorf("%s after restart: %s (%s), want %s (%s)", tc.thread, s.RoutingMode, s.RoutingModeSource, tc.mode, tc.source)
+		}
+	}
+	if _, ok := store.modes["b"]; ok {
+		t.Error("default left a saved override")
 	}
 }
 
@@ -168,9 +184,10 @@ func TestIntentIsSavedOnEveryChange(t *testing.T) {
 	if !saved.last(t).Threads["a"].Manual {
 		t.Fatalf("after a /model pick: %+v", saved.last(t))
 	}
-	h.apply(Command{Op: OpPreset, Preset: config.PresetThrifty})
-	if in := saved.last(t); in.Preset != config.PresetThrifty {
-		t.Fatalf("after preset: %+v", in)
+	n := saved.count()
+	h.apply(Command{Op: OpMode, Session: "a", Mode: config.ModeCost})
+	if saved.count() != n {
+		t.Fatalf("a mode command saved the intent; the mode store keeps it")
 	}
 
 	for i := 1; i < len(saved.all); i++ {
@@ -548,7 +565,6 @@ func TestLostIntentSurvivesASaveAndRestart(t *testing.T) {
 	h := newHarness(t, testConfig(), func(d *Deps) { d.IntentLost, d.SaveIntent = true, saved.save })
 	h.apply(Command{Op: OpPause, Session: "a"})
 	h.apply(Command{Op: OpPin, Session: "b", Tier: config.TierHigh})
-	h.apply(Command{Op: OpPreset, Preset: config.PresetQuality, Scope: ScopeHome})
 	h.engine.SettingsUpdated("c", config.Route{Model: "gpt-6-sol", Effort: config.EffortLow})
 
 	if n := saved.count(); n != 0 {
@@ -561,7 +577,7 @@ func TestLostIntentSurvivesASaveAndRestart(t *testing.T) {
 	h.apply(Command{Op: OpResume, Scope: ScopeHome})
 
 	got := saved.last(t)
-	if got.Paused || got.Preset != config.PresetQuality || !got.Threads["a"].Paused {
+	if got.Paused || !got.Threads["a"].Paused {
 		t.Fatalf("intent saved at the home resume = %+v, want the commands made while lost", got)
 	}
 }

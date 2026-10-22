@@ -65,7 +65,7 @@ func plainView(m *model) view {
 
 func TestZonesCoverTheirLabels(t *testing.T) {
 	m, _, _ := fleetPanel(t)
-	m.st.snap = &route.Snapshot{Mode: route.ModeOn, Preset: config.PresetBalanced, FooterSynced: true}
+	m.st.snap = &route.Snapshot{Mode: route.ModeOn, RoutingMode: config.ModeBalanced, RoutingModeSource: route.SourceDefault, FooterSynced: true}
 	tests := []struct {
 		name    string
 		tab     Tab
@@ -86,18 +86,20 @@ func TestZonesCoverTheirLabels(t *testing.T) {
 			{kind: actKey, key: handle(keys.Next)}:   "tab views",
 		}},
 		{"policy", TabPolicy, popNone, map[action]string{
-			{kind: actPreset, preset: config.PresetThrifty}: "thrifty",
-			{kind: actPreset, preset: config.PresetQuality}: "quality",
-			{kind: actKey, key: handle(keys.Preset)}:        "s preset",
+			{kind: actMode, mode: config.ModeCost}:    "cost",
+			{kind: actMode, mode: config.ModeQuality}: "quality",
+			{kind: actMode, mode: route.ModeDefault}:  "default",
+			{kind: actKey, key: handle(keys.Mode)}:    "s mode",
 		}},
 		{"pin popover", TabSessions, popPin, map[action]string{
 			{kind: actPin, tier: config.TierMicro}:  "1 micro",
 			{kind: actPin, tier: config.TierMedium}: "3 medium",
 			{kind: actUnpin}:                        "0 none",
 		}},
-		{"preset popover", TabPolicy, popPreset, map[action]string{
-			{kind: actPreset, preset: config.PresetThrifty}:  "1 thrifty",
-			{kind: actPreset, preset: config.PresetBalanced}: "2 balanced",
+		{"mode popover", TabPolicy, popMode, map[action]string{
+			{kind: actMode, mode: config.ModeCost}:     "1 cost",
+			{kind: actMode, mode: config.ModeBalanced}: "2 balanced",
+			{kind: actMode, mode: route.ModeDefault}:   "4 default",
 		}},
 	}
 	for _, tt := range tests {
@@ -175,8 +177,9 @@ func TestClicksSendCommands(t *testing.T) {
 		{"the pinned tier unpins", func(s *route.Snapshot) { s.Pin = &low }, TabSessions, popNone, action{kind: actPin, tier: config.TierLow}, route.Command{Op: route.OpUnpin, Session: testSession}},
 		{"a popover choice pins", func(*route.Snapshot) {}, TabSessions, popPin, action{kind: actPin, tier: config.TierMedium}, route.Command{Op: route.OpPin, Session: testSession, Tier: config.TierMedium}},
 		{"the popover's none unpins", func(s *route.Snapshot) { s.Pin = &low }, TabSessions, popPin, action{kind: actUnpin}, route.Command{Op: route.OpUnpin, Session: testSession}},
-		{"preset", func(*route.Snapshot) {}, TabPolicy, popNone, action{kind: actPreset, preset: config.PresetThrifty}, route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetThrifty}},
-		{"a preset popover choice", func(*route.Snapshot) {}, TabPolicy, popPreset, action{kind: actPreset, preset: config.PresetQuality}, route.Command{Op: route.OpPreset, Scope: route.ScopeHome, Preset: config.PresetQuality}},
+		{"mode", func(*route.Snapshot) {}, TabPolicy, popNone, action{kind: actMode, mode: config.ModeCost}, route.Command{Op: route.OpMode, Session: testSession, Mode: config.ModeCost}},
+		{"a mode popover choice", func(*route.Snapshot) {}, TabPolicy, popMode, action{kind: actMode, mode: config.ModeQuality}, route.Command{Op: route.OpMode, Session: testSession, Mode: config.ModeQuality}},
+		{"default clears the session mode", func(*route.Snapshot) {}, TabPolicy, popNone, action{kind: actMode, mode: route.ModeDefault}, route.Command{Op: route.OpMode, Session: testSession, Mode: route.ModeDefault}},
 		{"the footer's pause", func(*route.Snapshot) {}, TabSessions, popNone, action{kind: actKey, key: handle(keys.Toggle)}, route.Command{Op: route.OpPause, Session: testSession}},
 		{"the footer's home pause", func(*route.Snapshot) {}, TabUsage, popNone, action{kind: actKey, key: handle(keys.Home)}, route.Command{Op: route.OpPause, Scope: route.ScopeHome}},
 	}

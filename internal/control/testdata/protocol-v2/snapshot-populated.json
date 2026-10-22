@@ -4,7 +4,6 @@
   "At": "2024-03-04T05:06:07Z",
   "Mode": "paused",
   "StateLost": true,
-  "Preset": "quality",
   "Pin": "high",
   "Baseline": {
     "model": "gpt-5-codex"
@@ -52,7 +51,9 @@
       ]
     },
     "MidTurn": true,
-    "At": "2024-03-04T05:06:07Z"
+    "At": "2024-03-04T05:06:07Z",
+    "RoutingMode": "cost",
+    "RoutingModeSource": "session"
   },
   "Recent": [
     {
@@ -173,5 +174,8 @@
       "Kind": "cache",
       "Text": "cache reuse 80%, switching wrote 200 uncached tokens"
     }
-  ]
+  ],
+  "RoutingMode": "cost",
+  "RoutingModeSource": "session",
+  "ProjectError": "/h/api/.codex/router.json: unknown field \"routes\""
 }

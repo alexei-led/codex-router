@@ -10,7 +10,8 @@ These records describe development experiments and live checks. Use the [user gu
 | [Service probes](evidence/2026-10-14-multi-session/gate/report.md) | Codex daemon behavior and socket activation assumptions. |
 | [Five plain Codex sessions](evidence/2026-10-14-multi-session/stage2/report.md) | Setup, service restarts, failure recovery and undo. |
 | [Model evaluation](evidence/2026-10-15-openai-defaults/report.md) | Bounded tasks used to choose default routes. |
+| [Routing modes live check](evidence/2026-10-21-routing-modes/report.md) | Mode switches, pins, resume, project files, the sandbox, a live Jev run and one task per mode. |
 
 Raw captures and scripts remain with the reports to support their findings. They include test prompts, local paths and session identifiers. They are not examples to paste into a normal Codex home.
 
-Completed implementation plans were removed from the working tree. Git history retains them. Linux services have unit coverage, but these records do not contain a Linux live run.
+Earlier completed plans were removed from the working tree; Git history retains them. Later ones are kept in [plans](plans/). Linux services have unit coverage, but these records do not contain a Linux live run.

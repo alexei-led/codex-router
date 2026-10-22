@@ -28,6 +28,7 @@
   <text x="16.0" y="161.0" fill="#d0d0d0" xml:space="preserve">    exit code: 1</text>
   <text x="468.4" y="161.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <text x="491.8" y="161.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">codex-router · main</text>
+  <text x="944.2" y="161.0" fill="#878787" xml:space="preserve">balanced (default) · </text>
   <text x="1108.0" y="161.0" fill="#878787" xml:space="preserve">default · 3fa9c0d1</text>
   <text x="468.4" y="180.0" fill="#2e3340" xml:space="preserve"> │ </text>
   <rect x="491.8" y="166.0" width="46.8" height="19" fill="#d75f87"/>

@@ -28,8 +28,8 @@ func (c Config) Validate() error {
 	if err := c.Policy.validate(); err != nil {
 		return err
 	}
-	if !slices.Contains([]Preset{PresetThrifty, PresetBalanced, PresetQuality}, c.Preset) {
-		return fmt.Errorf("preset: unknown preset %q", c.Preset)
+	if err := c.validateModes(); err != nil {
+		return err
 	}
 	if err := c.validateClassifiers(); err != nil {
 		return err
@@ -42,6 +42,29 @@ func (c Config) Validate() error {
 	}
 	if c.Proxy.Port < 0 || c.Proxy.Port > 65535 {
 		return fmt.Errorf("proxy.port: %d out of range 0-65535", c.Proxy.Port)
+	}
+	return nil
+}
+
+// presetRenamed is the hint for a v0.8 config: v0.9.0 renamed the key.
+const presetRenamed = "preset was renamed to mode in v0.9.0 (thrifty is now cost); see docs/configuration.md"
+
+func (c Config) validateModes() error {
+	if c.Mode != "" && !slices.Contains(RoutingModes, c.Mode) {
+		if c.Mode == "thrifty" {
+			return fmt.Errorf("mode: unknown mode %q (%s)", c.Mode, presetRenamed)
+		}
+		return fmt.Errorf("mode: unknown mode %q, want cost, balanced or quality", c.Mode)
+	}
+	for _, m := range sortedKeys(c.Modes) {
+		if !slices.Contains(RoutingModes, m) {
+			return fmt.Errorf("modes.%s: unknown mode", m)
+		}
+	}
+	for _, m := range RoutingModes {
+		if err := c.Effective(m).validate(); err != nil {
+			return fmt.Errorf("modes.%s: %w", m, err)
+		}
 	}
 	return nil
 }

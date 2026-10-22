@@ -40,7 +40,7 @@ func TestCompareRoutes(t *testing.T) {
 
 func TestChooseActivity(t *testing.T) {
 	cfg := testConfig()
-	p := cfg.Effective()
+	p := cfg.Effective("")
 	atMedium := running{tier: config.TierMedium, route: medium}
 	onDebug := running{tier: config.TierMedium, activity: config.ActivityDebug, route: debug}
 	labelled := func(act config.Activity, mass float64) *classifier.Advice {
@@ -73,7 +73,10 @@ func TestChooseActivity(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := chooseActivity(cfg, p, tt.advice, tt.inc, config.EffortMedium, tt.midTurn, tt.down)
+			routeFor := func(t config.Tier, a config.Activity) config.Route {
+				return resolve(cfg.RouteFor(t, a), config.EffortMedium)
+			}
+			got := chooseActivity(cfg, p, tt.advice, tt.inc, routeFor, tt.midTurn, tt.down)
 			if got != tt.want {
 				t.Fatalf("chooseActivity = %q, want %q", got, tt.want)
 			}

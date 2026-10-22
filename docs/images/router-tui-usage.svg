@@ -17,6 +17,7 @@
   <text x="655.6" y="66.0" fill="#14171f" font-weight="700" xml:space="preserve"> Usage </text>
   <text x="725.8" y="66.0" fill="#878787" xml:space="preserve">? help</text>
   <text x="16.0" y="104.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">codex-router · main</text>
+  <text x="468.4" y="104.0" fill="#878787" xml:space="preserve">balanced (default) · </text>
   <text x="632.2" y="104.0" fill="#878787" xml:space="preserve">default · 3fa9c0d1</text>
   <text x="16.0" y="123.0" fill="#d0d0d0" xml:space="preserve"> Usage      Routing saved </text>
   <text x="218.8" y="123.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>

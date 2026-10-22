@@ -54,14 +54,47 @@ type Route struct {
 	Effort Effort `json:"effort,omitempty"`
 }
 
-// Preset selects a built-in policy override set.
-type Preset string
+// RoutingMode trades cost against answer quality: it moves the route a tier
+// aims at and patches the policy. It is not route.Mode (on, paused, manual).
+type RoutingMode string
 
 const (
-	PresetThrifty  Preset = "thrifty"
-	PresetBalanced Preset = "balanced"
-	PresetQuality  Preset = "quality"
+	ModeCost     RoutingMode = "cost"
+	ModeBalanced RoutingMode = "balanced"
+	ModeQuality  RoutingMode = "quality"
 )
+
+// RoutingModes lists the modes, cheapest first.
+var RoutingModes = []RoutingMode{ModeCost, ModeBalanced, ModeQuality}
+
+// ModeConfig is one mode's settings.
+type ModeConfig struct {
+	Policy PolicyPatch `json:"policy"`
+}
+
+// PolicyPatch holds the Policy fields a mode replaces; a nil field keeps the
+// configured value.
+type PolicyPatch struct {
+	UpgradeVotes         *int     `json:"upgradeVotes,omitempty"`
+	UpgradeBase          *float64 `json:"upgradeBase,omitempty"`
+	UpgradeSlope         *float64 `json:"upgradeSlope,omitempty"`
+	UpgradePivotTokens   *int     `json:"upgradePivotTokens,omitempty"`
+	JumpConfidence       *float64 `json:"jumpConfidence,omitempty"`
+	DowngradeVotes       *int     `json:"downgradeVotes,omitempty"`
+	DowngradeMass        *float64 `json:"downgradeMass,omitempty"`
+	DowngradeSlope       *float64 `json:"downgradeSlope,omitempty"`
+	DowngradePivotTokens *int     `json:"downgradePivotTokens,omitempty"`
+	ContinuationMass     *float64 `json:"continuationMass,omitempty"`
+	EscalationHoldTurns  *int     `json:"escalationHoldTurns,omitempty"`
+	ReviewEveryRequests  *int     `json:"reviewEveryRequests,omitempty"`
+	MinDwellRequests     *int     `json:"minDwellRequests,omitempty"`
+	ActivityMass         *float64 `json:"activityMass,omitempty"`
+	ContextFill          *float64 `json:"contextFill,omitempty"`
+}
+
+// Modes maps a mode to its settings. A config file's entry is decoded over
+// the built-in entry of the same mode, so it names only the fields it changes.
+type Modes map[RoutingMode]ModeConfig
 
 // Price is a model's list price in USD per million tokens. Zero values mean
 // unpriced: estimates then stay in tokens.
@@ -135,18 +168,20 @@ type Proxy struct {
 
 // Config is the whole router configuration.
 type Config struct {
-	Baseline    Tier                        `json:"baseline"`
-	Routes      map[Tier]Route              `json:"routes"`
-	Activities  map[Activity]map[Tier]Route `json:"activities,omitempty"`
-	Prices      map[string]Price            `json:"prices,omitempty"`
-	Policy      Policy                      `json:"policy"`
-	Preset      Preset                      `json:"preset"`
-	Classifier  string                      `json:"classifier"`
-	Classifiers Classifiers                 `json:"classifiers"`
-	Context     Context                     `json:"context"`
-	Cache       Cache                       `json:"cache"`
-	Proxy       Proxy                       `json:"proxy"`
-	CodexBin    string                      `json:"codexBin,omitempty"`
+	Baseline   Tier                        `json:"baseline"`
+	Routes     map[Tier]Route              `json:"routes"`
+	Activities map[Activity]map[Tier]Route `json:"activities,omitempty"`
+	Prices     map[string]Price            `json:"prices,omitempty"`
+	Policy     Policy                      `json:"policy"`
+	// Mode is the profile's routing mode; empty means not set (balanced).
+	Mode        RoutingMode `json:"mode,omitempty"`
+	Modes       Modes       `json:"modes"`
+	Classifier  string      `json:"classifier"`
+	Classifiers Classifiers `json:"classifiers"`
+	Context     Context     `json:"context"`
+	Cache       Cache       `json:"cache"`
+	Proxy       Proxy       `json:"proxy"`
+	CodexBin    string      `json:"codexBin,omitempty"`
 }
 
 // File locations under the XDG config dir.

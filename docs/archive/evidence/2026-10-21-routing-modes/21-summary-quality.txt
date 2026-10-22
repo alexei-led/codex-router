@@ -1,0 +1,6 @@
+steps 15 route changes 1
+mix {'6.1-sol/medium': 2, '6.1-sol/high': 13}
+  turn medium/code->6.1-sol/medium (mode-pending, classified low, quality/config)
+  turn medium/code->6.1-sol/high (same-tier, classified medium, quality/config)
+  turn medium/code->6.1-sol/high (same-tier, classified medium, quality/config)
+  turn medium/review->6.1-sol/high (upgrade-pending, classified high, quality/config)

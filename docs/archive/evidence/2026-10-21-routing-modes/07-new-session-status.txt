@@ -1,0 +1,7 @@
+session  6b17dcbc00aa/01a15eb6-2a27-7133-acec-9aded5a5c6bf
+label    home-a · r1 · master
+mode     on
+tier     low
+route    gpt-6-luna · high
+replies  3
+routing  balanced (default)

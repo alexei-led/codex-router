@@ -53,9 +53,9 @@ func TestBrainKeepsIntentAcrossARestart(t *testing.T) {
 	high := config.TierHigh
 	r.apply(t, route.Command{Op: route.OpPin, Session: "t1", Tier: high})
 	r.apply(t, route.Command{Op: route.OpPause, Session: "t2"})
-	r.apply(t, route.Command{Op: route.OpPreset, Preset: config.PresetQuality})
+	r.apply(t, route.Command{Op: route.OpMode, Session: "t2", Mode: config.ModeCost})
 	r.apply(t, route.Command{Op: route.OpPause, Scope: route.ScopeHome})
-	want := route.Intent{Paused: true, Preset: config.PresetQuality, Threads: map[string]route.ThreadIntent{
+	want := route.Intent{Paused: true, Threads: map[string]route.ThreadIntent{
 		"t1": {Pin: &high},
 		"t2": {Paused: true},
 		"t3": {Manual: true},
@@ -70,6 +70,9 @@ func TestBrainKeepsIntentAcrossARestart(t *testing.T) {
 
 	if got := withoutRev(r.b.eng.Intent()); !reflect.DeepEqual(got, want) {
 		t.Fatalf("intent after restart = %+v, want %+v", got, want)
+	}
+	if s := r.b.eng.SnapshotFor("t2"); s.RoutingMode != config.ModeCost || s.RoutingModeSource != route.SourceSession {
+		t.Fatalf("t2 mode after restart = %s (%s), want the session's cost", s.RoutingMode, s.RoutingModeSource)
 	}
 }
 
@@ -140,7 +143,8 @@ func TestIntentStoreLoad(t *testing.T) {
 		wantLost bool
 	}{
 		{"no file", nil, false},
-		{"valid", new(`{"version":1,"preset":"quality"}`), false},
+		{"valid", new(`{"version":1,"paused":true}`), false},
+		{"v0.8.0 preset is ignored", new(`{"version":1,"preset":"quality"}`), false},
 		{"empty", new(""), true},
 		{"truncated", new(`{"version":1,"threads":{"t1":`), true},
 		{"other version", new(`{"version":2,"paused":true}`), true},

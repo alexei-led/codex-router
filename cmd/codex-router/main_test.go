@@ -312,8 +312,11 @@ func TestUsageErrors(t *testing.T) {
 		{"service without a subcommand", []string{"service"}, "want ensure or status"},
 		{"service unknown subcommand", []string{"service", "restart"}, "want ensure or status"},
 		{"service takes no state dir", []string{"service", "ensure", "--state-dir", "/x"}, ""},
-		{"ctl without a subcommand", []string{"ctl"}, "want status, pause, resume or pin"},
-		{"ctl unknown subcommand", []string{"ctl", "preset"}, "want status, pause, resume or pin"},
+		{"ctl without a subcommand", []string{"ctl"}, "want status, pause, resume, pin or mode"},
+		{"ctl unknown subcommand", []string{"ctl", "preset"}, "want status, pause, resume, pin or mode"},
+		{"ctl mode without a mode", []string{"ctl", "mode"}, `ctl mode: "" is not cost, balanced, quality or default`},
+		{"ctl mode with a v0.8 preset", []string{"ctl", "mode", "thrifty"}, `ctl mode: "thrifty" is not cost`},
+		{"ctl mode with a bad mode after a flag", []string{"ctl", "mode", "--home", "/h", "fast"}, `ctl mode: "fast" is not cost`},
 		{"pin without a tier", []string{"ctl", "pin"}, `--tier "" is not`},
 		{"pin with a bad tier", []string{"ctl", "pin", "--tier", "huge"}, `--tier "huge" is not`},
 		{"tier on status", []string{"ctl", "status", "--tier", "high"}, ""},
@@ -1418,6 +1421,7 @@ func ctlFixture(t *testing.T) (env []string, codexHome, projects string, applied
 	}
 	paused := testSession(h, "t-sub", "work · repo · sub", 2)
 	paused.Mode, paused.Attention = route.ModePaused, route.AttentionPaused
+	paused.RoutingMode, paused.RoutingModeSource = config.ModeCost, route.SourceSession
 	sessions := []route.SessionInfo{
 		inDir(testSession(h, "t-repo", "work · repo · main", 1), "repo"),
 		inDir(paused, "repo/sub"),
@@ -1469,7 +1473,7 @@ func TestCtlStatusPicksTheSessionOfTheHome(t *testing.T) {
 		{"cwd of a session", "repo", "", exitOK,
 			map[string]string{"label": "work · repo · main", "mode": "on", "route": "gpt-5.5 · low"}, nil},
 		{"another home's deeper session is ignored", "repo/sub/deep", "", exitOK,
-			map[string]string{"label": "work · repo · sub", "attention": "paused"}, nil},
+			map[string]string{"label": "work · repo · sub", "attention": "paused", "routing": "cost (session)"}, nil},
 		{"thread id beats cwd", "twin", "t-repo", exitOK, map[string]string{"label": "work · repo · main"}, nil},
 		{"another home's explicit thread id refuses cwd fallback", "repo", "t-other", exitError, nil, []string{"CODEX_THREAD_ID", "not listed"}},
 		{"missing explicit thread id refuses cwd fallback", "repo", "missing-thread", exitError, nil, []string{"CODEX_THREAD_ID", "not listed"}},
@@ -1514,14 +1518,17 @@ func TestCtlDoesNotMutateACwdSessionWhenExplicitThreadIsMissing(t *testing.T) {
 }
 
 func TestCtlNamesASandboxBlockedSocket(t *testing.T) {
+	eperm := &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.EPERM)}
 	cases := []struct {
 		name       string
+		thread     string
 		blockedErr error
 		wantText   string
 	}{
-		{"sandbox refuses the socket", &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.EPERM)},
-			"cannot reach the router of Codex home"},
-		{"router gone", nil, "no running session of Codex home"},
+		{"sandbox refuses the socket", "", eperm, "cannot reach the router of Codex home"},
+		{"router gone", "", nil, "no running session of Codex home"},
+		{"sandbox refuses the socket inside Codex", "t1", eperm, "cannot reach the router of Codex home"},
+		{"thread gone inside Codex", "t1", nil, "not listed"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1539,6 +1546,9 @@ func TestCtlNamesASandboxBlockedSocket(t *testing.T) {
 			blocked = func(string, string) error { return tc.blockedErr }
 			t.Cleanup(func() { blocked = orig })
 
+			if tc.thread != "" {
+				env = append(env, envThread+"="+tc.thread)
+			}
 			var stdout, stderr bytes.Buffer
 			code := run(context.Background(), []string{"ctl", "status", "--home", codexHome, "--cwd", codexHome}, env, nil, &stdout, &stderr)
 
@@ -1547,6 +1557,41 @@ func TestCtlNamesASandboxBlockedSocket(t *testing.T) {
 			}
 			if eps, _, _ := registry.List(root); len(eps) != 1 {
 				t.Errorf("registry has %d entries, want the live brain kept", len(eps))
+			}
+		})
+	}
+}
+
+func TestCtlModeTakesTheModeBeforeOrAfterFlags(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args func(home, cwd string) []string
+	}{
+		{"after", func(home, cwd string) []string { return []string{"--home", home, "--cwd", cwd, "quality"} }},
+		{"between", func(home, cwd string) []string { return []string{"--home=" + home, "quality", "--cwd", cwd} }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env, codexHome, projects, applied := ctlFixture(t)
+			args := append([]string{"ctl", "mode"}, tc.args(codexHome, filepath.Join(projects, "repo/sub"))...)
+			var stdout, stderr bytes.Buffer
+			if code := run(context.Background(), args, env, nil, &stdout, &stderr); code != exitOK {
+				t.Fatalf("exit %d, stderr %q", code, stderr.String())
+			}
+			got := slices.DeleteFunc(applied(), func(c route.Command) bool { return c.Op == control.OpSubscribe })
+			if len(got) != 1 || got[0].Op != route.OpMode || got[0].Mode != config.ModeQuality {
+				t.Fatalf("endpoint got %+v, want one quality mode command", got)
+			}
+		})
+	}
+}
+
+func TestCtlModeHelpPrintsItsFlags(t *testing.T) {
+	for _, args := range [][]string{{"-h"}, {"--help", "cost"}, {"cost", "-help"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			run(context.Background(), append([]string{"ctl", "mode"}, args...), testEnv(t), nil, &stdout, &stderr)
+			if got := stderr.String(); !strings.Contains(got, "-cwd") || strings.Contains(got, "is not cost") {
+				t.Errorf("stderr %q, want the flag usage and no mode error", got)
 			}
 		})
 	}
@@ -1562,6 +1607,8 @@ func TestCtlSendsSessionCommands(t *testing.T) {
 		{"pause", []string{"pause"}, "paused routing of work · repo · sub", route.Command{Op: route.OpPause, Session: "t-sub", Scope: route.ScopeSession}},
 		{"resume", []string{"resume"}, "resumed routing of work · repo · sub", route.Command{Op: route.OpResume, Session: "t-sub", Scope: route.ScopeSession}},
 		{"pin", []string{"pin", "--tier", "high"}, "pinned the next turn of work · repo · sub to high", route.Command{Op: route.OpPin, Session: "t-sub", Scope: route.ScopeSession, Tier: config.TierHigh}},
+		{"mode", []string{"mode", "cost"}, "set work · repo · sub to cost mode", route.Command{Op: route.OpMode, Session: "t-sub", Scope: route.ScopeSession, Mode: config.ModeCost}},
+		{"mode default", []string{"mode", "default"}, "cleared the mode of work · repo · sub", route.Command{Op: route.OpMode, Session: "t-sub", Scope: route.ScopeSession, Mode: route.ModeDefault}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

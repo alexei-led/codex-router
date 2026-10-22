@@ -19,7 +19,7 @@ codex-router  20 sessions · Jev ready           Sessions  Policy  Usage   ? hel
   repo-19 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
   repo-20 · main  ● on   gpt-6-sol · medium  ▅▅▅▅▅▅▅▅▅▅
 
-repo-15 · main                                                   work · aaaaaaaa
+repo-15 · main                              balanced (default) · work · aaaaaaaa
  HIGH  debug → gpt-6.1-sol · high     ↑ same test failure twice, edit in between
        Jev high 18% · no classifier needed · switch ≈ 41k uncached tokens
        hold 2 turns
