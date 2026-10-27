@@ -61,7 +61,7 @@ func TestModeDecisionMatrix(t *testing.T) {
 	// cell, less those already at the end of the mode's ladder, plus the
 	// uncertain debug cell where cost keeps the cheaper incumbent.
 	minDiffer := map[string]map[config.RoutingMode]int{
-		"default": {config.ModeCost: 25, config.ModeQuality: 24},
+		"default": {config.ModeCost: 24, config.ModeQuality: 21},
 		"profile": {config.ModeCost: 25, config.ModeQuality: 23},
 	}
 	var table strings.Builder
@@ -92,7 +92,7 @@ func TestModeDecisionMatrix(t *testing.T) {
 				cost, bal, quality := got[config.ModeCost].Route, got[config.ModeBalanced].Route, got[config.ModeQuality].Route
 				tier := config.Tier(tr)
 				if slices.Contains(config.Tiers, tier) {
-					if want := resolve(cfg.RouteFor(tier, act), ""); bal != want {
+					if want := target(cfg, config.ModeBalanced, tier, act, "", func(string) []config.Effort { return config.Efforts }); bal != want {
 						t.Errorf("%s: balanced %v, want the configured pair %v", cell, bal, want)
 					}
 				}

@@ -24,10 +24,10 @@ var (
 	mediumTier = classifier.Advice{Choice: "medium", Probabilities: map[classifier.Choice]float64{"medium": 0.97, "high": 0.03}}
 )
 
-// modeHarness is the shipped routes with no background reviews, so a test
-// script decides every step.
+// modeHarness exercises generic transforms on the legacy custom ladder.
+// Terra shipped preferences have an independent exhaustive acceptance test.
 func modeHarness(t *testing.T, opts ...func(*Deps)) *harness {
-	cfg := config.Default()
+	cfg := legacyConfig()
 	cfg.Policy.ReviewEveryRequests = 0
 	return newHarness(t, cfg, opts...)
 }
@@ -175,7 +175,7 @@ func TestAModeChangeMidTurnWaitsForTheNextGate(t *testing.T) {
 // move does.
 func TestAReturnToBalancedWaitsForTheGate(t *testing.T) {
 	t.Run("from cost on an uncertain answer", func(t *testing.T) {
-		cfg := config.Default()
+		cfg := legacyConfig()
 		cfg.Policy.ReviewEveryRequests = 0
 		cfg.Mode = config.ModeCost
 		h := newHarness(t, cfg)
@@ -221,7 +221,7 @@ func TestAReturnToBalancedWaitsForTheGate(t *testing.T) {
 // target waits for votes, the thread keeps its route rather than dropping to
 // balanced's pair below that target.
 func TestQualityKeepsItsRouteWhileItsMoveDownWaits(t *testing.T) {
-	cfg := config.Default()
+	cfg := legacyConfig()
 	cfg.Policy.ReviewEveryRequests = 0
 	cfg.Mode = config.ModeQuality
 	h := newHarness(t, cfg)
@@ -244,7 +244,7 @@ func TestQualityKeepsItsRouteWhileItsMoveDownWaits(t *testing.T) {
 // orders the move the same way. A model with cheaper input but pricier output
 // is a cost move down, held on the same task like any other.
 func TestCostGatesByInputPrice(t *testing.T) {
-	cfg := config.Default()
+	cfg := legacyConfig()
 	cheapIn := config.Route{Model: "gpt-6-sol", Effort: config.EffortHigh}
 	cfg.Routes[config.TierLow] = cheapIn
 	cfg.Prices["gpt-6-sol"] = config.Price{Input: 1.25, CachedInput: 0.125, Output: 12}
@@ -271,7 +271,7 @@ func TestCostGatesByInputPrice(t *testing.T) {
 // pair, so a later turn keeps it until a gate passes rather than snapping to
 // the mode's pair.
 func TestTheUpwardFitFixRunsBalanced(t *testing.T) {
-	cfg := config.Default()
+	cfg := legacyConfig()
 	cfg.Baseline = config.TierHigh
 	cfg.Routes[config.TierMedium] = config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
 	cfg.Prices["gpt-6-sol"] = config.Price{Input: 1.25, CachedInput: 0.125, Output: 10}
@@ -327,7 +327,7 @@ func TestModePrecedence(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := config.Default()
+			cfg := legacyConfig()
 			cfg.Mode = tc.cfgMode
 			h := newHarness(t, cfg, func(d *Deps) {
 				d.ProjectMode = func(string) (config.RoutingMode, error) { return tc.project, nil }
@@ -387,7 +387,7 @@ func TestHomeThreadsReadTheirOwnProjectFile(t *testing.T) {
 }
 
 func TestAnInvalidProjectFileIsIgnoredWithAFinding(t *testing.T) {
-	cfg := config.Default()
+	cfg := legacyConfig()
 	cfg.Mode = config.ModeCost
 	h := newHarness(t, cfg, func(d *Deps) {
 		d.ProjectMode = func(string) (config.RoutingMode, error) {

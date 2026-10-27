@@ -194,6 +194,18 @@ func firstDiff(got, want []byte) string {
 	return fmt.Sprintf("got %d lines, want %d", len(g), len(w))
 }
 
+// legacyConfig freezes the pre-Terra defaults to keep the v0.8 behavior
+// oracle useful for generic/custom ladders as shipped preferences evolve.
+func legacyConfig() config.Config {
+	c := config.Default()
+	c.Routes[config.TierMedium] = config.Route{Model: sol, Effort: config.EffortMedium}
+	c.Activities = map[config.Activity]map[config.Tier]config.Route{
+		config.ActivityDebug: {config.TierMedium: {Model: sol, Effort: config.EffortHigh}},
+	}
+	delete(c.Prices, terra)
+	return c
+}
+
 // TestBalancedDecisionsAreUnchanged pins balanced routing to decisions the
 // engine made before routing modes existed (recorded on v0.8.0's engine):
 // with no mode set and with balanced set in the config, every decision of
@@ -203,7 +215,7 @@ func TestBalancedDecisionsAreUnchanged(t *testing.T) {
 		name string
 		cfg  func() config.Config
 	}{
-		{"defaults", config.Default},
+		{"defaults", legacyConfig},
 		{"unpriced", testConfig},
 	} {
 		for _, rich := range []bool{false, true} {

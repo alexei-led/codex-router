@@ -175,6 +175,9 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 		if c.home() {
 			if !e.paused {
 				e.paused = true
+				for _, th := range e.all() {
+					e.fence(th)
+				}
 				writes = e.restoreNative(e.all()...)
 			}
 			break
@@ -184,6 +187,7 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 			return nil, Snapshot{}, err
 		}
 		if !th.paused {
+			e.fence(th)
 			th.paused = true
 			writes = e.restoreNative(th)
 		}
@@ -208,6 +212,7 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 		if err != nil {
 			return nil, Snapshot{}, err
 		}
+		e.fence(th)
 		th.mode = c.Mode
 		if c.Mode == ModeDefault {
 			th.mode = ""
@@ -221,6 +226,23 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 		th = e.lookup(c.Session)
 	}
 	return writes, e.snapshot(th, e.now()), nil
+}
+
+// fence invalidates pending advice/retries and recovery on a user-intent
+// boundary. Keep the consumed signature: old history cannot renew its hold.
+// Config changes restart the engine; learned recovery is never persisted.
+func (e *Engine) fence(th *thread) {
+	th.epoch++
+	th.failureFrom = th.lastItems
+	if th.recovering {
+		th.state.HoldUntilTurn = 0
+	}
+	th.recovering = false
+	th.retries = nil
+	if th.review != nil {
+		th.review.cancel()
+		th.review = nil
+	}
 }
 
 // storeMode saves the session's mode as it is now; set is the mode the

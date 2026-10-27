@@ -59,7 +59,7 @@ func (t *tally) reply(d Decision, u responses.Usage, at time.Time, prices map[st
 	t.EligibleReplies++
 	routed, okR := prices[d.Route.Model]
 	baseline, okB := prices[native]
-	if okR && okB {
+	if okR && okB && completePrice(routed) && completePrice(baseline) {
 		t.PricedReplies++
 		spent, basis := cost.USD(routed, u), cost.USD(baseline, u)
 		t.RoutedUSD += spent
@@ -68,6 +68,8 @@ func (t *tally) reply(d Decision, u responses.Usage, at time.Time, prices map[st
 		t.ExtraUSD += max(0, spent-basis)
 	}
 }
+
+func completePrice(p config.Price) bool { return p.Input > 0 && p.CachedInput > 0 && p.Output > 0 }
 
 // push adds a reply's tier to the strip. A cell holds RepliesPerCell replies
 // and shows the last; past StripCells, pairs of cells merge.
@@ -161,8 +163,12 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 	s.RoutingMode, s.RoutingModeSource = e.routingMode(th)
 	s.Policy = cfg.Effective(s.RoutingMode)
 	s.Routes = map[config.Tier]config.Route{}
+	previewMode := s.RoutingMode
+	if th != nil && th.pin != nil {
+		previewMode = config.ModeBalanced
+	}
 	for _, t := range config.Tiers {
-		s.Routes[t] = target(cfg, s.RoutingMode, t, "", "", levelsIn(cat))
+		s.Routes[t] = target(cfg, previewMode, t, "", "", levelsIn(cat))
 	}
 	if e.paused {
 		s.Mode = ModePaused
@@ -190,6 +196,16 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 			}
 		}
 	}
+	if th != nil && th.native.Model != "" {
+		original := th.native
+		if th.last != nil {
+			original = th.last.Original
+		}
+		st := &step{cfg: cfg, cat: cat, original: original, req: &responses.Request{Effort: original.Effort}, tokens: th.approx, policy: s.Policy}
+		for _, tier := range config.Tiers {
+			s.Routes[tier] = e.planRoute(st, previewMode, tier, "").route
+		}
+	}
 	s.Window, _ = cat.Window(model)
 	s.Group, s.CurrentModelKnown = cat.GroupOf(model)
 	currentKnown := s.CurrentModelKnown
@@ -200,18 +216,23 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 	seen := map[string]bool{}
 	for _, t := range config.Tiers {
 		for _, a := range append([]config.Activity{""}, config.Activities...) {
-			m := cfg.RouteFor(t, a).Model
-			if m == "" || seen[m] {
-				continue
+			models := []string{cfg.RouteFor(t, a).Model}
+			for _, mode := range config.RoutingModes {
+				models = append(models, target(cfg, mode, t, a, "", levelsIn(cat)).Model)
 			}
-			_, targetKnown := cat.GroupOf(m)
-			switch {
-			case !targetKnown:
-				unknown[m] = true
-			case currentKnown && !cat.Compatible(model, m):
-				s.Blocked = append(s.Blocked, m)
+			for _, m := range models {
+				if m == "" || seen[m] {
+					continue
+				}
+				_, targetKnown := cat.GroupOf(m)
+				switch {
+				case !targetKnown:
+					unknown[m] = true
+				case currentKnown && !cat.Compatible(model, m):
+					s.Blocked = append(s.Blocked, m)
+				}
+				seen[m] = true
 			}
-			seen[m] = true
 		}
 	}
 	for m := range unknown {
@@ -240,6 +261,10 @@ func (t *tally) copy() Stats {
 // would otherwise change routing state.
 func copyDecision(d Decision) Decision {
 	d.SupportParts = slices.Clone(d.SupportParts)
+	if d.Preferred != nil {
+		p := *d.Preferred
+		d.Preferred = &p
+	}
 	return d
 }
 

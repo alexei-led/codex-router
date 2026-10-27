@@ -8,7 +8,8 @@ import (
 	"github.com/alexei-led/codex-router/internal/config"
 )
 
-// target is the route a routing mode aims at for tier t and activity a: the
+// target first resolves the default-owned preferred matrix, then falls back
+// to the generic transform for custom declarations. The generic rule uses the
 // configured pair P(t), moved by at most one lever. Cost takes a cheaper
 // model one tier down (never below low), else one effort step down; quality
 // takes one effort step up, else the route one tier up. Micro and balanced
@@ -19,6 +20,25 @@ import (
 // compound. levels lists the efforts a model accepts; none means every
 // config.Efforts. The rules are fixed: router-modes design §2.
 func target(cfg config.Config, mode config.RoutingMode, t config.Tier, a config.Activity, sent config.Effort, levels func(model string) []config.Effort) config.Route {
+	base := resolve(cfg.RouteFor(t, a), sent)
+	if r, ok := cfg.Preferred(mode, t, a); ok {
+		r = resolve(r, sent)
+		if mode == config.ModeQuality {
+			balanced := target(cfg, config.ModeBalanced, t, a, sent, levels)
+			if o, ordered := compareRoutes(cfg, r, balanced); ordered && o < 0 {
+				return balanced
+			}
+		}
+		// A missing price is not evidence that another model is cheaper.
+		if mode != config.ModeCost || r.Model == base.Model || cheaperInput(cfg, r.Model, base.Model) {
+			return r
+		}
+	}
+	return genericTarget(cfg, mode, t, a, sent, levels)
+}
+
+// genericTarget preserves the deterministic transform for custom ladders.
+func genericTarget(cfg config.Config, mode config.RoutingMode, t config.Tier, a config.Activity, sent config.Effort, levels func(string) []config.Effort) config.Route {
 	pair := func(t config.Tier) config.Route { return resolve(cfg.RouteFor(t, a), sent) }
 	base, own := pair(t), cfg.RouteFor(t, a).Effort
 	rank := slices.Index(config.Tiers, t)

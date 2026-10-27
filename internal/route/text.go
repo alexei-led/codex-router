@@ -16,6 +16,8 @@ import (
 func whyText(d Decision, cfg config.Config, tokens int) string {
 	route := d.Route.Model + " · " + string(d.Route.Effort)
 	switch d.Reason {
+	case ReasonUnavailable:
+		return fmt.Sprintf("preferred %s · %s unavailable for this request; uses %s", d.Preferred.Model, d.Preferred.Effort, route)
 	case policy.ReasonPinned:
 		return "pinned to " + string(d.Tier) + " for this turn"
 	case policy.ReasonEscalation:

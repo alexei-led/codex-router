@@ -47,12 +47,14 @@ type Facts struct {
 // no dialogue; MaxTextChars ≤ 0 clips every text to empty. ObservedFrom is
 // the first input index whose tool calls count for Observed (never before the
 // turn's prompt); VerifiedFrom is the first index a verification is looked
-// for from, such as Items at the last model change.
+// for from, such as Items at the last model change. FailureFrom fences both
+// failures and intervening edits to the current user-intent epoch.
 type Options struct {
 	RecentTurns  int
 	MaxTextChars int
 	ObservedFrom int
 	VerifiedFrom int
+	FailureFrom  int
 }
 
 // FailureWindow is how many trailing items a repeated failure is looked for in.
@@ -86,16 +88,27 @@ func Extract(req *responses.Request, opts Options) Facts {
 	f := Facts{
 		Dialogue:     dialogue(items, prompt, opts),
 		Continuation: len(items) > 0 && isToolOutput(items[len(items)-1]),
-		Failure:      repeatedFailure(items),
+		Failure:      repeatedFailure(items[min(max(0, opts.FailureFrom), len(items)):]),
 		Observed:     observe(items, max(prompt+1, opts.ObservedFrom)),
 		Verified:     verifiedSince(items, opts.VerifiedFrom),
 		ApproxTokens: approxTokens(req),
 		Items:        len(items),
 	}
+	if f.Failure != nil {
+		f.Failure.Index += min(max(0, opts.FailureFrom), len(items))
+	}
 	// Escalation reacts to a live loop: a pair from an earlier turn, or one a
 	// later passing check proved fixed, is over.
 	if p := f.Failure; p != nil && (p.Index <= prompt || verifiedSince(items, p.Index+1)) {
 		f.Failure = nil
+	}
+	if p := f.Failure; p != nil {
+		for _, it := range items[p.Index+1:] {
+			if it.Type == typeMessage && it.Role == roleUser && strings.HasPrefix(strings.TrimSpace(it.Text), "<turn_aborted>") {
+				f.Failure = nil
+				break
+			}
+		}
 	}
 	if prompt >= 0 {
 		f.Prompt = clip(strings.TrimSpace(items[prompt].Text), opts.MaxTextChars)

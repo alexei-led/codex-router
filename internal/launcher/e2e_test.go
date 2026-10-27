@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -74,7 +75,7 @@ func newE2EUpstream(t *testing.T) *e2eUpstream {
 			w.(http.Flusher).Flush()
 			panic(http.ErrAbortHandler)
 		}
-		_, _ = io.WriteString(w, evCompleted)
+		_, _ = io.WriteString(w, strings.Replace(evCompleted, `"model":"gpt-6-luna"`, `"model":`+strconv.Quote(body.Model), 1))
 	}))
 	t.Cleanup(u.Close)
 	return u
@@ -121,7 +122,7 @@ type e2e struct {
 	token    string
 }
 
-func newE2E(t *testing.T) *e2e {
+func newE2E(t *testing.T, configure ...func(*harness)) *e2e {
 	t.Helper()
 	e := &e2e{up: newE2EUpstream(t), cls: newE2EClassifier(t)}
 	e.h = newHarness(t, e2eKeyEnv+"=k")
@@ -132,6 +133,9 @@ func newE2E(t *testing.T) *e2e {
 	cfg.Policy.ReviewEveryRequests = 0
 	e.h.opts.Config = cfg
 	e.h.opts.Upstream = e.up.URL + "/backend-api/codex"
+	for _, configure := range configure {
+		configure(e.h)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -178,9 +182,13 @@ type request struct {
 	subagent string
 	step     int
 	route    config.Route
+	raw      []byte
 }
 
 func (r request) body() []byte {
+	if r.raw != nil {
+		return r.raw
+	}
 	if r.route == (config.Route{}) {
 		return stepBody(r.step)
 	}

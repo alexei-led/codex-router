@@ -93,23 +93,23 @@ The wrapper starts a local proxy, a private Codex app-server and the Codex TUI. 
 
 The router uses these words in the footer, the panel, the config and the docs.
 
-| Term                    | Meaning                                                                                                                                        |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Session**             | One Codex conversation (a main thread) routed by codex-router. `/new` in Codex starts a new session.                                           |
-| **Home**                | A Codex home (`CODEX_HOME`, default `~/.codex`) with its own login. The panel names it: `~/.codex` is `default`, `~/.codex-work` is `work`.    |
-| **Turn**                | One prompt from you. Codex can send several requests for it, called **steps**.                                                                 |
-| **Tier**                | The complexity level that the router gives a turn: `micro`, `low`, `medium` or `high`, weakest first.                                          |
-| **Route**               | A model and a reasoning effort. Each tier maps to one route (`routes` in the config).                                                          |
-| **Classifier**          | A small model that reads your prompt and recent dialogue and returns probabilities for each tier and activity.                                 |
-| **Activity**            | The kind of work: `code`, `debug`, `explore`, `plan`, `review`, `ops` or `docs`. An activity can give a tier a different route (`activities`). |
-| **Policy**              | The rules that decide when to switch tier. A switch needs enough repeated classifier answers (votes), and costly switches need more support.   |
-| **Compatibility group** | Models Codex can switch between in one thread. If the catalog does not list a model, compatibility is unknown and routing keeps the request unchanged.                    |
-| **Pin**                 | A tier that you choose in the panel for a session's next turn. The classifier is not asked for that turn.                                      |
-| **Pause**               | Routing off for one session, or for every session of a home. Requests go out unchanged.                                                        |
-| **Manual hold**         | What a `/model` pick in Codex causes. The router keeps your model for that thread until you resume.                                            |
-| **Mode**                | How the router trades cost against quality: `cost`, `balanced` (default) or `quality`. Set per session, per project or in the config.         |
-| **Edge**                | After `codex-router setup`: the small service that holds a home's provider port and forwards Codex's requests.                                 |
-| **Brain**               | After `codex-router setup`: the service that routes every session of a home. With the brain down, the edge forwards requests unchanged.        |
+| Term                    | Meaning                                                                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Session**             | One Codex conversation (a main thread) routed by codex-router. `/new` in Codex starts a new session.                                                   |
+| **Home**                | A Codex home (`CODEX_HOME`, default `~/.codex`) with its own login. The panel names it: `~/.codex` is `default`, `~/.codex-work` is `work`.            |
+| **Turn**                | One prompt from you. Codex can send several requests for it, called **steps**.                                                                         |
+| **Tier**                | The complexity level that the router gives a turn: `micro`, `low`, `medium` or `high`, weakest first.                                                  |
+| **Route**               | A model and a reasoning effort. Each tier maps to one route (`routes` in the config).                                                                  |
+| **Classifier**          | A small model that reads your prompt and recent dialogue and returns probabilities for each tier and activity.                                         |
+| **Activity**            | The kind of work: `code`, `debug`, `explore`, `plan`, `review`, `ops` or `docs`. An activity can give a tier a different route (`activities`).         |
+| **Policy**              | The rules that decide when to switch tier. A switch needs enough repeated classifier answers (votes), and costly switches need more support.           |
+| **Compatibility group** | Models Codex can switch between in one thread. If the catalog does not list a model, compatibility is unknown and routing keeps the request unchanged. |
+| **Pin**                 | A tier that you choose in the panel for a session's next turn. The classifier is not asked for that turn.                                              |
+| **Pause**               | Routing off for one session, or for every session of a home. Requests go out unchanged.                                                                |
+| **Manual hold**         | What a `/model` pick in Codex causes. The router keeps your model for that thread until you resume.                                                    |
+| **Mode**                | How the router trades cost against quality: `cost`, `balanced` (default) or `quality`. Set per session, per project or in the config.                  |
+| **Edge**                | After `codex-router setup`: the small service that holds a home's provider port and forwards Codex's requests.                                         |
+| **Brain**               | After `codex-router setup`: the service that routes every session of a home. With the brain down, the edge forwards requests unchanged.                |
 
 ## Configure
 
@@ -138,7 +138,7 @@ Your normal coding request still goes to OpenAI. `off` disables classifier traff
 | `clef-omni`     | `api.cloudflare.com`  | same as `clef`, with `{"classifier": "clef-omni"}`                                      |
 | `openai`        | `api.openai.com`      | `export OPENAI_API_KEY=...`, `{"classifier": "openai"}`                                 |
 | `ollama`        | stays on your machine | `ollama pull qwen3.5:9b`, then `{"classifier": "ollama"}` in the config                 |
-| `off`           | no classifier traffic       | `{"classifier": "off"}` in the config; only pins and the context guard change the model |
+| `off`           | no classifier traffic | `{"classifier": "off"}` in the config; only pins and the context guard change the model |
 
 Get a [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) and your account ID for Clef. The OpenAI option needs a separate API key. See the [default endpoints and models](configuration.md#classifiers).
 
@@ -155,20 +155,20 @@ When a key variable or the Cloudflare account ID is unset, the classifier is off
 
 - **`routes`**: the model and effort for each tier. Keep all models in one compatibility group. The defaults are in one group.
 - **`mode`**: `cost`, `balanced` (the default) or `quality`. See [Choose a routing mode](#choose-a-routing-mode).
-- **`prices`**: list prices in USD per million tokens, for the savings estimate in the panel. The defaults cover `gpt-6.1-sol` and `gpt-6-luna`. Add one for any other model you route to, and for Codex's own model if it is neither: the saving is measured against it.
-- **`activities`**: a different route for an activity at a tier. The default sends `debug` at `medium` to high effort.
+- **`prices`**: list prices in USD per million tokens, for the savings estimate in the panel. The defaults cover `gpt-6.1-sol`, `gpt-6.1-terra` and `gpt-6-luna`. Add one for any other model you route to, and for Codex's own model if it is neither: the saving is measured against it.
+- **`activities`**: a different route for an activity at a tier. Default-owned medium code/debug work prefers Terra xhigh. Explicit activity cells remain yours.
 
 The [configuration reference](configuration.md) has every field and its default.
 
 ### Choose a routing mode
 
-A mode moves each tier's route one step, and leaves `micro` turns alone:
+A mode chooses model/effort preferences and switching thresholds. Micro stays unchanged.
 
-- **`cost`**: a cheaper model one tier down, else one effort step less. It also moves up reluctantly and down readily.
-- **`balanced`** (default): the routes as configured.
-- **`quality`**: one effort step more, else the next tier's route. It moves up readily and down reluctantly.
+- **`cost`**: Luna for low/medium work, Terra for high. Moves up reluctantly and down readily.
+- **`balanced`** (default): Luna low, Terra medium, Sol high. Code/debug medium work uses Terra xhigh.
+- **`quality`**: Terra low, Sol medium/high. Moves up readily and down reluctantly.
 
-The [configuration reference](configuration.md#mode-and-modes) has the route each mode picks per tier, and its policy values. They are untuned. In the [evaluation](evaluation.md#routing-modes) replay, `cost` cut the list-price cost by 71% and `quality` raised it by 26%. `quality` mostly buys `xhigh` effort, which scored no higher than `high` in the earlier benchmark runs.
+These are the shipped defaults, not overrides of custom routes. Custom declarations retain the cost-next-cheaper-model and quality-effort-first transforms. The [configuration reference](configuration.md#mode-and-modes) has the full activity matrix, custom precedence and untuned policy values. [Evaluation](evaluation.md) describes the evidence and limits.
 
 Each session's mode comes from the first of:
 
@@ -181,11 +181,11 @@ flowchart LR
 - **Project**: put `{"mode": "quality"}` in `.codex/router.json` in the repository. It holds only `mode`. Gitignore it if the choice is yours alone. See [Project file](configuration.md#project-file).
 - **Session**: press `s` on the panel's Policy view, or run `codex-router ctl mode cost` (see [ctl](#control-one-session-from-a-shell-ctl)). `default` drops the session's mode. The session keeps its mode across `codex-router resume` and restarts; a new session does not inherit it. An unused session mode is deleted after 30 days. Use means a launcher or brain read it, which happens when the router first sees the thread. A session that runs for more than 30 days without a restart therefore loses its stored mode at the next restart; set it again then.
 
-A mode change does not switch the route at once. The next turns pass the same checks as any switch, a switch back to `balanced` included. They need enough classifier votes and must be worth the cache cost. On the same task they also wait a minimum number of requests and need a passed test, build or lint. One exception keeps each mode on its side of `balanced`: while the mode's move waits, a `quality` route weaker than `balanced`'s, or a `cost` route stronger than it, moves to `balanced`'s route by `balanced`'s usual rule. The panel shows the mode and its source at once, for example `cost (session)`, while the route may stay for a few requests. To force a route now, pin a tier. Pins and `/model` picks ignore the mode.
+A mode change does not switch the route at once. The next turns pass the same checks as any switch, a switch back to `balanced` included. They need enough classifier votes and must be worth the cache cost. On the same task they also wait a minimum number of requests and need a passed test, build or lint. One exception keeps each mode on its side of `balanced`: while the mode's move waits, a `quality` route weaker than `balanced`'s, or a `cost` route stronger than it, moves to `balanced`'s route by `balanced`'s usual rule. A physical failure-recovery route is exempt from that shortcut: its move down must pass the full gates. The panel shows the mode and its source at once, for example `cost (session)`, while the route may stay for a few requests. To force a route now, pin a tier. Pins and `/model` picks ignore the mode.
 
 ### Choose models and efforts
 
-Start with the [default routes](configuration.md#routes-and-activities). They use a lighter model for `micro` and `low`, and a stronger one for `medium` and `high`. The [evaluation](evaluation.md) explains the small tests behind that choice and their limits.
+Start with the [default routes](configuration.md#routes-and-activities). They use Luna for `micro` and `low`, Terra for `medium`, and Sol for `high`. The [evaluation](evaluation.md) explains the small tests behind that choice and their limits.
 
 - Use a [routing mode](#choose-a-routing-mode) to spend less or more without editing routes.
 - Set `routes` to change the model or effort of a tier. Models must share a compatibility group.
@@ -293,19 +293,19 @@ The first rule with any match decides. A label shared by several sessions matche
 
 When a router goes away, its sessions show `disconnected`, and leave the list 10 s later. If the router comes back, the panel dials it again. With no session at all, the header reads `no sessions` and the panel waits. Quitting the panel does not affect any session.
 
-| Key                | Action                                                                                       |
-| ------------------ | -------------------------------------------------------------------------------------------- |
-| `↑` `↓`, `j` `k`   | select sessions or scroll detail, Policy or Usage                                            |
-| `enter`            | open the selected session's detail alone; side by side, move the focus to the detail         |
-| `esc`              | close the help or a popover, else go back from the detail                                    |
-| `[`, `]`           | previous, next session (all sessions only)                                                   |
-| `tab`, `shift+tab` | next, previous view; side by side, the list and the detail are two stops on Sessions         |
-| `p`                | open the pin popover: `1 micro  2 low  3 medium  4 high  0 none`, for the selected session   |
-| `space`            | pause the selected session, or resume it                                                     |
-| `P`                | pause every session of the selected session's home, or resume them                           |
-| `s` (Policy)       | open the mode popover: `1 cost  2 balanced  3 quality  4 default`, for the selected session   |
-| `?`                | show or hide the help overlay                                                                |
-| `q`, `ctrl+c`      | quit the panel                                                                               |
+| Key                | Action                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| `↑` `↓`, `j` `k`   | select sessions or scroll detail, Policy or Usage                                           |
+| `enter`            | open the selected session's detail alone; side by side, move the focus to the detail        |
+| `esc`              | close the help or a popover, else go back from the detail                                   |
+| `[`, `]`           | previous, next session (all sessions only)                                                  |
+| `tab`, `shift+tab` | next, previous view; side by side, the list and the detail are two stops on Sessions        |
+| `p`                | open the pin popover: `1 micro  2 low  3 medium  4 high  0 none`, for the selected session  |
+| `space`            | pause the selected session, or resume it                                                    |
+| `P`                | pause every session of the selected session's home, or resume them                          |
+| `s` (Policy)       | open the mode popover: `1 cost  2 balanced  3 quality  4 default`, for the selected session |
+| `?`                | show or hide the help overlay                                                               |
+| `q`, `ctrl+c`      | quit the panel                                                                              |
 
 The footer lists only the keys that work now and ends with `? help`: `space` reads `pause` or `resume`, `↑↓` is hidden with one session, and `s` shows only on Policy while the classifier is on. While a popover or the help is open, the footer lists only the keys that work there.
 
@@ -319,7 +319,7 @@ The mouse works too, with the left button:
 | a mode button (Policy)        | set that mode for the session; `default` drops it                   |
 | a choice in a popover         | pick it; a click outside closes the popover                         |
 | a key in the footer, `? help` | do what that key does                                               |
-| the wheel over the list       | move selection; scroll detail, Policy or Usage |
+| the wheel over the list       | move selection; scroll detail, Policy or Usage                      |
 
 A click that only focuses the terminal window does nothing. The panel takes the mouse, so the terminal's own text selection is off. Hold `Shift` (Option on macOS Terminal.app and iTerm2) while you drag to select text anyway. Or run `codex-router tui --no-mouse` to leave the mouse to the terminal: keys work as before, and clicks do nothing.
 
@@ -358,7 +358,7 @@ A route is used only if the thread fits in `policy.contextFill` (default 80%) of
 
 ### Escalation on repeated failures
 
-When the same command fails twice with an edit in between, the turn moves up one tier without asking the classifier. It stays there for `policy.escalationHoldTurns` turns. Only a pair whose second failure is in the current turn counts, and not once a later check passed.
+When the same command fails twice with an edit in between, the turn moves to a stronger tier without asking the classifier. At high in cost mode, where no higher tier exists, it can instead use the stronger, eligible balanced-high model (Sol high or xhigh under the defaults). It stays there for `policy.escalationHoldTurns` turns. Only a pair whose second failure is in the current turn counts, and not once a later check passed or the turn was aborted. One signature cannot renew the hold indefinitely. Mode/account changes and new user intent fence earlier pairs; steering to a new task clears physical recovery. Moving back down on the same task still needs the dwell and a passed check.
 
 Models in code mode (`tool_mode: code_mode_only`) run commands inside JavaScript cells, and Codex reports only how the script ended. The router reads a command's exit status from the cell output in three cases:
 
@@ -433,7 +433,6 @@ Each home gets its own edge, brain, port and token. Setup is optional: `codex-ro
 
 Close the home's Codex sessions before undoing setup. Running threads keep the router provider after undo. Another local process could take its old port and receive their ChatGPT credentials.
 
-
 - Run Codex once with this home and sign in, so the home exists.
 - Setup refuses an existing `<home>/codex-router.env` unless it has the setup ownership marker. It also refuses a symlink or directory at that path. Move a user-owned file before installing.
 - The home's `config.toml` must not set `model_provider` or define `[model_providers.router]`. Setup refuses it otherwise.
@@ -456,7 +455,7 @@ Threads that already run keep their provider until `/new` or a Codex restart. Ne
 | `<home>/config.toml`                                                                                          | `model_provider = "router"` before the first table, and a `[model_providers.router]` table with a token header at the end, each between `# >>> codex-router >>>` and `# <<< codex-router <<<`. Mode `0600`, because it now holds the token. |
 | `<home>/config.toml.codex-router-<UTC time>.bak`                                                              | A backup (`0600`) before every write of `config.toml`, also by `--undo`.                                                                                                                                                                    |
 | `<home>/codex-router.env`                                                                                     | The binary and the state dir, for the plugin's scripts.                                                                                                                                                                                     |
-| `<state>/codex-router/homes/<home id>/`                                                                       | `port`, `token`, the brain's saved pauses and pins (`intent.json`), its sockets, and `logs/` (written on macOS). Private (`0700`).                                                                                                  |
+| `<state>/codex-router/homes/<home id>/`                                                                       | `port`, `token`, the brain's saved pauses and pins (`intent.json`), its sockets, and `logs/` (written on macOS). Private (`0700`).                                                                                                          |
 | `~/Library/LaunchAgents/com.github.alexei-led.codex-router.<home id>.{edge,brain}.plist`                      | macOS launchd agents.                                                                                                                                                                                                                       |
 | `~/.config/systemd/user/codex-router-edge@<home id>.{socket,service}`, `codex-router-brain@<home id>.service` | Linux systemd user units, under `$XDG_CONFIG_HOME/systemd/user` when that is set.                                                                                                                                                           |
 
@@ -565,14 +564,14 @@ For a mismatched control hello, the panel closes the connection. It retries the 
 | Panel says `no sessions`; `codex-router sessions` prints nothing        | No session is registered for your user under this state dir. Start a session, or use the same `XDG_STATE_HOME` (or none) in the panel's shell as in the session's shell.                                                                                                                         |
 | `codex-router: the panel will not list this session: …`                 | The router could not write its registry entry, usually because the registry dir is not a private directory of yours (mode `0700`). The session routes as usual.                                                                                                                                  |
 | `codex-router: tui: "x" matches N sessions:`                            | `--session` named several sessions. Pass one of the listed ids, or a longer label.                                                                                                                                                                                                               |
-| Panel shows `disconnected`                                              | The session's router ended or restarted. Its rows leave after 10 s. A restarted router shows up again by itself. A socket that answers as another endpoint is closed and retried with backoff; it is not pruned. Routing of other sessions is unaffected.                                      |
+| Panel shows `disconnected`                                              | The session's router ended or restarted. Its rows leave after 10 s. A restarted router shows up again by itself. A socket that answers as another endpoint is closed and retried with backoff; it is not pruned. Routing of other sessions is unaffected.                                        |
 | Locked panel shows `ended` and closes                                   | The session's router exited. Start the panel again with the new session's id or label.                                                                                                                                                                                                           |
 | Second session fails to start                                           | `proxy.port` is fixed, so the port is taken. Use `0` (the default) for any free port.                                                                                                                                                                                                            |
 | Model stays put after a `/model` pick                                   | That is the manual hold. Press `space` in the panel to resume routing.                                                                                                                                                                                                                           |
 | `Permission overrides are not supported when resuming a remote task`    | Codex refuses `-s` and `-a` with `resume` in remote mode. Drop them.                                                                                                                                                                                                                             |
 | Codex shows `Reconnecting… waiting for network`                         | The router process died, and the proxy with it. See [If the router is killed](#if-the-router-is-killed). In a set-up home: the edge service is not loaded; see [If a home's service is down](#if-a-homes-service-is-down).                                                                       |
 | Home line says `brain down: default model`                              | The home's brain is not running. Requests go out unchanged, on the model in Codex's footer. See [If a home's service is down](#if-a-homes-service-is-down).                                                                                                                                      |
-| `!` mark, `! state lost · paused`                                       | The brain could not read its saved pauses and pins (`intent.json`). Rather than route against a pause you set, it paused the home. Press `P` to resume the home, then set your pins and pauses again.                                                                                    |
+| `!` mark, `! state lost · paused`                                       | The brain could not read its saved pauses and pins (`intent.json`). Rather than route against a pause you set, it paused the home. Press `P` to resume the home, then set your pins and pauses again.                                                                                            |
 | `?` mark, `unknown`                                                     | The brain restarted. It holds the session on its current route until the next reply, then routes as usual. Nothing to do.                                                                                                                                                                        |
 | A session of a set-up home is not in the panel                          | The brain lists a session from its first prompt after the brain started. Also check that the panel's shell has the same `XDG_STATE_HOME` (or none) as the shell where you ran setup.                                                                                                             |
 | A set-up home's sessions keep their model                               | Threads that ran before setup keep their old provider. Use `/new`, or restart Codex.                                                                                                                                                                                                             |
@@ -638,5 +637,5 @@ The footer sync needs `codex --remote` and the app-server's `thread/settings/upd
 | `setup`                     | 0 on success, 1 on error or a refused edit                                               |
 | `service`                   | 0, also when the home is not set up. 1 on error                                          |
 | `ctl`                       | 0 on success, 1 on error or when no session matches, 2 when several match                |
-| `doctor`                    | 0 when there are no errors; 1 when at least one error is found                            |
+| `doctor`                    | 0 when there are no errors; 1 when at least one error is found                           |
 | any                         | 2 on a usage error                                                                       |

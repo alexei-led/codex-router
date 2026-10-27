@@ -103,6 +103,8 @@ type Decision struct {
 	// older engine sends neither.
 	RoutingMode       config.RoutingMode `json:"RoutingMode,omitempty"`
 	RoutingModeSource ModeSource         `json:"RoutingModeSource,omitempty"`
+	// Preferred is present when eligibility forced a different physical route.
+	Preferred *config.Route `json:"Preferred,omitempty"`
 }
 
 // Reading is the classifier answer the decision's turn runs on, for display:

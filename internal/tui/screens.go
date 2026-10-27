@@ -5,6 +5,8 @@ import (
 	"math"
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/route"
 )
@@ -101,7 +103,8 @@ func (c *canvas) classifierRow(s route.Snapshot) {
 
 func (c *canvas) routesRows(s route.Snapshot) {
 	cell := func(t config.Tier) []seg {
-		return []seg{col(tierRole[t], pad(string(t), tierCell)), plain(pad(routeText(s.Routes[t]), routeCell))}
+		text := routeText(s.Routes[t])
+		return []seg{col(tierRole[t], pad(string(t), tierCell)), plain(pad(text, max(routeCell, ansi.StringWidth(text)+2)))}
 	}
 	group := dim(groupText(s))
 	var rows [][]seg

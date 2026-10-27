@@ -1,0 +1,674 @@
+[
+  {
+    "mode": "cost",
+    "tier": "micro",
+    "activity": "generic",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "micro",
+    "activity": "code",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "micro",
+    "activity": "debug",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "micro",
+    "activity": "review",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "micro",
+    "activity": "plan",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "micro",
+    "activity": "explore",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "micro",
+    "activity": "ops",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "micro",
+    "activity": "docs",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "low",
+    "activity": "generic",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "low",
+    "activity": "code",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "low",
+    "activity": "debug",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "low",
+    "activity": "review",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "low",
+    "activity": "plan",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "low",
+    "activity": "explore",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "low",
+    "activity": "ops",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "low",
+    "activity": "docs",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "medium",
+    "activity": "generic",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "cost",
+    "tier": "medium",
+    "activity": "code",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "cost",
+    "tier": "medium",
+    "activity": "debug",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "cost",
+    "tier": "medium",
+    "activity": "review",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "cost",
+    "tier": "medium",
+    "activity": "plan",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "cost",
+    "tier": "medium",
+    "activity": "explore",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "cost",
+    "tier": "medium",
+    "activity": "ops",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "cost",
+    "tier": "medium",
+    "activity": "docs",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "cost",
+    "tier": "high",
+    "activity": "generic",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "high",
+    "activity": "code",
+    "model": "gpt-6.1-terra",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "cost",
+    "tier": "high",
+    "activity": "debug",
+    "model": "gpt-6.1-terra",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "cost",
+    "tier": "high",
+    "activity": "review",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "high",
+    "activity": "plan",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "high",
+    "activity": "explore",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "high",
+    "activity": "ops",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "cost",
+    "tier": "high",
+    "activity": "docs",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "micro",
+    "activity": "generic",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "micro",
+    "activity": "code",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "micro",
+    "activity": "debug",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "micro",
+    "activity": "review",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "micro",
+    "activity": "plan",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "micro",
+    "activity": "explore",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "micro",
+    "activity": "ops",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "micro",
+    "activity": "docs",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "low",
+    "activity": "generic",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "low",
+    "activity": "code",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "low",
+    "activity": "debug",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "low",
+    "activity": "review",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "low",
+    "activity": "plan",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "low",
+    "activity": "explore",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "low",
+    "activity": "ops",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "low",
+    "activity": "docs",
+    "model": "gpt-6-luna",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "medium",
+    "activity": "generic",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "medium",
+    "activity": "code",
+    "model": "gpt-6.1-terra",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "balanced",
+    "tier": "medium",
+    "activity": "debug",
+    "model": "gpt-6.1-terra",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "balanced",
+    "tier": "medium",
+    "activity": "review",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "medium",
+    "activity": "plan",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "medium",
+    "activity": "explore",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "medium",
+    "activity": "ops",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "medium",
+    "activity": "docs",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "balanced",
+    "tier": "high",
+    "activity": "generic",
+    "model": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "high",
+    "activity": "code",
+    "model": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "high",
+    "activity": "debug",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "balanced",
+    "tier": "high",
+    "activity": "review",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "balanced",
+    "tier": "high",
+    "activity": "plan",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "balanced",
+    "tier": "high",
+    "activity": "explore",
+    "model": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "high",
+    "activity": "ops",
+    "model": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  {
+    "mode": "balanced",
+    "tier": "high",
+    "activity": "docs",
+    "model": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  {
+    "mode": "quality",
+    "tier": "micro",
+    "activity": "generic",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "micro",
+    "activity": "code",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "micro",
+    "activity": "debug",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "micro",
+    "activity": "review",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "micro",
+    "activity": "plan",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "micro",
+    "activity": "explore",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "micro",
+    "activity": "ops",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "micro",
+    "activity": "docs",
+    "model": "gpt-6-luna",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "low",
+    "activity": "generic",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "low",
+    "activity": "code",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "low",
+    "activity": "debug",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "low",
+    "activity": "review",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "low",
+    "activity": "plan",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "low",
+    "activity": "explore",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "low",
+    "activity": "ops",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "low",
+    "activity": "docs",
+    "model": "gpt-6.1-terra",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "medium",
+    "activity": "generic",
+    "model": "gpt-6.1-sol",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "medium",
+    "activity": "code",
+    "model": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  {
+    "mode": "quality",
+    "tier": "medium",
+    "activity": "debug",
+    "model": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  {
+    "mode": "quality",
+    "tier": "medium",
+    "activity": "review",
+    "model": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  {
+    "mode": "quality",
+    "tier": "medium",
+    "activity": "plan",
+    "model": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  {
+    "mode": "quality",
+    "tier": "medium",
+    "activity": "explore",
+    "model": "gpt-6.1-sol",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "medium",
+    "activity": "ops",
+    "model": "gpt-6.1-sol",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "medium",
+    "activity": "docs",
+    "model": "gpt-6.1-sol",
+    "effort": "medium"
+  },
+  {
+    "mode": "quality",
+    "tier": "high",
+    "activity": "generic",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "quality",
+    "tier": "high",
+    "activity": "code",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "quality",
+    "tier": "high",
+    "activity": "debug",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "quality",
+    "tier": "high",
+    "activity": "review",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "quality",
+    "tier": "high",
+    "activity": "plan",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "quality",
+    "tier": "high",
+    "activity": "explore",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "quality",
+    "tier": "high",
+    "activity": "ops",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  },
+  {
+    "mode": "quality",
+    "tier": "high",
+    "activity": "docs",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh"
+  }
+]

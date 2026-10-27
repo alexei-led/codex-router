@@ -467,6 +467,10 @@ func TestSessionsCarryUSDOnlyWhenPriced(t *testing.T) {
 		"gpt-6-luna": {Input: 1, CachedInput: 0.1, Output: 4},
 		"gpt-6-sol":  {Input: 2, CachedInput: 0.2, Output: 8},
 	}
+	zeroPrice := testConfig()
+	zeroPrice.Prices = map[string]config.Price{low.Model: {}, medium.Model: {}}
+	partialPrice := testConfig()
+	partialPrice.Prices = map[string]config.Price{low.Model: {Input: 1}, medium.Model: {Input: 2}}
 	nativeUnpriced := testConfig()
 	nativeUnpriced.Prices = map[string]config.Price{low.Model: {Input: 1, CachedInput: 0.1, Output: 4}}
 	tests := []struct {
@@ -477,6 +481,8 @@ func TestSessionsCarryUSDOnlyWhenPriced(t *testing.T) {
 		{"priced", priced, true},
 		{"unpriced", testConfig(), false},
 		{"native unpriced", nativeUnpriced, false},
+		{"zero price entries", zeroPrice, false},
+		{"incomplete price entries", partialPrice, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
