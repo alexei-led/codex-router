@@ -39,7 +39,7 @@ func TestPricingUsesServedModel(t *testing.T) {
 		t.Run(served, func(t *testing.T) {
 			cfg := testConfig()
 			cfg.Prices = map[string]config.Price{
-				medium.Model: {Input: 2}, low.Model: {Input: 1}, served: {Input: 3},
+				medium.Model: {Input: 2, CachedInput: .1, Output: 1}, low.Model: {Input: 1, CachedInput: .1, Output: 1}, served: {Input: 3, CachedInput: .1, Output: 1},
 			}
 			h := newHarness(t, cfg)
 			h.asker.script(answer(tier("low", .97)))
@@ -47,8 +47,8 @@ func TestPricingUsesServedModel(t *testing.T) {
 			h.decide(req(medium, userMsg(secretPrompt)), m)
 			h.reply(m, served, 1000, 0)
 			st := h.engine.Snapshot().Stats
-			if math.Abs(st.RoutedUSD-.003) > 1e-10 || math.Abs(st.BaselineUSD-.002) > 1e-10 {
-				t.Fatalf("costs = routed %g, native %g; want .003, .002", st.RoutedUSD, st.BaselineUSD)
+			if math.Abs(st.RoutedUSD-.0031) > 1e-10 || math.Abs(st.BaselineUSD-.0021) > 1e-10 {
+				t.Fatalf("costs = routed %g, native %g; want .0031, .0021", st.RoutedUSD, st.BaselineUSD)
 			}
 		})
 	}

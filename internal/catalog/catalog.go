@@ -120,7 +120,7 @@ func LoadCache(path string) (Catalog, error) {
 // GroupOf returns the compatibility group of slug.
 func (c Catalog) GroupOf(slug string) (Group, bool) {
 	m, ok := c.Models[slug]
-	if !ok {
+	if !ok || m.CompHash == "" {
 		return Group{}, false
 	}
 	return Group{CompHash: m.CompHash, Lite: m.ResponsesLite, ToolMode: m.ToolMode}, true

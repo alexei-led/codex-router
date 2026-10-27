@@ -11,8 +11,8 @@ const (
 	luna = "gpt-6-luna"
 )
 
-func TestTargetDefaults(t *testing.T) {
-	cfg := config.Default()
+func TestTargetGenericLadder(t *testing.T) {
+	cfg := legacyConfig()
 	all := func(string) []config.Effort { return nil }
 	r := func(m string, e config.Effort) config.Route { return config.Route{Model: m, Effort: e} }
 	cases := []struct {
@@ -49,15 +49,15 @@ func TestTargetLevelsAndPrices(t *testing.T) {
 			return nil
 		}
 	}
-	unpriced := config.Default()
+	unpriced := legacyConfig()
 	unpriced.Prices = nil
-	sameModel := config.Default()
+	sameModel := legacyConfig()
 	sameModel.Routes[config.TierLow] = config.Route{Model: sol, Effort: config.EffortLow}
-	emptyEffort := config.Default()
+	emptyEffort := legacyConfig()
 	emptyEffort.Routes[config.TierMedium] = config.Route{Model: sol}
 	emptyUnpriced := emptyEffort
 	emptyUnpriced.Prices = nil
-	pricierBelow := config.Default()
+	pricierBelow := legacyConfig()
 	pricierBelow.Prices[luna] = config.Price{Input: 3, Output: 1}
 	cases := []struct {
 		name   string
@@ -68,12 +68,12 @@ func TestTargetLevelsAndPrices(t *testing.T) {
 		levels func(string) []config.Effort
 		want   config.Route
 	}{
-		{"quality without xhigh moves up a tier", config.Default(), config.ModeQuality, config.TierLow, "", only(luna, config.EffortLow, config.EffortMedium, config.EffortHigh), config.Route{Model: sol, Effort: config.EffortMedium}},
-		{"quality without xhigh at high stays", config.Default(), config.ModeQuality, config.TierHigh, "", only(sol, config.EffortMedium, config.EffortHigh), config.Route{Model: sol, Effort: config.EffortHigh}},
-		{"quality skips an unsupported level upward", config.Default(), config.ModeQuality, config.TierMedium, "", only(sol, config.EffortMedium, config.EffortXHigh), config.Route{Model: sol, Effort: config.EffortXHigh}},
-		{"cost projects onto the current level: no move", config.Default(), config.ModeCost, config.TierHigh, "", only(sol, config.EffortLow, config.EffortHigh), config.Route{Model: sol, Effort: config.EffortHigh}},
-		{"cost never raises effort", config.Default(), config.ModeCost, config.TierHigh, "", only(sol, config.EffortLow, config.EffortXHigh), config.Route{Model: sol, Effort: config.EffortHigh}},
-		{"cost falls to the highest lower level", config.Default(), config.ModeCost, config.TierHigh, "", only(sol, config.EffortLow), config.Route{Model: sol, Effort: config.EffortLow}},
+		{"quality without xhigh moves up a tier", legacyConfig(), config.ModeQuality, config.TierLow, "", only(luna, config.EffortLow, config.EffortMedium, config.EffortHigh), config.Route{Model: sol, Effort: config.EffortMedium}},
+		{"quality without xhigh at high stays", legacyConfig(), config.ModeQuality, config.TierHigh, "", only(sol, config.EffortMedium, config.EffortHigh), config.Route{Model: sol, Effort: config.EffortHigh}},
+		{"quality skips an unsupported level upward", legacyConfig(), config.ModeQuality, config.TierMedium, "", only(sol, config.EffortMedium, config.EffortXHigh), config.Route{Model: sol, Effort: config.EffortXHigh}},
+		{"cost projects onto the current level: no move", legacyConfig(), config.ModeCost, config.TierHigh, "", only(sol, config.EffortLow, config.EffortHigh), config.Route{Model: sol, Effort: config.EffortHigh}},
+		{"cost never raises effort", legacyConfig(), config.ModeCost, config.TierHigh, "", only(sol, config.EffortLow, config.EffortXHigh), config.Route{Model: sol, Effort: config.EffortHigh}},
+		{"cost falls to the highest lower level", legacyConfig(), config.ModeCost, config.TierHigh, "", only(sol, config.EffortLow), config.Route{Model: sol, Effort: config.EffortLow}},
 		{"cost at low effort stays: the floor", sameModel, config.ModeCost, config.TierLow, "", nil, config.Route{Model: sol, Effort: config.EffortLow}},
 		{"cost never lands on micro", sameModel, config.ModeCost, config.TierMedium, "", nil, config.Route{Model: sol, Effort: config.EffortLow}},
 		{"unpriced models use the effort lever", unpriced, config.ModeCost, config.TierMedium, "", nil, config.Route{Model: sol, Effort: config.EffortLow}},
@@ -99,12 +99,12 @@ func TestTargetLevelsAndPrices(t *testing.T) {
 }
 
 func TestTargetDoesNotCompound(t *testing.T) {
-	noEfforts := config.Default()
+	noEfforts := legacyConfig()
 	for tier, r := range noEfforts.Routes {
 		noEfforts.Routes[tier] = config.Route{Model: r.Model}
 	}
 	all := func(string) []config.Effort { return nil }
-	for name, cfg := range map[string]config.Config{"defaults": config.Default(), "no efforts": noEfforts} {
+	for name, cfg := range map[string]config.Config{"defaults": legacyConfig(), "no efforts": noEfforts} {
 		for _, mode := range config.RoutingModes {
 			for _, tier := range config.Tiers {
 				for _, sent := range config.Efforts {

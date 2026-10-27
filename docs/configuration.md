@@ -40,8 +40,8 @@ Because objects merge, `"policy": {"minDwellRequests": 6}` changes one field. Be
 | ------------- | --------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
 | `baseline`    | tier                              | `medium`                                                     | Tier of the route used when no thread model is known, and the target of the upward context fix. |
 | `routes`      | map tier to route                 | see below                                                    | Model and effort per tier. All four tiers must exist.                                           |
-| `activities`  | map activity to map tier to route | `debug` at `medium`                                          | Per-activity override of a tier's route. Optional.                                              |
-| `prices`      | map model to price                | `gpt-6.1-sol`, `gpt-6-luna`                                  | USD list prices for the per-reply estimate. Optional.                                                |
+| `activities`  | map activity to map tier to route | none (default-owned preferences below)                       | Per-activity override of a tier's route. Optional.                                              |
+| `prices`      | map model to price                | `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-luna`                 | USD list prices for the per-reply estimate. Optional.                                           |
 | `policy`      | object                            | see below                                                    | Switching thresholds.                                                                           |
 | `mode`        | `cost`, `balanced`, `quality`     | not set (`balanced`)                                         | The profile's routing mode. See [mode and modes](#mode-and-modes).                              |
 | `modes`       | map mode to `{"policy": {...}}`   | `cost`, `quality`                                            | Policy fields each mode replaces. See [mode and modes](#mode-and-modes).                        |
@@ -58,44 +58,44 @@ Tiers, weakest first: `micro`, `low`, `medium`, `high`. Activities: `code`, `deb
 
 A route is `{"model": "<slug>", "effort": "<effort>"}`. An empty `effort` keeps the effort Codex sent. A route's `model` is required in `routes`.
 
-| Tier     | Default model | Default effort |
-| -------- | ------------- | -------------- |
-| `high`   | `gpt-6.1-sol` | `high`         |
-| `medium` | `gpt-6.1-sol` | `medium`       |
-| `low`    | `gpt-6-luna`  | `high`         |
-| `micro`  | `gpt-6-luna`  | `medium`       |
+| Tier     | Default model   | Default effort |
+| -------- | --------------- | -------------- |
+| `high`   | `gpt-6.1-sol`   | `high`         |
+| `medium` | `gpt-6.1-terra` | `medium`       |
+| `low`    | `gpt-6-luna`    | `high`         |
+| `micro`  | `gpt-6-luna`    | `medium`       |
 
-The defaults use two models in one compatibility group. The router checks that a target model shares the group of the model Codex sent. A known unequal group is blocked and the request keeps its original route. If the current or target model is missing from the catalog, compatibility is unknown: the request still keeps its original route, but Policy reports the unknown model separately instead of calling it incompatible. An empty catalog is reported as unavailable. When the catalog becomes available, the next snapshot reflects its current groups.
+These are the raw generic declarations; default-owned mode and activity preferences are listed below. The defaults use three models, subject to the runtime compatibility group. The router checks that a target model shares the group of the model Codex sent. A known unequal group is blocked and the request keeps its original route. If the current or target model or its compatibility hash is missing from the catalog, compatibility is unknown: the request still keeps its original route, but Policy reports the unknown model separately instead of calling it incompatible. An empty catalog is reported as unavailable. When the catalog becomes available, the next snapshot reflects its current groups.
 
 Effort changes on one model keep its prompt cache. A switch between models can require an uncached prefix. See [evaluation](evaluation.md) for the small tests behind these defaults.
 
-An `activities.<activity>.<tier>` entry overrides the tier's model and effort. An empty field inherits the tier's route. The default sends `debug` at `medium` to `gpt-6.1-sol` with `high` effort. An activity route applies when the classifier's activity probability reaches `policy.activityMass`.
+An `activities.<activity>.<tier>` entry overrides the tier's model and effort. An empty field inherits the tier's route. Explicit cells are user-owned and use the generic mode transforms for that cell, not the built-in preference matrix. Ownership is independent per cell: an explicit low cell does not change automatic preferences at undeclared medium or high cells. An explicit empty target cell also opts that cell out of built-in preferences. Set `activities` to `null` to disable built-in activity preferences while keeping generic mode preferences. An activity route applies when the classifier's activity probability reaches `policy.activityMass`.
 
 ### prices
 
-`{"input": n, "cachedInput": n, "output": n}`, USD per million tokens, none negative. They drive the list-price estimates in the Sessions and Usage views, and they order models for the "same task, stronger or cheaper" check (by output price). The defaults are OpenAI list prices: `gpt-6.1-sol` 2 / 0.10 / 10 (input up to 272K tokens) and `gpt-6-luna` 0.10 / 0.01 / 0.50. An entry you name replaces that model's default price; the other default stays. For a complete estimate, price every routed model and every model Codex uses as the native model. A reply is covered only when both its routed and native model have prices. The panel shows dollar totals only when every eligible reply is covered; otherwise it says `estimate partial` or `estimate unknown` with the `N of M replies priced` coverage and hides the partial subtotal. A `/model` change can make the native model differ over the session, so totals use a per-reply native basis, not one model for the whole session. Plan billing is usage limits, so a complete figure is still an estimate, not a bill.
+`{"input": n, "cachedInput": n, "output": n}`, USD per million tokens, none negative. They drive the list-price estimates in the Sessions and Usage views, and they order models for the "same task, stronger or cheaper" check (by output price). The defaults are standard OpenAI list prices, input / cached input / output: `gpt-6.1-sol` 2 / 0.10 / 10, `gpt-6.1-terra` 1 / 0.05 / 5 and `gpt-6-luna` 0.10 / 0.01 / 0.50. These flat estimates exclude long-context and Fast multipliers and API cache-write charges. They are not subscription invoices; Codex credit billing has no separate cache-write charge. An entry you name replaces that model's default price; the other default stays. For a complete estimate, price every routed model and every model Codex uses as the native model. A reply is covered only when both its routed and native model have complete, positive prices for all three components; zero or missing components are unpriced. The panel shows dollar totals only when every eligible reply is covered; otherwise it says `estimate partial` or `estimate unknown` with the `N of M replies priced` coverage and hides the partial subtotal. A `/model` change can make the native model differ over the session, so totals use a per-reply native basis, not one model for the whole session. Plan billing is usage limits, so a complete figure is still an estimate, not a bill.
 
 ### policy
 
 Counts are integers. Probability thresholds and context fill are in (0, 1]. Slopes are zero or positive.
 
-| Field                   | Default | Meaning                                                                                                                                                       |
-| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `upgradeVotes`          | 2       | Consecutive classifier answers above the running tier needed to move up (min 1). One is enough before the first measured reply.                               |
-| `upgradeBase`           | 0.75    | Probability mass above the running tier needed to move up, before the cost term.                                                                              |
-| `upgradeSlope`          | 0.15    | Adds `slope * tax / (tax + pivot)` to the bar, where tax is the uncached tokens the switch would write.                                                       |
-| `upgradePivotTokens`    | 100000  | Tax at which the cost term is half the slope (min 1).                                                                                                         |
-| `jumpConfidence`        | 0.95    | A jump of two or more tiers up needs only this mass above the running tier, with no vote streak.                                                              |
-| `downgradeVotes`        | 2       | Consecutive answers at or below the target tier needed to move down (min 1).                                                                                  |
-| `downgradeMass`         | 0.9     | Mass at or below the target tier needed to move down, before the cost term. Also the bar for a cheaper activity route on the same task.                       |
-| `downgradeSlope`        | 0.08    | Cost term slope for moving down.                                                                                                                              |
-| `downgradePivotTokens`  | 100000  | Pivot for moving down (min 1).                                                                                                                                |
-| `continuationMass`      | 0.7     | When the classifier scores a new prompt this likely to continue the running task, it counts as the same task.                                                 |
-| `escalationHoldTurns`   | 2       | After a repeated-tool-failure escalation, turns the tier is held (min 0).                                                                                     |
-| `reviewEveryRequests`   | 4       | Background classifier review every N requests of a thread. 0 turns reviews off.                                                                               |
-| `minDwellRequests`      | 8       | Requests since the last model change before a cheaper route on the same task is allowed. It also needs a passed test, build or lint check since then (min 0). |
-| `activityMass`          | 0.6     | Activity probability needed to apply an activity route on a new task.                                                                                         |
-| `contextFill`           | 0.8     | A route is used only if the thread's estimated size is at most this fraction of its window.                                                                   |
+| Field                  | Default | Meaning                                                                                                                                                       |
+| ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `upgradeVotes`         | 2       | Consecutive classifier answers above the running tier needed to move up (min 1). One is enough before the first measured reply.                               |
+| `upgradeBase`          | 0.75    | Probability mass above the running tier needed to move up, before the cost term.                                                                              |
+| `upgradeSlope`         | 0.15    | Adds `slope * tax / (tax + pivot)` to the bar, where tax is the uncached tokens the switch would write.                                                       |
+| `upgradePivotTokens`   | 100000  | Tax at which the cost term is half the slope (min 1).                                                                                                         |
+| `jumpConfidence`       | 0.95    | A jump of two or more tiers up needs only this mass above the running tier, with no vote streak.                                                              |
+| `downgradeVotes`       | 2       | Consecutive answers at or below the target tier needed to move down (min 1).                                                                                  |
+| `downgradeMass`        | 0.9     | Mass at or below the target tier needed to move down, before the cost term. Also the bar for a cheaper activity route on the same task.                       |
+| `downgradeSlope`       | 0.08    | Cost term slope for moving down.                                                                                                                              |
+| `downgradePivotTokens` | 100000  | Pivot for moving down (min 1).                                                                                                                                |
+| `continuationMass`     | 0.7     | When the classifier scores a new prompt this likely to continue the running task, it counts as the same task.                                                 |
+| `escalationHoldTurns`  | 2       | After a repeated-tool-failure escalation, turns the tier is held (min 0).                                                                                     |
+| `reviewEveryRequests`  | 4       | Background classifier review every N requests of a thread. 0 turns reviews off.                                                                               |
+| `minDwellRequests`     | 8       | Requests since the last model change before a cheaper route on the same task is allowed. It also needs a passed test, build or lint check since then (min 0). |
+| `activityMass`         | 0.6     | Activity probability needed to apply an activity route on a new task.                                                                                         |
+| `contextFill`          | 0.8     | A route is used only if the thread's estimated size is at most this fraction of its window.                                                                   |
 
 `escalationHoldTurns` and `minDwellRequests` depend on how the router reads tool results. That is described in [Escalation on repeated failures](user-guide.md#escalation-on-repeated-failures).
 
@@ -103,24 +103,34 @@ Counts are integers. Probability thresholds and context fill are in (0, 1]. Slop
 
 A routing mode trades cost against answer quality. It never changes what the classifier is asked or what it answers.
 
-- `balanced` routes as the tables above say.
-- `cost` aims each tier above `micro` one step cheaper: the next lower tier's route when that route's model has a lower `prices` input price, else one effort step down on the same model. It never goes below `low`, and never to `micro`.
-- `quality` aims each tier above `micro` one step stronger: one effort step up on the same model, else the next higher tier's route.
-- `micro` turns, pins, `/model` picks and paused sessions are never moved by a mode.
+With the exact default generic ladder, modes use explicit preferred pairs. Changing any generic model or effort makes the ladder custom: it keeps the deterministic transforms described after the tables. An explicit activity cell also uses those transforms for that cell. No OpenAI model or effort is injected into a custom declaration.
 
-With the default routes:
+Generic default preferences:
 
-| Tier                | cost        | balanced    | quality     |
-| ------------------- | ----------- | ----------- | ----------- |
-| `micro`             | Luna medium | Luna medium | Luna medium |
-| `low`               | Luna medium | Luna high   | Luna xhigh  |
-| `medium`            | Luna high   | Sol medium  | Sol high    |
-| `medium`, `debug`   | Luna high   | Sol high    | Sol xhigh   |
-| `high`              | Sol medium  | Sol high    | Sol xhigh   |
+| Tier     | cost         | balanced     | quality      |
+| -------- | ------------ | ------------ | ------------ |
+| `micro`  | Luna medium  | Luna medium  | Luna medium  |
+| `low`    | Luna medium  | Luna high    | Terra medium |
+| `medium` | Luna high    | Terra medium | Sol medium   |
+| `high`   | Terra medium | Sol high     | Sol xhigh    |
 
-`quality` mostly buys `xhigh`. In the 2026-10-16 runs behind the default routes, `xhigh` cost more than `high` on every task and scored no higher; on the plan task it scored lower (see [Evaluation](evaluation.md)).
+Activity preferences on the default ladder:
 
-The cost lever needs `prices` for both models. Without them, `cost` lowers effort only. An effort step uses only the efforts the Codex catalog lists for the model. A route without an `effort` gets no effort step: it runs the effort Codex sends, which is the one the router last wrote, so a step would repeat every turn. `cost` then keeps that route unless the cost lever applies, and `quality` takes the next higher tier's route unless that route is weaker.
+| Activity           | balanced medium | cost high    | quality medium | balanced high |
+| ------------------ | --------------- | ------------ | -------------- | ------------- |
+| code               | Terra xhigh     | Terra xhigh  | Sol high       | Sol high      |
+| debug              | Terra xhigh     | Terra xhigh  | Sol high       | Sol xhigh     |
+| review             | Terra medium    | Terra medium | Sol high       | Sol xhigh     |
+| plan               | Terra medium    | Terra medium | Sol high       | Sol xhigh     |
+| explore, ops, docs | Terra medium    | Terra medium | Sol medium     | Sol high      |
+
+All quality-high cells use Sol xhigh. Cost-medium always uses Luna high. Low follows the generic table for every activity; micro remains Luna medium in every mode. Unknown activity uses the generic cell. These preferences are a derived routing policy, not an entitlement or quality guarantee; see [Evaluation](evaluation.md).
+
+A preferred pair is checked against the current Codex catalog's model, effort, compatibility and usable context window before classification. If it is ineligible, an eligible generic-transform pair can be used, else the eligible balanced pair for the same tier and activity. Only when neither fits does the existing context/group guard search other tiers or keep the original request. Diagnostics distinguish a preferred pair from that fallback. API context maxima are not Codex windows.
+
+For custom declarations, `balanced` keeps the configured pair; `cost` takes the next lower tier's cheaper model (never below low), else one effort step down; `quality` takes one effort step up, else the next higher tier, never an ordered-weaker pair. Micro, pins, manual selections and paused sessions bypass mode transforms. Pins use the raw generic declaration, not the activity preferences.
+
+The cost lever, including default preferences that change models, needs `prices` for both models. Without them, `cost` lowers effort only. An effort step uses only the efforts the Codex catalog lists for the model. A route without an `effort` gets no effort step: it runs the effort Codex sends, which is the one the router last wrote, so a step would repeat every turn. `cost` then keeps that route unless the cost lever applies, and `quality` takes the next higher tier's route unless that route is weaker.
 
 Each mode also replaces some `policy` fields. The effective policy is `policy` with `modes.<mode>.policy` on top: a field the mode names wins over `policy`. A `modes` entry in your file changes only the fields it names over the built-in entry; set a field to `null` to drop a built-in one. Built-in values:
 
@@ -160,6 +170,10 @@ A repository can choose a mode for its sessions in `.codex/router.json`. The fil
 The router looks in the session's working directory and each parent up to the repository root (the nearest directory that holds `.git`); the nearest file wins. Outside a repository it looks only in the working directory. It reads the file at the start of each turn. The router ignores a file with another key, an unknown mode or bad JSON. The session then uses `mode` from this file, and the panel shows the problem under WORTH A LOOK.
 
 `mode` only chooses among the routes you configured, so a cloned repository cannot point the router at other models. The file must be a regular file of at most 4 KiB; a symlink, a pipe, a device or a larger file is ignored with the same panel finding. Add `.codex/router.json` to `.gitignore` if the choice is yours alone.
+
+### Upgrade to Terra defaults
+
+After upgrading, restart the launcher or home services to load the new configuration. A partial config that omits routes inherits Terra. A full saved v0.9 configuration with explicit Sol medium/debug routes is custom and does not auto-migrate: remove those overrides if you want the new defaults. Existing explicit activity cells stay user-owned. No user config is rewritten.
 
 ### Upgrade from presets
 
@@ -235,7 +249,7 @@ When a decision fails or times out, that request is forwarded unchanged. The rou
 
 | Field          | Default | Meaning                                                              |
 | -------------- | ------- | -------------------------------------------------------------------- |
-| `recentTurns`  | 6       | User or assistant text messages sent to the classifier (min 1).                       |
+| `recentTurns`  | 6       | User or assistant text messages sent to the classifier (min 1).      |
 | `maxTextChars` | 1200    | Each text is clipped to this many characters before sending (min 1). |
 
 Set both low to send less text to a hosted classifier.

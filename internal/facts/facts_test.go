@@ -465,6 +465,7 @@ func TestExtractFailure(t *testing.T) {
 		{"pair before the last prompt", append(repeated(execOut(1, "FAIL", "1"), execOut(1, "FAIL", "1")),
 			user("now the docs"),
 		), -1},
+		{"cancelled turn", append(repeated(execOut(1, "FAIL", "1"), execOut(1, "FAIL", "1")), user("<turn_aborted>")), -1},
 		{"a later passing check", append(repeated(execOut(1, "FAIL", "1"), execOut(1, "FAIL", "1")),
 			patch("c4", "x.go"), exec("c5", "go test ./..."), done("c5", 0, "ok"),
 		), -1},

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"runtime"
 	"slices"
 	"sync"
@@ -26,6 +25,7 @@ import (
 // up on the turn's own tool calls, a later step keeping the turn's route, and
 // a routing mode's move inside a tier.
 const (
+	ReasonUnavailable     policy.Reason = "unavailable"
 	ReasonMode            policy.Reason = "mode"
 	ReasonModePending     policy.Reason = "mode-pending"
 	ReasonActivityUp      policy.Reason = "activity-up"
@@ -95,11 +95,14 @@ type thread struct {
 	tier     config.Tier
 	activity config.Activity // the activity whose route runs, "" for the base route
 	// routeMode is the routing mode the running route was chosen under. The
-	// route in use is its target for tier and activity; it changes only when
-	// a gate passes, not when the thread's mode does.
-	routeMode config.RoutingMode
-	state     policy.State
-	measured  bool // a reply on this thread was observed
+	// actual pair is kept in sent after eligibility resolution. It changes
+	// only when a gate passes, not when the thread's mode does.
+	routeMode   config.RoutingMode
+	state       policy.State
+	epoch       uint64 // fences advice after user intent changes
+	failureFrom int    // failures before the intent epoch do not recover
+	recovering  bool
+	measured    bool // a reply on this thread was observed
 
 	codexTurn  string // the turn of the last user step, routed or not
 	turn       string
@@ -261,6 +264,7 @@ func (e *Engine) resumed(threadID string, r config.Route) (s Snapshot, resync, m
 // is now what Codex would use without the router, so pause restores it
 // rather than the route the session started on.
 func (e *Engine) pick(th *thread, r config.Route) {
+	e.fence(th)
 	th.manual, th.pending, th.lastWritten, th.native = true, nil, r, r
 	e.log.Info("route manual", "thread", th.id, "model", r.Model, "effort", r.Effort)
 }
@@ -287,6 +291,20 @@ type step struct {
 	mode      config.RoutingMode
 	source    ModeSource
 	routeMode config.RoutingMode
+	epoch     uint64
+	plans     map[routeKey]routePlan
+	ctx       context.Context
+}
+
+type routePlan struct {
+	preferred, route config.Route
+	eligible         bool
+}
+
+type routeKey struct {
+	mode     config.RoutingMode
+	tier     config.Tier
+	activity config.Activity
 }
 
 func (s *step) sent() config.Effort { return s.req.Effort }
@@ -300,7 +318,49 @@ func (s *step) routeFor(t config.Tier, a config.Activity) config.Route {
 // routeIn is mode's target for tier t and activity a, over the catalog's
 // efforts per model.
 func (s *step) routeIn(mode config.RoutingMode, t config.Tier, a config.Activity) config.Route {
+	if mode == "" {
+		mode = config.ModeBalanced
+	}
+	if s.plans != nil {
+		return s.plans[routeKey{mode, t, a}].route
+	}
 	return target(s.cfg, mode, t, a, s.sent(), levelsIn(s.cat))
+}
+
+// plan resolves and validates every cell before asking for advice. Catalog
+// and request inputs are a snapshot; the classifier cannot mutate this plan.
+func (e *Engine) plan(st *step) {
+	st.plans = map[routeKey]routePlan{}
+	for _, mode := range config.RoutingModes {
+		for _, tier := range config.Tiers {
+			for _, act := range append([]config.Activity{""}, config.Activities...) {
+				st.plans[routeKey{mode, tier, act}] = e.planRoute(st, mode, tier, act)
+			}
+		}
+	}
+}
+
+func (e *Engine) planRoute(st *step, mode config.RoutingMode, tier config.Tier, act config.Activity) routePlan {
+	preferred := target(st.cfg, mode, tier, act, st.sent(), levelsIn(st.cat))
+	r := preferred
+	if !e.fits(st, r) {
+		fallback := genericTarget(st.cfg, mode, tier, act, st.sent(), levelsIn(st.cat))
+		if mode == config.ModeCost || mode == config.ModeQuality {
+			balanced := e.planRoute(st, config.ModeBalanced, tier, act)
+			weaker := false
+			if mode == config.ModeQuality {
+				o, ordered := compareRoutes(st.cfg, fallback, balanced.route)
+				weaker = ordered && o < 0
+			}
+			if balanced.eligible && (!e.fits(st, fallback) || weaker) {
+				fallback = balanced.route
+			}
+		}
+		if e.fits(st, fallback) {
+			r = fallback
+		}
+	}
+	return routePlan{preferred: preferred, route: r, eligible: e.fits(st, r)}
 }
 
 // Decide returns the rewrite for one request, or false to forward it
@@ -343,8 +403,10 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 	if st == nil {
 		return responses.Rewrite{}, false
 	}
+	st.ctx = ctx
 	st.facts = facts.Extract(req, st.opts)
 	st.tokens = max(st.tokens, st.facts.ApproxTokens)
+	e.plan(st)
 	var advice *classifier.Advice
 	var askErr error
 	if st.first && st.pin == nil {
@@ -371,8 +433,11 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 		var job *review
 		d, job = e.decideLater(st)
 		if job != nil {
-			e.startReview(th, job, classifierInput(st.facts, st.cfg))
+			e.startReview(th, job, st.classifierInput())
 		}
+	}
+	if d.ThreadID == "" {
+		return responses.Rewrite{}, false
 	}
 	e.publish(d)
 	return rewriteOf(d)
@@ -449,6 +514,8 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 		}
 		th.switchedAt.items = min(th.switchedAt.items, n)
 		th.observedFrom = min(th.observedFrom, n)
+		e.fence(th)
+		th.failureFrom = 0
 		th.state = policy.State{Turn: th.state.Turn}
 		th.measured, th.lastTotal = false, 0
 		e.ledger.Forget(th.id)
@@ -465,17 +532,21 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 	st := &step{
 		th: th, meta: m, req: req, fp: fp, cfg: cfg, policy: cfg.Effective(mode), cat: cat, now: now,
 		first: first, original: original, tokens: th.lastTotal,
-		mode: mode, source: source, routeMode: mode,
+		mode: mode, source: source, routeMode: mode, epoch: th.epoch,
 		opts: facts.Options{
 			RecentTurns:  cfg.Context.RecentTurns,
 			MaxTextChars: cfg.Context.MaxTextChars,
 			ObservedFrom: th.observedFrom,
 			VerifiedFrom: th.switchedAt.items,
+			FailureFrom:  th.failureFrom,
 		},
 	}
 	if first {
 		// Consumed here, under the lock, so exactly one turn takes it.
 		st.pin, th.pin = th.pin, nil
+		if st.pin != nil && th.recovering {
+			th.recovering, th.state.HoldUntilTurn = false, 0
+		}
 	}
 	if st.pin != nil || !first && th.turnPinned {
 		st.routeMode = config.ModeBalanced
@@ -532,6 +603,9 @@ func (e *Engine) setProject(th *thread, p projectRead) {
 			e.log.Warn("route project file ignored", "thread", th.id, "err", msg)
 		}
 	}
+	if th.project != p.mode {
+		e.fence(th)
+	}
 	th.project, th.projectErr = p.mode, msg
 }
 
@@ -568,11 +642,9 @@ func (e *Engine) bind(th *thread, account string) {
 		th.account = account
 		return
 	}
+	e.fence(th)
 	th.account = account
-	if th.review != nil {
-		th.review.cancel()
-	}
-	th.review, th.retries, th.advice, th.awaiting = nil, nil, nil, nil
+	th.advice, th.awaiting = nil, nil
 	th.turn, th.turnOff = "", false
 	th.state = policy.State{Turn: th.state.Turn}
 	th.measured, th.lastTotal = false, 0
@@ -594,7 +666,7 @@ func (e *Engine) classify(ctx context.Context, st *step) (advice *classifier.Adv
 	}()
 	ctx, cancel := context.WithTimeout(ctx, st.cfg.DecideTimeout())
 	defer cancel()
-	a, err := e.ask.Ask(ctx, classifierInput(st.facts, st.cfg))
+	a, err := e.ask.Ask(ctx, st.classifierInput())
 	if err != nil {
 		e.log.Warn("classifier failed", "thread", st.meta.ThreadID, "turn", st.meta.TurnID, "code", err.Error())
 		return nil, err
@@ -612,7 +684,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 	defer e.mu.Unlock()
 	th := st.th
 	e.noteLatency(advice)
-	if e.paused || th.paused || th.manual {
+	if e.paused || th.paused || th.manual || th.epoch != st.epoch || st.ctx.Err() != nil {
 		e.abandonLocked(st)
 		return Decision{}, false
 	}
@@ -632,6 +704,9 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		th.remember(d)
 		e.logDecision(d, nil)
 		return d, true
+	}
+	if th.recovering && advice != nil && !policy.SameTask(st.policy, advice, false) {
+		th.state.HoldUntilTurn, th.recovering = 0, false
 	}
 	var c cell
 	if st.pin != nil {
@@ -656,7 +731,10 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	th := st.th
-	cur := cell{tier: th.tier, activity: th.activity, mode: th.routeMode, reason: ReasonContinue, state: th.state}
+	if e.paused || th.paused || th.manual || th.epoch != st.epoch || st.ctx.Err() != nil {
+		return Decision{}, nil
+	}
+	cur := cell{tier: th.tier, activity: th.activity, mode: th.routeMode, reason: ReasonContinue, state: th.state, route: th.sent}
 	reviewed := false
 	if r := th.review; r != nil && r.ready {
 		th.review = nil
@@ -743,14 +821,24 @@ func (r *review) stop(ctx context.Context) {
 func (e *Engine) finish(st *step, c cell) Decision {
 	th := st.th
 	cfg := st.cfg
-	routeFor := func(t config.Tier) config.Route { return st.routeIn(c.mode, t, c.activity) }
+	routeFor := func(t config.Tier) config.Route {
+		if t == c.tier && c.route.Model != "" {
+			return c.route
+		}
+		return st.routeIn(c.mode, t, c.activity)
+	}
 	window := e.window(st, routeFor)
 	d := e.base(st)
 	d.Tier, d.Reason, d.Estimate, d.Activity = c.tier, c.reason, c.estimate, label(c.activity, th.advice)
 	d.Reading = reading(th.advice)
 	refused := policy.ReasonFit
-	if !st.cat.Compatible(st.original.Model, routeFor(c.tier).Model) {
+	candidate := routeFor(c.tier)
+	if _, known := st.cat.GroupOf(candidate.Model); !known {
+		refused = ReasonUnavailable
+	} else if !st.cat.Compatible(st.original.Model, candidate.Model) {
 		refused = policy.ReasonOutOfGroup
+	} else if !e.usable(st, candidate) {
+		refused = ReasonUnavailable
 	}
 	if tier, ok := policy.FitTier(c.tier, st.tokens, window, st.policy.ContextFill); ok {
 		if tier != c.tier {
@@ -765,6 +853,15 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	} else {
 		d.Route, d.Reason, d.Estimate = st.original, refused, nil
 	}
+	if d.Reason == ReasonUnavailable {
+		preferred := candidate
+		d.Preferred = &preferred
+	}
+	if plan, ok := st.plans[routeKey{c.mode, c.tier, c.activity}]; ok && plan.preferred != plan.route && c.route == plan.route {
+		preferred := plan.preferred
+		d.Preferred = &preferred
+		d.Reason = ReasonUnavailable
+	}
 	d.Rewritten = d.Route != st.original
 	if d.Reason == policy.ReasonFit {
 		th.stats.FitHeld++
@@ -773,6 +870,12 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	prevTier, prev := th.tier, st.original
 	if th.hasSent {
 		prev = th.sent
+	}
+	if c.reason == policy.ReasonEscalation && d.Route == c.route && st.mode == config.ModeCost && c.tier == config.TierHigh && c.mode == config.ModeBalanced {
+		th.recovering = true
+	}
+	if c.mode == config.ModeCost {
+		th.recovering = false
 	}
 	th.tier, th.activity, th.routeMode = d.Tier, c.activity, c.mode
 	th.requests++
@@ -850,6 +953,11 @@ func (e *Engine) usable(st *step, r config.Route) bool {
 	levels := st.cat.Models[r.Model].ReasoningLevels
 	return r.Effort == "" || len(levels) == 0 ||
 		slices.ContainsFunc(levels, func(l catalog.ReasoningLevel) bool { return l.Effort == r.Effort })
+}
+
+func (e *Engine) fits(st *step, r config.Route) bool {
+	w, known := st.cat.Window(r.Model)
+	return e.usable(st, r) && known && w > 0 && float64(st.tokens) <= float64(w)*st.policy.ContextFill
 }
 
 // upward is plan D6's fix: when the request's own model cannot hold the
@@ -1048,6 +1156,7 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 	if model != "" && u.InputTokens > 0 {
 		e.ledger.Observe(key, model, u, now)
 	}
+	e.log.Debug("route reply", "thread", key, "turn", m.TurnID, "served", served, "inputTokens", u.InputTokens, "outputTokens", u.OutputTokens)
 	if d != nil {
 		priced := *d
 		priced.Route.Model = model
@@ -1113,12 +1222,20 @@ func sameModel(requested, served string) bool {
 	return served == requested || len(served) > len(requested) && served[:len(requested)+1] == requested+"-"
 }
 
-func classifierInput(f facts.Facts, cfg config.Config) classifier.Input {
+func (st *step) classifierInput() classifier.Input {
+	f := st.facts
 	msgs := make([]classifier.Message, len(f.Dialogue))
 	for i, t := range f.Dialogue {
 		msgs[i] = classifier.Message{Role: t.Role, Text: t.Text}
 	}
-	return classifier.Input{Prompt: f.Prompt, Dialogue: msgs, Routes: maps.Clone(cfg.Routes)}
+	routes := map[config.Tier]config.Route{}
+	for _, tier := range config.Tiers {
+		key := routeKey{st.routeMode, tier, ""}
+		if p := st.plans[key]; p.eligible {
+			routes[tier] = p.route
+		}
+	}
+	return classifier.Input{Prompt: f.Prompt, Dialogue: msgs, Routes: routes}
 }
 
 // panicText names a panic without echoing arbitrary values, which might

@@ -22,6 +22,7 @@ type cell struct {
 	state    policy.State
 	estimate *policy.Estimate
 	advice   *classifier.Advice // the answer this step used, if any
+	route    config.Route       // immutable physical pair; empty before resolution
 }
 
 // running is the incumbent cell with its resolved route.
@@ -36,7 +37,11 @@ type running struct {
 // the thread's mode now, so a mode change waits for a gate.
 func (e *Engine) incumbent(st *step) running {
 	th := st.th
-	return running{tier: th.tier, activity: th.activity, mode: th.routeMode, route: st.routeIn(th.routeMode, th.tier, th.activity)}
+	r := th.native
+	if th.hasSent {
+		r = th.sent
+	}
+	return running{tier: th.tier, activity: th.activity, mode: th.routeMode, route: r}
 }
 
 // downAllowed is the gate for a cheaper route on the same task: the dwell has
@@ -69,6 +74,17 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 			return "", false
 		}
 	}
+	// Logical high cannot tier-escalate. Escape cost's physical target to
+	// balanced high only when that pair is eligible and strictly stronger.
+	recovery := st.routeIn(config.ModeBalanced, config.TierHigh, act)
+	physical := st.routeMode == config.ModeCost && inc.tier == config.TierHigh &&
+		recovery.Model != inc.route.Model && e.fits(st, recovery)
+	if o, ordered := compareRoutes(cfg, recovery, inc.route); !ordered || o <= 0 {
+		physical = false
+	}
+	if physical {
+		escalate = func(config.Tier) (config.Tier, bool) { return config.TierHigh, true }
+	}
 	signature := ""
 	if st.facts.Failure != nil {
 		signature = st.facts.Failure.Signature
@@ -82,13 +98,18 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	r := policy.Decide(in)
 	c := cell{tier: r.Tier, activity: act, mode: st.routeMode, reason: r.Reason, state: r.State, estimate: r.Estimate, advice: advice}
 	to := routeFor(r.Tier)
+	c.route = to
+	if physical && r.Reason == policy.ReasonEscalation {
+		c.mode, c.route = config.ModeBalanced, recovery
+		return c
+	}
 	if r.Tier != inc.tier || to == inc.route {
 		return c
 	}
 	// A move is the mode's when its target or the incumbent sits off the
 	// configured route, so a move back to balanced passes the gate too.
-	base := resolve(cfg.RouteFor(r.Tier, act), st.sent())
-	if to != base || inc.route != resolve(cfg.RouteFor(inc.tier, inc.activity), st.sent()) {
+	base := st.routeIn(config.ModeBalanced, r.Tier, act)
+	if to != base || inc.route != st.routeIn(config.ModeBalanced, inc.tier, inc.activity) {
 		o, ok := modeOrder(cfg, to, inc.route)
 		tax := e.ledger.SwitchTax(th.id, to.Model, st.tokens, st.now)
 		move, reason, est := policy.Lateral(in, r, tax, ok && o < 0)
@@ -108,11 +129,11 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 		// the gate: not quality down, not cost up, not a return to balanced.
 		ob, okb := modeOrder(cfg, base, inc.route)
 		toward := (st.routeMode == config.ModeQuality && ob > 0) || (st.routeMode == config.ModeCost && ob < 0)
-		if ok && okb && toward && (ob > 0) == (o > 0) {
-			c.mode = config.ModeBalanced
+		if ok && okb && toward && (ob > 0) == (o > 0) && !th.recovering {
+			c.mode, c.route = config.ModeBalanced, base
 			return e.activityMove(st, c, inc, base, act, advice, r.Reason == policy.ReasonHold)
 		}
-		c.activity, c.mode = inc.activity, inc.mode
+		c.activity, c.mode, c.route = inc.activity, inc.mode, inc.route
 		c.reason, c.estimate = reason, est
 		return c
 	}
@@ -131,7 +152,7 @@ func (e *Engine) activityMove(st *step, c cell, inc running, to config.Route, ac
 	}
 	move, reason, est := e.lateral(st, inc.route, to, mass, hold)
 	if !move {
-		c.activity, c.mode = inc.activity, inc.mode
+		c.activity, c.mode, c.route = inc.activity, inc.mode, inc.route
 	}
 	c.reason, c.estimate = reason, est
 	return c
@@ -148,7 +169,10 @@ func (e *Engine) observedMove(st *step, cur cell) cell {
 	if act == "" || act == cur.activity {
 		return cur
 	}
-	from := st.routeIn(cur.mode, cur.tier, cur.activity)
+	from := cur.route
+	if from.Model == "" {
+		from = st.routeIn(cur.mode, cur.tier, cur.activity)
+	}
 	routeFor := func(t config.Tier) config.Route { return st.routeIn(cur.mode, t, act) }
 	tier, fits := policy.FitTier(cur.tier, st.tokens, e.window(st, routeFor), st.policy.ContextFill)
 	if !fits {
@@ -167,7 +191,7 @@ func (e *Engine) observedMove(st *step, cur cell) cell {
 	if !move {
 		return cur
 	}
-	cur.tier, cur.activity, cur.reason, cur.estimate = tier, act, ReasonObserved, est
+	cur.tier, cur.activity, cur.reason, cur.estimate, cur.route = tier, act, ReasonObserved, est, to
 	return cur
 }
 

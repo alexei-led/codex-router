@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,11 +13,13 @@ import (
 	"time"
 )
 
+var updateDefault = flag.Bool("update-default", false, "regenerate testdata/default.json")
+
 func TestDefaultRoutesMatchPlan(t *testing.T) {
 	c := Default()
 	want := map[Tier]Route{
 		TierHigh:   {Model: "gpt-6.1-sol", Effort: EffortHigh},
-		TierMedium: {Model: "gpt-6.1-sol", Effort: EffortMedium},
+		TierMedium: {Model: "gpt-6.1-terra", Effort: EffortMedium},
 		TierLow:    {Model: "gpt-6-luna", Effort: EffortHigh},
 		TierMicro:  {Model: "gpt-6-luna", Effort: EffortMedium},
 	}
@@ -26,7 +29,7 @@ func TestDefaultRoutesMatchPlan(t *testing.T) {
 	if c.Baseline != TierMedium {
 		t.Errorf("baseline = %q, want medium", c.Baseline)
 	}
-	if got := c.RouteFor(TierMedium, ActivityDebug); got != (Route{Model: "gpt-6.1-sol", Effort: EffortHigh}) {
+	if got := c.RouteFor(TierMedium, ActivityDebug); got != (Route{Model: "gpt-6.1-terra", Effort: EffortMedium}) {
 		t.Errorf("debug@medium = %+v", got)
 	}
 	if err := c.Validate(); err != nil {
@@ -35,6 +38,15 @@ func TestDefaultRoutesMatchPlan(t *testing.T) {
 }
 
 func TestDefaultGoldenRoundTrip(t *testing.T) {
+	if *updateDefault {
+		data, err := json.MarshalIndent(Default(), "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile("testdata/default.json", append(data, '\n'), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	golden, err := os.ReadFile("testdata/default.json")
 	if err != nil {
 		t.Fatal(err)

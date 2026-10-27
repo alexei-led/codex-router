@@ -10,20 +10,12 @@
       "effort": "high"
     },
     "medium": {
-      "model": "gpt-6.1-sol",
+      "model": "gpt-6.1-terra",
       "effort": "medium"
     },
     "micro": {
       "model": "gpt-6-luna",
       "effort": "medium"
-    }
-  },
-  "activities": {
-    "debug": {
-      "medium": {
-        "model": "gpt-6.1-sol",
-        "effort": "high"
-      }
     }
   },
   "prices": {
@@ -36,6 +28,11 @@
       "input": 2,
       "cachedInput": 0.1,
       "output": 10
+    },
+    "gpt-6.1-terra": {
+      "input": 1,
+      "cachedInput": 0.05,
+      "output": 5
     }
   },
   "policy": {

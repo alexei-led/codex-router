@@ -103,6 +103,8 @@ type Decision struct {
 	// older engine sends neither.
 	RoutingMode       config.RoutingMode `json:"RoutingMode,omitempty"`
 	RoutingModeSource ModeSource         `json:"RoutingModeSource,omitempty"`
+	// Preferred is present when eligibility forced a different physical route.
+	Preferred *config.Route `json:"Preferred,omitempty"`
 }
 
 // Reading is the classifier answer the decision's turn runs on, for display:
@@ -211,8 +213,9 @@ type Snapshot struct {
 	Window               int                          `json:"Window"`
 	Worth                []Finding                    `json:"Worth"`
 	// RoutingMode is the thread's routing mode (the config's without a
-	// thread) and RoutingModeSource where it came from; Policy and Routes are
-	// that mode's. Additive: an older engine sends neither.
+	// thread) and RoutingModeSource where it came from. Policy is that mode's;
+	// Routes are that mode's, or balanced's while a pin is pending.
+	// Additive: an older engine sends neither.
 	RoutingMode       config.RoutingMode `json:"RoutingMode,omitempty"`
 	RoutingModeSource ModeSource         `json:"RoutingModeSource,omitempty"`
 	// ProjectError says why the thread's project file was ignored.

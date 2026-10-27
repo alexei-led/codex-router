@@ -1,6 +1,14 @@
 # Evaluation
 
-These results explain the default routes. They are small tests, not a claim about real session savings.
+These results inform the default routes. They are small tests, not a claim about real session savings.
+
+## Terra defaults
+
+The Luna/Terra/Sol preference matrix is a **derived routing policy**, not a provider recommendation or permission boundary. Standard input/cached-input/output prices per million tokens are Luna $0.10/$0.01/$0.50, Terra $1/$0.05/$5, and Sol $2/$0.10/$10. [OpenAI model specifications](https://developers.openai.com/api/docs/models/gpt-6.1-terra) and the [independent efficiency comparison](https://artificialanalysis.ai/articles/gpt-6-1-terra-pushes-the-cost-efficiency-frontier) motivate testing Terra between Luna and Sol; they do not establish your Codex entitlement or window.
+
+Maintainer fixtures on 2026-10-27 used 36 isolated Codex runs: two repetitions, three tasks and six model/effort settings. One capacity failure was retried with explicit authorization and the original failure remained recorded. Terra xhigh code averaged $0.1339 versus Sol medium $0.2177; Terra medium review $0.0649 versus $0.1648; docs $0.0225 versus $0.0493. Luna high passed bounded code/review more cheaply; one Luna docs run made an arithmetic error and one Terra low run left a stale test. Those runs recorded selected CLI settings, not server-confirmed backend model/effort; treat the comparisons as provisional routing evidence. These list-price equivalents and small fixtures are not production failure rates, broad model equivalence or guaranteed session savings. The earlier benchmark below did not include Terra.
+
+The defaults use Terra medium for generic balanced medium, cost high and quality low; code/debug raise the first two to xhigh. Quality medium uses Sol medium or high by activity. The [full matrix](configuration.md#mode-and-modes) and independent 96-cell acceptance fixture in `internal/route/testdata/default-preferences.json` pin exact model and effort. Runtime catalog effort, group and context checks can choose an eligible fallback instead. Flat estimates omit long-context, Fast and cache-write billing details and are not [Codex subscription invoices](https://developers.openai.com/codex/pricing).
 
 ## Scope
 
@@ -14,7 +22,7 @@ The tests used `codex exec`, one fixture per task and three runs each. Tests or 
 | debug: 2 bugs from a symptom + tests | 100% $0.013 | 100% $0.020 | 100% $0.034 | 100% $0.16 | 100% $0.28 | 100% $0.44 | 100% $0.51 |
 | ops: fix vet, build and Makefile     | 100% $0.009 | 100% $0.008 | 100% $0.011 | 100% $0.11 | 100% $0.15 | 100% $0.16 | 100% $0.18 |
 | code: new effort + hidden tests      | 100% $0.009 | 100% $0.011 | 100% $0.016 | 100% $0.12 | 100% $0.17 | 100% $0.21 | 100% $0.28 |
-| explore: 14 facts from the code      | 95% $0.007  | 100% $0.008 | 100% $0.012 | 100% $0.10 | 100% $0.12 | not run          | not run          |
+| explore: 14 facts from the code      | 95% $0.007  | 100% $0.008 | 100% $0.012 | 100% $0.10 | 100% $0.12 | not run    | not run    |
 | plan: design doc, rubric score       | 63% $0.010  | 73% $0.015  | 60% $0.031  | 70% $0.19  | 73% $0.27  | 73% $0.43  | 60% $0.47  |
 
 Each task used one fixture and took minutes. These results do not cover long sessions, large context or open design.
@@ -29,37 +37,36 @@ Three runs on one fixture cannot establish a general ranking. Prices and availab
 
 `TestModesMakeAMeasurableDifference` (`internal/route/matrix_test.go`) replays the same seeded sessions under each [mode](configuration.md#mode-and-modes): two threads, 90 turns, 706 routed steps, with random tier and activity answers, continuations, tool failures, edits, passing checks and cache gaps. Token counts come from the script and do not depend on the route, so the cost column is the list price of the models each mode chose, not a measured bill.
 
-| Config                                | Mode     | Cost (list) | Steps on Sol | Mean effort | Switches | Uncached switch tokens |
-| ------------------------------------- | -------- | ----------- | ------------ | ----------- | -------- | ---------------------- |
-| defaults                              | cost     | $11.94      | 17%          | 1.29        | 58       | 1.05M                  |
-| defaults                              | balanced | $41.02      | 78%          | 1.38        | 35       | 0.31M                  |
-| defaults                              | quality  | $51.68      | 100%         | 2.68        | 40       | 0                      |
-| a profile with a third, mid-priced model | cost  | $20.21      | 0%           | 0.86        | 125      | 3.12M                  |
-| same profile                          | balanced | $34.34      | 18%          | 1.14        | 73       | 1.28M                  |
-| same profile                          | quality  | $46.33      | 72%          | 2.63        | 63       | 0.93M                  |
-| no prices                             | cost     | none        | 12%          | 0.19        | 59       | 1.52M                  |
-| no prices                             | balanced | none        | 16%          | 1.17        | 35       | 0.45M                  |
-| no prices                             | quality  | none        | 69%          | 2.68        | 41       | 0.68M                  |
+| Config                                   | Mode     | Cost (list) | Steps on Sol | Mean effort | Switches | Uncached switch tokens |
+| ---------------------------------------- | -------- | ----------- | ------------ | ----------- | -------- | ---------------------- |
+| defaults                                 | cost     | $6.75       | 0%           | 1.43        | 67       | 0.98M                  |
+| defaults                                 | balanced | $24.86      | 16%          | 1.91        | 126      | 0.45M                  |
+| defaults                                 | quality  | $50.20      | 94%          | 2.66        | 57       | 0                      |
+| a profile with a third, mid-priced model | cost     | $20.44      | 0%           | 0.83        | 124      | 3.11M                  |
+| same profile                             | balanced | $34.34      | 18%          | 1.14        | 73       | 1.28M                  |
+| same profile                             | quality  | $46.33      | 72%          | 2.63        | 63       | 0.93M                  |
+| no prices                                | cost     | none        | 12%          | 0.19        | 59       | 1.52M                  |
+| no prices                                | balanced | none        | 16%          | 1.17        | 35       | 0.45M                  |
+| no prices                                | quality  | none        | 69%          | 2.68        | 41       | 0.68M                  |
 
 Mean effort runs from 0 (`low`) to 3 (`xhigh`).
 
 What the replay shows, and what it does not:
 
-- With the default routes, `cost` cut the list-price cost by 71% and `quality` raised it by 26%.
-- `cost` switched models more often and wrote 3.4 times as many uncached tokens on switches. The cost column does not charge for that cache loss. Priced at Sol's full input rate, the extra 0.74M tokens add about $1.47, and `cost` is still 66% below `balanced`.
-- In the profile, `cost` switched 1.7 times as often as `balanced` and wrote 1.8M more uncached tokens: it often moves first to the mid-priced model, as `balanced` does, then on to Luna. Priced at Sol's input rate, that cache loss adds at most $3.70, and `cost` stays about 30% below `balanced`.
-- `quality` raised effort, not price per token. Its higher cost comes from the stronger policy keeping Sol, not from `xhigh`. More reasoning tokens at `xhigh` are not modeled.
+- Default `cost` uses cheaper physical targets and `quality` uses more Sol. Both model prices and switching policy affect the totals.
+- Switch-token counts quantify cache exposure separately. The cost column does not add a second charge for those tokens.
+- The replay does not model route-dependent answer quality or extra reasoning tokens at higher effort. Mean effort is an ordering indicator, not a billing multiplier.
 - Without `prices`, `cost` cannot use its model lever and no dollar figure exists: it changes effort and the switching policy only.
 - The answers are random, not a real workload. The replay checks direction and size, not real savings.
 
-`TestBalancedDecisionsAreUnchanged` pins balanced decisions to goldens recorded on the v0.8.0 engine: about 1,400 from the plain replay, and about 1,900 from a second replay that adds background reviews, pins, context compaction and threads seeded by a resume. Both replays round `a*b+c` sums before adding (`float64(a*b) + c`), so the goldens are the same on arm64 and amd64.
+`TestBalancedDecisionsAreUnchanged` freezes the legacy/custom ladder and pins its balanced decisions to goldens recorded on the v0.8.0 engine: about 1,400 from the plain replay, and about 1,900 from a second replay that adds background reviews, pins, context compaction and threads seeded by a resume. Both replays round `a*b+c` sums before adding (`float64(a*b) + c`), so the goldens are the same on arm64 and amd64.
 
 ### Decision matrix
 
 `TestModeDecisionMatrix` (`internal/route/matrix_test.go`) decides a new session's first turn for every classifier tier, activity and mode. It uses the default config and a profile with a third, mid-priced model (`gpt-6-sol`) and activity routes. Every answer is confident, so each cell shows the route a mode aims at, not a pending move. The test checks that:
 
 - `micro` routes the same in every mode.
-- `balanced` routes to the pair the config names for the tier and activity.
+- `balanced` routes to its resolved preferred pair for the tier and activity; custom cells keep their configured pair.
 - `cost` never spends more than `balanced`, and `quality` never spends less. Spend compares input price first, then effort.
 - `cost` never routes below the `low` tier and never below `low` effort.
 - At least a set number of cells differ from `balanced`: a mode that stops working fails the test.
@@ -82,38 +89,38 @@ The test writes the table below. It fails when the table is out of date. Reasons
 | default | micro | ops | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) |
 | default | micro | docs | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) |
 | default | micro | uncertain | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) |
-| default | low | code | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6-luna/xhigh (downgrade) |
-| default | low | debug | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6-luna/xhigh (downgrade) |
-| default | low | explore | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6-luna/xhigh (downgrade) |
-| default | low | plan | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6-luna/xhigh (downgrade) |
-| default | low | review | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6-luna/xhigh (downgrade) |
-| default | low | ops | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6-luna/xhigh (downgrade) |
-| default | low | docs | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6-luna/xhigh (downgrade) |
-| default | low | uncertain | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6-luna/xhigh (downgrade) |
-| default | medium | code | 6-luna/high (mode) | 6.1-sol/medium (same-tier) | 6.1-sol/high (mode) |
-| default | medium | debug | 6-luna/high (mode) | 6.1-sol/high (activity-up) | 6.1-sol/xhigh (mode) |
-| default | medium | explore | 6-luna/high (mode) | 6.1-sol/medium (same-tier) | 6.1-sol/high (mode) |
-| default | medium | plan | 6-luna/high (mode) | 6.1-sol/medium (same-tier) | 6.1-sol/high (mode) |
-| default | medium | review | 6-luna/high (mode) | 6.1-sol/medium (same-tier) | 6.1-sol/high (mode) |
-| default | medium | ops | 6-luna/high (mode) | 6.1-sol/medium (same-tier) | 6.1-sol/high (mode) |
-| default | medium | docs | 6-luna/high (mode) | 6.1-sol/medium (same-tier) | 6.1-sol/high (mode) |
-| default | medium | uncertain | 6-luna/high (mode) | 6.1-sol/medium (same-tier) | 6.1-sol/high (mode) |
-| default | high | code | 6.1-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | debug | 6.1-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | explore | 6.1-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | plan | 6.1-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | review | 6.1-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | ops | 6.1-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | docs | 6.1-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | uncertain | 6.1-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | uncertain | code | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) |
-| default | uncertain | debug | 6.1-sol/medium (uncertain) | 6.1-sol/high (activity-up) | 6.1-sol/high (activity-up) |
-| default | uncertain | explore | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) |
-| default | uncertain | plan | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) |
-| default | uncertain | review | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) |
-| default | uncertain | ops | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) |
-| default | uncertain | docs | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) |
-| default | uncertain | uncertain | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) | 6.1-sol/medium (uncertain) |
+| default | low | code | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
+| default | low | debug | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
+| default | low | explore | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
+| default | low | plan | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
+| default | low | review | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
+| default | low | ops | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
+| default | low | docs | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
+| default | low | uncertain | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
+| default | medium | code | 6-luna/high (mode) | 6.1-terra/xhigh (activity-up) | 6.1-sol/high (mode) |
+| default | medium | debug | 6-luna/high (mode) | 6.1-terra/xhigh (activity-up) | 6.1-sol/high (mode) |
+| default | medium | explore | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/medium (mode) |
+| default | medium | plan | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/high (mode) |
+| default | medium | review | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/high (mode) |
+| default | medium | ops | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/medium (mode) |
+| default | medium | docs | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/medium (mode) |
+| default | medium | uncertain | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/medium (mode) |
+| default | high | code | 6.1-terra/xhigh (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
+| default | high | debug | 6.1-terra/xhigh (upgrade) | 6.1-sol/xhigh (upgrade) | 6.1-sol/xhigh (upgrade) |
+| default | high | explore | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
+| default | high | plan | 6.1-terra/medium (upgrade) | 6.1-sol/xhigh (upgrade) | 6.1-sol/xhigh (upgrade) |
+| default | high | review | 6.1-terra/medium (upgrade) | 6.1-sol/xhigh (upgrade) | 6.1-sol/xhigh (upgrade) |
+| default | high | ops | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
+| default | high | docs | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
+| default | high | uncertain | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
+| default | uncertain | code | 6.1-terra/medium (uncertain) | 6.1-terra/xhigh (activity-up) | 6.1-terra/xhigh (activity-up) |
+| default | uncertain | debug | 6.1-terra/medium (uncertain) | 6.1-terra/xhigh (activity-up) | 6.1-terra/xhigh (activity-up) |
+| default | uncertain | explore | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
+| default | uncertain | plan | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
+| default | uncertain | review | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
+| default | uncertain | ops | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
+| default | uncertain | docs | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
+| default | uncertain | uncertain | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
 | profile | micro | code | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) |
 | profile | micro | debug | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) |
 | profile | micro | explore | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) | 6-luna/medium (downgrade) |

@@ -31,13 +31,13 @@
   <text x="398.2" y="123.0" fill="#d0d0d0" xml:space="preserve">0 failures</text>
   <text x="16.0" y="142.0" fill="#d0d0d0" xml:space="preserve"> Routes     </text>
   <text x="109.6" y="142.0" fill="#5fd7af" xml:space="preserve">micro  </text>
-  <text x="164.2" y="142.0" fill="#d0d0d0" xml:space="preserve">gpt-6-luna · medium   </text>
-  <text x="335.8" y="142.0" fill="#5fafd7" xml:space="preserve">low    </text>
-  <text x="390.4" y="142.0" fill="#d0d0d0" xml:space="preserve">gpt-6-luna · high     </text>
+  <text x="164.2" y="142.0" fill="#d0d0d0" xml:space="preserve">gpt-6-luna · medium     </text>
+  <text x="351.4" y="142.0" fill="#5fafd7" xml:space="preserve">low    </text>
+  <text x="406.0" y="142.0" fill="#d0d0d0" xml:space="preserve">gpt-6-luna · high       </text>
   <text x="109.6" y="161.0" fill="#d7af5f" xml:space="preserve">medium </text>
-  <text x="164.2" y="161.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium  </text>
-  <text x="335.8" y="161.0" fill="#d75f87" xml:space="preserve">high   </text>
-  <text x="390.4" y="161.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · high                               </text>
+  <text x="164.2" y="161.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-terra · medium  </text>
+  <text x="351.4" y="161.0" fill="#d75f87" xml:space="preserve">high   </text>
+  <text x="406.0" y="161.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · high                             </text>
   <text x="16.0" y="180.0" fill="#878787" xml:space="preserve"> Compatibility unknown · catalog unavailable</text>
   <text x="16.0" y="199.0" fill="#d0d0d0" xml:space="preserve"> Switching  up after 2 votes, bar 0.75</text>
   <text x="312.4" y="199.0" fill="#878787" xml:space="preserve"> · </text>
