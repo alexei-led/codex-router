@@ -39,9 +39,9 @@ Three runs on one fixture cannot establish a general ranking. Prices and availab
 
 | Config                                   | Mode     | Cost (list) | Steps on Sol | Mean effort | Switches | Uncached switch tokens |
 | ---------------------------------------- | -------- | ----------- | ------------ | ----------- | -------- | ---------------------- |
-| defaults                                 | cost     | $6.75       | 0%           | 1.40        | 68       | 0.98M                  |
-| defaults                                 | balanced | $24.27      | 15%          | 2.18        | 62       | 0.45M                  |
-| defaults                                 | quality  | $50.20      | 94%          | 2.64        | 56       | 0                      |
+| defaults                                 | cost     | $6.75       | 0%           | 1.43        | 67       | 0.98M                  |
+| defaults                                 | balanced | $24.86      | 16%          | 1.91        | 126      | 0.45M                  |
+| defaults                                 | quality  | $50.20      | 94%          | 2.66        | 57       | 0                      |
 | a profile with a third, mid-priced model | cost     | $20.44      | 0%           | 0.83        | 124      | 3.11M                  |
 | same profile                             | balanced | $34.34      | 18%          | 1.14        | 73       | 1.28M                  |
 | same profile                             | quality  | $46.33      | 72%          | 2.63        | 63       | 0.93M                  |
@@ -97,8 +97,8 @@ The test writes the table below. It fails when the table is out of date. Reasons
 | default | low | ops | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
 | default | low | docs | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
 | default | low | uncertain | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
-| default | medium | code | 6-luna/high (mode) | 6.1-terra/xhigh (mode) | 6.1-sol/high (mode) |
-| default | medium | debug | 6-luna/high (mode) | 6.1-terra/xhigh (mode) | 6.1-sol/high (mode) |
+| default | medium | code | 6-luna/high (mode) | 6.1-terra/xhigh (activity-up) | 6.1-sol/high (mode) |
+| default | medium | debug | 6-luna/high (mode) | 6.1-terra/xhigh (activity-up) | 6.1-sol/high (mode) |
 | default | medium | explore | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/medium (mode) |
 | default | medium | plan | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/high (mode) |
 | default | medium | review | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/high (mode) |
@@ -113,8 +113,8 @@ The test writes the table below. It fails when the table is out of date. Reasons
 | default | high | ops | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
 | default | high | docs | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
 | default | high | uncertain | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | uncertain | code | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
-| default | uncertain | debug | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
+| default | uncertain | code | 6.1-terra/medium (uncertain) | 6.1-terra/xhigh (activity-up) | 6.1-terra/xhigh (activity-up) |
+| default | uncertain | debug | 6.1-terra/medium (uncertain) | 6.1-terra/xhigh (activity-up) | 6.1-terra/xhigh (activity-up) |
 | default | uncertain | explore | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
 | default | uncertain | plan | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
 | default | uncertain | review | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |

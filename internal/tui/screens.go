@@ -102,9 +102,13 @@ func (c *canvas) classifierRow(s route.Snapshot) {
 }
 
 func (c *canvas) routesRows(s route.Snapshot) {
+	routeWidth := routeCell
+	for _, tier := range config.Tiers {
+		routeWidth = max(routeWidth, ansi.StringWidth(routeText(s.Routes[tier]))+2)
+	}
 	cell := func(t config.Tier) []seg {
 		text := routeText(s.Routes[t])
-		return []seg{col(tierRole[t], pad(string(t), tierCell)), plain(pad(text, max(routeCell, ansi.StringWidth(text)+2)))}
+		return []seg{col(tierRole[t], pad(string(t), tierCell)), plain(pad(text, routeWidth))}
 	}
 	group := dim(groupText(s))
 	var rows [][]seg

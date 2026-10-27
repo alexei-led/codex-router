@@ -37,11 +37,9 @@ type running struct {
 // the thread's mode now, so a mode change waits for a gate.
 func (e *Engine) incumbent(st *step) running {
 	th := st.th
-	r := st.routeIn(th.routeMode, th.tier, th.activity)
+	r := th.native
 	if th.hasSent {
 		r = th.sent
-	} else if th.native.Model != "" {
-		r = th.native
 	}
 	return running{tier: th.tier, activity: th.activity, mode: th.routeMode, route: r}
 }
@@ -110,8 +108,8 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	}
 	// A move is the mode's when its target or the incumbent sits off the
 	// configured route, so a move back to balanced passes the gate too.
-	base := resolve(cfg.RouteFor(r.Tier, act), st.sent())
-	if to != base || inc.route != resolve(cfg.RouteFor(inc.tier, inc.activity), st.sent()) {
+	base := st.routeIn(config.ModeBalanced, r.Tier, act)
+	if to != base || inc.route != st.routeIn(config.ModeBalanced, inc.tier, inc.activity) {
 		o, ok := modeOrder(cfg, to, inc.route)
 		tax := e.ledger.SwitchTax(th.id, to.Model, st.tokens, st.now)
 		move, reason, est := policy.Lateral(in, r, tax, ok && o < 0)

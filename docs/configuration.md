@@ -69,7 +69,7 @@ These are the raw generic declarations; default-owned mode and activity preferen
 
 Effort changes on one model keep its prompt cache. A switch between models can require an uncached prefix. See [evaluation](evaluation.md) for the small tests behind these defaults.
 
-An `activities.<activity>.<tier>` entry overrides the tier's model and effort. An empty field inherits the tier's route. Explicit cells are user-owned and use the generic mode transforms, not the built-in preference matrix. Set `activities` to `null` to disable built-in activity preferences while keeping generic mode preferences. An activity route applies when the classifier's activity probability reaches `policy.activityMass`.
+An `activities.<activity>.<tier>` entry overrides the tier's model and effort. An empty field inherits the tier's route. Explicit cells are user-owned and use the generic mode transforms for that cell, not the built-in preference matrix. Ownership is independent per cell: an explicit low cell does not change automatic preferences at undeclared medium or high cells. An explicit empty target cell also opts that cell out of built-in preferences. Set `activities` to `null` to disable built-in activity preferences while keeping generic mode preferences. An activity route applies when the classifier's activity probability reaches `policy.activityMass`.
 
 ### prices
 
@@ -126,7 +126,7 @@ Activity preferences on the default ladder:
 
 All quality-high cells use Sol xhigh. Cost-medium always uses Luna high. Low follows the generic table for every activity; micro remains Luna medium in every mode. Unknown activity uses the generic cell. These preferences are a derived routing policy, not an entitlement or quality guarantee; see [Evaluation](evaluation.md).
 
-A preferred pair is checked against the current Codex catalog's model, effort, compatibility and usable context window before classification. If it is ineligible, an eligible generic-transform pair can be used; otherwise the existing context/group guard finds a fitting tier or keeps the original request. Diagnostics distinguish a preferred pair from that fallback. API context maxima are not Codex windows.
+A preferred pair is checked against the current Codex catalog's model, effort, compatibility and usable context window before classification. If it is ineligible, an eligible generic-transform pair can be used, else the eligible balanced pair for the same tier and activity. Only when neither fits does the existing context/group guard search other tiers or keep the original request. Diagnostics distinguish a preferred pair from that fallback. API context maxima are not Codex windows.
 
 For custom declarations, `balanced` keeps the configured pair; `cost` takes the next lower tier's cheaper model (never below low), else one effort step down; `quality` takes one effort step up, else the next higher tier, never an ordered-weaker pair. Micro, pins, manual selections and paused sessions bypass mode transforms. Pins use the raw generic declaration, not the activity preferences.
 

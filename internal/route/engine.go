@@ -345,9 +345,14 @@ func (e *Engine) planRoute(st *step, mode config.RoutingMode, tier config.Tier, 
 	r := preferred
 	if !e.fits(st, r) {
 		fallback := genericTarget(st.cfg, mode, tier, act, st.sent(), levelsIn(st.cat))
-		if mode == config.ModeQuality {
+		if mode == config.ModeCost || mode == config.ModeQuality {
 			balanced := e.planRoute(st, config.ModeBalanced, tier, act)
-			if o, ordered := compareRoutes(st.cfg, fallback, balanced.route); balanced.eligible && ordered && o < 0 {
+			weaker := false
+			if mode == config.ModeQuality {
+				o, ordered := compareRoutes(st.cfg, fallback, balanced.route)
+				weaker = ordered && o < 0
+			}
+			if balanced.eligible && (!e.fits(st, fallback) || weaker) {
 				fallback = balanced.route
 			}
 		}
@@ -639,10 +644,7 @@ func (e *Engine) bind(th *thread, account string) {
 	}
 	e.fence(th)
 	th.account = account
-	if th.review != nil {
-		th.review.cancel()
-	}
-	th.review, th.retries, th.advice, th.awaiting = nil, nil, nil, nil
+	th.advice, th.awaiting = nil, nil
 	th.turn, th.turnOff = "", false
 	th.state = policy.State{Turn: th.state.Turn}
 	th.measured, th.lastTotal = false, 0
