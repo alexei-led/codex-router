@@ -3,6 +3,8 @@ package proxy
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -51,7 +53,10 @@ func (s *Server) handleResponses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	meta := responses.ParseMeta(r.Header)
-	ids := []any{"thread", meta.ThreadID, "turn", meta.TurnID}
+	var requestID [16]byte
+	_, _ = rand.Read(requestID[:])
+	meta.RequestID = hex.EncodeToString(requestID[:])
+	ids := []any{"thread", meta.ThreadID, "turn", meta.TurnID, "request", meta.RequestID}
 
 	resp, ok := s.roundTrip(w, r, "/responses", s.rewrite(r.Context(), body, meta), ids)
 	if !ok {
@@ -112,7 +117,7 @@ func (s *Server) rewrite(ctx context.Context, body []byte, meta responses.Meta) 
 		}
 		return body
 	}
-	ids := []any{"thread", meta.ThreadID, "turn", meta.TurnID}
+	ids := []any{"thread", meta.ThreadID, "turn", meta.TurnID, "request", meta.RequestID}
 	req, err := responses.Parse(body)
 	if err != nil {
 		s.log.Warn("parse-error", append(ids, "bytes", len(body))...)

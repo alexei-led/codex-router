@@ -39,6 +39,9 @@ type Meta struct {
 	ThreadSource string
 	Subagent     string
 	Account      string
+	// RequestID correlates a proxy request with its usage observation. Empty
+	// on older edge links; those observations cannot seed context anchors.
+	RequestID string `json:"request_id,omitempty"`
 }
 
 // Item is one input item, flattened. Fields not used by a type stay empty;
@@ -62,7 +65,8 @@ type Request struct {
 	Input  []Item
 	Bytes  int
 
-	raw []byte
+	raw      []byte
+	contexts []Context
 }
 
 // Rewrite is what the router changes: model and reasoning.effort. An empty

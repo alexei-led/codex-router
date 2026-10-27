@@ -114,16 +114,20 @@ type thread struct {
 	retries    []retry
 	review     *review
 
-	requests     int // decided steps
-	switchedAt   mark
-	reviewedAt   int
-	observedFrom int
-	sent         config.Route
-	hasSent      bool
-	awaiting     *Decision // the decision whose reply is next
-	lastItems    int
-	lastTotal    int
-	approx       int
+	requests       int // decided steps
+	switchedAt     mark
+	reviewedAt     int
+	observedFrom   int
+	sent           config.Route
+	hasSent        bool
+	awaiting       *Decision // the decision whose reply is next
+	lastItems      int
+	lastTotal      int
+	approx         int
+	context        responses.Context
+	contextTotal   int
+	requestID      string
+	pendingContext responses.Context
 
 	manual      bool
 	wrote       bool
@@ -288,12 +292,13 @@ type step struct {
 	// mode is the thread's routing mode and source where it comes from;
 	// routeMode is the mode routes are aimed with: balanced on a pinned turn,
 	// since a pin bypasses the mode.
-	mode      config.RoutingMode
-	source    ModeSource
-	routeMode config.RoutingMode
-	epoch     uint64
-	plans     map[routeKey]routePlan
-	ctx       context.Context
+	mode            config.RoutingMode
+	source          ModeSource
+	routeMode       config.RoutingMode
+	epoch           uint64
+	plans           map[routeKey]routePlan
+	ctx             context.Context
+	measuredContext bool
 }
 
 type routePlan struct {
@@ -379,7 +384,7 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 	}
 	key := threadKey(m)
 	if responses.Classify(m) != responses.KindUserStep || key == "" {
-		e.passThrough(key)
+		e.passThrough(m)
 		return responses.Rewrite{}, false
 	}
 	th := e.thread(key)
@@ -405,7 +410,9 @@ func (e *Engine) Decide(ctx context.Context, req *responses.Request, m responses
 	}
 	st.ctx = ctx
 	st.facts = facts.Extract(req, st.opts)
-	st.tokens = max(st.tokens, st.facts.ApproxTokens)
+	if !st.measuredContext {
+		st.tokens = max(st.tokens, st.facts.ApproxTokens)
+	}
 	e.plan(st)
 	var advice *classifier.Advice
 	var askErr error
@@ -454,6 +461,7 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 	now := e.now()
 	original := config.Route{Model: req.Model, Effort: req.Effort}
 	e.bind(th, m.Account)
+	th.requestID, th.pendingContext = m.RequestID, responses.Context{}
 	// seen: the engine saw a request on this thread before. A brain that
 	// restarted mid-turn sees that turn's later steps first; they still
 	// carry the settings the turn started with, not the seeded ones.
@@ -493,6 +501,7 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 	for _, r := range th.retries {
 		if r.fingerprint == fp {
 			d := r.decision
+			th.awaiting, th.pendingContext = &d, req.Context()
 			return nil, &d, nil, false
 		}
 	}
@@ -518,6 +527,7 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 		th.failureFrom = 0
 		th.state = policy.State{Turn: th.state.Turn}
 		th.measured, th.lastTotal = false, 0
+		th.context, th.contextTotal = responses.Context{}, 0
 		e.ledger.Forget(th.id)
 	}
 	th.lastItems = len(req.Input)
@@ -540,6 +550,13 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 			VerifiedFrom: th.switchedAt.items,
 			FailureFrom:  th.failureFrom,
 		},
+	}
+	if added, ok := req.AddedTokens(th.context); ok && th.contextTotal > 0 {
+		// The measured total already includes the previous output. Counting
+		// its serialized suffix again is deliberately conservative.
+		st.tokens, st.measuredContext = max(th.lastTotal, th.contextTotal+added), true
+	} else {
+		th.context, th.contextTotal = responses.Context{}, 0
 	}
 	if first {
 		// Consumed here, under the lock, so exactly one turn takes it.
@@ -620,6 +637,7 @@ func (e *Engine) abandon(st *step) {
 
 // abandonLocked is abandon under e.mu.
 func (e *Engine) abandonLocked(st *step) {
+	st.th.pendingContext = responses.Context{}
 	if !st.first {
 		return
 	}
@@ -648,6 +666,7 @@ func (e *Engine) bind(th *thread, account string) {
 	th.turn, th.turnOff = "", false
 	th.state = policy.State{Turn: th.state.Turn}
 	th.measured, th.lastTotal = false, 0
+	th.context, th.contextTotal, th.pendingContext = responses.Context{}, 0, responses.Context{}
 	e.ledger.Forget(th.id)
 	e.log.Info("route account changed", "thread", th.id)
 }
@@ -684,7 +703,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 	defer e.mu.Unlock()
 	th := st.th
 	e.noteLatency(advice)
-	if e.paused || th.paused || th.manual || th.epoch != st.epoch || st.ctx.Err() != nil {
+	if e.paused || th.paused || th.manual || th.epoch != st.epoch || th.requestID != st.meta.RequestID || st.ctx.Err() != nil {
 		e.abandonLocked(st)
 		return Decision{}, false
 	}
@@ -702,7 +721,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		d.Why = whyText(d, st.cfg, st.tokens)
 		th.retries = appendCapped(th.retries, retry{st.fp, d}, retriesKept)
 		th.remember(d)
-		e.logDecision(d, nil)
+		e.logDecision(d, nil, st, d.Route)
 		return d, true
 	}
 	if th.recovering && advice != nil && !policy.SameTask(st.policy, advice, false) {
@@ -731,7 +750,7 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	th := st.th
-	if e.paused || th.paused || th.manual || th.epoch != st.epoch || st.ctx.Err() != nil {
+	if e.paused || th.paused || th.manual || th.epoch != st.epoch || th.requestID != st.meta.RequestID || st.ctx.Err() != nil {
 		return Decision{}, nil
 	}
 	cur := cell{tier: th.tier, activity: th.activity, mode: th.routeMode, reason: ReasonContinue, state: th.state, route: th.sent}
@@ -840,7 +859,11 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	} else if !e.usable(st, candidate) {
 		refused = ReasonUnavailable
 	}
-	if tier, ok := policy.FitTier(c.tier, st.tokens, window, st.policy.ContextFill); ok {
+	if e.effortOnly(st, candidate) {
+		// Codex owns this model's context/compaction policy. Keeping it and
+		// changing only supported effort cannot move into a smaller window.
+		d.Route = candidate
+	} else if tier, ok := policy.FitTier(c.tier, st.tokens, window, st.policy.ContextFill); ok {
 		if tier != c.tier {
 			d.Tier, d.Reason, d.Estimate = tier, refused, nil
 		}
@@ -898,6 +921,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	d.Support = supportLine(d.SupportParts)
 	dd := d
 	th.awaiting = &dd
+	th.pendingContext = st.req.Context()
 	th.retries = appendCapped(th.retries, retry{st.fp, d}, retriesKept)
 	if d.Route != th.lastWritten {
 		th.pending = appendCapped(th.pending, d.Route, pendingWrites)
@@ -908,20 +932,27 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	if advice == nil {
 		advice = th.advice // a later step runs on the turn's answer
 	}
-	e.logDecision(d, advice)
+	e.logDecision(d, advice, st, candidate)
 	return d
 }
 
 // logDecision writes a decision's log line. classified is the classifier's
 // tier answer the decision runs on, empty when there is none.
-func (e *Engine) logDecision(d Decision, advice *classifier.Advice) {
+func (e *Engine) logDecision(d Decision, advice *classifier.Advice, st *step, candidate config.Route) {
 	classified := ""
 	if advice != nil {
 		classified = string(advice.Choice)
 	}
+	source := "body-and-last-usage"
+	if st.measuredContext {
+		source = "measured-prefix"
+	}
+	window, _ := st.cat.Window(candidate.Model)
 	e.log.Info("route decision", "thread", d.ThreadID, "turn", d.TurnID, "step", d.Step, "tier", d.Tier,
 		"activity", d.Activity, "reason", d.Reason, "model", d.Route.Model, "effort", d.Route.Effort, "rewritten", d.Rewritten,
-		"mode", d.RoutingMode, "modeSource", d.RoutingModeSource, "classified", classified)
+		"mode", d.RoutingMode, "modeSource", d.RoutingModeSource, "classified", classified,
+		"request", st.meta.RequestID, "contextTokens", st.tokens, "contextSource", source, "requestBytes", st.req.Bytes,
+		"candidateModel", candidate.Model, "candidateEffort", candidate.Effort, "candidateWindow", window, "contextFill", st.policy.ContextFill)
 }
 
 // window is a tier's context window under routeFor; a route the request may
@@ -955,7 +986,14 @@ func (e *Engine) usable(st *step, r config.Route) bool {
 		slices.ContainsFunc(levels, func(l catalog.ReasoningLevel) bool { return l.Effort == r.Effort })
 }
 
+func (e *Engine) effortOnly(st *step, r config.Route) bool {
+	return r.Model == st.original.Model && r.Effort != "" && r.Effort != st.original.Effort && e.usable(st, r)
+}
+
 func (e *Engine) fits(st *step, r config.Route) bool {
+	if e.effortOnly(st, r) {
+		return true
+	}
 	w, known := st.cat.Window(r.Model)
 	return e.usable(st, r) && known && w > 0 && float64(st.tokens) <= float64(w)*st.policy.ContextFill
 }
@@ -1102,11 +1140,13 @@ func (e *Engine) lookup(key string) *thread {
 }
 
 // passThrough notes that a thread's next reply is not a routed one.
-func (e *Engine) passThrough(key string) {
+func (e *Engine) passThrough(m responses.Meta) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if th := e.lookup(key); th != nil {
+	if th := e.lookup(threadKey(m)); th != nil {
 		th.awaiting = nil
+		th.requestID = m.RequestID
+		th.context, th.contextTotal, th.pendingContext = responses.Context{}, 0, responses.Context{}
 	}
 }
 
@@ -1130,6 +1170,9 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 	defer e.mu.Unlock()
 	now := e.now()
 	th := e.lookup(key)
+	if th != nil && m.RequestID != th.requestID && (m.RequestID != "" || th.requestID != "") {
+		return e.snapshot(th, now)
+	}
 	model := served
 	var d *Decision
 	if th != nil {
@@ -1151,12 +1194,16 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 			}
 			th.measured, th.held = true, false
 			th.lastTotal = max(u.TotalTokens, u.InputTokens+u.OutputTokens)
+			if d != nil && m.RequestID != "" && (served == "" || sameModel(d.Route.Model, served)) {
+				th.context, th.contextTotal = th.pendingContext, th.lastTotal
+			}
 		}
+		th.pendingContext = responses.Context{}
 	}
 	if model != "" && u.InputTokens > 0 {
 		e.ledger.Observe(key, model, u, now)
 	}
-	e.log.Debug("route reply", "thread", key, "turn", m.TurnID, "served", served, "inputTokens", u.InputTokens, "outputTokens", u.OutputTokens)
+	e.log.Debug("route reply", "thread", key, "turn", m.TurnID, "request", m.RequestID, "served", served, "inputTokens", u.InputTokens, "outputTokens", u.OutputTokens)
 	if d != nil {
 		priced := *d
 		priced.Route.Model = model

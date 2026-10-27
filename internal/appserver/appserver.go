@@ -86,6 +86,7 @@ type Dialer interface {
 // API is what the launcher uses; Client implements it.
 type API interface {
 	Initialize(ctx context.Context) error
+	Provider(ctx context.Context) (string, error)
 	Resume(ctx context.Context, threadID string) (Resumed, error)
 	UpdateSettings(ctx context.Context, threadID string, s Settings) error
 	Updates() <-chan SettingsUpdated
@@ -95,6 +96,7 @@ type API interface {
 // JSON-RPC method names used.
 const (
 	MethodInitialize      = "initialize"
+	MethodConfigRead      = "config/read"
 	MethodInitialized     = "initialized"
 	MethodResume          = "thread/resume"
 	MethodSettingsUpdate  = "thread/settings/update"
@@ -246,6 +248,20 @@ func (c *Client) Initialize(ctx context.Context) error {
 		return err
 	}
 	return c.write(ctx, message{Method: MethodInitialized})
+}
+
+// Provider reads the effective provider without requesting configuration layers.
+// Startup flags can be overridden by managed configuration.
+func (c *Client) Provider(ctx context.Context) (string, error) {
+	var result struct {
+		Config struct {
+			Provider string `json:"model_provider"`
+		} `json:"config"`
+	}
+	if err := c.call(ctx, MethodConfigRead, map[string]bool{"includeLayers": false}, &result); err != nil {
+		return "", err
+	}
+	return result.Config.Provider, nil
 }
 
 // Resume subscribes this client to a thread's turn and settings

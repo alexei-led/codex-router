@@ -175,6 +175,9 @@ func (e *Engine) observedMove(st *step, cur cell) cell {
 	}
 	routeFor := func(t config.Tier) config.Route { return st.routeIn(cur.mode, t, act) }
 	tier, fits := policy.FitTier(cur.tier, st.tokens, e.window(st, routeFor), st.policy.ContextFill)
+	if r := routeFor(cur.tier); e.effortOnly(st, r) {
+		tier, fits = cur.tier, true
+	}
 	if !fits {
 		return cur
 	}

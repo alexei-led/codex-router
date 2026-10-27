@@ -521,6 +521,10 @@ Undo backs `config.toml` up, removes the marked blocks, then stops and removes t
 
 To update a wrapper install, close its Codex sessions and repeat the [installation](#install) steps. Confirm the version with `codex-router version`.
 
+The plugin and executable are separate installs. Updating the plugin does not replace an older binary or code already loaded by a running launcher. Confirm the installed version and use `codex-router doctor` to find older running endpoints before evaluating new routing defaults.
+
+After correcting a provider override, start a fresh thread and verify that it uses the router. A resumed thread can retain its previous provider even when the new app-server's configuration is correct.
+
 For a home installed with setup, close that home's Codex sessions first. Replace the binary, then rerun setup with the original `--home`, `--config` and `--state-dir` options and environment. Setup resolves those paths again and rewrites the service files. Omitting custom options can select a different config or state directory. If you moved the binary, run setup from its new path.
 
 To stop using the wrapper, run plain `codex`. For a set-up home, close its sessions and run [undo](#undo) before removing the binary. Remove the binary from the path where you installed it. The Go install path is normally `$(go env GOPATH)/bin/codex-router`.
@@ -558,6 +562,7 @@ For a mismatched control hello, the panel closes the connection. It retries the 
 | Symptom                                                                 | Cause and fix                                                                                                                                                                                                                                                                                    |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `codex-router: <reason>; running plain codex`                           | The config is invalid, or a startup step failed. The reason names it. Fix the config, or check `codex --version` and the session log.                                                                                                                                                            |
+| `codex did not select the router provider` | Native provider settings, including managed configuration, overrode the launcher's provider choice. The launcher checks `config/read` before starting the TUI and falls back to plain Codex. Resolve the provider setting through your approved configuration process; changing a shell wrapper cannot override an enforced provider. |
 | Panel says `PINS ONLY` or `Jev off`; the model never changes            | The Policy view names the reason; usually the classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session. A brain does not see your shell: set the classifier's `envFile`, then restart the brain.                                             |
 | Panel says `paused until …`                                             | The classifier failed 3 times in a row and pauses for 60 s. The Policy view shows the last error. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                                                                                            |
 | `footer not synced`                                                     | Settings writes to the app-server are pending or failed. Routing still works. If it persists, your Codex version may not support the sync (see [Codex versions](#codex-versions)).                                                                                                               |
@@ -622,7 +627,7 @@ A set-up home's edge and brain log JSON lines of the same kind. On macOS they go
 
 ### Codex versions
 
-The footer sync needs `codex --remote` and the app-server's `thread/settings/update`, both experimental. A Codex release can change them. When that happens, routing keeps working and the panel shows `footer not synced`. The router was tested with Codex 0.162.1 and 0.163.0. The 0.163.0 live check verified that the bottom status line follows both model and effort changes through a router launcher; it did not test the persistent home services.
+The launcher needs `codex --remote`, `config/read` for provider verification, and `thread/settings/update` for footer sync. A Codex release can change these experimental interfaces. A failed provider check falls back to plain Codex with a diagnostic; a later footer-write failure leaves routing active. The router was tested with Codex 0.162.1 and 0.163.0. The 0.163.0 live check verified that the bottom status line follows both model and effort changes through a router launcher; it did not test the persistent home services. A metadata-only check on 0.164.0 confirmed that managed configuration can override the launcher's provider flags.
 
 ## Exit codes
 
