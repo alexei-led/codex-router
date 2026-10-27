@@ -7,6 +7,6 @@ import "github.com/alexei-led/codex-router/internal/responses"
 // accounted as the reply to the previous routed decision.
 func (e *Engine) PassThrough(m responses.Meta) {
 	if responses.Classify(m) == responses.KindPassthrough {
-		e.passThrough(threadKey(m))
+		e.passThrough(m)
 	}
 }

@@ -365,6 +365,12 @@ func TestPassthroughMetadataForwardsInvalidBodyAndSignalsEngine(t *testing.T) {
 		SessionID: "s-1", ThreadID: "th-1", TurnID: "turn-1",
 		RequestKind: "compaction", Account: responses.AccountHash(testAccount),
 	}
+	if len(decider.passed) == 1 {
+		wantMeta.RequestID = decider.passed[0].RequestID
+	}
+	if wantMeta.RequestID == "" {
+		t.Fatal("missing request correlation ID")
+	}
 	if decider.decides != 0 || len(decider.passed) != 1 || decider.passed[0] != wantMeta {
 		t.Errorf("decider calls = %d, passthrough metadata = %+v; want 0 and %+v", decider.decides, decider.passed, wantMeta)
 	}
@@ -405,6 +411,12 @@ func TestMissingTurnMetadataPassesWithoutDeciding(t *testing.T) {
 		t.Errorf("upstream body = %q, want original %q", in.body, body)
 	}
 	wantMeta := responses.Meta{Account: responses.AccountHash(testAccount)}
+	if len(decider.passed) == 1 {
+		wantMeta.RequestID = decider.passed[0].RequestID
+	}
+	if wantMeta.RequestID == "" {
+		t.Fatal("missing request correlation ID")
+	}
 	if decider.decides != 0 || len(decider.passed) != 1 || decider.passed[0] != wantMeta {
 		t.Errorf("decider calls = %d, passthrough metadata = %+v; want 0 and %+v", decider.decides, decider.passed, wantMeta)
 	}

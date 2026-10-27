@@ -35,6 +35,7 @@ const (
 	envResumeFail    = "CODEX_ROUTER_FAKE_RESUME_FAIL"
 	envAppServerDies = "CODEX_ROUTER_FAKE_APPSERVER_DIES"
 	envAppServerHang = "CODEX_ROUTER_FAKE_APPSERVER_HANG"
+	envProvider      = "CODEX_ROUTER_FAKE_PROVIDER"
 
 	fakeThread     = "thread-1"
 	fakeToken      = "Bearer SECRET-TOKEN-123"
@@ -156,6 +157,12 @@ func serveRPC(ctx context.Context, ws *websocket.Conn) {
 		switch m.Method {
 		case "initialize":
 			send(map[string]any{"id": *m.ID, "result": map[string]any{}})
+		case "config/read":
+			provider := os.Getenv(envProvider)
+			if provider == "" {
+				provider = proxy.ProviderID
+			}
+			send(map[string]any{"id": *m.ID, "result": map[string]any{"config": map[string]any{"model_provider": provider}}})
 		case "thread/resume":
 			writeRecord("resume", m.Params)
 			if os.Getenv(envResumeFail) != "" {

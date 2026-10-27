@@ -268,6 +268,8 @@ Advice only. The router never edits this key: `codex-router setup` changes `conf
 
 If you set `model_context_window` in `~/.codex/config.toml`, Codex sizes its context from that number whatever model the router picks. After a switch to a model with a smaller window, Codex would then send a thread that is too large for it. The fit guard rejects routes that are too small. Remove `model_context_window` to let Codex use the routed model's catalog entry. If you keep it, set it no larger than the smallest window among your routes.
 
+The router uses the catalog's base window and effective percentage, not its maximum-window metadata or this native override. Once a successful response measures an unchanged input prefix, the fit estimate uses that measured total plus appended content; otherwise it uses the conservative full-body estimate. An effort-only change on the current model keeps its native context policy. See [context fit](architecture.md#from-request-to-route).
+
 ## Environment
 
 | Variable                                                                                                    | Used for                                                                                                                                                                                                                                                                                             |

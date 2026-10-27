@@ -24,7 +24,8 @@ func (f *fakeAPI) record(c string) {
 	f.mu.Unlock()
 }
 
-func (f *fakeAPI) Initialize(context.Context) error { return nil }
+func (f *fakeAPI) Initialize(context.Context) error         { return nil }
+func (f *fakeAPI) Provider(context.Context) (string, error) { return "router", nil }
 func (f *fakeAPI) Resume(_ context.Context, thread string) (Resumed, error) {
 	f.record("resume " + thread)
 	return Resumed{}, nil

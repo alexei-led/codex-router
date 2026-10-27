@@ -69,6 +69,7 @@ func Parse(body []byte) (*Request, error) {
 		for i, it := range raw {
 			r.Input[i] = parseItem(it)
 		}
+		r.readContext(top, raw)
 	}
 	return r, nil
 }
@@ -287,11 +288,12 @@ func (r *Request) Body() []byte { return r.raw }
 // the same body, so they share it; each later step of the turn appends items,
 // so it changes. It hashes the original model, not a rewrite.
 func (r *Request) Fingerprint(m Meta) string {
-	var last Item
-	if n := len(r.Input); n > 0 {
-		last = r.Input[n-1]
+	body := r.raw
+	if len(body) == 0 {
+		body, _ = json.Marshal([]any{r.Model, r.Effort, r.Input, r.Bytes})
 	}
-	key, _ := json.Marshal([]any{m.TurnID, len(r.Input), last.Type, last.CallID, r.Model})
-	sum := sha256.Sum256(key)
-	return hex.EncodeToString(sum[:])
+	h := sha256.New()
+	hashPart(h, []byte(m.TurnID))
+	hashPart(h, body)
+	return hex.EncodeToString(h.Sum(nil))
 }

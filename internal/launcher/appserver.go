@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/alexei-led/codex-router/internal/appserver"
+	"github.com/alexei-led/codex-router/internal/proxy"
 )
 
 const (
@@ -81,6 +82,15 @@ func dialAppServer(ctx context.Context, sock string, exited <-chan struct{}, log
 			if err := api.Initialize(ctx); err != nil {
 				_ = api.Close()
 				return nil, fmt.Errorf("app-server initialize: %w", err)
+			}
+			provider, err := api.Provider(ctx)
+			if err != nil {
+				_ = api.Close()
+				return nil, fmt.Errorf("verify app-server provider: %w", err)
+			}
+			if provider != proxy.ProviderID {
+				_ = api.Close()
+				return nil, errors.New("codex did not select the router provider; check native provider settings and managed configuration")
 			}
 			return api, nil
 		}
