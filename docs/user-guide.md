@@ -13,6 +13,19 @@ Install and use codex-router. Start with [Install](#install) and [First run](#fi
 
 ## Install
 
+**Recommended:** use Homebrew on macOS or Linux to install the latest stable release:
+
+```sh
+brew install alexei-led/tap/codex-router
+codex-router version
+```
+
+On Homebrew versions that require explicit third-party trust, run `brew tap alexei-led/tap` and `brew trust --formula alexei-led/tap/codex-router` before installing. Formula trust permits Homebrew to load that formula's Ruby code; trust it only if you trust this project. Older Homebrew versions without `brew trust` do not need this step.
+
+The formula follows stable releases automatically. Do not pin it if you want `brew upgrade` to install future releases.
+
+Homebrew installs the executable only. Install Codex CLI separately and sign in with ChatGPT. The Codex plugin is also a separate install.
+
 Prebuilt binaries for macOS and Linux (amd64, arm64) are on the [releases page](https://github.com/alexei-led/codex-router/releases), with a `checksums.txt`.
 
 ```sh
@@ -544,6 +557,16 @@ Undo backs `config.toml` up, removes the marked blocks, then stops and removes t
 
 ## Update or uninstall
 
+For a Homebrew install, close the affected Codex sessions, then run:
+
+```sh
+brew update
+brew upgrade alexei-led/tap/codex-router
+codex-router version
+```
+
+If you used setup, rerun it after each upgrade with the original options and environment, as described below. Setup records the executable path, which may point into a versioned Homebrew Cellar directory that cleanup removes. Homebrew does not reconfigure homes or restart router services for you.
+
 To update a wrapper install, close its Codex sessions and repeat the [installation](#install) steps. Confirm the version with `codex-router version`.
 
 The plugin and executable are separate installs. Updating the plugin does not replace an older binary or code already loaded by a running launcher. Confirm the installed version and use `codex-router doctor` to find older running endpoints before evaluating new routing defaults.
@@ -552,7 +575,7 @@ After correcting a provider override, start a fresh thread and verify that it us
 
 For a home installed with setup, close that home's Codex sessions first. Replace the binary, then rerun setup with the original `--home`, `--config` and `--state-dir` options and environment. Setup resolves those paths again and rewrites the service files. Omitting custom options can select a different config or state directory. If you moved the binary, run setup from its new path.
 
-To stop using the wrapper, run plain `codex`. For a set-up home, close its sessions and run [undo](#undo) before removing the binary. Remove the binary from the path where you installed it. The Go install path is normally `$(go env GOPATH)/bin/codex-router`.
+To stop using the wrapper, run plain `codex`. For a set-up home, close its sessions and run [undo](#undo) before removing the binary. For Homebrew, remove it with `brew uninstall alexei-led/tap/codex-router`; otherwise remove the binary from the path where you installed it. The Go install path is normally `$(go env GOPATH)/bin/codex-router`.
 
 Config and logs stay in their [documented locations](configuration.md#environment). Setup undo keeps state unless you pass `--purge`.
 
