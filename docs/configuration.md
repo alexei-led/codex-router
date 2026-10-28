@@ -268,7 +268,7 @@ Codex's prompt cache is per model and ignores effort. A model counts as warm fro
 { "proxy": { "upstream": "https://gateway.example.com/chatgpt/backend-api/codex" } }
 ```
 
-The value must be an `https` URL with a host and no credentials, query or fragment. The proxy forwards Codex's headers unchanged, so **the gateway receives your ChatGPT credentials**: set only a host you trust with them. The router still picks the model and effort; the gateway sees the request after the rewrite. A set-up home's edge service reads this when it starts, so restart the service after a change. Use this when managed configuration forces `model_provider` to the gateway: the router cannot replace a managed provider, but it can sit in front of the gateway.
+The value must be an `https` URL with a host and no credentials, query or fragment. The proxy forwards Codex's headers unchanged, so **the gateway receives your ChatGPT credentials**: set only a host you trust with them. The router still picks the model and effort; the gateway sees the request after the rewrite. A set-up home's edge service reads this when it starts, so restart the service after a change. Use this when your organization requires a gateway: the router can sit in front of it. It cannot replace a `model_provider` that managed configuration forces; see [Use a managed gateway](user-guide.md#use-a-managed-gateway) for the steps and limits.
 
 ## model_context_window
 
