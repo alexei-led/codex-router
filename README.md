@@ -42,7 +42,13 @@ The router starts a private Codex app-server and a local proxy. It changes the m
 
 You need macOS or Linux, Codex CLI on `PATH`, and a ChatGPT sign-in. API-key sign-in is not supported.
 
-Install on an Apple silicon Mac:
+Install with Homebrew (macOS or Linux):
+
+```sh
+brew install alexei-led/tap/codex-router
+```
+
+Or download a binary directly on an Apple silicon Mac:
 
 ```sh
 curl -fsSL -o codex-router \
