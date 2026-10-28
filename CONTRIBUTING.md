@@ -44,8 +44,9 @@ The annotated tag is the release notes source. Do not move a published tag or pu
 ### Homebrew release updates
 
 The release workflow dispatches `update-formula` to `alexei-led/homebrew-tap`
-after the GitHub release and its assets are published. The tap downloads all
-four binaries, computes their SHA256 checksums, and commits the formula update.
+after the GitHub release and its assets are published. The dispatch omits a
+version so the tap resolves the latest stable release, including when an older
+release job is retried. The tap downloads all four binaries, computes their SHA256 checksums, and commits the formula update.
 The initial `Formula/codex-router.rb` must be merged into the tap before this
 job runs. A successful dispatch only confirms acceptance; check the tap's
 **Auto-update Formula** workflow separately.

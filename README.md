@@ -48,7 +48,7 @@ You need macOS or Linux, Codex CLI on `PATH`, and a ChatGPT sign-in. API-key sig
 brew install alexei-led/tap/codex-router
 ```
 
-For Homebrew trust setup and upgrades, see the [installation guide](docs/user-guide.md#install). The formula follows stable releases; no version pin is needed.
+See [Install](docs/user-guide.md#install) for Homebrew trust setup and [Update or uninstall](docs/user-guide.md#update-or-uninstall) for upgrades. The formula follows stable releases; no version pin is needed.
 
 Or download the latest binary directly on an Apple silicon Mac:
 
