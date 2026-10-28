@@ -161,9 +161,12 @@ type Cache struct {
 	WarmMarginMs int `json:"warmMarginMs"`
 }
 
-// Proxy holds listener settings. Port 0 binds an ephemeral port per session.
+// Proxy holds listener and backend settings. Port 0 binds an ephemeral port
+// per session. Upstream replaces the ChatGPT Codex backend with a gateway
+// that proxies it; empty means the ChatGPT backend.
 type Proxy struct {
-	Port int `json:"port"`
+	Port     int    `json:"port"`
+	Upstream string `json:"upstream,omitempty"`
 }
 
 // Config is the whole router configuration.

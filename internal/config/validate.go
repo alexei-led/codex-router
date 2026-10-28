@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -42,6 +43,26 @@ func (c Config) Validate() error {
 	}
 	if c.Proxy.Port < 0 || c.Proxy.Port > 65535 {
 		return fmt.Errorf("proxy.port: %d out of range 0-65535", c.Proxy.Port)
+	}
+	if err := validUpstream(c.Proxy.Upstream); err != nil {
+		return fmt.Errorf("proxy.upstream: %w", err)
+	}
+	return nil
+}
+
+// validUpstream accepts empty (the ChatGPT backend) or an https URL with a
+// host and no credentials, query or fragment. The proxy sends Codex's ChatGPT
+// credentials there, so plain http is refused.
+func validUpstream(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return err
+	}
+	if u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+		return fmt.Errorf("%q: want https://host/path without credentials, query or fragment", raw)
 	}
 	return nil
 }

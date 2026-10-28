@@ -312,6 +312,24 @@ func TestEndpointPlaceholders(t *testing.T) {
 	}
 }
 
+func TestLoadProxyUpstream(t *testing.T) {
+	const gateway = "https://gateway.example/chatgpt/backend-api/codex"
+	p := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(p, []byte(`{"proxy":{"upstream":"`+gateway+`"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Proxy.Upstream != gateway || cfg.Proxy.Port != 0 {
+		t.Errorf("proxy = %+v, want upstream %q and the default port", cfg.Proxy, gateway)
+	}
+	if Default().Proxy.Upstream != "" {
+		t.Errorf("default upstream = %q, want the ChatGPT backend (empty)", Default().Proxy.Upstream)
+	}
+}
+
 func TestValidateRejects(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -365,6 +383,13 @@ func TestValidateRejects(t *testing.T) {
 		{"policy zero votes", func(c *Config) { c.Policy.UpgradeVotes = 0 }, "policy.upgradeVotes"},
 		{"warm margin over ttl", func(c *Config) { c.Cache.WarmMarginMs = c.Cache.TTLMs }, "cache"},
 		{"port out of range", func(c *Config) { c.Proxy.Port = 70000 }, "proxy.port"},
+		{"upstream over http", func(c *Config) { c.Proxy.Upstream = "http://gateway.example/codex" }, "proxy.upstream"},
+		{"upstream without host", func(c *Config) { c.Proxy.Upstream = "https:///codex" }, "proxy.upstream"},
+		{"upstream with credentials", func(c *Config) { c.Proxy.Upstream = "https://u:p@gateway.example/codex" }, "proxy.upstream"},
+		{"upstream with query", func(c *Config) { c.Proxy.Upstream = "https://gateway.example/codex?x=1" }, "proxy.upstream"},
+		{"upstream with empty query", func(c *Config) { c.Proxy.Upstream = "https://gateway.example/codex?" }, "proxy.upstream"},
+		{"upstream with fragment", func(c *Config) { c.Proxy.Upstream = "https://gateway.example/codex#x" }, "proxy.upstream"},
+		{"upstream not a URL", func(c *Config) { c.Proxy.Upstream = "gateway.example" }, "proxy.upstream"},
 		{"negative price", func(c *Config) { c.Prices = map[string]Price{"gpt-6-sol": {Input: -1}} }, "prices.gpt-6-sol"},
 	}
 	for _, tc := range cases {

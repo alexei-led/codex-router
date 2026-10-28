@@ -57,8 +57,6 @@ type Options struct {
 	// Logger replaces the default log: a JSON file under the XDG state dir
 	// for Run, JSON on Stderr for Serve.
 	Logger *slog.Logger
-	// Upstream overrides the proxy backend; tests only.
-	Upstream string
 	// Probe checks the proxy on port; nil means GET /healthz within 2 s.
 	Probe func(ctx context.Context, port int) error
 	// Exec replaces the process with plain codex on fallback; nil means
