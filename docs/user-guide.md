@@ -13,7 +13,7 @@ Install and use codex-router. Start with [Install](#install) and [First run](#fi
 
 ## Install
 
-With Homebrew on macOS or Linux:
+**Recommended:** use Homebrew on macOS or Linux to install the latest stable release:
 
 ```sh
 brew install alexei-led/tap/codex-router
@@ -21,6 +21,8 @@ codex-router version
 ```
 
 On Homebrew versions that require explicit third-party trust, run `brew tap alexei-led/tap` and `brew trust --formula alexei-led/tap/codex-router` before installing. Formula trust permits Homebrew to load that formula's Ruby code; trust it only if you trust this project. Older Homebrew versions without `brew trust` do not need this step.
+
+The formula follows stable releases automatically. Do not pin it if you want `brew upgrade` to install future releases.
 
 Homebrew installs the executable only. Install Codex CLI separately and sign in with ChatGPT. The Codex plugin is also a separate install.
 
