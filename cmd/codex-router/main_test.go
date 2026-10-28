@@ -287,6 +287,14 @@ func TestRunPrints(t *testing.T) {
 	}
 }
 
+func TestSelfUpdateRejectsABadTagBeforeDownloading(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{"self-update", "--to", "nightly"}, testEnv(t), strings.NewReader(""), &stdout, &stderr)
+	if code != exitError || stdout.Len() != 0 || !strings.Contains(stderr.String(), "want vX.Y.Z") {
+		t.Errorf("exit %d, stdout %q, stderr %q; want %d and a tag error", code, stdout.String(), stderr.String(), exitError)
+	}
+}
+
 func TestUsageErrors(t *testing.T) {
 	fakeServices(t)
 	cases := []struct {
@@ -303,6 +311,7 @@ func TestUsageErrors(t *testing.T) {
 		{"stray brain argument", []string{"brain", "extra"}, `unexpected argument "extra"`},
 		{"stray service argument", []string{"service", "status", "extra"}, `unexpected argument "extra"`},
 		{"stray ctl argument", []string{"ctl", "pause", "now"}, `unexpected argument "now"`},
+		{"stray self-update argument", []string{"self-update", "extra"}, `unexpected argument "extra"`},
 		{"relative edge home", []string{"edge", "--home", "rel"}, "not an absolute path"},
 		{"relative edge state dir", []string{"edge", "--state-dir", "rel"}, "not an absolute path"},
 		{"relative brain home", []string{"brain", "--home", "rel"}, "not an absolute path"},
