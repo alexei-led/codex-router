@@ -49,7 +49,7 @@ Because objects merge, `"policy": {"minDwellRequests": 6}` changes one field. Be
 | `classifiers` | map name to classifier            | `jev`, `clef`, `clef-flash`, `clef-omni`, `openai`, `ollama` | Classifier endpoints.                                                                           |
 | `context`     | object                            | `recentTurns 6`, `maxTextChars 1200`                         | What the classifier sees.                                                                       |
 | `cache`       | object                            | `ttlMs 300000`, `warmMarginMs 30000`                         | Prompt-cache warmth rule.                                                                       |
-| `proxy`       | object                            | `port 0`                                                     | Proxy listener.                                                                                 |
+| `proxy`       | object                            | `port 0`, `upstream` unset                                   | Proxy listener and backend.                                                                     |
 | `codexBin`    | string                            | `codex` on `PATH`                                            | The Codex executable. Optional.                                                                 |
 
 Tiers, weakest first: `micro`, `low`, `medium`, `high`. Activities: `code`, `debug`, `explore`, `plan`, `review`, `ops`, `docs`. Efforts: `low`, `medium`, `high`, `xhigh`.
@@ -261,6 +261,14 @@ Codex's prompt cache is per model and ignores effort. A model counts as warm fro
 ### proxy
 
 `port`: 0 binds any free port once per session and keeps it for the session. A fixed port stops a second session from starting. The listener is always `127.0.0.1`. `codex-router proxy --port N` overrides it. A set-up home ignores it: `codex-router setup` picks the home's port once and stores it in the home's state dir.
+
+`upstream`: the backend the proxy forwards to. Unset, it is `https://chatgpt.com/backend-api/codex`. Set it to send routed requests through a gateway that proxies the same Codex API, for example one your organization requires:
+
+```json
+{ "proxy": { "upstream": "https://gateway.example.com/chatgpt/backend-api/codex" } }
+```
+
+The value must be an `https` URL with a host and no credentials, query or fragment. The proxy forwards Codex's headers unchanged, so **the gateway receives your ChatGPT credentials**: set only a host you trust with them. The router still picks the model and effort; the gateway sees the request after the rewrite. A set-up home's edge service reads this when it starts, so restart the service after a change. Use this when your organization requires a gateway: the router can sit in front of it. It cannot replace a `model_provider` that managed configuration forces; see [Use a managed gateway](user-guide.md#use-a-managed-gateway) for the steps and limits.
 
 ## model_context_window
 

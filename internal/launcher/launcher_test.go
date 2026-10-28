@@ -257,7 +257,7 @@ func TestRunRoutesASessionAndReturnsCodexExitCode(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			up := newUpstream(t)
 			h := newHarness(t, tc.env...)
-			h.opts.Upstream = up.URL + "/backend-api/codex"
+			h.opts.Config.Proxy.Upstream = up.URL + "/backend-api/codex"
 
 			if code := h.run(t); code != 7 {
 				t.Fatalf("exit code = %d, want 7; stderr: %s", code, h.stderr.String())

@@ -132,7 +132,7 @@ func newE2E(t *testing.T, configure ...func(*harness)) *e2e {
 	cfg.Classifiers[cfg.Classifier] = cc
 	cfg.Policy.ReviewEveryRequests = 0
 	e.h.opts.Config = cfg
-	e.h.opts.Upstream = e.up.URL + "/backend-api/codex"
+	e.h.opts.Config.Proxy.Upstream = e.up.URL + "/backend-api/codex"
 	for _, configure := range configure {
 		configure(e.h)
 	}

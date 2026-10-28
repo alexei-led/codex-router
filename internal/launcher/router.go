@@ -88,7 +88,7 @@ func startProxy(ctx, runCtx context.Context, wg *sync.WaitGroup, o Options, toke
 	bind := func(port int) (int, serveFunc, error) {
 		srv := proxy.New(proxy.Options{
 			Addr:          net.JoinHostPort(proxy.LoopbackHost, strconv.Itoa(port)),
-			Upstream:      o.Upstream,
+			Upstream:      o.Config.Proxy.Upstream,
 			Token:         token,
 			Decider:       eng,
 			Observer:      eng,

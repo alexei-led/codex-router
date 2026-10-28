@@ -194,6 +194,31 @@ Start with the [default routes](configuration.md#routes-and-activities). They us
 
 Effort changes on the same model keep its prompt cache. Switching models can require an uncached prefix. Neither option guarantees lower ChatGPT plan usage.
 
+### Use a managed gateway
+
+Some organizations send Codex traffic through a gateway that proxies the ChatGPT backend, and set it with managed configuration (MDM on macOS). The router works in front of such a gateway: it picks the model and effort, then forwards to the gateway instead of `chatgpt.com`.
+
+```text
+Codex → codex-router (model and effort) → gateway → ChatGPT backend
+```
+
+1. Find the gateway's URL. It is the `base_url` of the provider in the managed configuration, for example `[model_providers.<name>]` in the TOML that policy delivers. Use the URL up to `/codex`, the same one Codex would call without `/responses`.
+2. Set it in the router config, in the file the profile uses:
+
+   ```json
+   { "proxy": { "upstream": "https://gateway.example.com/chatgpt/backend-api/codex" } }
+   ```
+
+   Use one config per profile if only some of your Codex homes go through the gateway. See [`CODEX_ROUTER_CONFIG`](configuration.md#environment).
+3. Start a fresh session. A set-up home's edge service reads the value when it starts, so restart the service too.
+
+Check these before you rely on it:
+
+- **The router cannot replace a managed `model_provider`.** Managed configuration outranks the launcher's `-c` flags. If policy sets `model_provider`, the launcher reports `codex did not select the router provider (got "<name>")` and starts plain Codex. Ask your administrator to keep the gateway's provider definition but not set `model_provider`. The gateway still sees every request, now with the router's model choice.
+- **The gateway gets your ChatGPT credentials.** The router forwards Codex's headers unchanged. Set only a host your organization approves for this.
+- **Provider settings are not copied.** The proxy talks plain HTTP streaming to the upstream. WebSocket and other settings of the managed provider do not apply. Test your gateway with a short session.
+- **Your organization's rules apply.** Do not change managed files to get around a policy without approval.
+
 ### `model_context_window`
 
 If `~/.codex/config.toml` sets `model_context_window`, Codex sizes its context from that value whatever model the router picks. Remove it, or keep it no larger than the smallest window among your routes. See [configuration](configuration.md#model_context_window).
@@ -562,7 +587,7 @@ For a mismatched control hello, the panel closes the connection. It retries the 
 | Symptom                                                                 | Cause and fix                                                                                                                                                                                                                                                                                    |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `codex-router: <reason>; running plain codex`                           | The config is invalid, or a startup step failed. The reason names it. Fix the config, or check `codex --version` and the session log.                                                                                                                                                            |
-| `codex did not select the router provider` | Native provider settings, including managed configuration, overrode the launcher's provider choice. The launcher checks `config/read` before starting the TUI and falls back to plain Codex. Resolve the provider setting through your approved configuration process; changing a shell wrapper cannot override an enforced provider. |
+| `codex did not select the router provider` | Native provider settings, including managed configuration, overrode the launcher's provider choice. The launcher checks `config/read` before starting the TUI and falls back to plain Codex. Resolve the provider setting through your approved configuration process; changing a shell wrapper cannot override an enforced provider. If the managed provider is your organization's gateway, ask for the `model_provider` key to be dropped and set [`proxy.upstream`](configuration.md#proxy) so the router forwards to that gateway. |
 | Panel says `PINS ONLY` or `Jev off`; the model never changes            | The Policy view names the reason; usually the classifier key variable is unset in the shell that started `codex-router`. Export it and start a new session. A brain does not see your shell: set the classifier's `envFile`, then restart the brain.                                             |
 | Panel says `paused until …`                                             | The classifier failed 3 times in a row and pauses for 60 s. The Policy view shows the last error. Turns go unrouted meanwhile. Check the network, the key, or that Ollama is running.                                                                                                            |
 | `footer not synced`                                                     | Settings writes to the app-server are pending or failed. Routing still works. If it persists, your Codex version may not support the sync (see [Codex versions](#codex-versions)).                                                                                                               |

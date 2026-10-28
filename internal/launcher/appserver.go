@@ -90,7 +90,7 @@ func dialAppServer(ctx context.Context, sock string, exited <-chan struct{}, log
 			}
 			if provider != proxy.ProviderID {
 				_ = api.Close()
-				return nil, errors.New("codex did not select the router provider; check native provider settings and managed configuration")
+				return nil, fmt.Errorf("codex did not select the router provider (got %q); check native provider settings and managed configuration", provider)
 			}
 			return api, nil
 		}

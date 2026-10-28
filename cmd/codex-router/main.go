@@ -571,8 +571,8 @@ func (c cli) proxy(ctx context.Context, configPath string, args []string) int {
 	return exitOK
 }
 
-// edgeUpstream is the edge's backend; empty is proxy.Upstream. Tests point
-// it at a fake.
+// edgeUpstream overrides the config's proxy.upstream for the edge. Tests
+// point it at a fake.
 var edgeUpstream string
 
 // modeArg takes ctl mode's mode out of args, before or after the flags:
@@ -665,7 +665,7 @@ func (c cli) edge(ctx context.Context, configPath string, args []string) int {
 		Addr:          addr,
 		Listener:      ln,
 		Token:         token,
-		Upstream:      edgeUpstream,
+		Upstream:      cmp.Or(edgeUpstream, cfg.Proxy.Upstream),
 		Decider:       lc,
 		Observer:      lc,
 		Logger:        log,
