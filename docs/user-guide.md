@@ -544,9 +544,21 @@ Undo backs `config.toml` up, removes the marked blocks, then stops and removes t
 
 ## Update or uninstall
 
-To update a wrapper install, close its Codex sessions and repeat the [installation](#install) steps. Confirm the version with `codex-router version`.
+One command updates the binary in place:
 
-The plugin and executable are separate installs. Updating the plugin does not replace an older binary or code already loaded by a running launcher. Confirm the installed version and use `codex-router doctor` to find older running endpoints before evaluating new routing defaults.
+```sh
+codex-router self-update                # latest release
+codex-router self-update --to v0.12.0   # a specific release
+codex-router self-update --check        # report only, install nothing
+```
+
+It resolves the release, downloads the asset for your platform, checks it against the release's `checksums.txt`, runs the downloaded file's `version`, and only then renames it over the installed binary. Any failed check leaves the old binary in place. The staged file needs write permission on the binary's directory: a user install like `~/.local/bin` has it, `/usr/local/bin` needs `sudo`.
+
+Close routed sessions before the next start so nothing runs the old code. A set-up home's edge and brain pick up the new binary when their services restart.
+
+The plugin keeps the binary in step by itself. At session start, when the plugin's version and `codex-router version` differ, its hook runs `codex-router self-update --to v<plugin version>`. So `codex plugin add codex-router@codex-router` or a marketplace upgrade also updates the binary, with the same checksum and version checks. The session that triggers it still runs the previous binary, because its launcher started first. Set `CODEX_ROUTER_NO_SELF_UPDATE=1` to stop the hook replacing the binary; it then only reports the difference.
+
+Confirm the version with `codex-router version`, and use `codex-router doctor` to find running endpoints on an older release before evaluating new routing defaults.
 
 After correcting a provider override, start a fresh thread and verify that it uses the router. A resumed thread can retain its previous provider even when the new app-server's configuration is correct.
 

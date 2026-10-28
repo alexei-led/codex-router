@@ -41,6 +41,7 @@ import (
 	"github.com/alexei-led/codex-router/internal/setup"
 	"github.com/alexei-led/codex-router/internal/statedir"
 	"github.com/alexei-led/codex-router/internal/tui"
+	"github.com/alexei-led/codex-router/internal/update"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".
@@ -78,6 +79,7 @@ Usage:
   codex-router ctl mode cost|balanced|quality|default [--home PATH] [--cwd DIR]
                                                      show or change one session's routing
   codex-router version                               print the version
+  codex-router self-update [--check] [--to TAG]      replace this binary with a release build
 
 Global flags:
   --config PATH  config file; else $CODEX_ROUTER_CONFIG; else
@@ -149,6 +151,8 @@ Exit codes:
   proxy    0 after SIGINT or SIGTERM, 1 on error
   edge     0 after SIGINT or SIGTERM, 1 on error or when the home is not set up
   brain    0 after SIGINT or SIGTERM, 1 on error
+  self-update 0 on success or when already current; 1 on error or a failed
+           check (checksum, version, download)
   setup    0 on success, 1 on error or a refused edit
   service  0, also when the home is not set up; 1 on error
   ctl      0 on success, 1 on error or when no session matches,
@@ -205,6 +209,8 @@ func run(ctx context.Context, args, env []string, stdin io.Reader, stdout, stder
 		case "version":
 			_, _ = fmt.Fprintln(stdout, version)
 			return exitOK
+		case "self-update":
+			return c.selfUpdate(ctx, rest)
 		case "hook":
 			if err := hook.Run(stdin, stdout, c.getenv); err != nil {
 				return c.fail(err)
@@ -313,6 +319,35 @@ func (c cli) launch(configPath string, codexArgs []string) int {
 // runPanel shows the panel; tests replace it, since the panel needs a
 // terminal.
 var runPanel = tui.Run
+
+// selfUpdate replaces this executable with a release build of the same
+// platform, after the release checksum and the binary's own version agree.
+// The plugin's SessionStart hook runs it when the plugin and binary versions
+// differ, so a plugin update also updates the binary.
+func (c cli) selfUpdate(ctx context.Context, args []string) int {
+	fs := flag.NewFlagSet("self-update", flag.ContinueOnError)
+	fs.SetOutput(c.stderr)
+	check := fs.Bool("check", false, "report the release that would be installed, then exit")
+	to := fs.String("to", "", "release tag to install (vX.Y.Z); default is the latest")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	if fs.NArg() > 0 {
+		return c.usageError(fmt.Errorf("self-update: unexpected argument %q", fs.Arg(0)))
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return c.fail(err)
+	}
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = resolved
+	}
+	o := update.Options{Current: version, Target: exe, Tag: *to, Check: *check, Out: c.stdout}
+	if err := update.Run(ctx, o); err != nil {
+		return c.fail(err)
+	}
+	return exitOK
+}
 
 func (c cli) tui(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("tui", flag.ContinueOnError)
