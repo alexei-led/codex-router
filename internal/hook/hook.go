@@ -25,9 +25,6 @@ type Output struct {
 	SystemMessage string `json:"systemMessage,omitempty"`
 }
 
-// MessagePrefix starts every line; Codex renders it as "↳ Hook · router: …".
-const MessagePrefix = "router: "
-
 // Timeout bounds the whole hook run, registry lookup and socket included. It
 // is a var so tests can widen it for slow hosts or shorten it for stalls.
 var Timeout = 200 * time.Millisecond
@@ -168,10 +165,15 @@ func Message(s route.Snapshot, in Input) string {
 		return ""
 	}
 	// A pinned turn has no activity and a route may keep Codex's effort:
-	// empty parts are left out rather than shown as "·  ·".
-	from := strings.Join(nonEmpty(string(d.Tier), string(d.Activity)), " · ")
-	to := strings.Join(nonEmpty(d.Route.Model, string(d.Route.Effort), d.Why), " · ")
-	return MessagePrefix + from + " → " + to
+	// empty parts are left out rather than shown as "·  ·". Codex labels the
+	// line as a hook's, so it carries no name of its own.
+	from := strings.Join(nonEmpty(d.Tier.Meter(), string(d.Activity)), " ")
+	to := strings.Join(nonEmpty(d.Route.Model, string(d.Route.Effort)), " · ")
+	msg := from + " → " + to
+	if d.Why != "" {
+		msg += "  " + d.Why
+	}
+	return msg
 }
 
 func nonEmpty(parts ...string) []string {
@@ -179,7 +181,9 @@ func nonEmpty(parts ...string) []string {
 }
 
 // lastPerTurn returns the final decision of each turn of the thread, ordered
-// by that decision's time. Snapshot order is not relied on.
+// by that decision's time. Snapshot order is not relied on. A later step that
+// only continues the turn on the same route does not replace the decision
+// that set it, so the line keeps the reason the route changed for.
 func lastPerTurn(s route.Snapshot, thread string) []route.Decision {
 	all := slices.Clone(s.Recent)
 	if s.Last != nil {
@@ -191,7 +195,12 @@ func lastPerTurn(s route.Snapshot, thread string) []route.Decision {
 		if d.ThreadID != thread || d.TurnID == "" {
 			continue
 		}
-		turns = slices.DeleteFunc(turns, func(t route.Decision) bool { return t.TurnID == d.TurnID })
+		if i := slices.IndexFunc(turns, func(t route.Decision) bool { return t.TurnID == d.TurnID }); i >= 0 {
+			if d.Reason == route.ReasonContinue && d.Route == turns[i].Route {
+				continue
+			}
+			turns = slices.Delete(turns, i, i+1)
+		}
 		turns = append(turns, d)
 	}
 	return turns

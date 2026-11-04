@@ -134,7 +134,7 @@ func (c *canvas) popover(v view, a anchor, footerRow int) (*lipgloss.Layer, []zo
 	}
 	if v.popover == popPin {
 		for i, t := range tierOrder {
-			choice(strconv.Itoa(i+1), string(t), tierRole[t], action{kind: actPin, tier: t})
+			choice(strconv.Itoa(i+1), t.Meter()+" "+string(t), tierRole[t], action{kind: actPin, tier: t})
 		}
 		choice("0", "none", roleMuted, action{kind: actUnpin})
 	} else {

@@ -37,7 +37,7 @@ func TestDecisionCarriesSupportParts(t *testing.T) {
 	if !strings.HasPrefix(d.SupportParts[0], "Jev gave stronger tiers ") {
 		t.Errorf("first fragment = %q, want the classifier's support", d.SupportParts[0])
 	}
-	if d.SupportParts[1] != "switch ≈ 50k uncached tokens" {
+	if d.SupportParts[1] != "switch ≈ 50K uncached tokens" {
 		t.Errorf("second fragment = %q, want the uncached tokens", d.SupportParts[1])
 	}
 	if want := strings.Join(d.SupportParts, " · "); d.Support != want {

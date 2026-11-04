@@ -711,8 +711,34 @@ func TestSessionsLines(t *testing.T) {
 		t.Fatalf("lines %q, want 3", lines)
 	}
 	first := strings.Join(strings.Fields(lines[0]), " ")
-	if want := sessDefault.ID + " default default · notes · main on gpt-5.5 · low"; first != want {
+	if want := sessDefault.ID + " default default · notes · main ● on gpt-5.5 · low"; first != want {
 		t.Errorf("first line %q, want %q", first, want)
+	}
+}
+
+func TestSessionsHeaderIsForPeopleNotPipes(t *testing.T) {
+	env, _ := fleetFixture(t)
+	for _, tc := range []struct {
+		name     string
+		terminal bool
+		want     string
+	}{
+		{"terminal", true, "ID  HOME  LABEL  STATE  ROUTE"},
+		{"pipe", false, sessDefault.ID},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			prev := isTerminal
+			isTerminal = func(io.Writer) bool { return tc.terminal }
+			t.Cleanup(func() { isTerminal = prev })
+			var stdout, stderr bytes.Buffer
+			if code := run(context.Background(), []string{"sessions"}, env, nil, &stdout, &stderr); code != exitOK {
+				t.Fatalf("exit %d, stderr %q", code, stderr.String())
+			}
+			first, _, _ := strings.Cut(stdout.String(), "\n")
+			if got := strings.Join(strings.Fields(first), "  "); !strings.HasPrefix(got, tc.want) {
+				t.Errorf("first line %q, want it to start with %q", got, tc.want)
+			}
+		})
 	}
 }
 
@@ -1471,9 +1497,9 @@ func TestCtlStatusPicksTheSessionOfTheHome(t *testing.T) {
 		wantStderr []string
 	}{
 		{"cwd of a session", "repo", "", exitOK,
-			map[string]string{"label": "work · repo · main", "mode": "on", "route": "gpt-5.5 · low"}, nil},
+			map[string]string{"label": "work · repo · main", "state": "● on", "route": "gpt-5.5 · low"}, nil},
 		{"another home's deeper session is ignored", "repo/sub/deep", "", exitOK,
-			map[string]string{"label": "work · repo · sub", "attention": "paused", "routing": "cost (session)"}, nil},
+			map[string]string{"label": "work · repo · sub", "state": "‖ paused", "routing": "cost (session)"}, nil},
 		{"thread id beats cwd", "twin", "t-repo", exitOK, map[string]string{"label": "work · repo · main"}, nil},
 		{"another home's explicit thread id refuses cwd fallback", "repo", "t-other", exitError, nil, []string{"CODEX_THREAD_ID", "not listed"}},
 		{"missing explicit thread id refuses cwd fallback", "repo", "missing-thread", exitError, nil, []string{"CODEX_THREAD_ID", "not listed"}},
@@ -1604,11 +1630,11 @@ func TestCtlSendsSessionCommands(t *testing.T) {
 		wantStdout string
 		want       route.Command
 	}{
-		{"pause", []string{"pause"}, "paused routing of work · repo · sub", route.Command{Op: route.OpPause, Session: "t-sub", Scope: route.ScopeSession}},
-		{"resume", []string{"resume"}, "resumed routing of work · repo · sub", route.Command{Op: route.OpResume, Session: "t-sub", Scope: route.ScopeSession}},
-		{"pin", []string{"pin", "--tier", "high"}, "pinned the next turn of work · repo · sub to high", route.Command{Op: route.OpPin, Session: "t-sub", Scope: route.ScopeSession, Tier: config.TierHigh}},
-		{"mode", []string{"mode", "cost"}, "set work · repo · sub to cost mode", route.Command{Op: route.OpMode, Session: "t-sub", Scope: route.ScopeSession, Mode: config.ModeCost}},
-		{"mode default", []string{"mode", "default"}, "cleared the mode of work · repo · sub", route.Command{Op: route.OpMode, Session: "t-sub", Scope: route.ScopeSession, Mode: route.ModeDefault}},
+		{"pause", []string{"pause"}, "paused work · repo · sub · requests keep Codex's model", route.Command{Op: route.OpPause, Session: "t-sub", Scope: route.ScopeSession}},
+		{"resume", []string{"resume"}, "resumed work · repo · sub", route.Command{Op: route.OpResume, Session: "t-sub", Scope: route.ScopeSession}},
+		{"pin", []string{"pin", "--tier", "high"}, "pinned work · repo · sub for the next turn · ▂▄▆█", route.Command{Op: route.OpPin, Session: "t-sub", Scope: route.ScopeSession, Tier: config.TierHigh}},
+		{"mode", []string{"mode", "cost"}, "cost mode set for work · repo · sub · applies at the next switch check; a pin applies now", route.Command{Op: route.OpMode, Session: "t-sub", Scope: route.ScopeSession, Mode: config.ModeCost}},
+		{"mode default", []string{"mode", "default"}, "mode cleared for work · repo · sub · project file, config or balanced decides", route.Command{Op: route.OpMode, Session: "t-sub", Scope: route.ScopeSession, Mode: route.ModeDefault}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

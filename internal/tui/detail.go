@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/alexei-led/codex-router/internal/policy"
 	"github.com/alexei-led/codex-router/internal/route"
 )
 
@@ -14,17 +13,6 @@ const (
 	// stripSuffixWidth leaves room for `  4 replies per cell` after the strip.
 	stripSuffixWidth = 22
 )
-
-// reasonMark points the way a decision moved the tier.
-func reasonMark(r policy.Reason) string {
-	switch r {
-	case policy.ReasonEscalation, policy.ReasonUpgrade, policy.ReasonJump, policy.ReasonFit:
-		return "↑ "
-	case policy.ReasonDowngrade:
-		return "↓ "
-	}
-	return ""
-}
 
 // chip is the band's state word as a reversed block.
 func chip(text string, r role) seg {
@@ -82,7 +70,7 @@ func (c *canvas) detail(v view) {
 	c.pinRow(s)
 	c.sessionRows(s)
 	c.contextRows(s)
-	c.look(s)
+	c.notes(s)
 	c.recent(s)
 }
 
@@ -106,7 +94,7 @@ func (c *canvas) band(s route.Snapshot) {
 		text = []seg{plain("every request goes to " + routeText(s.Baseline) + " unchanged")}
 		right = []seg{dim("space resumes")}
 	case s.Pin != nil:
-		chipSeg = chip(strings.ToUpper(string(*s.Pin)), tierRole[*s.Pin])
+		chipSeg = chip(s.Pin.Meter(), tierRole[*s.Pin])
 		text = []seg{plain("pinned → "), bold(routeText(s.Routes[*s.Pin]))}
 		right = []seg{dim("next turn only")}
 	case s.ClassifierOff:
@@ -137,7 +125,7 @@ func (c *canvas) band(s route.Snapshot) {
 // route, the reason, and the classifier's support against its bar.
 func (c *canvas) decision(s route.Snapshot, d route.Decision) (seg, []seg, []seg, [][]seg) {
 	kept := slices.Contains(keptReasons, d.Reason)
-	chipSeg := chip(strings.ToUpper(string(d.Tier)), tierRole[d.Tier])
+	chipSeg := chip(d.Tier.Meter(), tierRole[d.Tier])
 	if kept {
 		chipSeg = chip("KEPT", roleMuted)
 	}
@@ -150,7 +138,7 @@ func (c *canvas) decision(s route.Snapshot, d route.Decision) (seg, []seg, []seg
 		text = append(text, dim(" · "+whyOf(d)))
 		return chipSeg, text, nil, supportSegs(s, d)
 	}
-	right := []seg{plain(reasonMark(d.Reason)), plain(whyOf(d))}
+	right := []seg{plain(whyOf(d))}
 	return chipSeg, text, right, supportSegs(s, d)
 }
 
@@ -168,7 +156,7 @@ func supportSegs(s route.Snapshot, d route.Decision) [][]seg {
 	var parts [][]seg
 	if r := d.Reading; r != nil {
 		if p, ok := r.Tiers[d.Tier]; ok {
-			parts = append(parts, []seg{plain(fmt.Sprintf("%s %s %s", classifierName(s), d.Tier, percent(p)))})
+			parts = append(parts, []seg{plain(fmt.Sprintf("%s %s %s", classifierName(s), d.Tier.Meter(), percent(p)))})
 		}
 	}
 	for _, p := range supportFragments(d) {
@@ -197,14 +185,25 @@ func supportFragments(d route.Decision) []string {
 func (c *canvas) pinRow(s route.Snapshot) {
 	segs := []seg{plain(fmt.Sprintf(" %-*s", labelWidth-2, "Pin"))}
 	c.anchors["pin"] = anchor{row: len(c.out), x: segsWidth(segs) + 1}
+	// The buttons name their tier while the row fits; a narrow panel keeps the
+	// meters so the strongest tier is never cut off.
+	names := labelWidth
+	for _, t := range tierOrder {
+		names += cells(" " + t.Meter() + " " + string(t) + "  ")
+	}
+	named := names <= c.width
 	for _, t := range tierOrder {
 		pinned := s.Pin != nil && *s.Pin == t
 		running := s.Last != nil && s.Last.Tier == t && s.Mode == route.ModeOn && s.Pin == nil &&
 			!s.ClassifierOff && !slices.Contains(keptReasons, s.Last.Reason)
-		text := " " + string(t) + "  "
+		lead, label := " ", ""
 		if running {
-			text = "▶" + string(t) + "  "
+			lead = "▶"
 		}
+		if named {
+			label = " " + string(t)
+		}
+		text := lead + t.Meter() + label + "  "
 		b := seg{text: text, role: tierRole[t], reverse: pinned, bold: pinned || running}
 		segs = append(segs, clickable(b, action{kind: actPin, tier: t}))
 	}
@@ -219,12 +218,12 @@ func (c *canvas) sessionRows(s route.Snapshot) {
 		c.add(lead, dim("no routed replies yet"))
 		return
 	}
-	saved := pricingCoverage(st)
+	saved := [][]seg{pricingCoverage(st)}
 	if pricingComplete(st) {
-		saved = savedPart(st)
+		saved = savedParts(st, "")
 	}
-	parts := [][]seg{{plain(plural(st.Replies, "reply", "replies"))}, {plain(plural(st.Switches, "switch", "switches"))}, saved}
-	c.flow(lead, parts...)
+	parts := [][]seg{{plain(plural(st.Replies, "reply", "replies"))}, {plain(plural(st.Switches, "switch", "switches"))}}
+	c.flow(lead, append(parts, saved...)...)
 	room := c.width - labelWidth - stripSuffixWidth
 	cells := st.Strip
 	if len(cells) > room {
@@ -232,7 +231,7 @@ func (c *canvas) sessionRows(s route.Snapshot) {
 	}
 	line := []seg{plain(strings.Repeat(" ", labelWidth))}
 	for _, t := range cells {
-		line = append(line, col(tierRole[t], spark[t]))
+		line = append(line, col(tierRole[t], t.Bar()))
 	}
 	if st.RepliesPerCell > 0 {
 		unit := "replies"
@@ -242,24 +241,6 @@ func (c *canvas) sessionRows(s route.Snapshot) {
 		line = append(line, dim(fmt.Sprintf("  %d %s per cell", st.RepliesPerCell, unit)))
 	}
 	c.add(line...)
-}
-
-// savedPart is `saved ≈ $1.18 (22%) vs per-reply native basis`.
-func savedPart(st route.Stats) []seg {
-	diff := st.BaselineUSD - st.RoutedUSD
-	if diff == 0 {
-		return []seg{plain("same estimated cost vs per-reply native basis")}
-	}
-	word, r := "saved", roleOK
-	if diff < 0 {
-		word, r = "extra cost", roleWarn
-	}
-	amount := "≈ " + dollars(abs(diff))
-	if st.BaselineUSD > 0 {
-		pct := int(abs(diff)/st.BaselineUSD*100 + 0.5)
-		amount += fmt.Sprintf(" (%d%%)", pct)
-	}
-	return []seg{plain(word + " "), col(r, amount), plain(" vs per-reply native basis")}
 }
 
 // contextRows are the context window and the cache, side by side when they fit.
@@ -305,8 +286,8 @@ var findingHint = map[route.FindingKind]string{
 	route.FindingState:      "P resumes the home",
 }
 
-// look is what the engine says is worth a look, a line for each finding.
-func (c *canvas) look(s route.Snapshot) {
+// notes is what the engine says is worth a look, a line for each finding.
+func (c *canvas) notes(s route.Snapshot) {
 	for i, f := range s.Worth {
 		text := f.Text
 		if hint := findingHint[f.Kind]; hint != "" {
@@ -314,7 +295,7 @@ func (c *canvas) look(s route.Snapshot) {
 		}
 		lead := plain(strings.Repeat(" ", labelWidth))
 		if i == 0 {
-			lead = label("Look")
+			lead = label("Notes")
 		}
 		c.wrapped(lead, text, plain(""))
 	}
@@ -332,7 +313,7 @@ func (c *canvas) recent(s route.Snapshot) {
 			lead = label("Recent")
 		}
 		d := g.decision
-		mark := col(tierRole[d.Tier], fmt.Sprintf("%-7s", d.Tier))
+		mark := col(tierRole[d.Tier], fmt.Sprintf("%-7s", d.Tier.Meter()))
 		if slices.Contains(keptReasons, d.Reason) {
 			mark = dim(fmt.Sprintf("%-7s", "kept"))
 		}

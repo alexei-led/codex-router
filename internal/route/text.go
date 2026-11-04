@@ -12,54 +12,68 @@ import (
 	"github.com/alexei-led/codex-router/internal/policy"
 )
 
-// whyText is the one-line reason the TUI and the hook show.
+// reasonTexts are the reasons that need nothing from their decision. A glyph
+// leads each text: ↑ stronger, ↓ cheaper, = stays, … waits, ! fault, ⏵ pin,
+// ○ off. The hook and the panel show these strings, so one reason reads the
+// same everywhere.
+var reasonTexts = map[policy.Reason]string{
+	policy.ReasonPinned:           "⏵ pinned this turn",
+	policy.ReasonEscalation:       "↑ repeated failure, edit between",
+	policy.ReasonHold:             "⏵ holding the escalated tier",
+	policy.ReasonNoAdvice:         "! no classifier answer · tier kept",
+	policy.ReasonUncertain:        "= classifier unsure · tier kept",
+	policy.ReasonSameTier:         "= classifier agrees",
+	policy.ReasonUpgrade:          "↑ stronger tier",
+	policy.ReasonJump:             "↑ stronger tier",
+	policy.ReasonUpgradePending:   "… up waits: needs more support",
+	policy.ReasonDowngrade:        "↓ cheaper tier",
+	policy.ReasonDowngradeHeld:    "… down waits: same task, no passed check since last switch",
+	policy.ReasonDowngradePending: "… down waits: needs more support",
+	policy.ReasonPaused:           "‖ routing paused",
+	policy.ReasonManual:           "◐ model picked with /model",
+	policy.ReasonFit:              "↑ context needs a larger window",
+	policy.ReasonOutOfGroup:       "! route outside the group · request kept",
+	policy.ReasonPassthrough:      "= request kept",
+	policy.ReasonNoClassifier:     "○ classifier off · keeps Codex's model",
+	policy.ReasonError:            "! classifier failed · not routed",
+	ReasonContinue:                "= same turn",
+}
+
+// ReasonText is the words for a reason that needs nothing from its decision.
+// A panel uses it for a decision whose engine sent no Why.
+func ReasonText(r policy.Reason) (string, bool) {
+	t, ok := reasonTexts[r]
+	return t, ok
+}
+
+// whyText is the one-line reason the TUI and the hook show: the reason's own
+// text, with the detail of the decision where the reason has one.
 func whyText(d Decision, cfg config.Config, tokens int) string {
 	route := d.Route.Model + " · " + string(d.Route.Effort)
 	switch d.Reason {
 	case ReasonUnavailable:
-		return fmt.Sprintf("preferred %s · %s unavailable for this request; uses %s", d.Preferred.Model, d.Preferred.Effort, route)
-	case policy.ReasonPinned:
-		return "pinned to " + string(d.Tier) + " for this turn"
-	case policy.ReasonEscalation:
-		return "escalate: same tool failure twice, edit in between"
+		return fmt.Sprintf("! preferred %s · %s unavailable; uses %s", d.Preferred.Model, d.Preferred.Effort, route)
 	case policy.ReasonHold:
-		return fmt.Sprintf("hold: escalation holds %d turns", cfg.Effective(d.RoutingMode).EscalationHoldTurns)
-	case policy.ReasonNoAdvice:
-		return "no classifier answer; keeps " + string(d.Tier)
-	case policy.ReasonUncertain:
-		return "classifier unsure; keeps " + string(d.Tier)
-	case policy.ReasonSameTier:
-		return "classifier agrees with " + string(d.Tier)
-	case policy.ReasonUpgrade, policy.ReasonJump:
-		return "up to " + string(d.Tier)
-	case policy.ReasonUpgradePending:
-		return "waiting to go up: needs more support"
-	case policy.ReasonDowngrade:
-		return "down to " + string(d.Tier)
-	case policy.ReasonDowngradeHeld:
-		return "waiting to go down: same task, no passed check since the last switch"
-	case policy.ReasonDowngradePending:
-		return "waiting to go down: needs more support"
+		return fmt.Sprintf("⏵ hold %s after escalation", plural(cfg.Effective(d.RoutingMode).EscalationHoldTurns, "turn", "turns"))
 	case policy.ReasonFit:
-		return fmt.Sprintf("context fit: ~%s tokens need a larger window", kilo(tokens))
+		return fmt.Sprintf("↑ ~%s tokens need a larger window", kilo(tokens))
 	case policy.ReasonOutOfGroup:
-		return "route outside " + d.Original.Model + "'s compatibility group; request kept"
-	case policy.ReasonNoClassifier:
-		return "classifier off; request keeps Codex's model"
-	case policy.ReasonError:
-		return "classifier failed; this turn is not routed"
-	case ReasonActivityUp, ReasonActivityDown:
-		return fmt.Sprintf("%s at %s runs on %s", d.Activity, d.Tier, route)
+		return "! route outside " + d.Original.Model + "'s group · request kept"
+	case ReasonActivityUp:
+		return "↑ " + string(d.Activity) + " route stronger"
+	case ReasonActivityDown:
+		return "↓ " + string(d.Activity) + " route cheaper"
 	case ReasonActivityPending:
-		return "activity route waits: switch not worth it yet"
+		return "… activity route waits: switch not worth it yet"
 	case ReasonObserved:
-		return fmt.Sprintf("tool calls show %s; runs on %s", d.Activity, route)
-	case ReasonContinue:
-		return "same turn"
+		return "= tool calls show " + string(d.Activity)
 	case ReasonMode:
-		return fmt.Sprintf("%s mode: %s runs on %s", d.RoutingMode, d.Tier, route)
+		return fmt.Sprintf("%s mode route", d.RoutingMode)
 	case ReasonModePending:
-		return fmt.Sprintf("%s mode waits: needs more support", d.RoutingMode)
+		return fmt.Sprintf("… %s mode waits: needs more support", d.RoutingMode)
+	}
+	if t, ok := reasonTexts[d.Reason]; ok {
+		return t
 	}
 	return string(d.Reason)
 }
@@ -156,10 +170,10 @@ func worth(s Snapshot) []Finding {
 		add(FindingManual, "footer picked with /model: routing holds %s until resume", routeName(s.Footer))
 	}
 	if n := s.Stats.FitHeld; n > 0 {
-		add(FindingContext, "context guard kept %s on a larger window than the policy chose", plural(n, "step", "steps"))
+		add(FindingContext, "context guard kept %s on a larger window", plural(n, "step", "steps"))
 	}
 	if len(s.Blocked) > 0 {
-		add(FindingBlocked, "routes to %s never run: outside %s's compatibility group", strings.Join(s.Blocked, ", "), s.Baseline.Model)
+		add(FindingBlocked, "%s blocked: outside %s's group", strings.Join(s.Blocked, ", "), s.Baseline.Model)
 	}
 	if st := s.Stats; st.Replies >= insightReplies && st.Switches > 0 && st.CacheReusePct < lowReusePct {
 		add(FindingCache, "cache reuse %d%% after %s; switches wrote %s uncached tokens",
@@ -188,5 +202,5 @@ func kilo(n int) string {
 	if n < 1000 {
 		return strconv.Itoa(n)
 	}
-	return fmt.Sprintf("%dk", int(math.Round(float64(n)/1000)))
+	return fmt.Sprintf("%dK", int(math.Round(float64(n)/1000)))
 }

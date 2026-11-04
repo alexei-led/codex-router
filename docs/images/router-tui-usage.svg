@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 789 560" width="789" height="560" role="img" aria-labelledby="title desc">
   <title id="title">codex-router panel, Usage view</title>
-  <desc id="desc">Sample data. Usage view: the net estimated saving against the native models, separate savings and extra cost totals, a ledger of replies, switches and cache reuse, and block bars of replies by tier and by activity.</desc>
+  <desc id="desc">Sample data. Usage view: the signed estimated cost against no routing, the cheaper and dearer totals per reply, counts of replies, switches and cache reuse, and block bars of replies by tier and by activity.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
   <rect width="789" height="560" rx="8" fill="#14171f"/>
   <rect x="0.5" y="0.5" width="788" height="559" rx="8" fill="none" stroke="#2e3340"/>
@@ -19,36 +19,44 @@
   <text x="16.0" y="104.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">codex-router · main</text>
   <text x="468.4" y="104.0" fill="#878787" xml:space="preserve">balanced (default) · </text>
   <text x="632.2" y="104.0" fill="#878787" xml:space="preserve">default · 3fa9c0d1</text>
-  <text x="16.0" y="123.0" fill="#d0d0d0" xml:space="preserve"> Usage      Routing saved </text>
-  <text x="218.8" y="123.0" fill="#5fd7af" xml:space="preserve">≈ $1.18 (22%)</text>
-  <text x="320.2" y="123.0" fill="#d0d0d0" xml:space="preserve"> vs per-reply native basis</text>
-  <text x="109.6" y="142.0" fill="#5fd7af" xml:space="preserve">savings ≈ $1.38</text>
-  <text x="226.6" y="142.0" fill="#878787" xml:space="preserve"> · </text>
-  <text x="250.0" y="142.0" fill="#ffaf00" xml:space="preserve">extra cost ≈ $0.20</text>
-  <text x="109.6" y="161.0" fill="#878787" xml:space="preserve">list-price estimate $4.12 vs $5.30 per-reply native basis</text>
-  <text x="109.6" y="180.0" fill="#878787" xml:space="preserve">plan billing is limits, not $</text>
-  <text x="16.0" y="218.0" fill="#d0d0d0" xml:space="preserve"> Ledger     144 replies since 18:02</text>
+  <text x="16.0" y="123.0" fill="#d0d0d0" xml:space="preserve"> Usage      Routing </text>
+  <text x="172.0" y="123.0" fill="#5fd7af" xml:space="preserve">−$1.18 (−22%)</text>
+  <text x="273.4" y="123.0" fill="#d0d0d0" xml:space="preserve"> vs no routing</text>
+  <text x="382.6" y="123.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="406.0" y="123.0" fill="#878787" xml:space="preserve">≈ list price</text>
+  <text x="499.6" y="123.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="523.0" y="123.0" fill="#878787" xml:space="preserve">main thread</text>
+  <text x="109.6" y="142.0" fill="#5fd7af" xml:space="preserve">per reply: cheaper −$1.38</text>
+  <text x="304.6" y="142.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="328.0" y="142.0" fill="#ffaf00" xml:space="preserve">dearer +$0.20</text>
+  <text x="109.6" y="161.0" fill="#878787" xml:space="preserve">≈ $4.12 with routing</text>
+  <text x="265.6" y="161.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="289.0" y="161.0" fill="#878787" xml:space="preserve">≈ $5.30 with no routing</text>
+  <text x="109.6" y="180.0" fill="#878787" xml:space="preserve">plan is limits, not billed</text>
+  <text x="312.4" y="180.0" fill="#878787" xml:space="preserve"> · </text>
+  <text x="335.8" y="180.0" fill="#878787" xml:space="preserve">≈ is list price</text>
+  <text x="16.0" y="218.0" fill="#d0d0d0" xml:space="preserve"> Counts     144 replies since 18:02</text>
   <text x="289.0" y="218.0" fill="#878787" xml:space="preserve"> · </text>
   <text x="312.4" y="218.0" fill="#d0d0d0" xml:space="preserve">19 switches</text>
   <text x="398.2" y="218.0" fill="#878787" xml:space="preserve"> · </text>
   <text x="421.6" y="218.0" fill="#d0d0d0" xml:space="preserve">cache reuse 64%</text>
   <text x="109.6" y="237.0" fill="#878787" xml:space="preserve">switches wrote 612K uncached tokens</text>
-  <text x="16.0" y="256.0" fill="#d0d0d0" xml:space="preserve">            last switch 18:42  medium → high · debug</text>
-  <text x="421.6" y="256.0" fill="#878787" xml:space="preserve"> (inside a turn)</text>
+  <text x="16.0" y="256.0" fill="#d0d0d0" xml:space="preserve">            last switch 18:42  ▂▄▆ → ▂▄▆█ · debug</text>
+  <text x="398.2" y="256.0" fill="#878787" xml:space="preserve"> (inside a turn)</text>
   <text x="16.0" y="294.0" fill="#d0d0d0" xml:space="preserve"> Tiers      </text>
-  <text x="109.6" y="294.0" fill="#5fd7af" xml:space="preserve">micro     </text>
+  <text x="109.6" y="294.0" fill="#5fd7af" xml:space="preserve">▂         </text>
   <text x="187.6" y="294.0" fill="#5fd7af" xml:space="preserve">███</text>
   <text x="211.0" y="294.0" fill="#d0d0d0" xml:space="preserve">                         8</text>
   <text x="413.8" y="294.0" fill="#878787" xml:space="preserve">   5%</text>
-  <text x="109.6" y="313.0" fill="#5fafd7" xml:space="preserve">low       </text>
+  <text x="109.6" y="313.0" fill="#5fafd7" xml:space="preserve">▂▄        </text>
   <text x="187.6" y="313.0" fill="#5fafd7" xml:space="preserve">████████████</text>
   <text x="281.2" y="313.0" fill="#d0d0d0" xml:space="preserve">               36</text>
   <text x="413.8" y="313.0" fill="#878787" xml:space="preserve">  25%</text>
-  <text x="109.6" y="332.0" fill="#d7af5f" xml:space="preserve">medium    </text>
+  <text x="109.6" y="332.0" fill="#d7af5f" xml:space="preserve">▂▄▆       </text>
   <text x="187.6" y="332.0" fill="#d7af5f" xml:space="preserve">████████████████████████</text>
   <text x="374.8" y="332.0" fill="#d0d0d0" xml:space="preserve">   76</text>
   <text x="413.8" y="332.0" fill="#878787" xml:space="preserve">  52%</text>
-  <text x="109.6" y="351.0" fill="#d75f87" xml:space="preserve">high      </text>
+  <text x="109.6" y="351.0" fill="#d75f87" xml:space="preserve">▂▄▆█      </text>
   <text x="187.6" y="351.0" fill="#d75f87" xml:space="preserve">████████</text>
   <text x="250.0" y="351.0" fill="#d0d0d0" xml:space="preserve">                   24</text>
   <text x="413.8" y="351.0" fill="#878787" xml:space="preserve">  16%</text>

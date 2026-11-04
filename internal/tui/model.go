@@ -315,7 +315,7 @@ func (m *model) run(b key.Binding) tea.Cmd {
 }
 
 func (m *model) pin(t config.Tier) tea.Cmd {
-	return m.command(route.Command{Op: route.OpPin, Session: m.st.focus, Tier: t}, "pinned "+string(t)+" for the next turn")
+	return m.command(route.Command{Op: route.OpPin, Session: m.st.focus, Tier: t}, "pinned "+t.Meter()+" for the next turn")
 }
 
 func (m *model) unpin() tea.Cmd {
@@ -323,7 +323,7 @@ func (m *model) unpin() tea.Cmd {
 }
 
 func (m *model) setMode(mode config.RoutingMode) tea.Cmd {
-	toast := "mode " + string(mode) + " for this session; applies through the switch gates"
+	toast := string(mode) + " mode set · applies at the next switch check"
 	if mode == route.ModeDefault {
 		toast = "session mode cleared"
 	}

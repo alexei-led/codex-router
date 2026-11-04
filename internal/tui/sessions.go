@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/alexei-led/codex-router/internal/config"
 	"github.com/alexei-led/codex-router/internal/home"
 	"github.com/alexei-led/codex-router/internal/registry"
 	"github.com/alexei-led/codex-router/internal/route"
@@ -30,11 +29,6 @@ const (
 
 // homeRoles color each home's dot, by the home's place in the list.
 var homeRoles = []role{roleAccent, roleInfo, roleOK, roleMedium, roleHigh}
-
-// spark draws a tier in the LAST TURNS column.
-var spark = map[config.Tier]string{
-	config.TierMicro: "▁", config.TierLow: "▃", config.TierMedium: "▅", config.TierHigh: "▇",
-}
 
 // FleetView is what RenderFleetView draws for the docs images. Each session
 // is on its own endpoint, as stage 1 launchers run them, unless its home is
@@ -480,7 +474,7 @@ func sessionRow(s fleetSession, h fleetHome, cols listCols, selected bool) []seg
 		segs = append(segs, plain(gap))
 		tail := s.Strip[max(len(s.Strip)-sparkCells, 0):]
 		for _, t := range tail {
-			segs = append(segs, col(tierRole[t], spark[t]))
+			segs = append(segs, col(tierRole[t], t.Bar()))
 		}
 		segs = append(segs, plain(strings.Repeat(" ", sparkCells-len(tail))))
 	}
@@ -512,20 +506,20 @@ func stateOf(s fleetSession) (string, role) {
 	case s.disconnected:
 		return "✕ disconnected", roleWarn
 	case s.Attention == route.AttentionPaused, s.Attention == "" && s.Mode == route.ModePaused:
-		return "‖ paused", roleMuted
+		return s.StateText(), roleMuted
 	case s.Attention == route.AttentionManual:
-		return "◐ manual", roleWarn
+		return s.StateText(), roleWarn
 	case s.Attention == route.AttentionEscalation:
 		if s.Tier == "" {
-			return "↑ escalated", roleHigh
+			return s.StateText(), roleHigh
 		}
-		return "↑ " + string(s.Tier), tierRole[s.Tier]
+		return "↑ " + s.Tier.Meter(), tierRole[s.Tier]
 	case s.Attention == route.AttentionStateLost:
-		return "! state lost", roleWarn
+		return s.StateText(), roleWarn
 	case s.Attention == route.AttentionUnknown:
-		return "? unknown", roleMuted
+		return s.StateText(), roleMuted
 	case s.Attention != "":
-		return "? " + string(s.Attention), roleWarn
+		return s.StateText(), roleWarn
 	}
-	return "● on", roleOK
+	return s.StateText(), roleOK
 }

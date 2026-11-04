@@ -35,7 +35,7 @@ The generator uses the real panel renderer with sample data. Install `rsvg-conve
 ## Release
 
 1. Confirm the next version does not already exist. Update `plugins/codex-router/.codex-plugin/plugin.json` to match it without the leading `v`.
-2. Run the checks above and `make release-check VERSION=vX.Y.Z`. Review the diff and write user-facing notes.
+2. Run the checks above and `make release-check VERSION=vX.Y.Z`. Re-check the built-in prices in `internal/config/default.go` against the [OpenAI pricing page](https://developers.openai.com/api/docs/pricing) and update the check date in the comment above them. Review the diff and write user-facing notes.
 3. Commit the release changes. Create an annotated tag with the reviewed notes, then push the main commit and tag.
 4. The tag workflow validates, cross-builds and publishes the GitHub release. Verify the workflow, four binaries, checksums and version strings.
 

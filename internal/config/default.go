@@ -26,8 +26,11 @@ func Default() Config {
 		Routes:   defaultRoutes(),
 
 		Activities: map[Activity]map[Tier]Route{},
-		// Standard list-price estimates, not plan invoices. Long-context
-		// multipliers, Fast and cache-write billing are not modeled.
+		// Standard list prices, USD per 1M tokens, from the OpenAI pricing page
+		// (developers.openai.com/api/docs/pricing, Standard, up to 272K input
+		// tokens), checked 2026-11-04. Not modeled: long context over 272K
+		// input, Fast, batch and flex, regional endpoints. The Standard table
+		// lists no cache-write price. Re-check these at each release.
 		Prices: map[string]Price{
 			modelSol:   {Input: 2, CachedInput: 0.1, Output: 10},
 			modelTerra: {Input: 1, CachedInput: 0.05, Output: 5},
