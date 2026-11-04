@@ -199,7 +199,11 @@ func (c *canvas) usage(v view) {
 	c.blank()
 	c.flow(kv("Counts"), counts...)
 	if sw := st.LastSwitch; sw != nil {
-		line := []seg{blankKV(), plain(fmt.Sprintf("last switch %s  %s → %s · %s", sw.At.Format(timeLayout), sw.From.Meter(), sw.To.Meter(), sw.Activity))}
+		text := fmt.Sprintf("last switch %s  %s → %s", sw.At.Format(timeLayout), sw.From.Meter(), sw.To.Meter())
+		if sw.Activity != "" { // a pin has no activity
+			text += sep + string(sw.Activity)
+		}
+		line := []seg{blankKV(), plain(text)}
 		if sw.MidTurn {
 			line = append(line, dim(" (inside a turn)"))
 		}

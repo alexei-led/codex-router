@@ -181,7 +181,9 @@ func nonEmpty(parts ...string) []string {
 }
 
 // lastPerTurn returns the final decision of each turn of the thread, ordered
-// by that decision's time. Snapshot order is not relied on.
+// by that decision's time. Snapshot order is not relied on. A later step that
+// only continues the turn on the same route does not replace the decision
+// that set it, so the line keeps the reason the route changed for.
 func lastPerTurn(s route.Snapshot, thread string) []route.Decision {
 	all := slices.Clone(s.Recent)
 	if s.Last != nil {
@@ -193,7 +195,12 @@ func lastPerTurn(s route.Snapshot, thread string) []route.Decision {
 		if d.ThreadID != thread || d.TurnID == "" {
 			continue
 		}
-		turns = slices.DeleteFunc(turns, func(t route.Decision) bool { return t.TurnID == d.TurnID })
+		if i := slices.IndexFunc(turns, func(t route.Decision) bool { return t.TurnID == d.TurnID }); i >= 0 {
+			if d.Reason == route.ReasonContinue && d.Route == turns[i].Route {
+				continue
+			}
+			turns = slices.Delete(turns, i, i+1)
+		}
 		turns = append(turns, d)
 	}
 	return turns

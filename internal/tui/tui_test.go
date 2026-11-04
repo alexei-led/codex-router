@@ -188,6 +188,8 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		{"usage, prices missing", func(s *route.Snapshot) { s.Stats.PricedReplies = 0 }, TabUsage,
 			[]string{"48 of 48 replies not priced · no total"}, []string{"with routing"}},
 		{"usage, routing costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabUsage, []string{"Routing +$0.29 (+11%)"}, nil},
+		{"a pinned switch has no activity to name", func(s *route.Snapshot) { s.Stats.LastSwitch.Activity, s.Stats.LastSwitch.MidTurn = "", false }, TabUsage,
+			[]string{"last switch 18:41  ▂▄▆ → ▂▄▆█\n"}, []string{"▂▄▆█ ·"}},
 		{"no timed switch", func(s *route.Snapshot) { s.Stats.LastSwitch, s.Stats.UncachedSwitchTokens = nil, 0 }, TabUsage, nil, []string{"last switch", "uncached"}},
 	}
 	for _, tt := range tests {

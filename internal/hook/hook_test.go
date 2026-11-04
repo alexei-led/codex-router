@@ -39,6 +39,10 @@ func TestMessage(t *testing.T) {
 	pinned := dec("th", "t2", 3, "gpt-5.5", config.EffortHigh)
 	pinned.Tier, pinned.Activity, pinned.Why = config.TierHigh, "", "⏵ pinned this turn"
 	noEffort := dec("th", "t2", 3, "gpt-5.5", "")
+	continued := dec("th", "t2", 4, "gpt-5.5", config.EffortHigh)
+	continued.Reason, continued.Why = route.ReasonContinue, "= same turn"
+	changedAgain := dec("th", "t2", 5, "gpt-5.6", config.EffortHigh)
+	changedAgain.Why = "↑ stronger tier"
 
 	tests := []struct {
 		name string
@@ -56,6 +60,11 @@ func TestMessage(t *testing.T) {
 		{"empty snapshot", route.Snapshot{}, Input{SessionID: "th", TurnID: "t1"}, ""},
 		{"pinned turn without activity", route.Snapshot{Recent: []route.Decision{a}, Last: &pinned}, Input{SessionID: "th"},
 			"▂▄▆█ → gpt-5.5 · high  ⏵ pinned this turn"},
+		{"a later step that continues the turn keeps the reason the route changed for",
+			route.Snapshot{Recent: []route.Decision{a, diff}, Last: &continued}, Input{SessionID: "th", TurnID: "t2"}, want},
+		{"a later step on another route is the turn's route",
+			route.Snapshot{Recent: []route.Decision{a, diff, continued}, Last: &changedAgain}, Input{SessionID: "th", TurnID: "t2"},
+			"▂ code → gpt-5.6 · high  ↑ stronger tier"},
 		{"route keeps Codex's effort", route.Snapshot{Recent: []route.Decision{a}, Last: &noEffort}, Input{SessionID: "th"},
 			"▂ code → gpt-5.5  simple edit"},
 	}

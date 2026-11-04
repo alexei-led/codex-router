@@ -111,7 +111,7 @@ The router uses these words in the footer, the panel, the config and the docs.
 | **Session**             | One Codex conversation (a main thread) routed by codex-router. `/new` in Codex starts a new session.                                                   |
 | **Home**                | A Codex home (`CODEX_HOME`, default `~/.codex`) with its own login. The panel names it: `~/.codex` is `default`, `~/.codex-work` is `work`.            |
 | **Turn**                | One prompt from you. Codex can send several requests for it, called **steps**.                                                                         |
-| **Tier**                | The complexity level that the router gives a turn: `micro`, `low`, `medium` or `high`, weakest first.                                                  |
+| **Tier**                | The complexity level that the router gives a turn: `micro`, `low`, `medium` or `high`, weakest first. Screens draw it as a meter: `▂` micro, `▂▄` low, `▂▄▆` medium, `▂▄▆█` high. |
 | **Route**               | A model and a reasoning effort. Each tier maps to one route (`routes` in the config).                                                                  |
 | **Classifier**          | A small model that reads your prompt and recent dialogue and returns probabilities for each tier and activity.                                         |
 | **Activity**            | The kind of work: `code`, `debug`, `explore`, `plan`, `review`, `ops` or `docs`. An activity can give a tier a different route (`activities`).         |
@@ -168,7 +168,7 @@ When a key variable or the Cloudflare account ID is unset, the classifier is off
 
 - **`routes`**: the model and effort for each tier. Keep all models in one compatibility group. The defaults are in one group.
 - **`mode`**: `cost`, `balanced` (the default) or `quality`. See [Choose a routing mode](#choose-a-routing-mode).
-- **`prices`**: list prices in USD per million tokens, for the savings estimate in the panel. The defaults cover `gpt-6.1-sol`, `gpt-6.1-terra` and `gpt-6-luna`. Add one for any other model you route to, and for Codex's own model if it is neither: the saving is measured against it.
+- **`prices`**: list prices in USD per million tokens, for the cost estimate in the panel. The defaults cover `gpt-6.1-sol`, `gpt-6.1-terra` and `gpt-6-luna`. Add one for any other model you route to, and for Codex's own model if it is neither: the estimate compares routing with it.
 - **`activities`**: a different route for an activity at a tier. Default-owned medium code/debug work prefers Terra xhigh. Explicit activity cells remain yours.
 
 The [configuration reference](configuration.md) has every field and its default.
@@ -242,7 +242,9 @@ If `~/.codex/config.toml` sets `model_context_window`, Codex sizes its context f
 
 ![Codex footer showing the routed model, GPT-6.1-Sol medium](images/codex-footer.svg)
 
-The footer shows the routed model and effort, for example `GPT-6.1-Sol medium`. It repaints when the route changes, also while a turn runs. The window figure follows the routed model from the next turn: Codex sizes a turn by the model the turn started on.
+The footer shows the routed model and effort, for example `GPT-6.1-Sol medium`. Codex draws it, with its own display name for the model; the router, the panel and the CLI use the id (`gpt-6.1-sol`). It repaints when the route changes, also while a turn runs. The window figure follows the routed model from the next turn: Codex sizes a turn by the model the turn started on.
+
+Codex accepts only its own items in the footer, so the router cannot add a tier, reason or cost to it. To see more there, list Codex's items in `[tui].status_line` of your `config.toml` or use `/statusline`. `model-with-reasoning` is the route. `context-remaining`, `five-hour-limit` and `weekly-limit` are Codex's own figures. The router does not edit this setting.
 
 ### Several sessions and homes
 
@@ -286,11 +288,11 @@ The panel first selects the session whose directory is the panel's directory or 
 
 - **Header**: the totals, and the focused home's classifier state: `Jev ready`, `○ Jev off`, or `✕ Jev unreachable · resumes in 42s` while the classifier is paused after failures.
 - **Home line**: the home's name, and `brain up 2h` when the home is [set up](#route-a-whole-home-setup). A brain that is down shows `brain down: default model`, and Codex's requests pass through unchanged. The line also counts routers that are lost. A brain that goes down stays on the line until it is back. Its sessions leave after 10 s.
-- **Rows**: label, state, model, effort and a sparkline of the last 10 routed replies. The switch time has `↑` or `↓` for its direction. A pending pin adds a distinct `◇ pin` marker beside the state. The sparkline `▁▃▅▇` means micro, low, medium, high, so it reads without color. A narrow panel drops columns from the right.
-- **State** always has a glyph: `● on`, `↑ high` (a repeated failure holds a higher tier), `‖ paused`, `◐ manual` (you picked a model with `/model`), `? unknown` (a restarted brain holds the route until the next reply), `! state lost` (the brain could not read its saved pauses and pins, so the home is paused until `P` resumes it), `✕ disconnected`.
+- **Rows**: label, state, model, effort and a sparkline of the last 10 routed replies. The switch time has `↑` or `↓` for its direction. A pending pin adds a distinct `◇ pin` marker beside the state. The strip uses one bar for each turn, `▂▄▆█` for micro, low, medium, high, so it reads without color. A narrow panel drops columns from the right.
+- **State** always has a glyph: `● on`, `↑ ▂▄▆█` (a repeated failure holds a higher tier, drawn as its meter), `‖ paused`, `◐ manual` (you picked a model with `/model`), `? unknown` (a restarted brain holds the route until the next reply), `! state lost` (the brain could not read its saved pauses and pins, so the home is paused until `P` resumes it), `✕ disconnected`.
 - **`○ waiting for the first prompt`**: a router is running, but its Codex has not sent a prompt yet. It has no session to select. It shows under its home with the directory it was started in, or `brain` for a home's brain.
-- **Detail**: the title line shows the session's mode and its source, for example `cost (session)`. Below it, the tier, activity and route (`HIGH  debug → gpt-6.1-sol · high`). The reason appears to the right. Below it, the evidence compares the classifier score with the policy threshold (`Jev high 99% ≥ 75%`). With the classifier off the chip reads `PINS ONLY` and the evidence line gives the exact reason, for example the unset key variable. Other chips: `KEPT` (a decision that left Codex's model in place), `PAUSED`, `MANUAL`, `STATE LOST`.
-- **Pin** buttons, one per tier. `▶` marks the tier in use and the pinned tier is reversed. **Session**: replies, switches, the list-price estimate and the strip of routed replies, one cell per `N` replies. A dollar total appears only when prices cover every eligible reply; otherwise the panel says `estimate partial` or `estimate unknown` with the `N of M replies priced` coverage, and hides the partial subtotal. The comparison uses a per-reply native basis: a `/model` change can make the native model differ across replies, so the panel does not imply one model for the whole session. **Context** and **Cache**: how full the smallest window is and prompt-cache reuse. **Look**: things to act on, each naming where you change it.
+- **Detail**: the title line shows the session's mode and its source, for example `cost (session)`. Below it, the tier meter, activity and route (`▂▄▆█  debug → gpt-6.1-sol · high`). The reason appears to the right, led by a glyph: `↑` stronger, `↓` cheaper, `=` stays, `…` waits, `!` fault, `⏵` pin, `○` off. Below it, the evidence shows the classifier's score for the tier, then the support the policy weighed (`Jev gave stronger tiers 88% (needs 82%)`). With the classifier off the chip reads `PINS ONLY` and the evidence line gives the exact reason, for example the unset key variable. Other chips: `KEPT` (a decision that left Codex's model in place), `PAUSED`, `MANUAL`, `STATE LOST`.
+- **Pin** buttons, one per tier, each with its meter and name. `▶` marks the tier in use and the pinned tier is reversed. A narrow panel keeps the meters and drops the names. **Session**: replies, switches, the cost against no routing (`−$0.84 (−31%) vs no routing · ≈ list price`) and the strip of routed replies, one cell per `N` replies. Minus is cheaper, plus is dearer. **No routing** is the model Codex asked for on each reply, priced on the same tokens. A `/model` change can make that model differ across replies, so the panel does not imply one model for the whole session. A dollar total appears only when prices cover every eligible reply; otherwise the panel says `N of M replies not priced · no total` and hides the partial subtotal. The figures cover main-thread replies. Subagents and compaction pass through unrouted and are not counted. **Context** and **Cache**: how full the smallest window is and prompt-cache reuse. **Notes**: things to act on, each naming where you change it.
 
 At 120 columns or wider, the list and detail sit side by side. An accent bar `▎` marks the focused side:
 
@@ -303,15 +305,17 @@ At 120 columns or wider, the list and detail sit side by side. An accent bar `�
 - **Mode**: `cost`, `balanced`, `quality` and `default`, with the session's mode marked and its source (`session`, `project`, `config` or `default`). It applies to the selected session only. While the classifier is off, it says `no effect while the classifier is off`. A router older than v0.9.0 shows `—`.
 - **Classifier**: the name and model, the median latency and the failure count; when it is paused, `✕ Jev unreachable · resumes in 42s` with the last error (`timeout`, `http 503`, `bad response`; never the key). With no calls yet it says `ready · no calls yet`. When it is off: `○ off · <reason> · requests keep Codex's model; only pins change it`.
 - **Routes**: the model and effort of each tier in the session's mode, the model whose compatibility group they must share, and known-incompatible models blocked because they are outside it. Unknown catalog entries are reported separately as compatibility unknown; an empty catalog is shown as unavailable. Unknown is not shown as incompatible, but routing still fails closed and keeps the request unchanged.
-- **Switching**: the votes and bars for going up and down, and the minimum dwell.
+- **Switching**: the votes and the score each needs for going up and down (`up after 2 votes at score ≥ 0.65`), the minimum dwell, the escalation hold, the review interval and the score for a jump. The score is the share of the classifier's probability behind the move. A switch that costs cache raises the bar.
 
-**Usage** shows the list-price estimate on a per-reply native basis, a ledger (replies, switches, cache reuse, the last switch), and replies by tier and activity as block bars. When pricing coverage is incomplete, it shows `estimate partial` or `estimate unknown` and the priced-reply count instead of a dollar subtotal. Plan billing counts usage, not dollars, so a complete dollar figure is still only an estimate.
+**Usage** shows the cost against no routing, counts (replies, switches, cache reuse, the last switch), and replies by tier and activity as block bars. When pricing coverage is incomplete, it shows `N of M replies not priced · no total` instead of a dollar subtotal. Every dollar figure is a list-price estimate, marked `≈`. Your ChatGPT plan is billed by usage limits, not dollars, so none of it is a bill.
 
-The headline shows the net saving or **extra cost** against each reply's native model. Separate **savings** and **extra cost** totals sum the cheaper and costlier replies before netting them, so they remain visible when they cancel out. Sub-cent amounts use four decimal places; positive amounts below $0.0001 show `< $0.0001`.
+For dollars, Codex's own `/status` shows its token usage.
+
+The headline is the signed difference: `−$0.84 (−31%)` means routing cost less than no routing, `+$0.29 (+11%)` means more. **Per reply** sums the cheaper and the dearer replies before netting them, so both stay visible when they cancel out. Amounts show two decimals. A nonzero amount under one cent shows `<$0.01`, so a small cost never reads as none.
 
 The routed estimate uses the model reported by the backend, with the requested model as fallback when the backend omits it. Both estimates use the reply's observed uncached input, cached input and output tokens, including reasoning. They compare model prices, not task quality or ROI. They do not simulate the tokens or cache hits another model or reasoning effort would have used. A higher effort on the same model has the same token prices and therefore shows no price difference in this comparison. A more capable model can cost more; this accounting does not change routing decisions.
 
-![Router panel, Usage view: net savings, separate savings and extra cost, the ledger, and replies by tier and activity as bars](images/router-tui-usage.svg)
+![Router panel, Usage view: the signed cost against no routing, the cheaper and dearer totals, counts, and replies by tier and activity as bars](images/router-tui-usage.svg)
 
 `--session` locks the panel to one session: no list, only that session's detail, plus Policy and Usage. Keys `[`, `]`, `↑` and `↓` do nothing there.
 
@@ -363,7 +367,7 @@ A click that only focuses the terminal window does nothing. The panel takes the 
 
 ![Router panel, pin popover: a box under the pin row offers a tier for each number key](images/router-tui-popover.svg)
 
-An action the router accepted shows a short confirmation at the bottom right for 2.5 s, for example `pinned high for the next turn`. A failure stays on the screen as a line under the footer.
+An action the router accepted shows a short confirmation at the bottom right for 2.5 s, for example `pinned ▂▄▆█ for the next turn`. A failure stays on the screen as a line under the footer.
 
 The panel asks the terminal for its background color and uses a light or a dark palette to match. Every state also has a glyph, so the panel reads with `NO_COLOR` set.
 
@@ -411,8 +415,10 @@ A completed cell that prints no status counts neither as a failure nor as a pass
 `codex-router hook` can print one line in the Codex transcript when the route changes, for example:
 
 ```text
-router: high · debug → gpt-6.1-sol · high · escalate: same tool failure twice, edit in between
+▂▄▆█ debug → gpt-6.1-sol · high  ↑ repeated failure, edit between
 ```
+
+The line is the tier meter, the activity, the new route and the reason with its glyph. Codex shows it as `↳ Hook · …`. When a turn runs several steps, the reason is the one that changed the route, not `= same turn`.
 
 The footer already shows the model. The hook adds the reason, for its own session only. Under `codex-router`, it reaches the router through `CODEX_ROUTER_CONTROL`, which the router sets. Otherwise it looks in the registry for a router of its Codex home that runs its thread. It answers within 200 ms and exits 0 even when no router is running.
 
@@ -441,7 +447,8 @@ codex-router ctl mode cost|balanced|quality|default [--home PATH] [--cwd DIR]
 
 `ctl` shows or changes one session's routing, with no panel. The Codex plugin's skill uses it. It picks the session of `$CODEX_THREAD_ID`, which Codex sets for its shell commands. If that id is set but is not listed for the selected home, `ctl` fails instead of falling back to a session that shares the working directory. Outside Codex, it picks the session in the deepest directory that equals or contains `--cwd` (default: the current directory), in `--home` (default `$CODEX_HOME`, else `~/.codex`).
 
-- `status` prints the session's state (`on`, `paused`, `manual`), tier and route, and its routing mode with the source (`routing cost (session)`).
+- `status` prints the session's `state` (`● on`, `‖ paused`, `◐ manual`, `↑ escalated`, `! state lost`), `tier` as a meter, `route`, `replies`, and its `routing` mode with the source (`routing cost (session)`). The words are the panel's.
+- `codex-router sessions` lists every session with the same state words. It prints a header row on a terminal and rows only into a pipe; `--json` keeps the raw fields.
 - `pause` and `resume` act on that session only.
 - `pin --tier medium` routes its next turn on that tier. The tier is `micro`, `low`, `medium` or `high`.
 - `mode cost` sets the session's mode; `mode default` drops it. Put the mode right after `mode`, before any flag.
