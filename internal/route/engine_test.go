@@ -440,7 +440,7 @@ func TestNoClassifierForwardsEverything(t *testing.T) {
 	if !s.ClassifierOff {
 		t.Error("snapshot does not say the classifier is off")
 	}
-	if s.Last == nil || s.Last.Reason != policy.ReasonNoClassifier || s.Last.Why != "classifier off; request keeps Codex's model" {
+	if s.Last == nil || s.Last.Reason != policy.ReasonNoClassifier || s.Last.Why != "○ classifier off · keeps Codex's model" {
 		t.Errorf("last decision = %+v", s.Last)
 	}
 	if s.Classifier.Failures != 0 || s.Classifier.LastError != "" {
@@ -1376,7 +1376,7 @@ func TestSwitchTaxCountsUncachedTokens(t *testing.T) {
 
 	wantRoute(t, rw, ok, high)
 	d := h.last()
-	if d.Estimate == nil || d.Estimate.TaxTokens != 50_000 || !strings.Contains(d.Support, "switch ≈ 50k uncached tokens") {
+	if d.Estimate == nil || d.Estimate.TaxTokens != 50_000 || !strings.Contains(d.Support, "switch ≈ 50K uncached tokens") {
 		t.Fatalf("decision = %+v, estimate %+v", d, d.Estimate)
 	}
 	if got := h.engine.Snapshot().Stats.UncachedSwitchTokens; got != 50_000 {

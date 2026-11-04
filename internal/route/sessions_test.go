@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -584,5 +585,34 @@ func TestRestoredIntentIsListedBeforeItsNextStep(t *testing.T) {
 				t.Fatalf("restored %s session is hidden before its next step: %+v", tt.name, got)
 			}
 		})
+	}
+}
+
+// A subagent runs on a thread of its own, so its replies are not the main
+// thread's: the session total the panel shows covers main-thread turns only,
+// and a side model never becomes the main thread's cached model.
+func TestSideThreadRepliesStayOutOfTheMainThread(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier("high", 0.99)))
+	h.firstStep("main", "m1")
+	h.reply(meta("main", "m1"), high.Model, 1000, 0)
+	before := h.engine.SnapshotFor("main")
+	taxBefore := h.engine.ledger.SwitchTax("main", low.Model, 10_000, h.clock.Now())
+
+	side := meta("side", "s1")
+	side.Subagent, side.ThreadSource = "worker", "subagent"
+	rw, ok := h.decide(req(low, userMsg("side task")), side)
+	wantUnchanged(t, rw, ok)
+	h.reply(side, low.Model, 50_000, 0)
+
+	after := h.engine.SnapshotFor("main")
+	if !reflect.DeepEqual(before.Stats, after.Stats) {
+		t.Errorf("a side thread's reply changed the main thread's tally:\nbefore %+v\nafter  %+v", before.Stats, after.Stats)
+	}
+	if got := h.engine.ledger.SwitchTax("main", low.Model, 10_000, h.clock.Now()); got != taxBefore {
+		t.Errorf("a side thread's reply moved the main thread's switch cost from %d to %d", taxBefore, got)
+	}
+	if ids := threadIDs(h.engine.SnapshotFor("side").Recent); len(ids) != 0 {
+		t.Errorf("the side thread has routed decisions %v", ids)
 	}
 }

@@ -160,7 +160,7 @@ func layoutWithInfo(v view) (string, []zone, layoutInfo) {
 	}
 	switch {
 	case v.fleet != nil && !v.fleet.ended && v.fleet.focus == "" && v.tab != TabSessions:
-		c.add(dim("no Codex session yet · run codex-router in a project to start one"))
+		c.add(dim(noSession))
 	case v.tab == TabPolicy:
 		c.screen(bodyRows, limited, v.scroll, (*canvas).policy, v)
 	case v.tab == TabUsage:
@@ -634,36 +634,13 @@ func routeText(r config.Route) string {
 // tier is the engine's guess for that model, so the panel does not show it.
 var keptReasons = []policy.Reason{policy.ReasonError, policy.ReasonNoClassifier, policy.ReasonPassthrough, policy.ReasonOutOfGroup}
 
-// reasonText says what a reason code means, for decisions that carry no why.
-var reasonText = map[policy.Reason]string{
-	policy.ReasonEscalation:       "escalated after a repeated failure",
-	policy.ReasonHold:             "holding the escalated tier",
-	policy.ReasonNoAdvice:         "no classifier answer; kept the tier",
-	policy.ReasonUncertain:        "classifier unsure; kept the tier",
-	policy.ReasonSameTier:         "classifier agrees with the tier",
-	policy.ReasonUpgrade:          "moved up a tier",
-	policy.ReasonJump:             "moved up a tier",
-	policy.ReasonUpgradePending:   "waiting to go up: needs more support",
-	policy.ReasonDowngrade:        "moved down a tier",
-	policy.ReasonDowngradeHeld:    "waiting to go down: no passed check yet",
-	policy.ReasonDowngradePending: "waiting to go down: needs more support",
-	policy.ReasonPinned:           "pinned for this turn",
-	policy.ReasonPaused:           "routing paused",
-	policy.ReasonManual:           "model picked with /model",
-	policy.ReasonFit:              "context needs a larger window",
-	policy.ReasonOutOfGroup:       "route outside the compatibility group; request kept",
-	policy.ReasonPassthrough:      "request kept",
-	policy.ReasonError:            "classifier failed; request kept",
-	policy.ReasonNoClassifier:     "classifier off; request keeps Codex's model",
-}
-
-// whyOf is d's reason in words: the engine's text, else a sentence for its
-// code, else a plain fallback for a code this panel does not know.
+// whyOf is d's reason in words: the engine's text, else the engine's shared
+// text for its code, else a plain fallback for a code this panel does not know.
 func whyOf(d route.Decision) string {
 	if d.Why != "" {
 		return d.Why
 	}
-	if t, ok := reasonText[d.Reason]; ok {
+	if t, ok := route.ReasonText(d.Reason); ok {
 		return t
 	}
 	return "reason not shown by this panel version"
@@ -671,7 +648,6 @@ func whyOf(d route.Decision) string {
 
 func percent(p float64) string { return fmt.Sprintf("%d%%", int(math.Round(p*100))) }
 
-// savedSegs is the estimate against each reply's native model as a sentence.
 func pricingComplete(st route.Stats) bool {
 	total := st.EligibleReplies
 	if total == 0 {
@@ -685,33 +661,64 @@ func pricingCoverage(st route.Stats) []seg {
 	if total == 0 {
 		total = st.Replies
 	}
-	word := "partial"
-	if st.PricedReplies == 0 {
-		word = "unknown"
-	}
-	return []seg{dim(fmt.Sprintf("estimate %s · %d of %d replies priced", word, st.PricedReplies, total))}
+	return []seg{dim(fmt.Sprintf("%d of %d replies not priced · no total", total-st.PricedReplies, total))}
 }
 
-func savedSegs(st route.Stats) []seg {
-	if !pricingComplete(st) {
-		return pricingCoverage(st)
+// savedParts is routing's cost against no routing, a fragment at a time: the
+// signed difference and what the figure is. "No routing" is the model Codex
+// asked for on each reply.
+func savedParts(st route.Stats, prefix string) [][]seg {
+	diff := st.RoutedUSD - st.BaselineUSD
+	r := roleOK
+	switch {
+	case diff == 0:
+		r = roleNone
+	case diff > 0:
+		r = roleWarn
 	}
-	prefix := "Routing "
-	if st.BaselineUSD == st.RoutedUSD {
-		prefix = "Routing: "
+	amount := signedUSD(diff) + signedPercent(diff, st.BaselineUSD)
+	return [][]seg{
+		{plain(prefix), col(r, amount), plain(" vs no routing")},
+		{dim("≈ list price")},
 	}
-	return append([]seg{plain(prefix)}, savedPart(st)...)
 }
 
-// dollars preserves sub-cent differences so a cost increase never reads as zero.
+// mainThreadOnly says which requests a cost covers: the tally has only
+// main-thread replies, since subagents and compaction pass through unrouted.
+var mainThreadOnly = []seg{dim("main thread")}
+
+// dollars is a dollar amount at two decimals. An amount under a cent that is not
+// zero reads <$0.01, so a small cost never looks like none.
 func dollars(v float64) string {
-	if v > 0 && v < .0001 {
-		return "< $0.0001"
-	}
+	v = abs(v)
 	if v > 0 && v < .01 {
-		return fmt.Sprintf("$%.4f", v)
+		return "<$0.01"
 	}
 	return fmt.Sprintf("$%.2f", v)
+}
+
+// signedUSD is a difference against no routing: − is cheaper, + is dearer.
+func signedUSD(v float64) string {
+	switch {
+	case v == 0:
+		return dollars(0)
+	case v < 0:
+		return "−" + dollars(v)
+	}
+	return "+" + dollars(v)
+}
+
+// signedPercent is " (−31%)", the difference as a share of the no-routing
+// cost; empty when it rounds to zero or there is no base to share.
+func signedPercent(diff, base float64) string {
+	pct := int(math.Round(abs(diff) / base * 100))
+	if base <= 0 || pct == 0 {
+		return ""
+	}
+	if diff < 0 {
+		return fmt.Sprintf(" (−%d%%)", pct)
+	}
+	return fmt.Sprintf(" (+%d%%)", pct)
 }
 
 type activityCount struct {

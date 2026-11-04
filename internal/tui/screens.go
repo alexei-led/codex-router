@@ -108,7 +108,7 @@ func (c *canvas) routesRows(s route.Snapshot) {
 	}
 	cell := func(t config.Tier) []seg {
 		text := routeText(s.Routes[t])
-		return []seg{col(tierRole[t], pad(string(t), tierCell)), plain(pad(text, routeWidth))}
+		return []seg{col(tierRole[t], pad(t.Meter(), tierCell)), plain(pad(text, routeWidth))}
 	}
 	group := dim(groupText(s))
 	var rows [][]seg
@@ -155,16 +155,16 @@ func groupText(s route.Snapshot) string {
 
 func (c *canvas) switchingRows(p config.Policy) {
 	c.flow(kv("Switching"),
-		[]seg{plain(fmt.Sprintf("up after %s, bar %.2f", plural(p.UpgradeVotes, "vote", "votes"), p.UpgradeBase))},
-		[]seg{plain(fmt.Sprintf("down after %s, bar %.2f", plural(p.DowngradeVotes, "vote", "votes"), p.DowngradeMass))},
+		[]seg{plain(fmt.Sprintf("up after %s at score ≥ %.2f", plural(p.UpgradeVotes, "vote", "votes"), p.UpgradeBase))},
+		[]seg{plain(fmt.Sprintf("down after %s at ≥ %.2f", plural(p.DowngradeVotes, "vote", "votes"), p.DowngradeMass))},
 		[]seg{plain("min dwell " + plural(p.MinDwellRequests, "request", "requests"))})
 	c.flow(blankKV(),
 		[]seg{dim("escalation hold " + plural(p.EscalationHoldTurns, "turn", "turns"))},
 		[]seg{dim("review every " + plural(p.ReviewEveryRequests, "request", "requests"))},
-		[]seg{dim(fmt.Sprintf("jump bar %.2f", p.JumpConfidence))})
+		[]seg{dim(fmt.Sprintf("jump at ≥ %.2f", p.JumpConfidence))})
 }
 
-// usage is the focused session's savings as a sentence, a ledger, and the
+// usage is the focused session's cost against no routing, the counts, and the
 // replies by tier and activity as block bars.
 func (c *canvas) usage(v view) {
 	s := v.snap
@@ -174,29 +174,32 @@ func (c *canvas) usage(v view) {
 		c.add(kv("Usage"), dim("no replies yet"))
 		return
 	}
-	c.add(append([]seg{kv("Usage")}, savedSegs(st)...)...)
-	if pricingComplete(st) {
+	if !pricingComplete(st) {
+		c.flow(kv("Usage"), pricingCoverage(st))
+	} else {
+		c.flow(kv("Usage"), append(savedParts(st, "Routing "), mainThreadOnly)...)
 		if st.SavingsUSD > 0 || st.ExtraUSD > 0 {
 			c.flow(blankKV(),
-				[]seg{col(roleOK, "savings ≈ "+dollars(st.SavingsUSD))},
-				[]seg{col(roleWarn, "extra cost ≈ "+dollars(st.ExtraUSD))})
+				[]seg{col(roleOK, "per reply: cheaper "+signedUSD(-st.SavingsUSD))},
+				[]seg{col(roleWarn, "dearer "+signedUSD(st.ExtraUSD))})
 		}
 		c.flow(blankKV(),
-			[]seg{dim(fmt.Sprintf("list-price estimate %s vs %s per-reply native basis", dollars(st.RoutedUSD), dollars(st.BaselineUSD)))},
-			[]seg{dim("plan billing is limits, not $")})
+			[]seg{dim(fmt.Sprintf("≈ %s with routing", dollars(st.RoutedUSD)))},
+			[]seg{dim(fmt.Sprintf("≈ %s with no routing", dollars(st.BaselineUSD)))})
+		c.flow(blankKV(), []seg{dim("plan is limits, not billed")}, []seg{dim("≈ is list price")})
 	}
-	ledger := [][]seg{
+	counts := [][]seg{
 		{plain(plural(st.Replies, "reply", "replies") + " since " + st.Since.Format(timeLayout))},
 		{plain(plural(st.Switches, "switch", "switches"))},
 		{plain(fmt.Sprintf("cache reuse %d%%", st.CacheReusePct))},
 	}
 	if st.UncachedSwitchTokens > 0 {
-		ledger = append(ledger, []seg{dim("switches wrote " + fmtTokens(st.UncachedSwitchTokens) + " uncached tokens")})
+		counts = append(counts, []seg{dim("switches wrote " + fmtTokens(st.UncachedSwitchTokens) + " uncached tokens")})
 	}
 	c.blank()
-	c.flow(kv("Ledger"), ledger...)
+	c.flow(kv("Counts"), counts...)
 	if sw := st.LastSwitch; sw != nil {
-		line := []seg{blankKV(), plain(fmt.Sprintf("last switch %s  %s → %s · %s", sw.At.Format(timeLayout), sw.From, sw.To, sw.Activity))}
+		line := []seg{blankKV(), plain(fmt.Sprintf("last switch %s  %s → %s · %s", sw.At.Format(timeLayout), sw.From.Meter(), sw.To.Meter(), sw.Activity))}
 		if sw.MidTurn {
 			line = append(line, dim(" (inside a turn)"))
 		}
@@ -213,7 +216,7 @@ func (c *canvas) usage(v view) {
 		if i == 0 {
 			lead = kv("Tiers")
 		}
-		c.countRow(lead, col(tierRole[t], pad(string(t), nameCell)), tierRole[t], st.ByTier[t], top, st.Replies)
+		c.countRow(lead, col(tierRole[t], pad(t.Meter(), nameCell)), tierRole[t], st.ByTier[t], top, st.Replies)
 	}
 	acts := topActivities(st.ByActivity, activityRows)
 	if len(acts) == 0 {

@@ -49,7 +49,7 @@ type picture struct {
 
 var pictures = []picture{
 	{"router-tui-sessions", "codex-router panel, Sessions view",
-		"codex-router tui in a 97 column pane. The header counts 5 sessions in 2 homes, says Jev is ready, and lists the views Sessions, Policy and Usage. The list groups the sessions by Codex home: the default home has three codex-router runs, the work home has a brain that has run for 2 hours and a router whose Codex has not had a first prompt yet. Each row has the session's state, model and effort, a sparkline of the last turns by tier and the last switch. Below, the selected session: the high tier chip, the debug activity and the route gpt-6.1-sol high, why the router moved up, the classifier's evidence, the pin buttons, the session summary with its strip, context and cache, and one thing worth a look.",
+		"codex-router tui in a 97 column pane. The header counts 5 sessions in 2 homes, says Jev is ready, and lists the views Sessions, Policy and Usage. The list groups the sessions by Codex home: the default home has three codex-router runs, the work home has a brain that has run for 2 hours and a router whose Codex has not had a first prompt yet. Each row has the session's state, model and effort, a strip of the last turns by tier and the last switch. Below, the selected session: the high tier meter, the debug activity and the route gpt-6.1-sol high, why the router moved up, the classifier's evidence, the pin buttons, the session summary with its strip, context and cache, and one note.",
 		func(*tui.FleetView) {}},
 	{"router-tui-sessions-wide", "codex-router panel, Sessions view, side by side",
 		"The Sessions view in a terminal of 130 columns. The list of sessions is on the left and the selected session's detail on the right, with an accent gutter on the focused side.",
@@ -58,13 +58,13 @@ var pictures = []picture{
 		"Policy view: the mode buttons cost, balanced, quality and default, with balanced marked and its source, the classifier Jev with its model and median latency, the model and effort of each tier, the compatibility group, and the thresholds for switching.",
 		func(v *tui.FleetView) { v.Tab = tui.TabPolicy }},
 	{"router-tui-usage", "codex-router panel, Usage view",
-		"Usage view: the net estimated saving against the native models, separate savings and extra cost totals, a ledger of replies, switches and cache reuse, and block bars of replies by tier and by activity.",
+		"Usage view: the signed estimated cost against no routing, the cheaper and dearer totals per reply, counts of replies, switches and cache reuse, and block bars of replies by tier and by activity.",
 		func(v *tui.FleetView) { v.Tab = tui.TabUsage }},
 	{"router-tui-popover", "codex-router panel, pin popover",
-		"The Sessions view after p: a small box under the pin row offers 1 micro, 2 low, 3 medium, 4 high and 0 none. The footer lists only the keys that work now.",
+		"The Sessions view after p: a small box under the pin row offers 1 micro, 2 low, 3 medium, 4 high and 0 none, each with its tier meter. The footer lists only the keys that work now.",
 		func(v *tui.FleetView) { v.Popover = true }},
 	{"router-tui-help", "codex-router panel, help overlay",
-		"The help overlay drawn over the panel after ?: every key, grouped as Navigate, Session, Home and Views.",
+		"The help overlay drawn over the panel after ?: every key, grouped as Navigate, Session, Pause and Views.",
 		func(v *tui.FleetView) { v.Help = true }},
 }
 
@@ -258,7 +258,7 @@ func sampleSnapshot() route.Snapshot {
 	last.Original = solMed
 	last.Rewritten = true
 	last.MidTurn = true
-	last.Why = "escalate: same tool failure twice, edit in between"
+	last.Why = "↑ repeated failure, edit between"
 	last.Support = "no classifier needed"
 	last.Reading = &route.Reading{
 		Tiers:      map[config.Tier]float64{config.TierMicro: 0.02, config.TierLow: 0.09, config.TierMedium: 0.71, config.TierHigh: 0.18},
@@ -319,7 +319,7 @@ func sampleSnapshot() route.Snapshot {
 		Window:       828_000,
 		Worth: []route.Finding{
 			{Kind: route.FindingCache, Text: "cache reuse 64% after 19 switches; switches wrote 612K uncached tokens"},
-			{Kind: route.FindingContext, Text: "context guard kept 3 steps on a larger window than the policy chose"},
+			{Kind: route.FindingContext, Text: "context guard kept 3 steps on a larger window"},
 		},
 	}
 }

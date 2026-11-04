@@ -32,7 +32,7 @@ type keyMap struct {
 
 var keys = keyMap{
 	Up:          key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑↓", "select or scroll")),
-	Down:        key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("j k", "same as ↑↓")),
+	Down:        key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("j k", "also ↑↓")),
 	Open:        key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
 	Back:        key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 	PrevSession: key.NewBinding(key.WithKeys("["), key.WithHelp("[", "previous session")),
@@ -60,7 +60,7 @@ func (k keyMap) groups() []helpGroup {
 	return []helpGroup{
 		{"Navigate", []key.Binding{k.Up, k.Down, k.Open, k.Back, k.PrevSession, k.NextSession, k.Help, k.Quit}},
 		{"Session", []key.Binding{k.Pin, k.Toggle, k.Mode}},
-		{"Home", []key.Binding{k.Home}},
+		{"Pause", []key.Binding{k.Home}},
 		{"Views", []key.Binding{k.Next, k.Prev}},
 	}
 }

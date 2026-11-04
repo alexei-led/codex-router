@@ -2,6 +2,7 @@ package tui
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -106,12 +107,12 @@ func TestSupportFragments(t *testing.T) {
 		want []string
 	}{
 		{"the engine's fragments", route.Decision{
-			Support:      "Jev · fast gave high 91% (needs 55%) · switch ≈ 41k uncached tokens",
-			SupportParts: []string{"Jev · fast gave high 91% (needs 55%)", "switch ≈ 41k uncached tokens"},
-		}, []string{"Jev · fast gave high 91% (needs 55%)", "switch ≈ 41k uncached tokens"}},
+			Support:      "Jev · fast gave high 91% (needs 55%) · switch ≈ 41K uncached tokens",
+			SupportParts: []string{"Jev · fast gave high 91% (needs 55%)", "switch ≈ 41K uncached tokens"},
+		}, []string{"Jev · fast gave high 91% (needs 55%)", "switch ≈ 41K uncached tokens"}},
 		{"an older engine's support stays whole", route.Decision{
-			Support: "Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41k uncached tokens",
-		}, []string{"Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41k uncached tokens"}},
+			Support: "Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41K uncached tokens",
+		}, []string{"Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41K uncached tokens"}},
 		{"no evidence", route.Decision{Reason: route.ReasonContinue}, nil},
 		{"an empty part list is no evidence", route.Decision{SupportParts: []string{}}, nil},
 	}
@@ -131,7 +132,7 @@ func TestLegacySupportIsDrawnWhole(t *testing.T) {
 	s := fixture()
 	s.Last.SupportParts = nil
 	got := renderPlain(s, TabSessions, 80)
-	if whole := "no classifier needed · switch ≈ 41k uncached tokens · hold 2 turns"; !strings.Contains(got, whole) {
+	if whole := "no classifier needed · switch ≈ 41K uncached tokens · hold 2 turns"; !strings.Contains(got, whole) {
 		t.Fatalf("the whole legacy support is not on one line:\n%s", got)
 	}
 }
@@ -165,7 +166,7 @@ func rowsFit(t *testing.T, out string, width int) {
 // hanging lines instead of being cut at the edge, and the separator it holds is
 // text, not a place the panel splits its fragments.
 func TestLegacySupportWrapsWhenTheBandIsNarrow(t *testing.T) {
-	const support = "Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41k uncached tokens"
+	const support = "Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41K uncached tokens"
 	for _, width := range []int{50, 60, 80} {
 		s := fixture()
 		s.Last.SupportParts, s.Last.Support = nil, support
@@ -182,7 +183,7 @@ func TestLegacySupportWrapsWhenTheBandIsNarrow(t *testing.T) {
 // stays whole. The panel's own separator sits between two fragments on one line;
 // a fragment it breaks before starts the next line, as flow has always drawn it.
 func TestOversizedSupportPartsWrapOntoHangingLines(t *testing.T) {
-	parts := []string{"Jev · fast gave stronger tiers 88% (needs 82%)", "switch ≈ 41k uncached tokens"}
+	parts := []string{"Jev · fast gave stronger tiers 88% (needs 82%)", "switch ≈ 41K uncached tokens"}
 	for _, width := range []int{50, 60, 80} {
 		s := fixture()
 		s.Last.SupportParts, s.Last.Support = parts, strings.Join(parts, sep)
@@ -201,7 +202,7 @@ func TestOversizedSupportPartsWrapOntoHangingLines(t *testing.T) {
 // none of it is dropped.
 func TestSupportWrappingKeepsLongTokensAndGraphemes(t *testing.T) {
 	token := strings.Repeat("z", 30) + "e\u0301" + "👍🏽" + strings.Repeat("z", 30)
-	support := "Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41k tokens · 界面 " + token
+	support := "Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41K tokens · 界面 " + token
 	s := fixture()
 	s.Last.SupportParts, s.Last.Support = nil, support
 	out := renderPlain(s, TabSessions, 50)
@@ -324,7 +325,7 @@ func TestCutPartKeepsGraphemesWhole(t *testing.T) {
 // fallback must not cost: a fragment of words still wraps at its spaces, so no
 // word is cut in two.
 func TestSupportWrappingStillBreaksAtSpaces(t *testing.T) {
-	support := "Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41k uncached tokens · hold 2 turns"
+	support := "Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41K uncached tokens · hold 2 turns"
 	words := strings.Fields(strings.ReplaceAll(support, "·", " "))
 	for _, width := range []int{50, 60} {
 		s := fixture()
@@ -364,12 +365,49 @@ func TestClassifierOffReasonWraps(t *testing.T) {
 // one of them alone.
 func TestSupportPartsAreDrawnAsFragments(t *testing.T) {
 	s := fixture()
-	s.Last.Support = "Jev · fast gave high 91% · switch ≈ 41k uncached tokens"
-	s.Last.SupportParts = []string{"Jev · fast gave high 91%", "switch ≈ 41k uncached tokens"}
+	s.Last.Support = "Jev · fast gave high 91% · switch ≈ 41K uncached tokens"
+	s.Last.SupportParts = []string{"Jev · fast gave high 91%", "switch ≈ 41K uncached tokens"}
 	got := renderPlain(s, TabSessions, 80)
-	for _, want := range []string{"Jev · fast gave high 91% · switch ≈ 41k uncached tokens", "Jev high 18%"} {
+	for _, want := range []string{"Jev · fast gave high 91% · switch ≈ 41K uncached tokens", "Jev ▂▄▆█ 18%"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in\n%s", want, got)
 		}
+	}
+}
+
+func pinLine(t *testing.T, out string) string {
+	t.Helper()
+	for line := range strings.Lines(out) {
+		if strings.HasPrefix(line, " Pin") {
+			return line
+		}
+	}
+	t.Fatalf("no Pin row in\n%s", out)
+	return ""
+}
+
+func TestPinRowNamesTiersOnlyWhileTheyFit(t *testing.T) {
+	tests := []struct {
+		width   int
+		want    []string
+		without []string
+	}{
+		{100, []string{"▂ micro", "▂▄ low", "▂▄▆ medium", "▶▂▄▆█ high"}, nil},
+		{40, []string{"▂ ", "▂▄ ", "▂▄▆ ", "▶▂▄▆█"}, []string{"micro", "low", "medium", "high"}},
+	}
+	for _, tc := range tests {
+		t.Run(strconv.Itoa(tc.width), func(t *testing.T) {
+			pin := pinLine(t, renderPlain(fixture(), TabSessions, tc.width))
+			for _, w := range tc.want {
+				if !strings.Contains(pin, w) {
+					t.Errorf("Pin row missing %q: %q", w, pin)
+				}
+			}
+			for _, w := range tc.without {
+				if strings.Contains(pin, w) {
+					t.Errorf("Pin row has %q: %q", w, pin)
+				}
+			}
+		})
 	}
 }

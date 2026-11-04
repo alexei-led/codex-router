@@ -15,7 +15,7 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to low",
+  "Why": "↓ cheaper tier",
   "Support": "Jev gave cheaper tiers 100% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -40,7 +40,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -60,7 +60,7 @@
   },
   "Rewritten": true,
   "Reason": "upgrade",
-  "Why": "up to high",
+  "Why": "↑ stronger tier",
   "Support": "Jev gave stronger tiers 91% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -85,7 +85,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -105,7 +105,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -125,7 +125,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with high",
+  "Why": "= classifier agrees",
   "Support": "Jev gave high 73%",
   "Estimate": null
  },
@@ -145,7 +145,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -165,7 +165,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with low",
+  "Why": "= classifier agrees",
   "Support": "Jev gave low 54%",
   "Estimate": null
  },
@@ -185,7 +185,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -205,7 +205,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -225,7 +225,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 77% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -250,7 +250,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -270,7 +270,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with high",
+  "Why": "= classifier agrees",
   "Support": "Jev gave high 63%",
   "Estimate": null
  },
@@ -290,7 +290,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -310,7 +310,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 78% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -335,7 +335,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -355,7 +355,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -375,7 +375,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 87% (needs 93%)",
   "Estimate": {
    "TaxTokens": 76408,
@@ -400,7 +400,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 100% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -425,7 +425,7 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to medium",
+  "Why": "↓ cheaper tier",
   "Support": "Jev gave cheaper tiers 91% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -450,7 +450,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -470,7 +470,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -490,7 +490,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 77% (needs 81%)",
   "Estimate": {
    "TaxTokens": 73217,
@@ -515,7 +515,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 100% (needs 92%)",
   "Estimate": {
    "TaxTokens": 33000,
@@ -540,7 +540,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -560,7 +560,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -580,7 +580,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with low",
+  "Why": "= classifier agrees",
   "Support": "Jev gave low 77%",
   "Estimate": null
  },
@@ -600,7 +600,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -620,7 +620,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -640,8 +640,8 @@
   },
   "Rewritten": true,
   "Reason": "jump",
-  "Why": "up to high",
-  "Support": "Jev gave stronger tiers 98% (needs 78%) · switch ≈ 23k uncached tokens",
+  "Why": "↑ stronger tier",
+  "Support": "Jev gave stronger tiers 98% (needs 78%) · switch ≈ 23K uncached tokens",
   "Estimate": {
    "TaxTokens": 22907,
    "Threshold": 0.7779565036979179,
@@ -665,7 +665,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps medium",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 68%",
   "Estimate": null
  },
@@ -685,7 +685,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -705,7 +705,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -725,8 +725,8 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to low",
-  "Support": "Jev gave cheaper tiers 100% (needs 92%) · switch ≈ 24k uncached tokens",
+  "Why": "↓ cheaper tier",
+  "Support": "Jev gave cheaper tiers 100% (needs 92%) · switch ≈ 24K uncached tokens",
   "Estimate": {
    "TaxTokens": 23737,
    "Threshold": 0.9153467434962865,
@@ -750,7 +750,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -770,7 +770,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -790,7 +790,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps high",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 67%",
   "Estimate": null
  },
@@ -810,7 +810,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -830,7 +830,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -850,7 +850,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 100% (needs 92%)",
   "Estimate": {
    "TaxTokens": 26925,
@@ -875,7 +875,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -895,7 +895,7 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to medium",
+  "Why": "↓ cheaper tier",
   "Support": "Jev gave cheaper tiers 100% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -920,7 +920,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 100% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -945,7 +945,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -965,7 +965,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -985,7 +985,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 95%",
   "Estimate": null
  },
@@ -1005,7 +1005,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1025,7 +1025,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1045,7 +1045,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 65% (needs 77%)",
   "Estimate": {
    "TaxTokens": 11685,
@@ -1070,7 +1070,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1090,7 +1090,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 98% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -1115,7 +1115,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps high",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 87%",
   "Estimate": null
  },
@@ -1135,7 +1135,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1155,7 +1155,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1175,7 +1175,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-held",
-  "Why": "waiting to go down: same task, no passed check since the last switch",
+  "Why": "… down waits: same task, no passed check since last switch",
   "Support": "Jev gave cheaper tiers 100% (needs 90%)",
   "Estimate": {
    "TaxTokens": 5898,
@@ -1200,7 +1200,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 86% (needs 91%)",
   "Estimate": {
    "TaxTokens": 17470,
@@ -1225,7 +1225,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1245,7 +1245,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1265,7 +1265,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 72% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -1290,7 +1290,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1310,7 +1310,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1330,7 +1330,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps medium",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 53%",
   "Estimate": null
  },
@@ -1350,7 +1350,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1370,7 +1370,7 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to low",
+  "Why": "↓ cheaper tier",
   "Support": "Jev gave cheaper tiers 100% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -1395,7 +1395,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1415,7 +1415,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1435,8 +1435,8 @@
   },
   "Rewritten": true,
   "Reason": "escalation",
-  "Why": "escalate: same tool failure twice, edit in between",
-  "Support": "Jev gave medium 60% · no classifier needed · switch ≈ 35k uncached tokens",
+  "Why": "↑ repeated failure, edit between",
+  "Support": "Jev gave medium 60% · no classifier needed · switch ≈ 35K uncached tokens",
   "Estimate": null
  },
  {
@@ -1455,7 +1455,7 @@
   },
   "Rewritten": false,
   "Reason": "hold",
-  "Why": "hold: escalation holds 2 turns",
+  "Why": "⏵ hold 2 turns after escalation",
   "Support": "Jev gave uncertain 87%",
   "Estimate": null
  },
@@ -1475,7 +1475,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1495,7 +1495,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1515,7 +1515,7 @@
   },
   "Rewritten": false,
   "Reason": "hold",
-  "Why": "hold: escalation holds 2 turns",
+  "Why": "⏵ hold 2 turns after escalation",
   "Support": "Jev gave micro 52%",
   "Estimate": null
  },
@@ -1535,7 +1535,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps medium",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 88%",
   "Estimate": null
  },
@@ -1555,7 +1555,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1575,7 +1575,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1595,7 +1595,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 59%",
   "Estimate": null
  },
@@ -1615,7 +1615,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 100% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -1640,7 +1640,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps low",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 83%",
   "Estimate": null
  },
@@ -1660,7 +1660,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1680,7 +1680,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1700,7 +1700,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps medium",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 67%",
   "Estimate": null
  },
@@ -1720,7 +1720,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1740,7 +1740,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1760,8 +1760,8 @@
   },
   "Rewritten": true,
   "Reason": "escalation",
-  "Why": "escalate: same tool failure twice, edit in between",
-  "Support": "Jev gave uncertain 72% · no classifier needed · switch ≈ 43k uncached tokens",
+  "Why": "↑ repeated failure, edit between",
+  "Support": "Jev gave uncertain 72% · no classifier needed · switch ≈ 43K uncached tokens",
   "Estimate": null
  },
  {
@@ -1780,7 +1780,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1800,7 +1800,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with low",
+  "Why": "= classifier agrees",
   "Support": "Jev gave low 85%",
   "Estimate": null
  },
@@ -1820,7 +1820,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1840,7 +1840,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1860,7 +1860,7 @@
   },
   "Rewritten": false,
   "Reason": "pinned",
-  "Why": "pinned to high for this turn",
+  "Why": "⏵ pinned this turn",
   "Support": "",
   "Estimate": null
  },
@@ -1880,7 +1880,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1900,7 +1900,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1920,7 +1920,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1940,7 +1940,7 @@
   },
   "Rewritten": false,
   "Reason": "hold",
-  "Why": "hold: escalation holds 2 turns",
+  "Why": "⏵ hold 2 turns after escalation",
   "Support": "Jev gave high 56%",
   "Estimate": null
  },
@@ -1960,7 +1960,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -1980,7 +1980,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2000,7 +2000,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 56% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -2025,7 +2025,7 @@
   },
   "Rewritten": true,
   "Reason": "pinned",
-  "Why": "pinned to medium for this turn",
+  "Why": "⏵ pinned this turn",
   "Support": "",
   "Estimate": null
  },
@@ -2045,7 +2045,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2065,7 +2065,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2085,7 +2085,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2105,7 +2105,7 @@
   },
   "Rewritten": false,
   "Reason": "pinned",
-  "Why": "pinned to medium for this turn",
+  "Why": "⏵ pinned this turn",
   "Support": "",
   "Estimate": null
  },
@@ -2125,7 +2125,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2145,8 +2145,8 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to low",
-  "Support": "Jev gave cheaper tiers 100% (needs 94%) · switch ≈ 105k uncached tokens",
+  "Why": "↓ cheaper tier",
+  "Support": "Jev gave cheaper tiers 100% (needs 94%) · switch ≈ 105K uncached tokens",
   "Estimate": {
    "TaxTokens": 104598,
    "Threshold": 0.9408989335184117,
@@ -2170,7 +2170,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2190,7 +2190,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 66% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -2215,7 +2215,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2235,7 +2235,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2255,7 +2255,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 81% (needs 82%)",
   "Estimate": {
    "TaxTokens": 98174,
@@ -2280,7 +2280,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2300,7 +2300,7 @@
   },
   "Rewritten": true,
   "Reason": "pinned",
-  "Why": "pinned to micro for this turn",
+  "Why": "⏵ pinned this turn",
   "Support": "",
   "Estimate": null
  },
@@ -2320,7 +2320,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2340,7 +2340,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2360,8 +2360,8 @@
   },
   "Rewritten": true,
   "Reason": "jump",
-  "Why": "up to high",
-  "Support": "Jev gave stronger tiers 100% (needs 79%) · switch ≈ 41k uncached tokens",
+  "Why": "↑ stronger tier",
+  "Support": "Jev gave stronger tiers 100% (needs 79%) · switch ≈ 41K uncached tokens",
   "Estimate": {
    "TaxTokens": 40975,
    "Threshold": 0.7935981557013655,
@@ -2385,7 +2385,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2405,7 +2405,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2425,7 +2425,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 89% (needs 93%)",
   "Estimate": {
    "TaxTokens": 61528,
@@ -2450,7 +2450,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2470,7 +2470,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 59% (needs 94%)",
   "Estimate": {
    "TaxTokens": 109507,
@@ -2495,7 +2495,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2515,7 +2515,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2535,7 +2535,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 57% (needs 94%)",
   "Estimate": {
    "TaxTokens": 115748,
@@ -2560,7 +2560,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2580,7 +2580,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2600,7 +2600,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps high",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 57%",
   "Estimate": null
  },
@@ -2620,7 +2620,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2640,7 +2640,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2660,7 +2660,7 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to medium",
+  "Why": "↓ cheaper tier",
   "Support": "Jev gave cheaper tiers 97% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -2685,7 +2685,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2705,7 +2705,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2725,7 +2725,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 54%",
   "Estimate": null
  },
@@ -2745,7 +2745,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 57% (needs 91%)",
   "Estimate": {
    "TaxTokens": 19883,
@@ -2770,7 +2770,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2790,7 +2790,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2810,7 +2810,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 87% (needs 94%)",
   "Estimate": {
    "TaxTokens": 120010,
@@ -2835,7 +2835,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2855,7 +2855,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 58% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -2880,7 +2880,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2900,7 +2900,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2920,7 +2920,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 67%",
   "Estimate": null
  },
@@ -2940,7 +2940,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps medium",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 57%",
   "Estimate": null
  },
@@ -2960,7 +2960,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -2980,7 +2980,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3000,7 +3000,7 @@
   },
   "Rewritten": false,
   "Reason": "hold",
-  "Why": "hold: escalation holds 2 turns",
+  "Why": "⏵ hold 2 turns after escalation",
   "Support": "Jev gave uncertain 99%",
   "Estimate": null
  },
@@ -3020,7 +3020,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3040,7 +3040,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3060,7 +3060,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps high",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 82%",
   "Estimate": null
  },
@@ -3080,7 +3080,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3100,7 +3100,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3120,7 +3120,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 73%",
   "Estimate": null
  },
@@ -3140,7 +3140,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3160,7 +3160,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 68%",
   "Estimate": null
  },
@@ -3180,7 +3180,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3200,7 +3200,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3220,7 +3220,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 67% (needs 91%)",
   "Estimate": {
    "TaxTokens": 18182,
@@ -3245,7 +3245,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3265,7 +3265,7 @@
   },
   "Rewritten": false,
   "Reason": "activity-pending",
-  "Why": "activity route waits: switch not worth it yet",
+  "Why": "… activity route waits: switch not worth it yet",
   "Support": "Jev gave debug 67% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -3290,7 +3290,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3310,7 +3310,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3330,7 +3330,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 66% (needs 94%)",
   "Estimate": {
    "TaxTokens": 87724,
@@ -3355,7 +3355,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3375,7 +3375,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3395,7 +3395,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 91% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -3420,7 +3420,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3440,7 +3440,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3460,7 +3460,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 72% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -3485,7 +3485,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3505,7 +3505,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3525,7 +3525,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-held",
-  "Why": "waiting to go down: same task, no passed check since the last switch",
+  "Why": "… down waits: same task, no passed check since last switch",
   "Support": "Jev gave cheaper tiers 100% (needs 94%)",
   "Estimate": {
    "TaxTokens": 103292,
@@ -3550,7 +3550,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 85%",
   "Estimate": null
  },
@@ -3570,7 +3570,7 @@
   },
   "Rewritten": true,
   "Reason": "escalation",
-  "Why": "escalate: same tool failure twice, edit in between",
+  "Why": "↑ repeated failure, edit between",
   "Support": "no classifier needed",
   "Estimate": null
  },
@@ -3590,7 +3590,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3610,7 +3610,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 58%",
   "Estimate": null
  },
@@ -3630,7 +3630,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3650,7 +3650,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3670,7 +3670,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 78% (needs 76%)",
   "Estimate": {
    "TaxTokens": 10281,
@@ -3695,7 +3695,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3715,7 +3715,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3735,7 +3735,7 @@
   },
   "Rewritten": false,
   "Reason": "hold",
-  "Why": "hold: escalation holds 2 turns",
+  "Why": "⏵ hold 2 turns after escalation",
   "Support": "Jev gave uncertain 53%",
   "Estimate": null
  },
@@ -3755,7 +3755,7 @@
   },
   "Rewritten": false,
   "Reason": "hold",
-  "Why": "hold: escalation holds 2 turns",
+  "Why": "⏵ hold 2 turns after escalation",
   "Support": "Jev gave low 68%",
   "Estimate": null
  },
@@ -3775,7 +3775,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 96% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -3800,7 +3800,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3820,7 +3820,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3840,7 +3840,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps high",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 53%",
   "Estimate": null
  },
@@ -3860,7 +3860,7 @@
   },
   "Rewritten": true,
   "Reason": "pinned",
-  "Why": "pinned to micro for this turn",
+  "Why": "⏵ pinned this turn",
   "Support": "",
   "Estimate": null
  },
@@ -3880,7 +3880,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3900,7 +3900,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 86% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -3925,7 +3925,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 87% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -3950,7 +3950,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3970,7 +3970,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -3990,7 +3990,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-held",
-  "Why": "waiting to go down: same task, no passed check since the last switch",
+  "Why": "… down waits: same task, no passed check since last switch",
   "Support": "Jev gave cheaper tiers 100% (needs 92%)",
   "Estimate": {
    "TaxTokens": 37892,
@@ -4015,7 +4015,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4035,7 +4035,7 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to low",
+  "Why": "↓ cheaper tier",
   "Support": "Jev gave cheaper tiers 100% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -4060,7 +4060,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4080,7 +4080,7 @@
   },
   "Rewritten": true,
   "Reason": "pinned",
-  "Why": "pinned to high for this turn",
+  "Why": "⏵ pinned this turn",
   "Support": "",
   "Estimate": null
  },
@@ -4100,7 +4100,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4120,7 +4120,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4140,7 +4140,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps micro",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 76%",
   "Estimate": null
  },
@@ -4160,7 +4160,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4180,7 +4180,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4200,7 +4200,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 100% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -4225,8 +4225,8 @@
   },
   "Rewritten": true,
   "Reason": "jump",
-  "Why": "up to high",
-  "Support": "Jev gave stronger tiers 100% (needs 81%) · switch ≈ 69k uncached tokens",
+  "Why": "↑ stronger tier",
+  "Support": "Jev gave stronger tiers 100% (needs 81%) · switch ≈ 69K uncached tokens",
   "Estimate": {
    "TaxTokens": 68977,
    "Threshold": 0.8112305224971446,
@@ -4250,7 +4250,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4270,7 +4270,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4290,7 +4290,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 79% (needs 93%)",
   "Estimate": {
    "TaxTokens": 58592,
@@ -4315,7 +4315,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 77% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -4340,7 +4340,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4360,7 +4360,7 @@
   },
   "Rewritten": true,
   "Reason": "jump",
-  "Why": "up to high",
+  "Why": "↑ stronger tier",
   "Support": "Jev gave stronger tiers 99% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -4385,7 +4385,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4405,7 +4405,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 81% (needs 91%)",
   "Estimate": {
    "TaxTokens": 7741,
@@ -4430,7 +4430,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4450,7 +4450,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4470,7 +4470,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps high",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 82%",
   "Estimate": null
  },
@@ -4490,7 +4490,7 @@
   },
   "Rewritten": true,
   "Reason": "pinned",
-  "Why": "pinned to micro for this turn",
+  "Why": "⏵ pinned this turn",
   "Support": "",
   "Estimate": null
  },
@@ -4510,7 +4510,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4530,7 +4530,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4550,7 +4550,7 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to medium",
+  "Why": "↓ cheaper tier",
   "Support": "Jev gave cheaper tiers 100% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -4575,7 +4575,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4595,7 +4595,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4615,7 +4615,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps micro",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 61%",
   "Estimate": null
  },
@@ -4635,7 +4635,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4655,7 +4655,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4675,7 +4675,7 @@
   },
   "Rewritten": true,
   "Reason": "upgrade",
-  "Why": "up to low",
+  "Why": "↑ stronger tier",
   "Support": "Jev gave stronger tiers 100% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -4700,7 +4700,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4720,7 +4720,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps medium",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 88%",
   "Estimate": null
  },
@@ -4740,7 +4740,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4760,7 +4760,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4780,7 +4780,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 76%",
   "Estimate": null
  },
@@ -4800,7 +4800,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 89% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -4825,7 +4825,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4845,7 +4845,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4865,8 +4865,8 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to medium",
-  "Support": "Jev gave cheaper tiers 100% (needs 93%) · switch ≈ 78k uncached tokens",
+  "Why": "↓ cheaper tier",
+  "Support": "Jev gave cheaper tiers 100% (needs 93%) · switch ≈ 78K uncached tokens",
   "Estimate": {
    "TaxTokens": 77525,
    "Threshold": 0.9349359245176736,
@@ -4890,7 +4890,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4910,7 +4910,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 100% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -4935,7 +4935,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4955,7 +4955,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -4975,8 +4975,8 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to low",
-  "Support": "Jev gave cheaper tiers 100% (needs 94%) · switch ≈ 98k uncached tokens",
+  "Why": "↓ cheaper tier",
+  "Support": "Jev gave cheaper tiers 100% (needs 94%) · switch ≈ 98K uncached tokens",
   "Estimate": {
    "TaxTokens": 98288,
    "Threshold": 0.9396546437505043,
@@ -5000,7 +5000,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5020,7 +5020,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 86% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -5045,7 +5045,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5065,7 +5065,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5085,7 +5085,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with low",
+  "Why": "= classifier agrees",
   "Support": "Jev gave low 61%",
   "Estimate": null
  },
@@ -5105,7 +5105,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 70% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -5130,7 +5130,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5150,7 +5150,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5170,7 +5170,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with low",
+  "Why": "= classifier agrees",
   "Support": "Jev gave low 62%",
   "Estimate": null
  },
@@ -5190,7 +5190,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5210,7 +5210,7 @@
   },
   "Rewritten": true,
   "Reason": "escalation",
-  "Why": "escalate: same tool failure twice, edit in between",
+  "Why": "↑ repeated failure, edit between",
   "Support": "no classifier needed",
   "Estimate": null
  },
@@ -5230,7 +5230,7 @@
   },
   "Rewritten": false,
   "Reason": "hold",
-  "Why": "hold: escalation holds 2 turns",
+  "Why": "⏵ hold 2 turns after escalation",
   "Support": "Jev gave uncertain 70%",
   "Estimate": null
  },
@@ -5250,7 +5250,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5270,7 +5270,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5290,7 +5290,7 @@
   },
   "Rewritten": false,
   "Reason": "activity-pending",
-  "Why": "activity route waits: switch not worth it yet",
+  "Why": "… activity route waits: switch not worth it yet",
   "Support": "Jev gave debug 41% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -5315,7 +5315,7 @@
   },
   "Rewritten": true,
   "Reason": "activity-up",
-  "Why": "debug at medium runs on gpt-6-sol · high",
+  "Why": "↑ debug route stronger",
   "Support": "Jev gave debug 90% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -5340,7 +5340,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5360,7 +5360,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5380,7 +5380,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 62% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -5405,7 +5405,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5425,7 +5425,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5445,7 +5445,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 86% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -5470,7 +5470,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5490,7 +5490,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5510,7 +5510,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with low",
+  "Why": "= classifier agrees",
   "Support": "Jev gave low 58%",
   "Estimate": null
  },
@@ -5530,7 +5530,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5550,8 +5550,8 @@
   },
   "Rewritten": true,
   "Reason": "escalation",
-  "Why": "escalate: same tool failure twice, edit in between",
-  "Support": "no classifier needed · switch ≈ 78k uncached tokens",
+  "Why": "↑ repeated failure, edit between",
+  "Support": "no classifier needed · switch ≈ 78K uncached tokens",
   "Estimate": null
  },
  {
@@ -5570,7 +5570,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 77% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -5595,7 +5595,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5615,7 +5615,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5635,8 +5635,8 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to medium",
-  "Support": "Jev gave cheaper tiers 100% (needs 92%) · switch ≈ 39k uncached tokens",
+  "Why": "↓ cheaper tier",
+  "Support": "Jev gave cheaper tiers 100% (needs 92%) · switch ≈ 39K uncached tokens",
   "Estimate": {
    "TaxTokens": 39318,
    "Threshold": 0.9225774128253349,
@@ -5660,7 +5660,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5680,7 +5680,7 @@
   },
   "Rewritten": false,
   "Reason": "hold",
-  "Why": "hold: escalation holds 2 turns",
+  "Why": "⏵ hold 2 turns after escalation",
   "Support": "Jev gave micro 69%",
   "Estimate": null
  },
@@ -5700,7 +5700,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5720,7 +5720,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5740,7 +5740,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 65% (needs 94%)",
   "Estimate": {
    "TaxTokens": 113815,
@@ -5765,7 +5765,7 @@
   },
   "Rewritten": false,
   "Reason": "hold",
-  "Why": "hold: escalation holds 2 turns",
+  "Why": "⏵ hold 2 turns after escalation",
   "Support": "Jev gave uncertain 66%",
   "Estimate": null
  },
@@ -5785,7 +5785,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5805,7 +5805,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5825,7 +5825,7 @@
   },
   "Rewritten": true,
   "Reason": "activity-down",
-  "Why": "code at medium runs on gpt-6-sol · medium",
+  "Why": "↓ code route cheaper",
   "Support": "Jev gave low 69%",
   "Estimate": {
    "TaxTokens": 0,
@@ -5850,7 +5850,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5870,7 +5870,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5890,7 +5890,7 @@
   },
   "Rewritten": true,
   "Reason": "escalation",
-  "Why": "escalate: same tool failure twice, edit in between",
+  "Why": "↑ repeated failure, edit between",
   "Support": "Jev gave high 61% · no classifier needed",
   "Estimate": null
  },
@@ -5910,7 +5910,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 58% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -5935,7 +5935,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5955,7 +5955,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -5975,7 +5975,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 53% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -6000,7 +6000,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 62% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -6025,7 +6025,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6045,7 +6045,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6065,7 +6065,7 @@
   },
   "Rewritten": true,
   "Reason": "upgrade",
-  "Why": "up to high",
+  "Why": "↑ stronger tier",
   "Support": "Jev gave stronger tiers 84% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -6090,7 +6090,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6110,7 +6110,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6130,7 +6130,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps high",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 72%",
   "Estimate": null
  },
@@ -6150,7 +6150,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 86% (needs 92%)",
   "Estimate": {
    "TaxTokens": 37261,
@@ -6175,7 +6175,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6195,7 +6195,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6215,7 +6215,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-held",
-  "Why": "waiting to go down: same task, no passed check since the last switch",
+  "Why": "… down waits: same task, no passed check since last switch",
   "Support": "Jev gave cheaper tiers 100% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -6240,7 +6240,7 @@
   },
   "Rewritten": false,
   "Reason": "upgrade-pending",
-  "Why": "waiting to go up: needs more support",
+  "Why": "… up waits: needs more support",
   "Support": "Jev gave stronger tiers 66% (needs 75%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -6265,7 +6265,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6285,7 +6285,7 @@
   },
   "Rewritten": true,
   "Reason": "escalation",
-  "Why": "escalate: same tool failure twice, edit in between",
+  "Why": "↑ repeated failure, edit between",
   "Support": "no classifier needed",
   "Estimate": null
  },
@@ -6305,7 +6305,7 @@
   },
   "Rewritten": false,
   "Reason": "hold",
-  "Why": "hold: escalation holds 2 turns",
+  "Why": "⏵ hold 2 turns after escalation",
   "Support": "Jev gave medium 85%",
   "Estimate": null
  },
@@ -6325,7 +6325,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6345,7 +6345,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 51%",
   "Estimate": null
  },
@@ -6365,7 +6365,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6385,7 +6385,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6405,7 +6405,7 @@
   },
   "Rewritten": false,
   "Reason": "uncertain",
-  "Why": "classifier unsure; keeps medium",
+  "Why": "= classifier unsure · tier kept",
   "Support": "Jev gave uncertain 60%",
   "Estimate": null
  },
@@ -6425,7 +6425,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6445,7 +6445,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6465,7 +6465,7 @@
   },
   "Rewritten": false,
   "Reason": "same-tier",
-  "Why": "classifier agrees with medium",
+  "Why": "= classifier agrees",
   "Support": "Jev gave medium 72%",
   "Estimate": null
  },
@@ -6485,7 +6485,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6505,7 +6505,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6525,7 +6525,7 @@
   },
   "Rewritten": false,
   "Reason": "downgrade-pending",
-  "Why": "waiting to go down: needs more support",
+  "Why": "… down waits: needs more support",
   "Support": "Jev gave cheaper tiers 51% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -6550,7 +6550,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6570,7 +6570,7 @@
   },
   "Rewritten": true,
   "Reason": "downgrade",
-  "Why": "down to medium",
+  "Why": "↓ cheaper tier",
   "Support": "Jev gave cheaper tiers 100% (needs 90%)",
   "Estimate": {
    "TaxTokens": 0,
@@ -6595,7 +6595,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  },
@@ -6615,7 +6615,7 @@
   },
   "Rewritten": false,
   "Reason": "continue",
-  "Why": "same turn",
+  "Why": "= same turn",
   "Support": "",
   "Estimate": null
  }

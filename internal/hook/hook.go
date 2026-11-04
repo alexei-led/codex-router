@@ -25,9 +25,6 @@ type Output struct {
 	SystemMessage string `json:"systemMessage,omitempty"`
 }
 
-// MessagePrefix starts every line; Codex renders it as "↳ Hook · router: …".
-const MessagePrefix = "router: "
-
 // Timeout bounds the whole hook run, registry lookup and socket included. It
 // is a var so tests can widen it for slow hosts or shorten it for stalls.
 var Timeout = 200 * time.Millisecond
@@ -168,10 +165,15 @@ func Message(s route.Snapshot, in Input) string {
 		return ""
 	}
 	// A pinned turn has no activity and a route may keep Codex's effort:
-	// empty parts are left out rather than shown as "·  ·".
-	from := strings.Join(nonEmpty(string(d.Tier), string(d.Activity)), " · ")
-	to := strings.Join(nonEmpty(d.Route.Model, string(d.Route.Effort), d.Why), " · ")
-	return MessagePrefix + from + " → " + to
+	// empty parts are left out rather than shown as "·  ·". Codex labels the
+	// line as a hook's, so it carries no name of its own.
+	from := strings.Join(nonEmpty(d.Tier.Meter(), string(d.Activity)), " ")
+	to := strings.Join(nonEmpty(d.Route.Model, string(d.Route.Effort)), " · ")
+	msg := from + " → " + to
+	if d.Why != "" {
+		msg += "  " + d.Why
+	}
+	return msg
 }
 
 func nonEmpty(parts ...string) []string {

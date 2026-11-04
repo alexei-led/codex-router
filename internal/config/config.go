@@ -14,6 +14,31 @@ const (
 // Tiers lists every tier by rank.
 var Tiers = []Tier{TierMicro, TierLow, TierMedium, TierHigh}
 
+// meterBars are the bars of the tier meter, weakest first.
+var meterBars = []rune("▂▄▆█")
+
+// Meter draws the tier as lit bars: ▂ micro, ▂▄ low, ▂▄▆ medium, ▂▄▆█ high.
+// Every surface shows a tier this way, never as a word beside a model. An
+// unknown tier has no meter.
+func (t Tier) Meter() string {
+	for i, known := range Tiers {
+		if known == t {
+			return string(meterBars[:i+1])
+		}
+	}
+	return ""
+}
+
+// Bar is the top bar of the meter, for a cell that has room for one glyph.
+func (t Tier) Bar() string {
+	for i, known := range Tiers {
+		if known == t {
+			return string(meterBars[i])
+		}
+	}
+	return ""
+}
+
 // Activity names what a turn produces. ActivityUncertain is a classifier
 // answer, never a config key.
 type Activity string
@@ -96,8 +121,8 @@ type PolicyPatch struct {
 // the built-in entry of the same mode, so it names only the fields it changes.
 type Modes map[RoutingMode]ModeConfig
 
-// Price is a model's list price in USD per million tokens. Zero values mean
-// unpriced: estimates then stay in tokens.
+// Price is a model's list price in USD per million tokens. A model with any
+// zero price is unpriced: estimates then stay in tokens.
 type Price struct {
 	Input       float64 `json:"input"`
 	CachedInput float64 `json:"cachedInput"`

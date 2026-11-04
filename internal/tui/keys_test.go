@@ -186,7 +186,7 @@ func TestHelpOverlay(t *testing.T) {
 	m, f := connected(t, fixture())
 	press(m, "?")
 	content := screen(m)
-	for _, w := range []string{"Navigate", "Session", "Home", "Views", "pause home", "previous view", "esc close"} {
+	for _, w := range []string{"Navigate", "Session", "Pause", "Views", "pause home", "previous view", "esc close"} {
 		if !strings.Contains(content, w) {
 			t.Errorf("help overlay missing %q:\n%s", w, content)
 		}
@@ -225,7 +225,7 @@ func TestHelpListsEveryBindingOnce(t *testing.T) {
 func TestPopoverShowsAndEscCloses(t *testing.T) {
 	m, _ := connected(t, fixture())
 	press(m, "p")
-	if got := screen(m); !strings.Contains(got, "1 micro  2 low  3 medium  4 high  0 none") {
+	if got := screen(m); !strings.Contains(got, "1 ▂ micro  2 ▂▄ low  3 ▂▄▆ medium  4 ▂▄▆█ high  0 none") {
 		t.Errorf("no pin popover:\n%s", got)
 	}
 	press(m, "esc")
@@ -358,7 +358,7 @@ func TestToastConfirmsWhatTheAckAccepted(t *testing.T) {
 		keys []string
 		want string
 	}{
-		{"pin", []string{"p", "4"}, "pinned high for the next turn"},
+		{"pin", []string{"p", "4"}, "pinned ▂▄▆█ for the next turn"},
 		{"unpin", []string{"p", "0"}, "pin cleared"},
 		{"pause", []string{" "}, "session paused"},
 		{"home pause", []string{"P"}, "home paused"},
@@ -388,7 +388,7 @@ func TestToastResumeAndMode(t *testing.T) {
 	}
 	m.tab = TabPolicy
 	pressAll(m, "s", "1")
-	if m.toast != "mode cost for this session; applies through the switch gates" {
+	if m.toast != "cost mode set · applies at the next switch check" {
 		t.Errorf("toast %q", m.toast)
 	}
 	pressAll(m, "s", "4")

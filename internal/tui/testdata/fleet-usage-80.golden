@@ -1,19 +1,19 @@
 codex-router  6 sessions · 2 homes · Jev ready  Sessions  Policy  Usage   ? help
 
 codex-router · main                      balanced (default) · default · bbbbbbbb
- Usage      Routing saved ≈ $0.84 (31%) vs per-reply native basis
-            savings ≈ $0.94 · extra cost ≈ $0.10
-            list-price estimate $1.87 vs $2.71 per-reply native basis
-            plan billing is limits, not $
+ Usage      Routing −$0.84 (−31%) vs no routing · ≈ list price · main thread
+            per reply: cheaper −$0.94 · dearer +$0.10
+            ≈ $1.87 with routing · ≈ $2.71 with no routing
+            plan is limits, not billed · ≈ is list price
 
- Ledger     48 replies since 18:12 · 9 switches · cache reuse 97%
+ Counts     48 replies since 18:12 · 9 switches · cache reuse 97%
             switches wrote 212K uncached tokens
-            last switch 18:41  medium → high · debug (inside a turn)
+            last switch 18:41  ▂▄▆ → ▂▄▆█ · debug (inside a turn)
 
- Tiers      micro                                 0   0%
-            low       ██████████████████████     20  41%
-            medium    ████████████████████████   22  45%
-            high      ███████                     6  12%
+ Tiers      ▂                                     0   0%
+            ▂▄        ██████████████████████     20  41%
+            ▂▄▆       ████████████████████████   22  45%
+            ▂▄▆█      ███████                     6  12%
 
  Activity   code      ████████████████████████   16  33%
             explore   ██████████████████         12  25%

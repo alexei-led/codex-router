@@ -35,9 +35,9 @@ func TestMessage(t *testing.T) {
 	same := dec("th", "t2", 3, "gpt-5.1", config.EffortLow)
 	diff := dec("th", "t2", 3, "gpt-5.5", config.EffortHigh)
 	other := dec("other", "t9", 4, "gpt-5.5", config.EffortHigh)
-	want := "router: micro · code → gpt-5.5 · high · simple edit"
+	want := "▂ code → gpt-5.5 · high  simple edit"
 	pinned := dec("th", "t2", 3, "gpt-5.5", config.EffortHigh)
-	pinned.Tier, pinned.Activity, pinned.Why = config.TierHigh, "", "pinned to high for this turn"
+	pinned.Tier, pinned.Activity, pinned.Why = config.TierHigh, "", "⏵ pinned this turn"
 	noEffort := dec("th", "t2", 3, "gpt-5.5", "")
 
 	tests := []struct {
@@ -55,9 +55,9 @@ func TestMessage(t *testing.T) {
 		{"other thread ignored", route.Snapshot{Recent: []route.Decision{a}, Last: &other}, Input{SessionID: "th"}, ""},
 		{"empty snapshot", route.Snapshot{}, Input{SessionID: "th", TurnID: "t1"}, ""},
 		{"pinned turn without activity", route.Snapshot{Recent: []route.Decision{a}, Last: &pinned}, Input{SessionID: "th"},
-			"router: high → gpt-5.5 · high · pinned to high for this turn"},
+			"▂▄▆█ → gpt-5.5 · high  ⏵ pinned this turn"},
 		{"route keeps Codex's effort", route.Snapshot{Recent: []route.Decision{a}, Last: &noEffort}, Input{SessionID: "th"},
-			"router: micro · code → gpt-5.5 · simple edit"},
+			"▂ code → gpt-5.5  simple edit"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -253,7 +253,7 @@ func switchTo(thread, model string) route.Snapshot {
 }
 
 func switchMessage(model string) string {
-	return `{"systemMessage":"router: micro · code → ` + model + ` · high · simple edit"}`
+	return `{"systemMessage":"▂ code → ` + model + ` · high  simple edit"}`
 }
 
 type fleet struct {

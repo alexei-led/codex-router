@@ -134,7 +134,7 @@ else ~/.codex), for the Codex plugin's skill: the session of
 $CODEX_THREAD_ID, which Codex sets for its shell commands. If that id is not
 listed for the home, ctl fails instead of falling back to --cwd. Otherwise,
 outside Codex it uses the session whose cwd is deepest equal to or containing
---cwd (default: the current dir). status prints the session's mode, tier and
+--cwd (default: the current dir). status prints the session's state, tier and
 route; pause and resume act on that session only; pin --tier T routes its next
 turn to tier T.
 
@@ -165,6 +165,17 @@ type cli struct {
 	stdin  io.Reader
 	stdout io.Writer
 	stderr io.Writer
+}
+
+// isTerminal reports whether w is a terminal, not a pipe or a file. Tests
+// replace it: a buffer is never one.
+var isTerminal = func(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+	fi, err := f.Stat()
+	return err == nil && fi.Mode()&os.ModeCharDevice != 0
 }
 
 func (c cli) getenv(key string) string {
@@ -387,8 +398,12 @@ func (c cli) sessions(args []string) int {
 		return exitOK
 	}
 	w := tabwriter.NewWriter(c.stdout, 0, 0, 2, ' ', 0)
+	// A header only for a person: a script reading the pipe gets rows alone.
+	if len(all) > 0 && isTerminal(c.stdout) {
+		_, _ = fmt.Fprintln(w, "ID\tHOME\tLABEL\tSTATE\tROUTE")
+	}
 	for _, s := range all {
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", s.ID, s.HomeName, s.Label, s.Mode, sessions.RouteText(s.Route))
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", s.ID, s.HomeName, s.Label, s.StateText(), sessions.RouteText(s.Route))
 	}
 	if err := w.Flush(); err != nil {
 		return c.fail(err)
@@ -506,17 +521,17 @@ func (c cli) ctl(args []string) int {
 	}
 	switch op {
 	case route.OpPause:
-		_, _ = fmt.Fprintf(c.stdout, "paused routing of %s: requests keep the model in Codex's footer\n", s.Label)
+		_, _ = fmt.Fprintf(c.stdout, "paused %s · requests keep Codex's model\n", s.Label)
 	case route.OpResume:
-		_, _ = fmt.Fprintf(c.stdout, "resumed routing of %s\n", s.Label)
+		_, _ = fmt.Fprintf(c.stdout, "resumed %s\n", s.Label)
 	case route.OpMode:
 		if mode == route.ModeDefault {
-			_, _ = fmt.Fprintf(c.stdout, "cleared the mode of %s: the project file, the config or balanced decides\n", s.Label)
+			_, _ = fmt.Fprintf(c.stdout, "mode cleared for %s · project file, config or balanced decides\n", s.Label)
 			break
 		}
-		_, _ = fmt.Fprintf(c.stdout, "set %s to %s mode: the route follows once the switch gates pass; a pin forces one now\n", s.Label, mode)
+		_, _ = fmt.Fprintf(c.stdout, "%s mode set for %s · applies at the next switch check; a pin applies now\n", mode, s.Label)
 	default:
-		_, _ = fmt.Fprintf(c.stdout, "pinned the next turn of %s to %s\n", s.Label, *tier)
+		_, _ = fmt.Fprintf(c.stdout, "pinned %s for the next turn · %s\n", s.Label, config.Tier(*tier).Meter())
 	}
 	return exitOK
 }
@@ -524,13 +539,10 @@ func (c cli) ctl(args []string) int {
 // printSession prints s for ctl status, one field per line.
 func (c cli) printSession(s sessions.Session) int {
 	w := tabwriter.NewWriter(c.stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintf(w, "session\t%s\nlabel\t%s\nmode\t%s\ntier\t%s\nroute\t%s\nreplies\t%d\n",
-		s.ID, s.Label, s.Mode, cmp.Or(string(s.Tier), "-"), sessions.RouteText(s.Route), s.Replies)
+	_, _ = fmt.Fprintf(w, "session\t%s\nlabel\t%s\nstate\t%s\ntier\t%s\nroute\t%s\nreplies\t%d\n",
+		s.ID, s.Label, s.StateText(), cmp.Or(s.Tier.Meter(), "-"), sessions.RouteText(s.Route), s.Replies)
 	if s.RoutingMode != "" {
 		_, _ = fmt.Fprintf(w, "routing\t%s (%s)\n", s.RoutingMode, s.RoutingModeSource)
-	}
-	if s.Attention != "" {
-		_, _ = fmt.Fprintf(w, "attention\t%s\n", s.Attention)
 	}
 	if err := w.Flush(); err != nil {
 		return c.fail(err)

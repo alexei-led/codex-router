@@ -39,12 +39,12 @@ func fixture() route.Snapshot {
 	last := route.Decision{
 		Tier: config.TierHigh, Activity: config.ActivityDebug, Route: sol61, Original: sol, Rewritten: true,
 		Reason: policy.ReasonEscalation, MidTurn: true, At: at(18, 41),
-		Why:     "same test failure twice, edit in between",
-		Support: "no classifier needed · switch ≈ 41k uncached tokens · hold 2 turns",
+		Why:     "↑ repeated failure, edit between",
+		Support: "no classifier needed · switch ≈ 41K uncached tokens · hold 2 turns",
 		// The fragments the engine sends with it; a snapshot from an engine
 		// older than SupportParts carries Support alone, and the panel then
 		// shows that whole.
-		SupportParts: []string{"no classifier needed", "switch ≈ 41k uncached tokens", "hold 2 turns"},
+		SupportParts: []string{"no classifier needed", "switch ≈ 41K uncached tokens", "hold 2 turns"},
 		Reading: &route.Reading{
 			Tiers:    map[config.Tier]float64{config.TierHigh: 0.18, config.TierMedium: 0.71, config.TierLow: 0.09, config.TierMicro: 0.02},
 			Activity: config.ActivityDebug, ActivityP: 0.72,
@@ -80,8 +80,8 @@ func fixture() route.Snapshot {
 		},
 		ApproxTokens: 44_600, Window: 272_000,
 		Worth: []route.Finding{
-			{Kind: route.FindingContext, Text: "context guard kept 2 steps on a larger window than the policy chose"},
-			{Kind: route.FindingBlocked, Text: "routes to gpt-5.5 never run: outside gpt-6.1-sol's compatibility group"},
+			{Kind: route.FindingContext, Text: "context guard kept 2 steps on a larger window"},
+			{Kind: route.FindingBlocked, Text: "gpt-5.5 blocked: outside gpt-6.1-sol's group"},
 		},
 	}
 }
@@ -115,41 +115,41 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		}, TabSessions, []string{"✕ Jev unreachable · resumes in 42s"}, []string{"Jev ready"}},
 		{"header, unnamed classifier", func(s *route.Snapshot) { s.ClassifierLabel = "" }, TabSessions, []string{"classifier ready"}, nil},
 		{"band of a decision", func(*route.Snapshot) {}, TabSessions,
-			[]string{" HIGH  debug → gpt-6.1-sol · high", "↑ same test failure twice, edit in between", "       Jev high 18% · no classifier needed"}, nil},
+			[]string{" ▂▄▆█  debug → gpt-6.1-sol · high", "↑ repeated failure, edit between", "       Jev ▂▄▆█ 18% · no classifier needed"}, nil},
 		{"evidence names the tier's share without a bar", func(s *route.Snapshot) {
 			s.Last.Reason, s.Last.Reading.Tiers[config.TierHigh] = policy.ReasonDowngradePending, 0.38
-		}, TabSessions, []string{"Jev high 38%"}, []string{"Jev high 38% <", "Jev high 38% ≥"}},
-		{"manual holds", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabSessions, []string{"MANUAL", "picked with /model", "space resumes"}, []string{"HIGH"}},
-		{"paused", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabSessions, []string{"PAUSED", "unchanged"}, []string{"HIGH"}},
+		}, TabSessions, []string{"Jev ▂▄▆█ 38%"}, []string{"Jev ▂▄▆█ 38% <", "Jev ▂▄▆█ 38% ≥"}},
+		{"manual holds", func(s *route.Snapshot) { s.Mode = route.ModeManual }, TabSessions, []string{"MANUAL", "picked with /model", "space resumes"}, []string{"debug →"}},
+		{"paused", func(s *route.Snapshot) { s.Mode = route.ModePaused }, TabSessions, []string{"PAUSED", "unchanged"}, []string{"debug →"}},
 		{"state lost", func(s *route.Snapshot) { s.Mode, s.StateLost = route.ModePaused, true }, TabSessions, []string{"STATE LOST", "P resumes the home"}, []string{"PAUSED"}},
-		{"pinned", func(s *route.Snapshot) { s.Pin = &low }, TabSessions, []string{" LOW ", "pinned → gpt-6-luna · medium", "next turn only"}, []string{"▶"}},
+		{"pinned", func(s *route.Snapshot) { s.Pin = &low }, TabSessions, []string{" ▂▄ ", "pinned → gpt-6-luna · medium", "next turn only"}, []string{"▶"}},
 		{"classifier off", func(s *route.Snapshot) { s.ClassifierOff, s.ClassifierOffReason = true, "TYPESAFE_API_KEY is not set" }, TabSessions,
-			[]string{"PINS ONLY", "requests keep gpt-6.1-sol · high", "○ Jev off · TYPESAFE_API_KEY is not set · pin a tier with p"}, []string{"HIGH", "▶"}},
+			[]string{"PINS ONLY", "requests keep gpt-6.1-sol · high", "○ Jev off · TYPESAFE_API_KEY is not set · pin a tier with p"}, []string{"debug →", "▶"}},
 		{"classifier off, no decision", func(s *route.Snapshot) { s.ClassifierOff, s.Last = true, nil }, TabSessions, []string{"PINS ONLY", "○ Jev off · pin a tier with p"}, []string{"WAITING"}},
-		{"running tier is marked", func(*route.Snapshot) {}, TabSessions, []string{"micro   low   medium  ▶high"}, nil},
+		{"running tier is marked", func(*route.Snapshot) {}, TabSessions, []string{"▂ micro   ▂▄ low   ▂▄▆ medium  ▶▂▄▆█ high"}, nil},
 		{"unknown reason code", func(s *route.Snapshot) { s.Last.Why, s.Last.Reason = "", "mystery" }, TabSessions,
 			[]string{"reason not shown by this panel version"}, []string{"mystery"}},
 		{"known reason code", func(s *route.Snapshot) { s.Last.Why, s.Last.Reason = "", policy.ReasonDowngradeHeld }, TabSessions,
-			[]string{"waiting to go down"}, []string{"downgrade-held"}},
+			[]string{"… down waits"}, []string{"downgrade-held"}},
 		{"kept decision", func(s *route.Snapshot) {
 			s.Last = &route.Decision{Tier: config.TierMicro, Route: s.Baseline, Original: s.Baseline, Reason: policy.ReasonNoClassifier, At: at(18, 40)}
-		}, TabSessions, []string{" KEPT ", "gpt-6.1-sol · high · classifier off; request keeps Codex's model"}, []string{"MICRO", "▶"}},
+		}, TabSessions, []string{" KEPT ", "gpt-6.1-sol · high · ○ classifier off · keeps Codex's model"}, []string{" ▂  ", "▶"}},
 		{"no decision yet", func(s *route.Snapshot) { s.Stats = route.Stats{}; s.Last = nil }, TabSessions,
-			[]string{"WAITING", "no routed request yet · baseline gpt-6.1-sol · high", "no routed replies yet"}, []string{"Cache", "HIGH"}},
+			[]string{"WAITING", "no routed request yet · baseline gpt-6.1-sol · high", "no routed replies yet"}, []string{"Cache", "debug →"}},
 		{"session summary", func(*route.Snapshot) {}, TabSessions,
-			[]string{"48 replies · 9 switches · saved ≈ $0.84 (31%) vs per-reply native basis", "per cell"}, nil},
-		{"strip glyphs tell the tiers apart", func(*route.Snapshot) {}, TabSessions, []string{"▃▃▃▃▃▅▅▅▅▅▃▃▃▅▅▅▅▅▅▅▅▇▇▇▇▅▅▅▃▃▃▃▃▅▅▅▅▅▅▃▃▃▇▇▇▇"}, nil},
-		{"costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabSessions, []string{"extra cost ≈ $0.29 (11%)"}, []string{"saved"}},
-		{"prices missing", func(s *route.Snapshot) { s.Stats.PricedReplies = 0 }, TabSessions, []string{"estimate unknown · 0 of 48 replies priced"}, nil},
+			[]string{"48 replies · 9 switches · −$0.84 (−31%) vs no routing · ≈ list price", "per cell"}, nil},
+		{"strip glyphs tell the tiers apart", func(*route.Snapshot) {}, TabSessions, []string{"▄▄▄▄▄▆▆▆▆▆▄▄▄▆▆▆▆▆▆▆▆████▆▆▆▄▄▄▄▄▆▆▆▆▆▆▄▄▄████"}, nil},
+		{"costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabSessions, []string{"+$0.29 (+11%) vs no routing"}, []string{"−$"}},
+		{"prices missing", func(s *route.Snapshot) { s.Stats.PricedReplies = 0 }, TabSessions, []string{"48 of 48 replies not priced · no total"}, nil},
 		{"context and cache", func(*route.Snapshot) {}, TabSessions, []string{"Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol", "Cache  98% last reply · 97% session"}, nil},
 		{"no last reply reading", func(s *route.Snapshot) { s.Stats.LastInputTokens = 0 }, TabSessions, []string{"Cache  97% this session"}, []string{"last reply"}},
 		{"window unknown", func(s *route.Snapshot) { s.Window = 0 }, TabSessions, []string{"window unknown"}, nil},
 		{"every finding on a line of its own", func(*route.Snapshot) {}, TabSessions,
-			[]string{"Look     context guard kept 2 steps", "see Policy", "         routes to gpt-5.5 never run"}, nil},
+			[]string{"Notes    context guard kept 2 steps", "see Policy", "         gpt-5.5 blocked"}, nil},
 		{"manual finding", func(s *route.Snapshot) {
 			s.Worth = []route.Finding{{Kind: route.FindingManual, Text: "footer picked with /model"}}
-		}, TabSessions, []string{"Look     footer picked with /model · space resumes"}, nil},
-		{"nothing worth a look", func(s *route.Snapshot) { s.Worth = nil }, TabSessions, nil, []string{"Look"}},
+		}, TabSessions, []string{"Notes    footer picked with /model · space resumes"}, nil},
+		{"nothing worth a look", func(s *route.Snapshot) { s.Worth = nil }, TabSessions, nil, []string{"Notes"}},
 
 		{"mode buttons", func(*route.Snapshot) {}, TabPolicy, []string{"Mode        cost  ▶balanced   quality   default", "from default · this session"}, []string{"no effect"}},
 		{"the session's mode and source", func(s *route.Snapshot) { s.RoutingMode, s.RoutingModeSource = config.ModeCost, route.SourceProject }, TabPolicy, []string{"▶cost", "from project · this session"}, nil},
@@ -169,25 +169,25 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		{"classifier off without a reason", func(s *route.Snapshot) { s.ClassifierOff = true }, TabPolicy, []string{"○ off · requests keep Codex's model"}, nil},
 		{"last latency when nothing is timed", func(s *route.Snapshot) { s.ClassifierMedian = 0 }, TabPolicy, []string{"412 ms last"}, []string{"median"}},
 		{"routes in two columns", func(*route.Snapshot) {}, TabPolicy,
-			[]string{"Routes     micro  gpt-6-luna · low", "low    gpt-6-luna · medium", "medium gpt-6-sol · medium", "high   gpt-6.1-sol · high", "group of gpt-6.1-sol"},
+			[]string{"Routes     ▂      gpt-6-luna · low", "▂▄     gpt-6-luna · medium", "▂▄▆    gpt-6-sol · medium", "▂▄▆█   gpt-6.1-sol · high", "group of gpt-6.1-sol"},
 			[]string{"comp_hash", "3000"}},
 		{"blocked models", func(*route.Snapshot) {}, TabPolicy, []string{"Blocked    gpt-5.5 · outside gpt-6.1-sol's group"}, nil},
 		{"group unknown", func(s *route.Snapshot) {
 			s.Group, s.CurrentModelKnown, s.CompatibilityUnknown = catalog.Group{}, false, []string{s.Baseline.Model}
 		}, TabPolicy, []string{"Compatibility unknown · missing catalog entries"}, nil},
 		{"thresholds", func(*route.Snapshot) {}, TabPolicy,
-			[]string{"up after 2 votes, bar 0.65 · down after 2 votes, bar 0.70 · min dwell 8 requests", "escalation hold 2 turns · review every 6 requests · jump bar 0.85"}, nil},
+			[]string{"up after 2 votes at score ≥ 0.65 · down after 2 votes at ≥ 0.70 · min dwell 8 requests", "escalation hold 2 turns · review every 6 requests · jump at ≥ 0.85"}, nil},
 
 		{"savings sentence", func(*route.Snapshot) {}, TabUsage,
-			[]string{"Routing saved ≈ $0.84 (31%) vs per-reply native basis", "list-price estimate $1.87 vs $2.71 per-reply native basis", "plan billing is limits, not $"}, nil},
-		{"ledger", func(*route.Snapshot) {}, TabUsage,
-			[]string{"48 replies since 18:12 · 9 switches · cache reuse 97%", "switches wrote 212K uncached tokens", "last switch 18:41  medium → high · debug (inside a turn)"}, nil},
+			[]string{"Routing −$0.84 (−31%) vs no routing · ≈ list price · main thread", "per reply: cheaper −$0.94 · dearer +$0.10", "≈ $1.87 with routing · ≈ $2.71 with no routing", "plan is limits, not billed · ≈ is list price"}, nil},
+		{"counts", func(*route.Snapshot) {}, TabUsage,
+			[]string{"48 replies since 18:12 · 9 switches · cache reuse 97%", "switches wrote 212K uncached tokens", "last switch 18:41  ▂▄▆ → ▂▄▆█ · debug (inside a turn)"}, nil},
 		{"counts as bars", func(*route.Snapshot) {}, TabUsage,
-			[]string{"Tiers      micro", "0   0%", "high      ███████", "6  12%", "Activity   code      ████████████████████████   16  33%", "ops"}, nil},
-		{"empty session", func(s *route.Snapshot) { s.Stats = route.Stats{} }, TabUsage, []string{"no replies yet"}, []string{"Ledger", "cache reuse", "savings need"}},
+			[]string{"Tiers      ▂", "0   0%", "▂▄▆█      ███████", "6  12%", "Activity   code      ████████████████████████   16  33%", "ops"}, nil},
+		{"empty session", func(s *route.Snapshot) { s.Stats = route.Stats{} }, TabUsage, []string{"no replies yet"}, []string{"Counts", "cache reuse", "savings need"}},
 		{"usage, prices missing", func(s *route.Snapshot) { s.Stats.PricedReplies = 0 }, TabUsage,
-			[]string{"estimate unknown · 0 of 48 replies priced"}, []string{"list-price"}},
-		{"usage, routing costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabUsage, []string{"Routing extra cost"}, nil},
+			[]string{"48 of 48 replies not priced · no total"}, []string{"with routing"}},
+		{"usage, routing costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabUsage, []string{"Routing +$0.29 (+11%)"}, nil},
 		{"no timed switch", func(s *route.Snapshot) { s.Stats.LastSwitch, s.Stats.UncachedSwitchTokens = nil, 0 }, TabUsage, nil, []string{"last switch", "uncached"}},
 	}
 	for _, tt := range tests {
@@ -217,10 +217,10 @@ func TestIncompletePricingDoesNotLookLikeACompleteSessionTotal(t *testing.T) {
 	s := fixture()
 	s.Stats = st
 	got := renderPlain(s, TabUsage, 100)
-	if !strings.Contains(got, "estimate partial") || !strings.Contains(got, "1 of 2 replies priced") {
+	if !strings.Contains(got, "1 of 2 replies not priced · no total") {
 		t.Fatalf("missing partial-coverage statement:\n%s", got)
 	}
-	if strings.Contains(got, "$0.12") || strings.Contains(got, "$0.30") || strings.Contains(got, "Routing saved") {
+	if strings.Contains(got, "$0.12") || strings.Contains(got, "$0.30") || strings.Contains(got, "vs no routing") {
 		t.Fatalf("partial subtotals presented as session totals:\n%s", got)
 	}
 }
@@ -230,7 +230,7 @@ func TestUsageShowsSavingsAndExtraEvenWhenTheyCancel(t *testing.T) {
 	s.Stats.RoutedUSD, s.Stats.BaselineUSD = 2, 2
 	s.Stats.SavingsUSD, s.Stats.ExtraUSD = .25, .25
 	got := renderPlain(s, TabUsage, 130)
-	for _, want := range []string{"same estimated cost", "savings ≈ $0.25", "extra cost ≈ $0.25"} {
+	for _, want := range []string{"Routing $0.00 vs no routing", "per reply: cheaper −$0.25", "dearer +$0.25"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in\n%s", want, got)
 		}
@@ -243,15 +243,37 @@ func TestDollarPrecision(t *testing.T) {
 		want  string
 	}{
 		{0, "$0.00"},
-		{.0000001, "< $0.0001"},
-		{.0001, "$0.0001"},
-		{.001, "$0.0010"},
+		{.0000001, "<$0.01"},
+		{.001, "<$0.01"},
+		{.0099, "<$0.01"},
 		{.01, "$0.01"},
 		{1.23, "$1.23"},
+		{-1.23, "$1.23"},
 	} {
 		if got := dollars(tt.value); got != tt.want {
 			t.Errorf("dollars(%g) = %q, want %q", tt.value, got, tt.want)
 		}
+	}
+}
+
+func TestSignedDifferenceAgainstNoRouting(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		diff, base float64
+		want       string
+	}{
+		{"cheaper", -.84, 2.71, "−$0.84 (−31%)"},
+		{"dearer", .29, 2.71, "+$0.29 (+11%)"},
+		{"equal", 0, 2.71, "$0.00"},
+		{"under a cent is not zero", -.004, 2.71, "−<$0.01"},
+		{"percent rounds to zero and is left out", .01, 2.71, "+$0.01"},
+		{"no base has no percent", .003, 0, "+<$0.01"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := signedUSD(tt.diff) + signedPercent(tt.diff, tt.base); got != tt.want {
+				t.Errorf("difference %g of %g = %q, want %q", tt.diff, tt.base, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -260,7 +282,7 @@ func TestSmallExtraCostDoesNotRoundToZero(t *testing.T) {
 	s.Stats.RoutedUSD, s.Stats.BaselineUSD = .003, .002
 	for _, tab := range []Tab{TabSessions, TabUsage} {
 		got := renderPlain(s, tab, 130)
-		if !strings.Contains(got, "extra cost ≈ $0.0010 (50%)") {
+		if !strings.Contains(got, "+<$0.01 (+50%) vs no routing") {
 			t.Errorf("small extra cost missing in\n%s", got)
 		}
 	}
@@ -270,7 +292,7 @@ func TestUsageDoesNotInventBreakdownForOlderService(t *testing.T) {
 	s := fixture()
 	s.Stats.SavingsUSD, s.Stats.ExtraUSD = 0, 0
 	got := renderPlain(s, TabUsage, 130)
-	if strings.Contains(got, "savings ≈") || strings.Contains(got, "extra cost ≈") {
+	if strings.Contains(got, "per reply:") {
 		t.Fatalf("missing breakdown shown as zero:\n%s", got)
 	}
 }
@@ -281,8 +303,8 @@ func TestPricedZeroBaselineShowsExtraWithoutPercentage(t *testing.T) {
 	s.Stats.SavingsUSD, s.Stats.ExtraUSD = 0, .003
 	for _, tab := range []Tab{TabSessions, TabUsage} {
 		got := renderPlain(s, tab, 130)
-		if !strings.Contains(got, "extra cost ≈ $0.0030 vs per-reply native basis") {
-			t.Errorf("missing cost against zero baseline:\n%s", got)
+		if !strings.Contains(got, "+<$0.01 vs no routing") || strings.Contains(got, "(+") {
+			t.Errorf("missing cost against zero baseline, or a percentage of nothing:\n%s", got)
 		}
 	}
 }
@@ -295,17 +317,17 @@ func TestUnknownPricingReportsCoverageWithoutASubtotal(t *testing.T) {
 	s := fixture()
 	s.Stats = st
 	got := renderPlain(s, TabUsage, 100)
-	if !strings.Contains(got, "estimate unknown") || !strings.Contains(got, "0 of 2 replies priced") {
+	if !strings.Contains(got, "2 of 2 replies not priced · no total") {
 		t.Fatalf("missing unknown-coverage statement:\n%s", got)
 	}
-	if strings.Contains(got, "$0.12") || strings.Contains(got, "$0.30") || strings.Contains(got, "Routing saved") {
+	if strings.Contains(got, "$0.12") || strings.Contains(got, "$0.30") || strings.Contains(got, "vs no routing") {
 		t.Fatalf("unpriced subtotal presented as a session total:\n%s", got)
 	}
 }
 
-func TestPricingBasisNamesEachNativeReply(t *testing.T) {
+func TestNoRoutingBasisImpliesNoSingleModel(t *testing.T) {
 	got := renderPlain(fixture(), TabUsage, 100)
-	if !strings.Contains(got, "per-reply native basis") || strings.Contains(got, "all-gpt-") {
+	if !strings.Contains(got, "vs no routing") || strings.Contains(got, "all-gpt-") {
 		t.Fatalf("usage implies a single native model:\n%s", got)
 	}
 }
@@ -692,7 +714,7 @@ func fleetCases() []fleetCase {
 		{name: "help", st: fleetFixture(), tab: TabSessions, widths: []int{80, 97}, mutate: func(v *view) { v.help = true }},
 		{name: "popover-pin", st: fleetFixture(), tab: TabSessions, widths: []int{97}, mutate: func(v *view) { v.popover = popPin }},
 		{name: "popover-mode", st: fleetFixture(), tab: TabPolicy, widths: []int{97}, mutate: func(v *view) { v.popover = popMode }},
-		{name: "toast", st: fleetFixture(), tab: TabSessions, widths: []int{97}, mutate: func(v *view) { v.toast = "pinned high for the next turn" }},
+		{name: "toast", st: fleetFixture(), tab: TabSessions, widths: []int{97}, mutate: func(v *view) { v.toast = "pinned ▂▄▆█ for the next turn" }},
 		{name: "locked", st: lockedFixture(), tab: TabSessions, locked: true, widths: []int{80, 97}},
 		{name: "locked-policy", st: lockedFixture(), tab: TabPolicy, locked: true, widths: []int{80}},
 		{name: "ended", st: ended, tab: TabSessions, locked: true, widths: []int{80}},
@@ -883,7 +905,7 @@ func TestListStatesHaveGlyphs(t *testing.T) {
 		{"paused attention", func(s *fleetSession) { s.Attention = route.AttentionPaused }, "‖ paused"},
 		{"paused mode", func(s *fleetSession) { s.Mode = route.ModePaused }, "‖ paused"},
 		{"manual", func(s *fleetSession) { s.Attention = route.AttentionManual }, "◐ manual"},
-		{"escalation shows the tier", func(s *fleetSession) { s.Attention, s.Tier = route.AttentionEscalation, config.TierMedium }, "↑ medium"},
+		{"escalation shows the tier as a meter", func(s *fleetSession) { s.Attention, s.Tier = route.AttentionEscalation, config.TierMedium }, "↑ ▂▄▆"},
 		{"escalation without a tier", func(s *fleetSession) { s.Attention, s.Tier = route.AttentionEscalation, "" }, "↑ escalated"},
 		{"state lost", func(s *fleetSession) { s.Attention = route.AttentionStateLost }, "! state lost"},
 		{"unknown", func(s *fleetSession) { s.Attention = route.AttentionUnknown }, "? unknown"},
@@ -917,9 +939,9 @@ func TestListRowCells(t *testing.T) {
 	st := fleetFixture()
 	got := render(view{tab: TabSessions, width: 97, fleet: &st})
 	for _, want := range []string{
-		"▸ codex-router · main      ↑ high    gpt-6.1-sol · high   ▅▅▅▅▅▅▅▇▇▇  18:41 ↑",
-		"codex-router · fix/hook  ● on      gpt-6-luna · medium  ▃▃▃▃▅▅▅▁▁▁  18:29 ↓",
-		"notes                    ‖ paused  gpt-6-luna · medium  ▃▃▃\n",
+		"▸ codex-router · main      ↑ ▂▄▆█    gpt-6.1-sol · high   ▆▆▆▆▆▆▆███  18:41 ↑",
+		"codex-router · fix/hook  ● on      gpt-6-luna · medium  ▄▄▄▄▆▆▆▂▂▂  18:29 ↓",
+		"notes                    ‖ paused  gpt-6-luna · medium  ▄▄▄\n",
 		"SESSION                  STATE     MODEL                LAST TURNS  SWITCH",
 	} {
 		if !strings.Contains(got, want) {
@@ -1020,7 +1042,7 @@ func TestLayoutsFitTerminalHeight(t *testing.T) {
 								return
 							}
 						case "toast":
-							v.toast = "pinned high for the next turn"
+							v.toast = "pinned ▂▄▆█ for the next turn"
 						}
 						got, zones := layout(v)
 						lines := strings.Split(strings.TrimSuffix(got, "\n"), "\n")
@@ -1072,7 +1094,7 @@ func TestLockedLayoutsFitTerminalHeight(t *testing.T) {
 								v.popover = popPin
 							}
 						case "toast":
-							v.toast = "pinned high for the next turn"
+							v.toast = "pinned ▂▄▆█ for the next turn"
 						}
 						got, zones := layout(v)
 						lines := strings.Split(strings.TrimSuffix(got, "\n"), "\n")
@@ -1236,7 +1258,7 @@ func TestRenderFleetViewDrawsOverlays(t *testing.T) {
 		t.Errorf("no help overlay:\n%s", got)
 	}
 	v.Help, v.Popover = false, true
-	if got := sgr.ReplaceAllString(RenderFleetView(v), ""); !strings.Contains(got, "1 micro  2 low  3 medium  4 high  0 none") {
+	if got := sgr.ReplaceAllString(RenderFleetView(v), ""); !strings.Contains(got, "1 ▂ micro  2 ▂▄ low  3 ▂▄▆ medium  4 ▂▄▆█ high  0 none") {
 		t.Errorf("no pin popover:\n%s", got)
 	}
 }

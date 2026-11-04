@@ -480,3 +480,27 @@ func TestDecideTimeout(t *testing.T) {
 		t.Errorf("off: DecideTimeout = %v, want the fallback", got)
 	}
 }
+
+func TestTierMeter(t *testing.T) {
+	tests := []struct {
+		tier       Tier
+		meter, bar string
+	}{
+		{TierMicro, "▂", "▂"},
+		{TierLow, "▂▄", "▄"},
+		{TierMedium, "▂▄▆", "▆"},
+		{TierHigh, "▂▄▆█", "█"},
+		{Tier(""), "", ""},
+		{Tier("xhigh"), "", ""},
+	}
+	for _, tc := range tests {
+		t.Run(string(tc.tier), func(t *testing.T) {
+			if got := tc.tier.Meter(); got != tc.meter {
+				t.Errorf("Meter() = %q, want %q", got, tc.meter)
+			}
+			if got := tc.tier.Bar(); got != tc.bar {
+				t.Errorf("Bar() = %q, want %q", got, tc.bar)
+			}
+		})
+	}
+}

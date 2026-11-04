@@ -311,11 +311,11 @@ func TestWorth(t *testing.T) {
 			s.Mode, s.Footer = ModeManual, low
 		}, []Finding{{FindingManual, "footer picked with /model: routing holds gpt-6-luna · medium until resume"}}},
 		{"context guard", func(s *Snapshot) { s.Stats.FitHeld = 2 },
-			[]Finding{{FindingContext, "context guard kept 2 steps on a larger window than the policy chose"}}},
+			[]Finding{{FindingContext, "context guard kept 2 steps on a larger window"}}},
 		{"blocked routes", func(s *Snapshot) { s.Blocked = []string{"gpt-5.5"} },
-			[]Finding{{FindingBlocked, "routes to gpt-5.5 never run: outside gpt-6-sol's compatibility group"}}},
+			[]Finding{{FindingBlocked, "gpt-5.5 blocked: outside gpt-6-sol's group"}}},
 		{"low cache reuse after switches", func(s *Snapshot) { s.Stats.CacheReusePct = 41 },
-			[]Finding{{FindingCache, "cache reuse 41% after 3 switches; switches wrote 90k uncached tokens"}}},
+			[]Finding{{FindingCache, "cache reuse 41% after 3 switches; switches wrote 90K uncached tokens"}}},
 		{"low cache reuse on few replies", func(s *Snapshot) { s.Stats.CacheReusePct, s.Stats.Replies = 41, 19 }, nil},
 		{"low cache reuse without switches", func(s *Snapshot) { s.Stats.CacheReusePct, s.Stats.Switches = 41, 0 }, nil},
 		{"most urgent first", func(s *Snapshot) {
@@ -323,7 +323,7 @@ func TestWorth(t *testing.T) {
 		}, []Finding{
 			{FindingClassifier, "Jev failed 2 calls in a row: a failed turn goes unrouted"},
 			{FindingManual, "footer picked with /model: routing holds gpt-6-sol · medium until resume"},
-			{FindingCache, "cache reuse 41% after 3 switches; switches wrote 90k uncached tokens"},
+			{FindingCache, "cache reuse 41% after 3 switches; switches wrote 90K uncached tokens"},
 		}},
 	}
 	for _, tt := range tests {
@@ -360,8 +360,8 @@ func TestSupportParts(t *testing.T) {
 		line   string
 	}{
 		{"upgrade weighs the mass above", cfg, Decision{Reason: policy.ReasonUpgrade, Estimate: bar}, &advice, 41_000,
-			[]string{"Jev gave stronger tiers 88% (needs 82%)", "switch ≈ 41k uncached tokens"},
-			"Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41k uncached tokens"},
+			[]string{"Jev gave stronger tiers 88% (needs 82%)", "switch ≈ 41K uncached tokens"},
+			"Jev gave stronger tiers 88% (needs 82%) · switch ≈ 41K uncached tokens"},
 		{"pending downgrade weighs the mass below", cfg, Decision{Reason: policy.ReasonDowngradePending, Estimate: bar}, &advice, 0,
 			[]string{"Jev gave cheaper tiers 88% (needs 82%)"}, "Jev gave cheaper tiers 88% (needs 82%)"},
 		{"activity move weighs the activity", cfg, Decision{Reason: ReasonActivityUp, Activity: config.ActivityDebug, Estimate: bar}, &advice, 0,
@@ -369,8 +369,8 @@ func TestSupportParts(t *testing.T) {
 		{"no bar names the answer", cfg, Decision{Reason: policy.ReasonSameTier}, &advice, 0,
 			[]string{"Jev gave high 70%"}, "Jev gave high 70%"},
 		{"escalation needs no answer", cfg, Decision{Reason: policy.ReasonEscalation}, nil, 41_000,
-			[]string{"no classifier needed", "switch ≈ 41k uncached tokens"},
-			"no classifier needed · switch ≈ 41k uncached tokens"},
+			[]string{"no classifier needed", "switch ≈ 41K uncached tokens"},
+			"no classifier needed · switch ≈ 41K uncached tokens"},
 		{"a label holding the separator stays one fragment", spaced, Decision{Reason: policy.ReasonSameTier}, &advice, 0,
 			[]string{"Jev · fast gave high 70%"}, "Jev · fast gave high 70%"},
 		{"no evidence, no fragments", cfg, Decision{Reason: ReasonContinue}, nil, 0, nil, ""},

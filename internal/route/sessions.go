@@ -51,6 +51,27 @@ type SessionInfo struct {
 	RoutingModeSource ModeSource         `json:"routing_mode_source,omitempty"`
 }
 
+// StateText is the session's state as the panel's list and the CLI spell it:
+// a glyph and a word. A lost connection is the panel's own state, not this
+// one's. The panel may show the tier's meter in place of "escalated".
+func (s SessionInfo) StateText() string {
+	switch {
+	case s.Attention == AttentionPaused, s.Attention == "" && s.Mode == ModePaused:
+		return "‖ paused"
+	case s.Attention == AttentionManual:
+		return "◐ manual"
+	case s.Attention == AttentionEscalation:
+		return "↑ escalated"
+	case s.Attention == AttentionStateLost:
+		return "! state lost"
+	case s.Attention == AttentionUnknown:
+		return "? unknown"
+	case s.Attention != "":
+		return "? " + string(s.Attention)
+	}
+	return "● on"
+}
+
 // sessionIdle is how long an ordinary thread may go without a user step or
 // reply before the sessions list hides it, so a thread left behind by /new
 // leaves. Per-thread pause, manual hold and pending pin intent keep it listed.

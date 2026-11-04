@@ -77,8 +77,8 @@ func TestZonesCoverTheirLabels(t *testing.T) {
 			{kind: actTab, tab: TabPolicy}:           "Policy",
 			{kind: actTab, tab: TabUsage}:            "Usage",
 			{kind: actKey, key: handle(keys.Help)}:   "? help",
-			{kind: actPin, tier: config.TierHigh}:    "high",
-			{kind: actPin, tier: config.TierMicro}:   "micro",
+			{kind: actPin, tier: config.TierHigh}:    "▂▄▆█ high",
+			{kind: actPin, tier: config.TierMicro}:   "▂ micro",
 			{kind: actKey, key: handle(keys.Pin)}:    "p pin",
 			{kind: actKey, key: handle(keys.Toggle)}: "space pause",
 			{kind: actKey, key: handle(keys.Home)}:   "P pause home",
@@ -92,8 +92,8 @@ func TestZonesCoverTheirLabels(t *testing.T) {
 			{kind: actKey, key: handle(keys.Mode)}:    "s mode",
 		}},
 		{"pin popover", TabSessions, popPin, map[action]string{
-			{kind: actPin, tier: config.TierMicro}:  "1 micro",
-			{kind: actPin, tier: config.TierMedium}: "3 medium",
+			{kind: actPin, tier: config.TierMicro}:  "1 ▂ micro",
+			{kind: actPin, tier: config.TierMedium}: "3 ▂▄▆ medium",
 			{kind: actUnpin}:                        "0 none",
 		}},
 		{"mode popover", TabPolicy, popMode, map[action]string{
@@ -129,8 +129,8 @@ func TestZonesStayOnTheirRowsWhenSideBySide(t *testing.T) {
 	out, zones := layout(plainView(m))
 	lines := strings.Split(out, "\n")
 	for a, text := range map[action]string{
-		{kind: actPin, tier: config.TierLow}:   "low",
-		{kind: actPin, tier: config.TierMicro}: "micro",
+		{kind: actPin, tier: config.TierLow}:   "▂▄ low",
+		{kind: actPin, tier: config.TierMicro}: "▂ micro",
 	} {
 		i := slices.IndexFunc(zones, func(z zone) bool { return z.action == a })
 		if i < 0 {
