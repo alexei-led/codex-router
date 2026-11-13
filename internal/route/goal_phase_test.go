@@ -63,6 +63,7 @@ func TestTypedGoalPhaseControlsRealRoute(t *testing.T) {
 		{"contradictory phase probability", `,"phase":{"type":"choice","choice":"verify","probabilities":{"verify":0.9,"produce":0.9}}`, goal, debug, config.ActivityCode},
 		{"invalid phase probability", `,"phase":{"type":"choice","choice":"verify","probabilities":{"verify":1.5}}`, goal, debug, config.ActivityCode},
 		{"missing goal", `,"phase":{"type":"choice","choice":"verify","probabilities":{"verify":0.99}}`, "", medium, ""},
+		{"unknown goal weight", `,"phase":{"type":"choice","choice":"verify","probabilities":{"verify":0.99}}`, `,"activity":{"type":"choice","choice":"code","probabilities":{"code":0.99,"other":0.01}}`, medium, ""},
 		{"invalid goal probability", `,"phase":{"type":"choice","choice":"verify","probabilities":{"verify":0.99}}`, `,"activity":{"type":"choice","choice":"code","probabilities":{"code":1.5}}`, medium, ""},
 	}
 	for _, tt := range tests {
@@ -155,6 +156,73 @@ func TestMissingBriefCannotReuseAnUncertainGoal(t *testing.T) {
 	}
 }
 
+func TestUnmeasuredReplacementFencesReviewWithoutAGoal(t *testing.T) {
+	cfg := testConfig()
+	cfg.Policy.ReviewEveryRequests = 1
+	h := newHarness(t, cfg)
+	h.asker.script(answer(tier("medium", 0.99)), answer(tier("high", 0.99)))
+	m := meta("th", "t1")
+	h.decide(goalRequest(t, "Old task"), m)
+	h.decide(goalRequest(t, "Old task", "Continue old task"), m)
+	h.engine.reviews.Wait()
+	h.decide(goalRequest(t, "New task", "Continue new task"), m)
+	if d := h.last(); d.Route == high {
+		t.Fatalf("history replacement applied old review without usage or goal: %+v", d)
+	}
+}
+
+func TestStaleReviewPhaseCannotDowngradeNewerWork(t *testing.T) {
+	cfg := testConfig()
+	cfg.Policy.ReviewEveryRequests, cfg.Policy.MinDwellRequests = 1, 0
+	cfg.Activities[config.ActivityCode] = map[config.Tier]config.Route{config.TierMedium: debug}
+	ops := config.Route{Model: debug.Model, Effort: config.EffortLow}
+	cfg.Activities[config.ActivityOps] = map[config.Tier]config.Route{config.TierMedium: ops}
+	goal := `,"activity":{"type":"choice","choice":"code","probabilities":{"code":0.99}}`
+	a := &typedAsker{adapter: classifier.SystemOne(), answers: []string{
+		systemAnswer(goal, "", "0"),
+		systemAnswer(goal, `,"phase":{"type":"choice","choice":"verify","probabilities":{"verify":0.99}}`, "0.99"),
+	}}
+	h := newHarness(t, cfg, func(d *Deps) { d.Classifier = a })
+	items := []map[string]any{
+		{"type": "message", "role": "user", "content": "Old unrelated task"},
+		{"type": "message", "role": "assistant", "content": "Only run the tests and report their status now."},
+		{"type": "message", "role": "user", "content": "Build the service"},
+	}
+	request := func() *responses.Request {
+		body, err := json.Marshal(map[string]any{"model": medium.Model, "reasoning": map[string]string{"effort": string(medium.Effort)}, "input": items})
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, err := responses.Parse(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	m := meta("th", "t1")
+	h.decide(request(), m)
+	h.reply(m, debug.Model, 100, 0)
+	args, _ := json.Marshal(map[string]string{"cmd": "go test ./..."})
+	items = append(items,
+		map[string]any{"type": "function_call", "name": "exec_command", "call_id": "check", "arguments": string(args)},
+		map[string]any{"type": "function_call_output", "call_id": "check", "output": result("check", 0, "ok").Output},
+	)
+	h.decide(request(), m)
+	h.engine.reviews.Wait()
+	var sent struct{ State struct{ CurrentStep string } }
+	if err := json.Unmarshal([]byte(a.bodies[1]), &sent); err != nil {
+		t.Fatal(err)
+	}
+	if sent.State.CurrentStep != "Build the service" {
+		t.Fatalf("tool-only loop promoted old assistant text: %s", a.bodies[1])
+	}
+	items = append(items, map[string]any{"type": "message", "role": "assistant", "content": "A remaining feature needs implementation now."})
+	h.decide(request(), m)
+	if d := h.last(); d.Route != debug || d.EffectiveActivity == config.ActivityOps {
+		t.Fatalf("stale bounded phase downgraded newer work: %+v", d)
+	}
+}
+
 func TestUnclassifiedTurnDropsTheOldGoal(t *testing.T) {
 	goal := `,"activity":{"type":"choice","choice":"code","probabilities":{"code":0.99}}`
 	a := &typedAsker{adapter: classifier.SystemOne(), answers: []string{systemAnswer(goal, "", "0"), systemAnswer("", "", "0.99")}}
@@ -170,6 +238,29 @@ func TestUnclassifiedTurnDropsTheOldGoal(t *testing.T) {
 	h.decide(goalRequest(t, "Build the service", "Start another task", "continue"), meta("th", "t3"))
 	if strings.Contains(a.bodies[1], `"activeGoal":`) {
 		t.Fatalf("unclassified task retained old goal: %s", a.bodies[1])
+	}
+}
+
+func TestNoAnchorDoesNotProveANewTask(t *testing.T) {
+	for _, tc := range []struct {
+		continuation string
+		bar          float64
+		seed         bool
+	}{{"null", 0.7, false}, {"0.5", 0.7, false}, {"0.99", 0.7, false}, {"0", 0.7, true}, {"0.5", 0.4, false}} {
+		t.Run(fmt.Sprintf("%s/%g", tc.continuation, tc.bar), func(t *testing.T) {
+			continuation := tc.continuation
+			goal := `,"activity":{"type":"choice","choice":"code","probabilities":{"code":0.99}}`
+			a := &typedAsker{adapter: classifier.SystemOne(), answers: []string{systemAnswer(goal, "", continuation), systemAnswer("", "", "0.99")}}
+			cfg := testConfig()
+			cfg.Policy.ContinuationMass = tc.bar
+			h := newHarness(t, cfg, func(d *Deps) { d.Classifier = a })
+			h.decide(goalRequest(t, "Yes, proceed"), meta("th", "t1"))
+			h.decide(goalRequest(t, "Yes, proceed", "continue"), meta("th", "t2"))
+			seeded := strings.Contains(a.bodies[1], `"activeGoal":`)
+			if seeded != tc.seed {
+				t.Fatalf("continuation %s seeded=%v: %s", continuation, seeded, a.bodies[1])
+			}
+		})
 	}
 }
 

@@ -110,7 +110,7 @@ func (systemOne) Parse(body []byte) (Advice, error) {
 	var activity soChoiceAnswer
 	if json.Unmarshal(answers["activity"], &activity) == nil && activity.Type == "choice" {
 		if weights, ok := record(activity.Probabilities); ok {
-			advice.Activity = activityAdvice(activity.Choice, func(v string) any { return weights[v] })
+			advice.Activity = activityAdvice(activity.Choice, weights)
 		}
 	}
 	var phase soChoiceAnswer

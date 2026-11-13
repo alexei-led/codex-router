@@ -27,7 +27,7 @@ func TestTypedRequestsAndOptionalPhaseAnswers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			body, err := tt.adapter.Build("model", Input{Prompt: "continue", GoalAnchor: "Build the service"})
+			body, err := tt.adapter.Build("model", Input{Prompt: "continue", CurrentStep: "Implement the remaining endpoint", GoalAnchor: "Build the service"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -43,7 +43,7 @@ func TestTypedRequestsAndOptionalPhaseAnswers(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if req.State.ActiveGoal != "Build the service" || !strings.Contains(string(body), `"phase"`) {
+			if req.State.ActiveGoal != "Build the service" || req.State.CurrentStep != "Implement the remaining endpoint" || !strings.Contains(string(body), `"phase"`) {
 				t.Fatalf("request lacks independent goal and phase: %s", body)
 			}
 			for _, p := range []string{"0.9", "0", "-0.1", "1.1", "null", `"0.9"`} {
@@ -76,6 +76,34 @@ func TestTypedPhaseRejectsContradictoryDistributions(t *testing.T) {
 		if err != nil || a.Phase != nil {
 			t.Errorf("contradictory phase = %+v, %v", a.Phase, err)
 		}
+	}
+}
+
+func TestUnknownAndDuplicateWeightsCannotSupportPhaseRouting(t *testing.T) {
+	tests := []struct {
+		name        string
+		adapter     Adapter
+		body        string
+		invalidGoal bool
+	}{
+		{"system-one unknown goal", SystemOne(), `{"answers":{"route":{"type":"choice","choice":"medium","probabilities":{"medium":1}},"activity":{"type":"choice","choice":"code","probabilities":{"code":0.99,"other":0.01}}}}`, true},
+		{"openai unknown goal", OpenAIDecisions(), `{"answers":[{"type":"choice","name":"route","choice":"medium","probabilities":[{"value":"medium","probability":1}]},{"type":"choice","name":"activity","choice":"code","probabilities":[{"value":"code","probability":0.99},{"value":"other","probability":0.01}]}]}`, true},
+		{"openai duplicate goal", OpenAIDecisions(), `{"answers":[{"type":"choice","name":"route","choice":"medium","probabilities":[{"value":"medium","probability":1}]},{"type":"choice","name":"activity","choice":"code","probabilities":[{"value":"code","probability":0.99},{"value":"code","probability":0.99}]}]}`, true},
+		{"openai duplicate phase", OpenAIDecisions(), `{"answers":[{"type":"choice","name":"route","choice":"medium","probabilities":[{"value":"medium","probability":1}]},{"type":"choice","name":"phase","choice":"verify","probabilities":[{"value":"verify","probability":0.99},{"value":"verify","probability":0.99}]}]}`, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a, err := tt.adapter.Parse([]byte(tt.body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tt.invalidGoal && a.Activity != nil {
+				t.Fatalf("invalid goal accepted: %+v", a.Activity)
+			}
+			if !tt.invalidGoal && a.Phase != nil {
+				t.Fatalf("invalid phase accepted: %+v", a.Phase)
+			}
+		})
 	}
 }
 

@@ -58,10 +58,11 @@ type Message struct {
 
 // Input is everything a classifier request may contain.
 type Input struct {
-	Prompt     string
-	GoalAnchor string
-	Dialogue   []Message
-	Routes     map[config.Tier]config.Route
+	Prompt      string
+	CurrentStep string
+	GoalAnchor  string
+	Dialogue    []Message
+	Routes      map[config.Tier]config.Route
 }
 
 // Adapter builds a request body for a protocol and parses its answer.

@@ -232,6 +232,7 @@ Only the selected classifier is called. Its payload contains:
 - The current prompt, clipped to `context.maxTextChars` characters.
 - Up to `context.recentTurns` user or assistant messages, each clipped separately. These are messages, not user/assistant pairs.
 - A bounded active-goal anchor from an earlier user request, when available; it is held in memory and is not written to router state.
+- A current-step text, clipped to the same limit: the latest assistant message after the current user request, or that request when the loop has no assistant text yet. Earlier dialogue remains reference, not current progress.
 - Fixed questions and labels for complexity, task goal and continuation. System One and OpenAI Decisions also ask the current phase; the existing `activity` answer names the goal. The System One adapter also includes your configured tier model names and efforts.
 
 It does not receive Codex HTTP headers or ChatGPT credentials. It uses its own `keyEnv` credential. Code or secrets pasted into a user or assistant message can be included in the clipped text. Clipping is a size limit, not secret removal.

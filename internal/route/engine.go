@@ -164,6 +164,7 @@ type review struct {
 	cancel context.CancelFunc
 	done   chan struct{}
 	upTo   int
+	input  responses.Context
 	ready  bool
 	answer *classifier.Advice
 }
@@ -545,11 +546,12 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 	if first && proj.done {
 		e.setProject(th, proj)
 	}
-	if th.goalAnchor != "" {
-		if _, ok := req.AddedTokens(th.goalContext); !ok {
-			// Clear/rewind/branch may replace history without reducing its
-			// item count, and usage may never have been reported.
-			th.goalAnchor = ""
+	if _, ok := req.AddedTokens(th.goalContext); !ok {
+		// Clear/rewind/branch may replace history without reducing its
+		// item count, and usage may never have been reported.
+		th.goalAnchor = ""
+		if th.goalContext != (responses.Context{}) {
+			e.fence(th)
 		}
 	}
 	mode, source := e.routingMode(th)
@@ -746,7 +748,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 	}
 	if advice != nil && (th.goalAnchor == "" || !policy.SameTask(st.policy, advice, false)) {
 		th.goalAnchor = ""
-		newTask := st.goalAnchor == "" || advice.Continuation != nil && *advice.Continuation <= 1-st.policy.ContinuationMass
+		newTask := advice.Continuation != nil && !policy.SameTask(st.policy, advice, false) && *advice.Continuation <= 1-st.policy.ContinuationMass
 		if newTask && advice.Activity != nil && slices.Contains(config.Activities, advice.Activity.Choice) &&
 			advice.Activity.Probabilities[advice.Activity.Choice] >= st.policy.ActivityMass {
 			th.goalAnchor = st.facts.Prompt
@@ -786,8 +788,16 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 	if r := th.review; r != nil && r.ready {
 		th.review = nil
 		if r.answer != nil && !th.turnPinned {
-			cur = keepTurn(e.choose(st, e.incumbent(st), r.answer, true), th.state.Turn)
-			th.state, th.advice, th.observedFrom, th.reviewedAt = cur.state, r.answer, r.upTo, th.requests
+			advice := r.answer
+			if r.input == (responses.Context{}) || r.input != st.req.Context() {
+				// A bounded phase expires with its snapshot. Later input may
+				// introduce edits or diagnosis, even within the same turn.
+				copy := *advice
+				copy.Phase = nil
+				advice = &copy
+			}
+			cur = keepTurn(e.choose(st, e.incumbent(st), advice, true), th.state.Turn)
+			th.state, th.advice, th.observedFrom, th.reviewedAt = cur.state, advice, r.upTo, th.requests
 			reviewed = true
 		}
 	}
@@ -803,7 +813,7 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 	every := st.policy.ReviewEveryRequests
 	if every > 0 && e.ask != nil && !th.turnPinned && th.review == nil && th.requests-th.reviewedAt >= every {
 		ctx, cancel := context.WithTimeout(context.Background(), st.cfg.DecideTimeout())
-		job = &review{ctx: ctx, cancel: cancel, done: make(chan struct{}), upTo: st.facts.Items}
+		job = &review{ctx: ctx, cancel: cancel, done: make(chan struct{}), upTo: st.facts.Items, input: st.req.Context()}
 		th.review, th.reviewedAt = job, th.requests
 	}
 	return e.finish(st, cur), job
@@ -1317,7 +1327,7 @@ func (st *step) classifierInput() classifier.Input {
 			routes[tier] = p.route
 		}
 	}
-	return classifier.Input{Prompt: f.Prompt, GoalAnchor: st.goalAnchor, Dialogue: msgs, Routes: routes}
+	return classifier.Input{Prompt: f.Prompt, CurrentStep: f.CurrentStep, GoalAnchor: st.goalAnchor, Dialogue: msgs, Routes: routes}
 }
 
 // panicText names a panic without echoing arbitrary values, which might

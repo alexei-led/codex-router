@@ -78,6 +78,27 @@ func request(items ...responses.Item) *responses.Request {
 	return &responses.Request{Model: "gpt-6-sol", Input: items}
 }
 
+func TestCurrentStepOnlyUsesCurrentLoopAssistantText(t *testing.T) {
+	tests := []struct {
+		name  string
+		items []responses.Item
+		want  string
+	}{
+		{"fresh request", []responses.Item{user("old task"), assistant("Only run checks now."), user("Implement queue retries")}, "Implement queue retries"},
+		{"tool-only current loop", []responses.Item{user("old task"), assistant("Only run checks now."), user("Implement queue retries"), exec("read", "ls"), done("read", 0, "queue.go")}, "Implement queue retries"},
+		{"current progress", []responses.Item{user("old task"), assistant("Only run checks now."), user("Implement queue retries"), assistant("Investigating retry ordering."), exec("read", "ls")}, "Investigating retry ordering."},
+		{"short approval remains current", []responses.Item{user("Build service"), assistant("I propose only running the requested test."), user("Yes, proceed")}, "Yes, proceed"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := facts.Extract(request(tt.items...), opts)
+			if got.CurrentStep != tt.want {
+				t.Errorf("current step %q, want %q", got.CurrentStep, tt.want)
+			}
+		})
+	}
+}
+
 func TestExtractPrompt(t *testing.T) {
 	tests := []struct {
 		name  string
