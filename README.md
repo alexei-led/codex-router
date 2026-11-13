@@ -18,7 +18,7 @@ The panel is optional. This illustration uses sample data, including its savings
 
 ## What you get
 
-- **Less model picking.** A classifier scores the prompt and recent dialogue. The router uses that score, cache state and tool results to decide whether to switch.
+- **Less model picking.** A classifier scores the prompt, a bounded task-goal anchor and recent dialogue. The router uses that score, cache state and tool results to decide whether to switch.
 - **A reason for each choice.** The panel shows the route and why it changed. One panel covers multiple sessions and Codex homes.
 - **Cost or quality, your call.** A [routing mode](docs/user-guide.md#choose-a-routing-mode), `cost`, `balanced` or `quality`, chooses cheaper or stronger model/effort pairs. The default ladder uses Luna, Terra and Sol. Set it per profile, per repository or per session.
 - **Manual control.** Use `/model` to keep your own choice. Pin the next turn or pause routing from the panel.
@@ -71,7 +71,7 @@ cd your-repo
 codex-router
 ```
 
-Jev receives the clipped prompt and recent dialogue. If the key is missing, automatic classification is off. Pins and the context guard still work.
+Jev receives the clipped prompt, recent dialogue and a bounded active-goal anchor. The anchor is held in memory, not saved in router state. If the key is missing, automatic classification is off. Pins and the context guard still work.
 
 **Local classifier:** install and start Ollama, then run:
 

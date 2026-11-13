@@ -104,17 +104,21 @@ type Decision struct {
 	RoutingMode       config.RoutingMode `json:"RoutingMode,omitempty"`
 	RoutingModeSource ModeSource         `json:"RoutingModeSource,omitempty"`
 	// Preferred is present when eligibility forced a different physical route.
-	Preferred *config.Route `json:"Preferred,omitempty"`
+	Preferred         *config.Route   `json:"Preferred,omitempty"`
+	EffectiveActivity config.Activity `json:"EffectiveActivity,omitempty"`
 }
 
 // Reading is the classifier answer the decision's turn runs on, for display:
-// the probability per tier, and the activity answer with its probability and
-// the two likeliest alternates. Tiers holds only the tiers the answer scored.
+// the probability per tier, the goal (legacy Activity field) with its
+// probability and the two likeliest alternates, and an optional phase.
+// Tiers holds only the tiers the answer scored.
 type Reading struct {
 	Tiers      map[config.Tier]float64 `json:"Tiers"`
 	Activity   config.Activity         `json:"Activity"`
 	ActivityP  float64                 `json:"ActivityP"`
 	Alternates []Share                 `json:"Alternates"`
+	Phase      classifier.Phase        `json:"Phase,omitempty"`
+	PhaseP     float64                 `json:"PhaseP,omitempty"`
 }
 
 // Share is one activity's probability in an answer.

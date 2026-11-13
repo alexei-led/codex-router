@@ -14,10 +14,29 @@ type Choice string
 // ChoiceUncertain is the route answer for a request that is unclear or not a task.
 const ChoiceUncertain Choice = "uncertain"
 
-// ActivityAdvice is the activity answer, or nil when it was not given.
+// ActivityAdvice is the task goal, using the existing activity wire name.
+// It is nil when no valid answer was given.
 type ActivityAdvice struct {
 	Choice        config.Activity
 	Probabilities map[config.Activity]float64
+}
+
+// Phase identifies the current bounded stage of a task.
+type Phase string
+
+const (
+	PhaseProduce   Phase = "produce"
+	PhaseReason    Phase = "reason"
+	PhaseVerify    Phase = "verify"
+	PhaseExecute   Phase = "execute"
+	PhaseReport    Phase = "report"
+	PhaseUncertain Phase = "uncertain"
+)
+
+// PhaseAdvice is absent when a protocol cannot provide a valid phase.
+type PhaseAdvice struct {
+	Choice        Phase
+	Probabilities map[Phase]float64
 }
 
 // Advice is the shared answer shape every adapter returns. Continuation is
@@ -27,6 +46,7 @@ type Advice struct {
 	Probabilities map[Choice]float64
 	Continuation  *float64
 	Activity      *ActivityAdvice
+	Phase         *PhaseAdvice
 	Latency       time.Duration
 }
 
@@ -38,9 +58,10 @@ type Message struct {
 
 // Input is everything a classifier request may contain.
 type Input struct {
-	Prompt   string
-	Dialogue []Message
-	Routes   map[config.Tier]config.Route
+	Prompt     string
+	GoalAnchor string
+	Dialogue   []Message
+	Routes     map[config.Tier]config.Route
 }
 
 // Adapter builds a request body for a protocol and parses its answer.

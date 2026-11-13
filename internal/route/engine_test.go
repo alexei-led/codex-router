@@ -469,7 +469,7 @@ func TestSnapshotNamesTheClassifierModelAndWhyItIsOff(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := newHarness(t, testConfig(), tt.opts...).engine.Snapshot()
-			if s.ClassifierOff != tt.wantOff || s.ClassifierOffReason != tt.wantReason || s.ClassifierModel != "jev-1.13.0" {
+			if s.ClassifierOff != tt.wantOff || s.ClassifierOffReason != tt.wantReason || s.ClassifierModel != "jev-1.14.0" {
 				t.Errorf("off %v reason %q model %q", s.ClassifierOff, s.ClassifierOffReason, s.ClassifierModel)
 			}
 		})

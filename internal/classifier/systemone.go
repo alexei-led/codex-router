@@ -32,6 +32,7 @@ type soRequest struct {
 		Route        soChoiceQuestion `json:"route"`
 		Continuation soNoulQuestion   `json:"continuation"`
 		Activity     soChoiceQuestion `json:"activity"`
+		Phase        soChoiceQuestion `json:"phase"`
 	} `json:"questions"`
 }
 
@@ -46,6 +47,7 @@ func (systemOne) Build(model string, in Input) ([]byte, error) {
 	req.Questions.Route = soChoiceQuestion{Type: "choice", Instructions: routeInstructions, Criteria: criteria}
 	req.Questions.Continuation = soNoulQuestion{Type: "noul", Instructions: continuationInstructions}
 	req.Questions.Activity = soChoiceQuestion{Type: "choice", Instructions: activityInstructions, Criteria: activityOptions}
+	req.Questions.Phase = soChoiceQuestion{Type: "choice", Instructions: phaseInstructions, Criteria: phaseOptions}
 	return encode(req, "")
 }
 
@@ -100,14 +102,21 @@ func (systemOne) Parse(body []byte) (Advice, error) {
 		Noul any    `json:"noul"`
 	}
 	if json.Unmarshal(answers["continuation"], &continuation) == nil && continuation.Type == "noul" {
-		c := clamp(continuation.Noul)
-		advice.Continuation = &c
+		if c, ok := probability(continuation.Noul); ok {
+			advice.Continuation = &c
+		}
 	}
 
 	var activity soChoiceAnswer
 	if json.Unmarshal(answers["activity"], &activity) == nil && activity.Type == "choice" {
 		if weights, ok := record(activity.Probabilities); ok {
 			advice.Activity = activityAdvice(activity.Choice, func(v string) any { return weights[v] })
+		}
+	}
+	var phase soChoiceAnswer
+	if json.Unmarshal(answers["phase"], &phase) == nil && phase.Type == "choice" {
+		if weights, ok := record(phase.Probabilities); ok {
+			advice.Phase = phaseAdvice(phase.Choice, weights)
 		}
 	}
 	return advice, nil

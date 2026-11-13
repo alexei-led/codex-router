@@ -2,6 +2,12 @@
 
 These results inform the default routes. They are small tests, not a claim about real session savings.
 
+## Goal and phase classifier checks
+
+On 2026-11-13 an initial eight synthetic Jev 1.14 cases matched six expected goal/phase pairs. The failures recast an ongoing code task as debug during test fixes and as ops after a short approval of a test command. The goal instructions were corrected to distinguish the durable deliverable from the latest proposal. The revised request matched all eight, then four fresh boundaries also matched: an explicit new ops task overriding a code anchor, docs validation, investigation inside code work, and Russian mixed test-and-fix work.
+
+These are development checks plus a four-case boundary holdout, not a representative benchmark or evidence of savings. All prompts were synthetic; no repository or session content was sent. The opt-in `TestLiveGoalPhaseHoldout` uses the production request builder/client/parser. Deterministic route tests separately check conservative missing/invalid answers, down gates, history replacement without token usage, and the diagnostic labels. TypeSafe [reports multilingual improvements and an experimental Box type](https://typesafe.ai/blog/jev-1-14) in Jev 1.14; this router uses no Box questions. Same-price pilot parity does not establish routing-quality improvements.
+
 ## Terra defaults
 
 The Luna/Terra/Sol preference matrix is a **derived routing policy**, not a provider recommendation or permission boundary. Standard input/cached-input/output prices per million tokens are Luna $0.10/$0.01/$0.50, Terra $1/$0.05/$5, and Sol $2/$0.10/$10. [OpenAI model specifications](https://developers.openai.com/api/docs/models/gpt-6.1-terra) and the [independent efficiency comparison](https://artificialanalysis.ai/articles/gpt-6-1-terra-pushes-the-cost-efficiency-frontier) motivate testing Terra between Luna and Sol; they do not establish your Codex entitlement or window.
