@@ -2,6 +2,7 @@ package route
 
 import (
 	"cmp"
+	"math"
 	"slices"
 
 	"github.com/alexei-led/codex-router/internal/classifier"
@@ -57,6 +58,7 @@ func downAllowed(st *step) bool {
 // lateral rule for activities.
 func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTurn bool) cell {
 	cfg, p, th := st.cfg, st.policy, st.th
+	advice = effectiveAdvice(advice, p)
 	down := downAllowed(st)
 	act := chooseActivity(cfg, p, advice, inc, func(t config.Tier, a config.Activity) config.Route { return st.routeFor(t, a) }, midTurn, down)
 	routeFor := func(t config.Tier) config.Route { return st.routeFor(t, act) }
@@ -140,6 +142,24 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	return e.activityMove(st, c, inc, to, act, advice, r.Reason == policy.ReasonHold)
 }
 
+// effectiveAdvice routes a bounded phase as ops only when both independent
+// answers clear the activity bar. Other policy gates still decide the move.
+func effectiveAdvice(a *classifier.Advice, p config.Policy) *classifier.Advice {
+	if a == nil || a.Activity == nil || a.Phase == nil ||
+		!slices.Contains(config.Activities, a.Activity.Choice) ||
+		(a.Phase.Choice != classifier.PhaseVerify && a.Phase.Choice != classifier.PhaseExecute) {
+		return a
+	}
+	goalMass, phaseMass := a.Activity.Probabilities[a.Activity.Choice], a.Phase.Probabilities[a.Phase.Choice]
+	mass := min(goalMass, phaseMass)
+	if mass < p.ActivityMass || goalMass > 1 || phaseMass > 1 || math.IsNaN(goalMass) || math.IsNaN(phaseMass) {
+		return a
+	}
+	copy := *a
+	copy.Activity = &classifier.ActivityAdvice{Choice: config.ActivityOps, Probabilities: map[config.Activity]float64{config.ActivityOps: mass}}
+	return &copy
+}
+
 // activityMove is today's same-tier rule: c's route to moves on the
 // activity's probability mass, or the incumbent's pair stays.
 func (e *Engine) activityMove(st *step, c cell, inc running, to config.Route, act config.Activity, advice *classifier.Advice, hold bool) cell {
@@ -166,7 +186,8 @@ func (e *Engine) activityMove(st *step, c cell, inc running, to config.Route, ac
 // observedMove.
 func (e *Engine) observedMove(st *step, cur cell) cell {
 	act := observedActivity(st.facts.Observed)
-	if act == "" || act == cur.activity {
+	// Command use alone does not establish an ops task or bounded phase.
+	if act == config.ActivityOps || act == "" || act == cur.activity {
 		return cur
 	}
 	from := cur.route

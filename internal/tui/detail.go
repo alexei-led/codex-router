@@ -159,6 +159,16 @@ func supportSegs(s route.Snapshot, d route.Decision) [][]seg {
 			parts = append(parts, []seg{plain(fmt.Sprintf("%s %s %s", classifierName(s), d.Tier.Meter(), percent(p)))})
 		}
 	}
+	if r := d.Reading; r != nil && r.Phase != "" {
+		goal, effective := string(r.Activity), string(d.EffectiveActivity)
+		if goal == "" {
+			goal = "unknown"
+		}
+		if effective == "" {
+			effective = "base"
+		}
+		parts = append(parts, []seg{plain(fmt.Sprintf("goal %s · phase %s · route activity %s", goal, r.Phase, effective))})
+	}
 	for _, p := range supportFragments(d) {
 		parts = append(parts, []seg{plain(p)})
 	}

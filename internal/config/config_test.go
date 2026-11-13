@@ -276,7 +276,7 @@ func setEndpoint(c *Config, name, endpoint string) {
 func TestDefaultClassifiers(t *testing.T) {
 	const cloudflare = "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/"
 	want := map[string]Classifier{
-		"jev":        {Label: "Jev", API: APISystemOne, Endpoint: "https://api.typesafe.ai/v1/systemone", Model: "jev-1.13.0", KeyEnv: "TYPESAFE_API_KEY", TimeoutMs: 1500},
+		"jev":        {Label: "Jev", API: APISystemOne, Endpoint: "https://api.typesafe.ai/v1/systemone", Model: "jev-1.14.0", KeyEnv: "TYPESAFE_API_KEY", TimeoutMs: 1500},
 		"clef":       {Label: "Clef", API: APISystemOne, Endpoint: cloudflare + "clef", Model: "clef", KeyEnv: "CLOUDFLARE_API_TOKEN", TimeoutMs: 3000},
 		"clef-flash": {Label: "Clef Flash", API: APISystemOne, Endpoint: cloudflare + "clef-flash", Model: "clef-flash", KeyEnv: "CLOUDFLARE_API_TOKEN", TimeoutMs: 3000},
 		"clef-omni":  {Label: "Clef Omni", API: APISystemOne, Endpoint: cloudflare + "clef-omni", Model: "clef-omni", KeyEnv: "CLOUDFLARE_API_TOKEN", TimeoutMs: 3000},

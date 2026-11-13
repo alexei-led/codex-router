@@ -106,7 +106,7 @@
       "label": "Jev",
       "api": "system-one",
       "endpoint": "https://api.typesafe.ai/v1/systemone",
-      "model": "jev-1.13.0",
+      "model": "jev-1.14.0",
       "keyEnv": "TYPESAFE_API_KEY",
       "timeoutMs": 1500
     },

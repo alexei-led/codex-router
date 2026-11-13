@@ -33,6 +33,7 @@ type Failure struct {
 // Facts is the policy input derived from a request.
 type Facts struct {
 	Prompt       string
+	CurrentStep  string
 	Dialogue     []Turn
 	Continuation bool
 	Failure      *Failure
@@ -112,6 +113,14 @@ func Extract(req *responses.Request, opts Options) Facts {
 	}
 	if prompt >= 0 {
 		f.Prompt = clip(strings.TrimSpace(items[prompt].Text), opts.MaxTextChars)
+		f.CurrentStep = f.Prompt
+		for i := len(items) - 1; i > prompt; i-- {
+			it := items[i]
+			if it.Type == typeMessage && it.Role == roleAssistant && strings.TrimSpace(it.Text) != "" {
+				f.CurrentStep = clip(strings.TrimSpace(it.Text), opts.MaxTextChars)
+				break
+			}
+		}
 	}
 	return f
 }

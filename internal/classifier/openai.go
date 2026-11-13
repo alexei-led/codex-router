@@ -51,6 +51,7 @@ func (openAIDecisions) Build(model string, in Input) ([]byte, error) {
 			oaChoiceQuestion("route", routeInstructions, routeOptions),
 			{Type: "predicate", Name: "continuation", Instructions: continuationInstructions},
 			oaChoiceQuestion("activity", activityInstructions, activityOptions),
+			oaChoiceQuestion("phase", phaseInstructions, phaseOptions),
 		},
 	}, "")
 }
@@ -75,6 +76,9 @@ func (a oaAnswer) weights() (map[string]any, bool) {
 	}
 	m := make(map[string]any, len(list))
 	for _, e := range list {
+		if _, exists := m[e.Value]; exists {
+			return nil, false
+		}
 		m[e.Value] = e.Probability
 	}
 	return m, true
@@ -109,13 +113,19 @@ func (openAIDecisions) Parse(body []byte) (Advice, error) {
 	}
 
 	if c := byName["continuation"]; c.Type == "predicate" {
-		p := clamp(c.Probability)
-		advice.Continuation = &p
+		if p, ok := probability(c.Probability); ok {
+			advice.Continuation = &p
+		}
 	}
 
 	if a := byName["activity"]; a.Type == "choice" {
 		if weights, ok := a.weights(); ok {
-			advice.Activity = activityAdvice(a.Choice, func(v string) any { return weights[v] })
+			advice.Activity = activityAdvice(a.Choice, weights)
+		}
+	}
+	if a := byName["phase"]; a.Type == "choice" {
+		if weights, ok := a.weights(); ok {
+			advice.Phase = phaseAdvice(a.Choice, weights)
 		}
 	}
 	return advice, nil

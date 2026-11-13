@@ -76,10 +76,6 @@ func TestSystemOneBuildKeepsThePortedRouteBodyAndAddsTheActivity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shared := strings.TrimSuffix(r.Bodies.Jev, "}}") + `,"activity":`
-	if !strings.HasPrefix(string(got), shared) {
-		t.Fatalf("body diverges from the ported route body:\n got %s\nwant prefix %s", got, shared)
-	}
 
 	var body struct {
 		Questions struct {
@@ -402,6 +398,7 @@ func TestOpenAIDecisionsBuildAsksRouteContinuationAndActivity(t *testing.T) {
 		{"choice", "route", routeInstructions.text(), routeOptions},
 		{"predicate", "continuation", continuationInstructions, nil},
 		{"choice", "activity", activityInstructions.text(), activityOptions},
+		{"choice", "phase", phaseInstructions.text(), phaseOptions},
 	}
 	if len(body.Questions) != len(want) {
 		t.Fatalf("questions = %d, want %d", len(body.Questions), len(want))

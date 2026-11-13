@@ -305,6 +305,9 @@ func reading(a *classifier.Advice) *Reading {
 		return nil
 	}
 	r := &Reading{Tiers: map[config.Tier]float64{}}
+	if a.Phase != nil {
+		r.Phase, r.PhaseP = a.Phase.Choice, a.Phase.Probabilities[a.Phase.Choice]
+	}
 	for _, t := range config.Tiers {
 		if p, ok := a.Probabilities[classifier.Choice(t)]; ok {
 			r.Tiers[t] = p

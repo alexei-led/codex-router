@@ -28,9 +28,8 @@ func Default() Config {
 		Activities: map[Activity]map[Tier]Route{},
 		// Standard list prices, USD per 1M tokens, from the OpenAI pricing page
 		// (developers.openai.com/api/docs/pricing, Standard, up to 272K input
-		// tokens), checked 2026-11-04. Not modeled: long context over 272K
-		// input, Fast, batch and flex, regional endpoints. The Standard table
-		// lists no cache-write price. Re-check these at each release.
+		// tokens), checked 2026-11-13. Not modeled: long context over 272K
+		// input, Fast, batch and flex, regional endpoints or cache-write prices. Re-check these at each release.
 		Prices: map[string]Price{
 			modelSol:   {Input: 2, CachedInput: 0.1, Output: 10},
 			modelTerra: {Input: 1, CachedInput: 0.05, Output: 5},
@@ -73,7 +72,7 @@ func Default() Config {
 				Label:     "Jev",
 				API:       APISystemOne,
 				Endpoint:  "https://api.typesafe.ai/v1/systemone",
-				Model:     "jev-1.13.0",
+				Model:     "jev-1.14.0",
 				KeyEnv:    "TYPESAFE_API_KEY",
 				TimeoutMs: 1500,
 			},

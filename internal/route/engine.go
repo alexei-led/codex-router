@@ -90,10 +90,12 @@ type thread struct {
 	id   string
 	step sync.Mutex
 
-	native   config.Route // Codex's own route: what it sent first, or the user's /model pick
-	model    string       // the last request's model
-	tier     config.Tier
-	activity config.Activity // the activity whose route runs, "" for the base route
+	native      config.Route // Codex's own route: what it sent first, or the user's /model pick
+	model       string       // the last request's model
+	tier        config.Tier
+	activity    config.Activity   // the activity whose route runs, "" for the base route
+	goalAnchor  string            // bounded user text, in memory only
+	goalContext responses.Context // input prefix, independent of usage measurements
 	// routeMode is the routing mode the running route was chosen under. The
 	// actual pair is kept in sent after eligibility resolution. It changes
 	// only when a gate passes, not when the thread's mode does.
@@ -162,6 +164,7 @@ type review struct {
 	cancel context.CancelFunc
 	done   chan struct{}
 	upTo   int
+	input  responses.Context
 	ready  bool
 	answer *classifier.Advice
 }
@@ -299,6 +302,7 @@ type step struct {
 	plans           map[routeKey]routePlan
 	ctx             context.Context
 	measuredContext bool
+	goalAnchor      string
 }
 
 type routePlan struct {
@@ -486,10 +490,12 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 	}
 	th.model, th.lastActive = req.Model, now
 	if e.paused || th.paused || th.manual {
+		th.goalAnchor = ""
 		th.awaiting = nil
 		return nil, nil, nil, picked
 	}
 	if th.held && th.pin == nil {
+		th.goalAnchor = ""
 		// Unrouted until a reply ends the hold, and for the rest of that
 		// turn. A pin is the user's word and ends the hold.
 		th.awaiting = nil
@@ -528,20 +534,30 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 		th.state = policy.State{Turn: th.state.Turn}
 		th.measured, th.lastTotal = false, 0
 		th.context, th.contextTotal = responses.Context{}, 0
+		th.goalAnchor = ""
 		e.ledger.Forget(th.id)
 	}
 	th.lastItems = len(req.Input)
 	cat := e.cat.Current()
 	if _, ok := cat.GroupOf(req.Model); !ok {
+		th.goalAnchor = ""
 		return nil, nil, old, false
 	}
 	if first && proj.done {
 		e.setProject(th, proj)
 	}
+	if _, ok := req.AddedTokens(th.goalContext); !ok {
+		// Clear/rewind/branch may replace history without reducing its
+		// item count, and usage may never have been reported.
+		th.goalAnchor = ""
+		if th.goalContext != (responses.Context{}) {
+			e.fence(th)
+		}
+	}
 	mode, source := e.routingMode(th)
 	st := &step{
 		th: th, meta: m, req: req, fp: fp, cfg: cfg, policy: cfg.Effective(mode), cat: cat, now: now,
-		first: first, original: original, tokens: th.lastTotal,
+		first: first, original: original, tokens: th.lastTotal, goalAnchor: th.goalAnchor,
 		mode: mode, source: source, routeMode: mode, epoch: th.epoch,
 		opts: facts.Options{
 			RecentTurns:  cfg.Context.RecentTurns,
@@ -561,6 +577,9 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 	if first {
 		// Consumed here, under the lock, so exactly one turn takes it.
 		st.pin, th.pin = th.pin, nil
+		if st.pin != nil {
+			th.goalAnchor, st.goalAnchor = "", ""
+		}
 		if st.pin != nil && th.recovering {
 			th.recovering, th.state.HoldUntilTurn = false, 0
 		}
@@ -642,6 +661,7 @@ func (e *Engine) abandonLocked(st *step) {
 		return
 	}
 	st.th.turnOff = true
+	st.th.goalAnchor = ""
 	if st.pin != nil && st.th.pin == nil {
 		st.th.pin = st.pin
 	}
@@ -662,6 +682,7 @@ func (e *Engine) bind(th *thread, account string) {
 	}
 	e.fence(th)
 	th.account = account
+	th.goalAnchor = ""
 	th.advice, th.awaiting = nil, nil
 	th.turn, th.turnOff = "", false
 	th.state = policy.State{Turn: th.state.Turn}
@@ -708,6 +729,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		return Decision{}, false
 	}
 	if askErr != nil {
+		th.goalAnchor = ""
 		if _, fix := e.upward(st); fix {
 			th.reviewedAt = th.requests
 			return e.finish(st, cell{tier: st.cfg.Baseline, reason: policy.ReasonFit, state: th.state}), true
@@ -723,6 +745,14 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		th.remember(d)
 		e.logDecision(d, nil, st, d.Route)
 		return d, true
+	}
+	if advice != nil && (th.goalAnchor == "" || !policy.SameTask(st.policy, advice, false)) {
+		th.goalAnchor = ""
+		newTask := advice.Continuation != nil && !policy.SameTask(st.policy, advice, false) && *advice.Continuation <= 1-st.policy.ContinuationMass
+		if newTask && advice.Activity != nil && slices.Contains(config.Activities, advice.Activity.Choice) &&
+			advice.Activity.Probabilities[advice.Activity.Choice] >= st.policy.ActivityMass {
+			th.goalAnchor = st.facts.Prompt
+		}
 	}
 	if th.recovering && advice != nil && !policy.SameTask(st.policy, advice, false) {
 		th.state.HoldUntilTurn, th.recovering = 0, false
@@ -758,8 +788,16 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 	if r := th.review; r != nil && r.ready {
 		th.review = nil
 		if r.answer != nil && !th.turnPinned {
-			cur = keepTurn(e.choose(st, e.incumbent(st), r.answer, true), th.state.Turn)
-			th.state, th.advice, th.observedFrom, th.reviewedAt = cur.state, r.answer, r.upTo, th.requests
+			advice := r.answer
+			if r.input == (responses.Context{}) || r.input != st.req.Context() {
+				// A bounded phase expires with its snapshot. Later input may
+				// introduce edits or diagnosis, even within the same turn.
+				copy := *advice
+				copy.Phase = nil
+				advice = &copy
+			}
+			cur = keepTurn(e.choose(st, e.incumbent(st), advice, true), th.state.Turn)
+			th.state, th.advice, th.observedFrom, th.reviewedAt = cur.state, advice, r.upTo, th.requests
 			reviewed = true
 		}
 	}
@@ -775,7 +813,7 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 	every := st.policy.ReviewEveryRequests
 	if every > 0 && e.ask != nil && !th.turnPinned && th.review == nil && th.requests-th.reviewedAt >= every {
 		ctx, cancel := context.WithTimeout(context.Background(), st.cfg.DecideTimeout())
-		job = &review{ctx: ctx, cancel: cancel, done: make(chan struct{}), upTo: st.facts.Items}
+		job = &review{ctx: ctx, cancel: cancel, done: make(chan struct{}), upTo: st.facts.Items, input: st.req.Context()}
 		th.review, th.reviewedAt = job, th.requests
 	}
 	return e.finish(st, cur), job
@@ -849,6 +887,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	window := e.window(st, routeFor)
 	d := e.base(st)
 	d.Tier, d.Reason, d.Estimate, d.Activity = c.tier, c.reason, c.estimate, label(c.activity, th.advice)
+	d.EffectiveActivity = c.activity
 	d.Reading = reading(th.advice)
 	refused := policy.ReasonFit
 	candidate := routeFor(c.tier)
@@ -913,6 +952,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	} else if !th.hasSent {
 		th.switchedAt = mark{requests: th.requests, items: len(st.req.Input)}
 	}
+	th.goalContext = st.req.Context()
 	th.sent, th.hasSent = d.Route, true
 	th.approx = st.tokens
 	th.stepIndex++
@@ -947,10 +987,15 @@ func (e *Engine) logDecision(d Decision, advice *classifier.Advice, st *step, ca
 	if st.measuredContext {
 		source = "measured-prefix"
 	}
+	goal, phase := config.Activity(""), classifier.Phase("")
+	if d.Reading != nil {
+		goal, phase = d.Reading.Activity, d.Reading.Phase
+	}
 	window, _ := st.cat.Window(candidate.Model)
 	e.log.Info("route decision", "thread", d.ThreadID, "turn", d.TurnID, "step", d.Step, "tier", d.Tier,
 		"activity", d.Activity, "reason", d.Reason, "model", d.Route.Model, "effort", d.Route.Effort, "rewritten", d.Rewritten,
 		"mode", d.RoutingMode, "modeSource", d.RoutingModeSource, "classified", classified,
+		"goal", goal, "phase", phase, "effectiveActivity", d.EffectiveActivity,
 		"request", st.meta.RequestID, "contextTokens", st.tokens, "contextSource", source, "requestBytes", st.req.Bytes,
 		"candidateModel", candidate.Model, "candidateEffort", candidate.Effort, "candidateWindow", window, "contextFill", st.policy.ContextFill)
 }
@@ -1282,7 +1327,7 @@ func (st *step) classifierInput() classifier.Input {
 			routes[tier] = p.route
 		}
 	}
-	return classifier.Input{Prompt: f.Prompt, Dialogue: msgs, Routes: routes}
+	return classifier.Input{Prompt: f.Prompt, CurrentStep: f.CurrentStep, GoalAnchor: st.goalAnchor, Dialogue: msgs, Routes: routes}
 }
 
 // panicText names a panic without echoing arbitrary values, which might
