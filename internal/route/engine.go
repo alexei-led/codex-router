@@ -94,6 +94,7 @@ type thread struct {
 	model       string       // the last request's model
 	tier        config.Tier
 	activity    config.Activity   // the activity whose route runs, "" for the base route
+	floor       config.Activity   // accepted ops reasoning/code intent, in memory only
 	goalAnchor  string            // bounded user text, in memory only
 	goalContext responses.Context // input prefix, independent of usage measurements
 	// routeMode is the routing mode the running route was chosen under. The
@@ -551,7 +552,7 @@ func (e *Engine) begin(th *thread, req *responses.Request, m responses.Meta, pro
 	th.lastItems = len(req.Input)
 	cat := e.cat.Current()
 	if _, ok := cat.GroupOf(req.Model); !ok {
-		th.goalAnchor = ""
+		th.goalAnchor, th.floor = "", ""
 		return nil, nil, old, false
 	}
 	if first && proj.done {
@@ -672,7 +673,7 @@ func (e *Engine) abandonLocked(st *step) {
 		return
 	}
 	st.th.turnOff = true
-	st.th.goalAnchor = ""
+	st.th.goalAnchor, st.th.floor = "", ""
 	if st.pin != nil && st.th.pin == nil {
 		st.th.pin = st.pin
 	}
@@ -740,7 +741,7 @@ func (e *Engine) decideFirst(st *step, advice *classifier.Advice, askErr error) 
 		return Decision{}, false
 	}
 	if askErr != nil {
-		th.goalAnchor = ""
+		th.goalAnchor, th.floor = "", ""
 		if _, fix := e.upward(st); fix {
 			th.reviewedAt = th.requests
 			return e.finish(st, cell{tier: st.cfg.Baseline, reason: policy.ReasonFit, state: th.state}), true
@@ -795,6 +796,9 @@ func (e *Engine) decideLater(st *step) (Decision, *review) {
 		return Decision{}, nil
 	}
 	cur := cell{tier: th.tier, activity: th.activity, mode: th.routeMode, reason: ReasonContinue, state: th.state, route: th.sent}
+	if th.floor != "" {
+		cur.activity, cur.opsFloor = th.floor, true
+	}
 	reviewed := false
 	if r := th.review; r != nil && r.ready {
 		th.review = nil
@@ -955,6 +959,10 @@ func (e *Engine) finish(st *step, c cell) Decision {
 		th.recovering = false
 	}
 	th.tier, th.activity, th.routeMode = d.Tier, d.EffectiveActivity, c.mode
+	th.floor = ""
+	if c.opsFloor {
+		th.floor = c.activity
+	}
 	th.requests++
 	tax := 0
 	if d.Route != prev {

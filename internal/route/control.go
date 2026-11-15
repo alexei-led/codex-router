@@ -233,6 +233,7 @@ func (e *Engine) apply(c Command) ([]Decision, Snapshot, error) {
 // Config changes restart the engine; learned recovery is never persisted.
 func (e *Engine) fence(th *thread) {
 	th.epoch++
+	th.floor = ""
 	th.failureFrom = th.lastItems
 	if th.recovering {
 		th.state.HoldUntilTurn = 0

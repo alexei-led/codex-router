@@ -33,6 +33,18 @@ type running struct {
 	activity config.Activity
 	mode     config.RoutingMode
 	route    config.Route
+	floor    config.Activity // accepted semantic preference, separate from physical activity
+}
+
+// keepIncumbent also restores projection provenance: a rejected proposal must
+// not reinterpret the activity of the physical pair that stayed.
+func keepIncumbent(c cell, inc running) cell {
+	c.activity, c.mode, c.route = inc.activity, inc.mode, inc.route
+	c.opsFloor = inc.floor != ""
+	if c.opsFloor {
+		c.activity = inc.floor
+	}
+	return c
 }
 
 // incumbent is the route in use: aimed with the mode it was chosen under, not
@@ -43,7 +55,7 @@ func (e *Engine) incumbent(st *step) running {
 	if th.hasSent {
 		r = th.sent
 	}
-	return running{tier: th.tier, activity: th.activity, mode: th.routeMode, route: r}
+	return running{tier: th.tier, activity: th.activity, mode: th.routeMode, route: r, floor: th.floor}
 }
 
 // downAllowed is the gate for a cheaper route on the same task: the dwell has
@@ -86,6 +98,15 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 		default:
 			// A rejected label must not remap the incumbent through a floor.
 			opsFloor = false
+		}
+	}
+	if !accepted && !opsFloor && inc.floor != "" && (advice == nil || policy.SameTask(p, advice, midTurn)) {
+		act, opsFloor = inc.floor, true
+		if advice != nil && advice.Activity != nil && advice.Activity.Choice == config.ActivityOps &&
+			st.routeIn(st.routeMode, inc.tier, config.ActivityOps) == inc.route {
+			// An accepted bounded phase supersedes the engineering intent
+			// even when both currently resolve to the same physical pair.
+			act, opsFloor = config.ActivityOps, false
 		}
 	}
 	routeFor := func(t config.Tier) config.Route { return routeIn(st.routeMode, t, act) }
@@ -142,7 +163,7 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 		if nominated {
 			move, reason, est := e.lateral(st, inc.route, to, advice.Activity.Probabilities[act], r.Reason == policy.ReasonHold)
 			if !move {
-				c.activity, c.mode, c.route = inc.activity, inc.mode, inc.route
+				c = keepIncumbent(c, inc)
 				c.reason, c.estimate = reason, est
 				return c
 			}
@@ -170,7 +191,7 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 			c.mode, c.route = config.ModeBalanced, base
 			return e.activityMove(st, c, inc, base, act, advice, r.Reason == policy.ReasonHold)
 		}
-		c.activity, c.mode, c.route = inc.activity, inc.mode, inc.route
+		c = keepIncumbent(c, inc)
 		c.reason, c.estimate = reason, est
 		return c
 	}
@@ -232,7 +253,7 @@ func (e *Engine) activityMove(st *step, c cell, inc running, to config.Route, ac
 	}
 	move, reason, est := e.lateral(st, inc.route, to, mass, hold)
 	if !move {
-		c.activity, c.mode, c.route = inc.activity, inc.mode, inc.route
+		c = keepIncumbent(c, inc)
 	}
 	c.reason, c.estimate = reason, est
 	return c
@@ -276,6 +297,7 @@ func (e *Engine) observedMove(st *step, cur cell) cell {
 		return cur
 	}
 	cur.tier, cur.activity, cur.reason, cur.estimate, cur.route = tier, act, ReasonObserved, est, to
+	cur.opsFloor = false
 	return cur
 }
 
