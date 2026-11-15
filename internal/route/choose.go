@@ -160,7 +160,11 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	// configured route, so a move back to balanced passes the gate too.
 	base := routeIn(config.ModeBalanced, r.Tier, act)
 	if to != base || inc.route != st.routeIn(config.ModeBalanced, inc.tier, inc.activity) {
-		if nominated {
+		// A new phase-derived pair needs its own evidence even if the label
+		// stayed the same. Existing floor intent and pure mode transforms
+		// still use their ordinary mode gates.
+		phaseChange := opsFloor && inc.floor != act && to != st.routeIn(st.routeMode, r.Tier, inc.activity)
+		if nominated || phaseChange {
 			move, reason, est := e.lateral(st, inc.route, to, advice.Activity.Probabilities[act], r.Reason == policy.ReasonHold)
 			if !move {
 				c = keepIncumbent(c, inc)
