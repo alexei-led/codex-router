@@ -24,6 +24,7 @@ type cell struct {
 	estimate *policy.Estimate
 	advice   *classifier.Advice // the answer this step used, if any
 	route    config.Route       // immutable physical pair; empty before resolution
+	opsFloor bool               // apply inherited-floor safety at every candidate tier
 }
 
 // running is the incumbent cell with its resolved route.
@@ -58,10 +59,36 @@ func downAllowed(st *step) bool {
 // lateral rule for activities.
 func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTurn bool) cell {
 	cfg, p, th := st.cfg, st.policy, st.th
+	raw := advice
 	advice = effectiveAdvice(advice, p)
+	opsFloor := raw != nil && raw.Activity != nil && raw.Activity.Choice == config.ActivityOps &&
+		advice.Activity != nil && (advice.Activity.Choice == config.ActivityDebug || advice.Activity.Choice == config.ActivityCode)
+	routeIn := func(mode config.RoutingMode, t config.Tier, a config.Activity) config.Route {
+		return st.routeIn(mode, t, st.phaseActivity(mode, t, a, opsFloor))
+	}
 	down := downAllowed(st)
-	act := chooseActivity(cfg, p, advice, inc, func(t config.Tier, a config.Activity) config.Route { return st.routeFor(t, a) }, midTurn, down)
-	routeFor := func(t config.Tier) config.Route { return st.routeFor(t, act) }
+	act, accepted := chooseActivity(cfg, p, advice, inc, func(t config.Tier, a config.Activity) config.Route { return routeIn(st.routeMode, t, a) }, midTurn, down)
+	nominated := false
+	if opsFloor && !accepted {
+		floor := advice.Activity.Choice
+		candidate := routeIn(st.routeMode, inc.tier, floor)
+		_, explicit := cfg.Activities[floor][inc.tier]
+		_, ordered := compareRoutes(cfg, candidate, inc.route)
+		switch {
+		case candidate == inc.route:
+			// Equal physical pairs need no switch, but the preference must
+			// follow reasoning/code if a later tier upgrade occurs.
+			act = floor
+		case explicit && !ordered && policy.SameTask(p, advice, midTurn):
+			// Operator-declared phase preference is nomination evidence, not
+			// a capability ranking. Lateral and mode gates still decide.
+			act, nominated = floor, true
+		default:
+			// A rejected label must not remap the incumbent through a floor.
+			opsFloor = false
+		}
+	}
+	routeFor := func(t config.Tier) config.Route { return routeIn(st.routeMode, t, act) }
 	var escalate func(config.Tier) (config.Tier, bool)
 	if act != "" {
 		// With an activity, a failure moves to the lowest tier whose route is
@@ -78,7 +105,7 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	}
 	// Logical high cannot tier-escalate. Escape cost's physical target to
 	// balanced high only when that pair is eligible and strictly stronger.
-	recovery := st.routeIn(config.ModeBalanced, config.TierHigh, act)
+	recovery := routeIn(config.ModeBalanced, config.TierHigh, act)
 	physical := st.routeMode == config.ModeCost && inc.tier == config.TierHigh &&
 		recovery.Model != inc.route.Model && e.fits(st, recovery)
 	if o, ordered := compareRoutes(cfg, recovery, inc.route); !ordered || o <= 0 {
@@ -98,7 +125,7 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 		Escalate:  escalate,
 	}
 	r := policy.Decide(in)
-	c := cell{tier: r.Tier, activity: act, mode: st.routeMode, reason: r.Reason, state: r.State, estimate: r.Estimate, advice: advice}
+	c := cell{tier: r.Tier, activity: act, mode: st.routeMode, reason: r.Reason, state: r.State, estimate: r.Estimate, advice: advice, opsFloor: opsFloor}
 	to := routeFor(r.Tier)
 	c.route = to
 	if physical && r.Reason == policy.ReasonEscalation {
@@ -110,8 +137,16 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	}
 	// A move is the mode's when its target or the incumbent sits off the
 	// configured route, so a move back to balanced passes the gate too.
-	base := st.routeIn(config.ModeBalanced, r.Tier, act)
+	base := routeIn(config.ModeBalanced, r.Tier, act)
 	if to != base || inc.route != st.routeIn(config.ModeBalanced, inc.tier, inc.activity) {
+		if nominated {
+			move, reason, est := e.lateral(st, inc.route, to, advice.Activity.Probabilities[act], r.Reason == policy.ReasonHold)
+			if !move {
+				c.activity, c.mode, c.route = inc.activity, inc.mode, inc.route
+				c.reason, c.estimate = reason, est
+				return c
+			}
+		}
 		o, ok := modeOrder(cfg, to, inc.route)
 		tax := e.ledger.SwitchTax(th.id, to.Model, st.tokens, st.now)
 		move, reason, est := policy.Lateral(in, r, tax, ok && o < 0)
@@ -142,21 +177,46 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 	return e.activityMove(st, c, inc, to, act, advice, r.Reason == policy.ReasonHold)
 }
 
-// effectiveAdvice routes a bounded phase as ops only when both independent
-// answers clear the activity bar. Other policy gates still decide the move.
+// effectiveAdvice selects a phase-appropriate preference without changing the
+// durable goal. Uncertain ops advice preserves a continuation's activity and
+// uses the generic baseline on a fresh task; it cannot authorize a discount.
 func effectiveAdvice(a *classifier.Advice, p config.Policy) *classifier.Advice {
-	if a == nil || a.Activity == nil || a.Phase == nil ||
-		!slices.Contains(config.Activities, a.Activity.Choice) ||
-		(a.Phase.Choice != classifier.PhaseVerify && a.Phase.Choice != classifier.PhaseExecute) {
+	if a == nil || a.Activity == nil || !slices.Contains(config.Activities, a.Activity.Choice) {
 		return a
 	}
-	goalMass, phaseMass := a.Activity.Probabilities[a.Activity.Choice], a.Phase.Probabilities[a.Phase.Choice]
-	mass := min(goalMass, phaseMass)
-	if mass < p.ActivityMass || goalMass > 1 || phaseMass > 1 || math.IsNaN(goalMass) || math.IsNaN(phaseMass) {
+	goal := a.Activity.Choice
+	act, mass := goal, 0.0
+	accepted := false
+	if a.Phase != nil {
+		goalMass, phaseMass := a.Activity.Probabilities[goal], a.Phase.Probabilities[a.Phase.Choice]
+		mass = min(goalMass, phaseMass)
+		accepted = mass >= p.ActivityMass && goalMass <= 1 && phaseMass <= 1 &&
+			!math.IsNaN(goalMass) && !math.IsNaN(phaseMass)
+	}
+	if accepted {
+		switch a.Phase.Choice {
+		case classifier.PhaseVerify, classifier.PhaseExecute:
+			act = config.ActivityOps
+		case classifier.PhaseReason:
+			if goal == config.ActivityOps {
+				act = config.ActivityDebug
+			}
+		case classifier.PhaseProduce:
+			if goal == config.ActivityOps {
+				act = config.ActivityCode
+			}
+		default:
+			accepted = false
+		}
+	}
+	if goal == config.ActivityOps && !accepted {
+		act = config.ActivityUncertain
+	}
+	if act == goal {
 		return a
 	}
 	copy := *a
-	copy.Activity = &classifier.ActivityAdvice{Choice: config.ActivityOps, Probabilities: map[config.Activity]float64{config.ActivityOps: mass}}
+	copy.Activity = &classifier.ActivityAdvice{Choice: act, Probabilities: map[config.Activity]float64{act: mass}}
 	return &copy
 }
 
@@ -256,45 +316,42 @@ func (e *Engine) lateral(st *step, from, to config.Route, mass float64, hold boo
 // answer the incumbent's stays. On a new task the answer applies at
 // ActivityMass. On the same task (a review inside a turn, or a continuation
 // prompt) a stronger route is taken at once, a cheaper one only at
-// DowngradeMass once the dwell and a passed check allow it.
-func chooseActivity(cfg config.Config, p config.Policy, a *classifier.Advice, inc running, routeFor func(config.Tier, config.Activity) config.Route, midTurn, down bool) config.Activity {
+// DowngradeMass once the dwell and a passed check allow it. The boolean says
+// the proposed label was accepted, not merely equal to the incumbent label.
+func chooseActivity(cfg config.Config, p config.Policy, a *classifier.Advice, inc running, routeFor func(config.Tier, config.Activity) config.Route, midTurn, down bool) (config.Activity, bool) {
 	if a == nil || a.Activity == nil {
-		return inc.activity
+		return inc.activity, false
 	}
 	label := a.Activity.Choice
 	if !slices.Contains(config.Activities, label) {
 		if policy.SameTask(p, a, midTurn) {
-			return inc.activity
+			return inc.activity, false
 		}
-		return ""
+		return "", false
 	}
 	mass := a.Activity.Probabilities[label]
 	if !policy.SameTask(p, a, midTurn) {
 		if mass >= p.ActivityMass {
-			return label
+			return label, true
 		}
-		return ""
+		return "", false
 	}
 	o, ok := compareRoutes(cfg, routeFor(inc.tier, label), inc.route)
 	if ok && o > 0 {
-		return label
+		return label, true
 	}
 	if ok && o < 0 && down && mass >= p.DowngradeMass {
-		return label
+		return label, true
 	}
-	return inc.activity
+	return inc.activity, false
 }
 
-// compareRoutes orders two resolved routes: 1 when a is stronger, -1 when
-// cheaper, 0 when equal, false when they do not order. Models order by
-// configured output price, then by the highest tier whose base route runs
-// them; the same model orders by effort.
+// compareRoutes orders two resolved routes by declared capability: 1 when a
+// is stronger, -1 when weaker, 0 when equal, false when they do not order.
+// Models use the highest tier whose base route runs them; the same model
+// orders by effort. Tariffs are economics, not evidence of capability.
 func compareRoutes(cfg config.Config, a, b config.Route) (int, bool) {
 	if a.Model != b.Model {
-		pa, pb := cfg.Prices[a.Model].Output, cfg.Prices[b.Model].Output
-		if pa > 0 && pb > 0 && pa != pb {
-			return cmp.Compare(pa, pb), true
-		}
 		ra, rb := modelRank(cfg, a.Model), modelRank(cfg, b.Model)
 		if ra < 0 || rb < 0 || ra == rb {
 			return 0, false

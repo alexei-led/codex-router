@@ -1,7 +1,6 @@
 package route
 
 import (
-	"cmp"
 	"slices"
 
 	"github.com/alexei-led/codex-router/internal/catalog"
@@ -76,15 +75,10 @@ func cheaperInput(cfg config.Config, a, b string) bool {
 	return pa > 0 && pb > 0 && pa < pb
 }
 
-// modeOrder orders a and b as the transform picks targets: by input price
-// when both models are priced and differ, else as compareRoutes. The mode
-// gate uses it, so a move cost picked as cheaper is gated as cheaper.
+// modeOrder uses the same declared capability order as activity moves.
+// The cost transform still checks input prices, but tariffs cannot reverse
+// the upgrade/downgrade gate for the resulting pair.
 func modeOrder(cfg config.Config, a, b config.Route) (int, bool) {
-	if a.Model != b.Model {
-		if pa, pb := cfg.Prices[a.Model].Input, cfg.Prices[b.Model].Input; pa > 0 && pb > 0 && pa != pb {
-			return cmp.Compare(pa, pb), true
-		}
-	}
 	return compareRoutes(cfg, a, b)
 }
 

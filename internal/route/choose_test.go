@@ -25,7 +25,7 @@ func TestCompareRoutes(t *testing.T) {
 		{"stronger tier's model", cfg, high, medium, 1, true},
 		{"cheaper tier's model", cfg, low, high, -1, true},
 		{"model outside the routes", cfg, config.Route{Model: "gpt-x", Effort: config.EffortHigh}, low, 0, false},
-		{"price orders before rank", priced, low, medium, 1, true},
+		{"tariffs cannot reverse declared rank", priced, low, medium, -1, true},
 		{"one price falls back to rank", priced, high, medium, 1, true},
 	}
 	for _, tt := range tests {
@@ -76,7 +76,7 @@ func TestChooseActivity(t *testing.T) {
 			routeFor := func(t config.Tier, a config.Activity) config.Route {
 				return resolve(cfg.RouteFor(t, a), config.EffortMedium)
 			}
-			got := chooseActivity(cfg, p, tt.advice, tt.inc, routeFor, tt.midTurn, tt.down)
+			got, _ := chooseActivity(cfg, p, tt.advice, tt.inc, routeFor, tt.midTurn, tt.down)
 			if got != tt.want {
 				t.Fatalf("chooseActivity = %q, want %q", got, tt.want)
 			}

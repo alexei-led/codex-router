@@ -206,10 +206,9 @@ func legacyConfig() config.Config {
 	return c
 }
 
-// TestBalancedDecisionsAreUnchanged pins balanced routing to decisions the
-// engine made before routing modes existed (recorded on v0.8.0's engine):
-// with no mode set and with balanced set in the config, every decision of
-// both replays matches the golden byte for byte.
+// TestBalancedDecisionsAreUnchanged pins the approved balanced behavior,
+// including conservative routing for ops without phase evidence. With no mode
+// set and with balanced set explicitly, both replays match the same goldens.
 func TestBalancedDecisionsAreUnchanged(t *testing.T) {
 	for _, tc := range []struct {
 		name string

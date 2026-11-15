@@ -8,6 +8,12 @@ On 2026-11-13 an initial eight synthetic Jev 1.14 cases matched six expected goa
 
 Those four cases were an initial boundary holdout. After adding current-loop phase context, the repeated set matched 13/13, including a fresh request with stale verification advice and the legitimate short-approval case. Repeated and retuned sets are development checks, not a final holdout or evidence of savings. All prompts were synthetic; no repository or session content was sent. The opt-in `TestLiveGoalPhaseChecks` uses the production request builder/client/parser. Deterministic route tests separately check conservative missing/invalid answers, down gates, history replacement without token usage, and the diagnostic labels. TypeSafe [reports multilingual improvements and an experimental Box type](https://typesafe.ai/blog/jev-1-14) in Jev 1.14; this router uses no Box questions. Same-price pilot parity does not establish routing-quality improvements.
 
+## Operational phase policy checks
+
+Deterministic typed-classifier fixtures exercise ops reasoning and implementation floors without changing the durable goal. A synthetic compatible catalog reproduces a work-proxy-like matrix: ops medium DeepSeek high versus generic medium GLM Flash high, and bounded high Sonnet medium versus reasoning high Opus high. These are policy fixtures, not evidence that those providers are available or compatible in Codex.
+
+The tests apply the actual Responses JSON rewrite and assert model and reasoning effort together. They also cover conservative fresh/continuation uncertainty, pins, cancellation, dwell, stale reviews and the absence of local keyword tiers. Tariff inversion tests keep capability order fixed while changing economic estimates. Reply diagnostics distinguish selected and response-body identity and missing price coverage; they cannot establish served effort, external task acceptance or a billed cost per successful task. No live provider evaluation was run for this policy update.
+
 ## Terra defaults
 
 The Luna/Terra/Sol preference matrix is a **derived routing policy**, not a provider recommendation or permission boundary. Standard input/cached-input/output prices per million tokens are Luna $0.10/$0.01/$0.50, Terra $1/$0.05/$5, and Sol $2/$0.10/$10. [OpenAI model specifications](https://developers.openai.com/api/docs/models/gpt-6.1-terra) and the [independent efficiency comparison](https://artificialanalysis.ai/articles/gpt-6-1-terra-pushes-the-cost-efficiency-frontier) motivate testing Terra between Luna and Sol; they do not establish your Codex entitlement or window.
@@ -65,7 +71,7 @@ What the replay shows, and what it does not:
 - Without `prices`, `cost` cannot use its model lever and no dollar figure exists: it changes effort and the switching policy only.
 - The answers are random, not a real workload. The replay checks direction and size, not real savings.
 
-`TestBalancedDecisionsAreUnchanged` freezes the legacy/custom ladder and pins its balanced decisions to goldens recorded on the v0.8.0 engine: about 1,400 from the plain replay, and about 1,900 from a second replay that adds background reviews, pins, context compaction and threads seeded by a resume. Both replays round `a*b+c` sums before adding (`float64(a*b) + c`), so the goldens are the same on arm64 and amd64.
+`TestBalancedDecisionsAreUnchanged` freezes the legacy/custom ladder and pins its balanced decisions to goldens derived from the v0.8.0 engine and updated for conservative phase-free ops routing: about 1,400 from the plain replay, and about 1,900 from a second replay that adds background reviews, pins, context compaction and threads seeded by a resume. Both replays round `a*b+c` sums before adding (`float64(a*b) + c`), so the goldens are the same on arm64 and amd64.
 
 ### Decision matrix
 

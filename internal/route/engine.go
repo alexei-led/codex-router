@@ -318,12 +318,6 @@ type routeKey struct {
 
 func (s *step) sent() config.Effort { return s.req.Effort }
 
-// routeFor is the route the step's routing mode aims at for tier t and
-// activity a.
-func (s *step) routeFor(t config.Tier, a config.Activity) config.Route {
-	return s.routeIn(s.routeMode, t, a)
-}
-
 // routeIn is mode's target for tier t and activity a, over the catalog's
 // efforts per model.
 func (s *step) routeIn(mode config.RoutingMode, t config.Tier, a config.Activity) config.Route {
@@ -334,6 +328,23 @@ func (s *step) routeIn(mode config.RoutingMode, t config.Tier, a config.Activity
 		return s.plans[routeKey{mode, t, a}].route
 	}
 	return target(s.cfg, mode, t, a, s.sent(), levelsIn(s.cat))
+}
+
+// phaseActivity protects ops from an inherited floor that is weaker or
+// unordered. Explicit cells, including use-tier declarations, remain owned
+// by the user. Both candidates come from the immutable eligibility plan.
+func (s *step) phaseActivity(mode config.RoutingMode, t config.Tier, a config.Activity, opsFloor bool) config.Activity {
+	if !opsFloor || (a != config.ActivityDebug && a != config.ActivityCode) {
+		return a
+	}
+	if _, explicit := s.cfg.Activities[a][t]; explicit {
+		return a
+	}
+	floor, ops := s.routeIn(mode, t, a), s.routeIn(mode, t, config.ActivityOps)
+	if o, ordered := compareRoutes(s.cfg, floor, ops); !ordered || o < 0 {
+		return config.ActivityOps
+	}
+	return a
 }
 
 // plan resolves and validates every cell before asking for advice. Catalog
@@ -878,16 +889,18 @@ func (r *review) stop(ctx context.Context) {
 func (e *Engine) finish(st *step, c cell) Decision {
 	th := st.th
 	cfg := st.cfg
+	activityFor := func(t config.Tier) config.Activity {
+		return st.phaseActivity(c.mode, t, c.activity, c.opsFloor)
+	}
 	routeFor := func(t config.Tier) config.Route {
 		if t == c.tier && c.route.Model != "" {
 			return c.route
 		}
-		return st.routeIn(c.mode, t, c.activity)
+		return st.routeIn(c.mode, t, activityFor(t))
 	}
 	window := e.window(st, routeFor)
 	d := e.base(st)
-	d.Tier, d.Reason, d.Estimate, d.Activity = c.tier, c.reason, c.estimate, label(c.activity, th.advice)
-	d.EffectiveActivity = c.activity
+	d.Tier, d.Reason, d.Estimate = c.tier, c.reason, c.estimate
 	d.Reading = reading(th.advice)
 	refused := policy.ReasonFit
 	candidate := routeFor(c.tier)
@@ -915,11 +928,13 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	} else {
 		d.Route, d.Reason, d.Estimate = st.original, refused, nil
 	}
+	d.EffectiveActivity = activityFor(d.Tier)
+	d.Activity = label(d.EffectiveActivity, th.advice)
 	if d.Reason == ReasonUnavailable {
 		preferred := candidate
 		d.Preferred = &preferred
 	}
-	if plan, ok := st.plans[routeKey{c.mode, c.tier, c.activity}]; ok && plan.preferred != plan.route && c.route == plan.route {
+	if plan, ok := st.plans[routeKey{c.mode, c.tier, activityFor(c.tier)}]; ok && plan.preferred != plan.route && c.route == plan.route {
 		preferred := plan.preferred
 		d.Preferred = &preferred
 		d.Reason = ReasonUnavailable
@@ -939,7 +954,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	if c.mode == config.ModeCost {
 		th.recovering = false
 	}
-	th.tier, th.activity, th.routeMode = d.Tier, c.activity, c.mode
+	th.tier, th.activity, th.routeMode = d.Tier, d.EffectiveActivity, c.mode
 	th.requests++
 	tax := 0
 	if d.Route != prev {
@@ -994,6 +1009,7 @@ func (e *Engine) logDecision(d Decision, advice *classifier.Advice, st *step, ca
 	window, _ := st.cat.Window(candidate.Model)
 	e.log.Info("route decision", "thread", d.ThreadID, "turn", d.TurnID, "step", d.Step, "tier", d.Tier,
 		"activity", d.Activity, "reason", d.Reason, "model", d.Route.Model, "effort", d.Route.Effort, "rewritten", d.Rewritten,
+		"requestedModel", d.Original.Model, "requestedEffort", d.Original.Effort,
 		"mode", d.RoutingMode, "modeSource", d.RoutingModeSource, "classified", classified,
 		"goal", goal, "phase", phase, "effectiveActivity", d.EffectiveActivity,
 		"request", st.meta.RequestID, "contextTokens", st.tokens, "contextSource", source, "requestBytes", st.req.Bytes,
@@ -1248,7 +1264,8 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 	if model != "" && u.InputTokens > 0 {
 		e.ledger.Observe(key, model, u, now)
 	}
-	e.log.Debug("route reply", "thread", key, "turn", m.TurnID, "request", m.RequestID, "served", served, "inputTokens", u.InputTokens, "outputTokens", u.OutputTokens)
+	attrs := []any{"thread", key, "turn", m.TurnID, "request", m.RequestID,
+		"responseModel", served, "inputTokens", u.InputTokens, "cachedInputTokens", u.CachedInputTokens, "outputTokens", u.OutputTokens}
 	if d != nil {
 		priced := *d
 		priced.Route.Model = model
@@ -1256,7 +1273,15 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 			priced.Route.Model = served
 		}
 		th.stats.reply(priced, u, now, e.cfg.Prices, th.native.Model)
+		priceSource := "unpriced"
+		if completePrice(e.cfg.Prices[priced.Route.Model]) && completePrice(e.cfg.Prices[th.native.Model]) {
+			priceSource = "configured-price-estimate"
+		}
+		attrs = append(attrs, "requestedModel", d.Original.Model, "requestedEffort", d.Original.Effort,
+			"selectedModel", d.Route.Model, "selectedEffort", d.Route.Effort,
+			"costModel", priced.Route.Model, "costBaselineModel", th.native.Model, "priceSource", priceSource)
 	}
+	e.log.Debug("route reply", attrs...)
 	return e.snapshot(th, now)
 }
 
