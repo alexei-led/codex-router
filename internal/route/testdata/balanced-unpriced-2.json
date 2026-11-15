@@ -1339,7 +1339,7 @@
   "Turn": "b24",
   "Step": 0,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "code",
   "Route": {
    "model": "gpt-6-sol",
    "effort": "medium"
@@ -1359,7 +1359,7 @@
   "Turn": "b24",
   "Step": 1,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "code",
   "Route": {
    "model": "gpt-6-sol",
    "effort": "medium"
@@ -1379,7 +1379,7 @@
   "Turn": "b24",
   "Step": 2,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "code",
   "Route": {
    "model": "gpt-6-sol",
    "effort": "medium"
@@ -3065,7 +3065,7 @@
   "Estimate": {
    "TaxTokens": 0,
    "Threshold": 0,
-   "Mass": 0.6147476374847376,
+   "Mass": 1,
    "Streak": 1
   }
  },

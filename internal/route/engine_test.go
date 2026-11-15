@@ -1490,12 +1490,13 @@ func TestObservedMoveGuards(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := testConfig()
 			cfg.Activities[config.ActivityCode] = map[config.Tier]config.Route{config.TierHigh: code}
-			cfg.Prices = map[string]config.Price{
-				"gpt-6.1-sol": {Input: 1, Output: 10},
-				"gpt-6-sol":   {Input: 2, Output: 20},
-			}
+			// Declare the smaller-window model above the incumbent. Prices
+			// cannot establish the capability edge this guard exercises.
+			cfg.Routes[config.TierMedium] = high
+			cfg.Routes[config.TierHigh] = code
+			cfg.Activities[config.ActivityExplore] = map[config.Tier]config.Route{config.TierHigh: high}
 			h := newHarness(t, cfg)
-			h.asker.script(answer(tier("high", 0.99)))
+			h.asker.script(answer(withActivity(tier("high", 0.99), config.ActivityExplore, 0.99)))
 			m := meta("th", "t1")
 			items := []responses.Item{userMsg(secretPrompt)}
 			h.decide(req(high, items...), m)

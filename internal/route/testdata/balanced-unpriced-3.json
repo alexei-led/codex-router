@@ -3434,7 +3434,7 @@
   "Turn": "a65",
   "Step": 0,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6-sol",
    "effort": "medium"
@@ -3459,7 +3459,7 @@
   "Turn": "a66",
   "Step": 0,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "debug",
   "Route": {
    "model": "gpt-6-sol",
    "effort": "medium"
@@ -3484,7 +3484,7 @@
   "Turn": "a66",
   "Step": 1,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "debug",
   "Route": {
    "model": "gpt-6-sol",
    "effort": "medium"
@@ -3504,7 +3504,7 @@
   "Turn": "a66",
   "Step": 2,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "debug",
   "Route": {
    "model": "gpt-6-sol",
    "effort": "medium"

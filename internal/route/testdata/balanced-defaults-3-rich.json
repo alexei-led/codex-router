@@ -749,7 +749,7 @@
   "Turn": "c9",
   "Step": 3,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -774,7 +774,7 @@
   "Turn": "c9",
   "Step": 4,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -794,7 +794,7 @@
   "Turn": "c9",
   "Step": 5,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -1129,7 +1129,7 @@
   "Turn": "c14",
   "Step": 0,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "debug",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -1154,7 +1154,7 @@
   "Turn": "c14",
   "Step": 1,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "debug",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -1174,7 +1174,7 @@
   "Turn": "c14",
   "Step": 2,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "debug",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -1194,7 +1194,7 @@
   "Turn": "c14",
   "Step": 3,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -1219,7 +1219,7 @@
   "Turn": "c14",
   "Step": 4,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -4799,7 +4799,7 @@
   "Turn": "d62",
   "Step": 0,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -4824,7 +4824,7 @@
   "Turn": "d62",
   "Step": 1,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -4844,7 +4844,7 @@
   "Turn": "d62",
   "Step": 2,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -5599,7 +5599,7 @@
   "Turn": "d71",
   "Step": 0,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -5619,7 +5619,7 @@
   "Turn": "d71",
   "Step": 1,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -5639,7 +5639,7 @@
   "Turn": "d71",
   "Step": 2,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -5659,7 +5659,7 @@
   "Turn": "d71",
   "Step": 3,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -6454,7 +6454,7 @@
   "Turn": "d81",
   "Step": 3,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "review",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -6479,7 +6479,7 @@
   "Turn": "d81",
   "Step": 4,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "review",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -6499,7 +6499,7 @@
   "Turn": "d81",
   "Step": 5,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "review",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"

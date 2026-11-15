@@ -1879,7 +1879,7 @@
   "Turn": "a33",
   "Step": 0,
   "Tier": "low",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6-luna",
    "effort": "high"
@@ -1904,7 +1904,7 @@
   "Turn": "a33",
   "Step": 1,
   "Tier": "low",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6-luna",
    "effort": "high"
@@ -1924,7 +1924,7 @@
   "Turn": "a33",
   "Step": 2,
   "Tier": "low",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6-luna",
    "effort": "high"
@@ -3064,7 +3064,7 @@
   "Turn": "a52",
   "Step": 0,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "docs",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"

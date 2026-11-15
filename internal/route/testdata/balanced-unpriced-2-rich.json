@@ -5439,7 +5439,7 @@
   "Turn": "a77",
   "Step": 3,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6-sol",
    "effort": "medium"

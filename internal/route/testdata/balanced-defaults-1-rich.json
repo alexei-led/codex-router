@@ -1989,7 +1989,7 @@
   "Turn": "b28",
   "Step": 3,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
@@ -2179,7 +2179,7 @@
   "Turn": "b32",
   "Step": 0,
   "Tier": "low",
-  "Activity": "ops",
+  "Activity": "explore",
   "Route": {
    "model": "gpt-6-luna",
    "effort": "high"
@@ -2204,7 +2204,7 @@
   "Turn": "b32",
   "Step": 1,
   "Tier": "low",
-  "Activity": "ops",
+  "Activity": "explore",
   "Route": {
    "model": "gpt-6-luna",
    "effort": "high"
@@ -2224,7 +2224,7 @@
   "Turn": "b32",
   "Step": 2,
   "Tier": "low",
-  "Activity": "ops",
+  "Activity": "explore",
   "Route": {
    "model": "gpt-6-luna",
    "effort": "high"
@@ -2244,7 +2244,7 @@
   "Turn": "b32",
   "Step": 3,
   "Tier": "low",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6-luna",
    "effort": "high"
@@ -2269,7 +2269,7 @@
   "Turn": "b32",
   "Step": 4,
   "Tier": "low",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6-luna",
    "effort": "high"
@@ -2909,7 +2909,7 @@
   "Turn": "c39",
   "Step": 3,
   "Tier": "medium",
-  "Activity": "ops",
+  "Activity": "",
   "Route": {
    "model": "gpt-6.1-sol",
    "effort": "medium"
