@@ -87,6 +87,7 @@ type view struct {
 	locked       bool
 	loading      bool // the focused session's snapshot has not arrived
 	zoom         bool // stacked: the detail alone, without the list
+	routeDetails bool // the activity-by-tier routes are expanded
 	pane         pane
 	help         bool
 	popover      popover
@@ -592,6 +593,13 @@ func footerBindings(v view) []key.Binding {
 		}
 		if v.tab == TabPolicy && !v.snap.ClassifierOff {
 			out = append(out, keys.Mode)
+		}
+		if v.tab == TabPolicy && len(v.snap.RouteCells) > 0 {
+			if v.routeDetails {
+				out = append(out, described(keys.Routes, "hide routes"))
+			} else {
+				out = append(out, keys.Routes)
+			}
 		}
 		out = append(out, described(keys.Toggle, toggle), described(keys.Home, home))
 	}

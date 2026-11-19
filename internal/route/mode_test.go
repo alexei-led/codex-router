@@ -40,6 +40,31 @@ func TestTargetGenericLadder(t *testing.T) {
 	}
 }
 
+func TestExplicitModeTargetsOverrideTransformsAndKeepBalancedPinRoute(t *testing.T) {
+	cfg := legacyConfig()
+	cfg.Prices = nil
+	cost := config.Route{Model: sol, Effort: config.EffortHigh}
+	code := config.Route{Effort: config.EffortXHigh}
+	cfg.Modes[config.ModeCost] = config.ModeConfig{
+		Routes: map[config.Tier]*config.Route{config.TierMedium: &cost},
+		Activities: map[config.Activity]map[config.Tier]*config.Route{
+			config.ActivityCode: {config.TierMedium: &code},
+		},
+	}
+	all := func(string) []config.Effort { return nil }
+	if got := target(cfg, config.ModeCost, config.TierMedium, "", config.EffortMedium, all); got != cost {
+		t.Fatalf("explicit cost tier = %+v, want %+v", got, cost)
+	}
+	wantCode := config.Route{Model: sol, Effort: config.EffortXHigh}
+	if got := target(cfg, config.ModeCost, config.TierMedium, config.ActivityCode, config.EffortMedium, all); got != wantCode {
+		t.Fatalf("sparse activity target = %+v, want %+v", got, wantCode)
+	}
+	balanced := target(cfg, config.ModeBalanced, config.TierMedium, "", config.EffortMedium, all)
+	if want := (config.Route{Model: sol, Effort: config.EffortMedium}); balanced != want {
+		t.Fatalf("balanced pin route = %+v, want %+v", balanced, want)
+	}
+}
+
 func TestTargetLevelsAndPrices(t *testing.T) {
 	only := func(m string, efforts ...config.Effort) func(string) []config.Effort {
 		return func(model string) []config.Effort {

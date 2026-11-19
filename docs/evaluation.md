@@ -14,6 +14,10 @@ Deterministic typed-classifier fixtures exercise ops reasoning and implementatio
 
 The tests apply the actual Responses JSON rewrite and assert model and reasoning effort together. They also cover conservative fresh/continuation uncertainty, pins, cancellation, dwell, stale reviews and the absence of local keyword tiers. Tariff inversion tests keep capability order fixed while changing economic estimates. Reply diagnostics distinguish selected and response-body identity and missing price coverage; they cannot establish served effort, external task acceptance or a billed cost per successful task. No live provider evaluation was run for this policy update.
 
+## GPT-6.2 Sol availability check
+
+On 2026-11-19, Codex 0.170.0 completed one read-only prompt at medium effort on each of GPT-6.1 Sol and GPT-6.2 Sol. Both answers correctly described a four-vote upgrade and a streak-reset case. The local catalog listed both models in the same compatibility group with the same usable context window. This confirms access for those requests, but a single prompt does not establish quality or cost parity across tasks. The default remains GPT-6.1 Sol.
+
 ## Terra defaults
 
 The Luna/Terra/Sol preference matrix is a **derived routing policy**, not a provider recommendation or permission boundary. Standard input/cached-input/output prices per million tokens are Luna $0.10/$0.01/$0.50, Terra $1/$0.05/$5, and Sol $2/$0.10/$10. [OpenAI model specifications](https://developers.openai.com/api/docs/models/gpt-6.1-terra) and the [independent efficiency comparison](https://artificialanalysis.ai/articles/gpt-6-1-terra-pushes-the-cost-efficiency-frontier) motivate testing Terra between Luna and Sol; they do not establish your Codex entitlement or window.

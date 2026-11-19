@@ -20,6 +20,9 @@ import (
 // config.Efforts. The rules are fixed: router-modes design §2.
 func target(cfg config.Config, mode config.RoutingMode, t config.Tier, a config.Activity, sent config.Effort, levels func(model string) []config.Effort) config.Route {
 	base := resolve(cfg.RouteFor(t, a), sent)
+	if r, _, ok := cfg.ModeTarget(mode, t, a); ok {
+		return resolve(r, sent)
+	}
 	if r, ok := cfg.Preferred(mode, t, a); ok {
 		r = resolve(r, sent)
 		if mode == config.ModeQuality {

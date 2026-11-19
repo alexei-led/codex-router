@@ -22,6 +22,7 @@ type keyMap struct {
 	Toggle      key.Binding
 	Home        key.Binding
 	Mode        key.Binding
+	Routes      key.Binding
 	Help        key.Binding
 	Quit        key.Binding
 
@@ -43,6 +44,7 @@ var keys = keyMap{
 	Toggle:      key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "pause")),
 	Home:        key.NewBinding(key.WithKeys("P"), key.WithHelp("P", "pause home")),
 	Mode:        key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "mode")),
+	Routes:      key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "activity routes")),
 	Help:        key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 	Quit:        key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 
@@ -59,7 +61,7 @@ type helpGroup struct {
 func (k keyMap) groups() []helpGroup {
 	return []helpGroup{
 		{"Navigate", []key.Binding{k.Up, k.Down, k.Open, k.Back, k.PrevSession, k.NextSession, k.Help, k.Quit}},
-		{"Session", []key.Binding{k.Pin, k.Toggle, k.Mode}},
+		{"Session", []key.Binding{k.Pin, k.Toggle, k.Mode, k.Routes}},
 		{"Pause", []key.Binding{k.Home}},
 		{"Views", []key.Binding{k.Next, k.Prev}},
 	}

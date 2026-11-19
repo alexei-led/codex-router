@@ -34,6 +34,7 @@ func (c *canvas) policy(v view) {
 	c.modeRow(s)
 	c.classifierRow(s)
 	c.routesRows(s)
+	c.activityRoutesRows(s, v.routeDetails)
 	c.switchingRows(s.Policy)
 }
 
@@ -151,6 +152,73 @@ func groupText(s route.Snapshot) string {
 		return ""
 	}
 	return "group of " + s.Baseline.Model
+}
+
+// activityRoutesRows shows the effective route plan by activity. The route
+// field is what the planner would send after eligibility checks; Preferred
+// explains a configured target that those checks replaced.
+func (c *canvas) activityRoutesRows(s route.Snapshot, expanded bool) {
+	if len(s.RouteCells) == 0 {
+		return
+	}
+	if !expanded {
+		c.flow(kv("Activity"), []seg{dim("press r to inspect activity × tier routes")})
+		return
+	}
+	mode := s.RoutingMode
+	if mode == "" {
+		mode = config.ModeBalanced
+	}
+	if s.Pin != nil {
+		c.flow(kv("Activity"), []seg{plain("effective routes · balanced while " + string(*s.Pin) + " is pinned")})
+	} else {
+		c.flow(kv("Activity"), []seg{plain("effective routes · " + string(mode))})
+	}
+	if !s.RouteCells[0].EligibilityKnown {
+		c.add(blankKV(), dim("candidate fit is unverified without a measured context window"))
+	}
+	for i := 0; i < len(s.RouteCells); {
+		activity := s.RouteCells[i].Activity
+		name := "generic"
+		if activity != "" {
+			name = string(activity)
+		}
+		parts := make([][]seg, 0, len(config.Tiers))
+		for i < len(s.RouteCells) && s.RouteCells[i].Activity == activity {
+			cell := s.RouteCells[i]
+			text := string(cell.Tier) + " " + routeText(cell.Route) + " [" + routeSourceLabel(cell.Source) + "]"
+			if cell.Preferred != nil {
+				text += " (preferred " + routeText(*cell.Preferred) + " unavailable)"
+			} else if cell.EligibilityKnown && !cell.Eligible {
+				text += " (unavailable)"
+			}
+			parts = append(parts, []seg{plain(text)})
+			i++
+		}
+		c.flowWrap(kv(name), parts...)
+	}
+	c.add(blankKV(), dim("source: mode tier · mode activity · activity override · built-in · inherited · mode transform · balanced"))
+}
+
+func routeSourceLabel(source string) string {
+	switch source {
+	case "mode-tier":
+		return "mode tier"
+	case "mode-activity":
+		return "mode activity"
+	case "explicit-activity":
+		return "activity override"
+	case "built-in":
+		return "built-in"
+	case "inherited":
+		return "inherited"
+	case "mode-transform":
+		return "mode transform"
+	case "balanced":
+		return "balanced"
+	default:
+		return source
+	}
 }
 
 func (c *canvas) switchingRows(p config.Policy) {

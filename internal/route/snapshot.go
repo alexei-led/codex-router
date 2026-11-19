@@ -170,6 +170,36 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 	for _, t := range config.Tiers {
 		s.Routes[t] = target(cfg, previewMode, t, "", "", levelsIn(cat))
 	}
+	var routeStep *step
+	if th != nil && th.native.Model != "" {
+		original := th.native
+		if th.last != nil && !th.manual && !th.nativePicked {
+			original = th.last.Original
+		}
+		tokens := th.approx
+		measuredContext := th.measured && th.lastTotal > 0 && th.requestID != "" && th.observedRequestID == th.requestID
+		if measuredContext {
+			tokens = th.lastTotal
+		}
+		routeStep = &step{cfg: cfg, cat: cat, original: original, req: &responses.Request{Effort: original.Effort}, tokens: tokens, measuredContext: measuredContext, policy: s.Policy}
+	}
+	for _, activity := range append([]config.Activity{""}, config.Activities...) {
+		for _, tier := range config.Tiers {
+			cell := RouteCell{Tier: tier, Activity: activity, Source: routeSource(cfg, previewMode, tier, activity)}
+			if routeStep == nil {
+				cell.Route = target(cfg, previewMode, tier, activity, "", levelsIn(cat))
+			} else {
+				plan := e.planRoute(routeStep, previewMode, tier, activity)
+				cell.Route, cell.Eligible = plan.route, plan.eligible
+				cell.EligibilityKnown = routeStep.measuredContext
+				if plan.preferred != plan.route {
+					preferred := plan.preferred
+					cell.Preferred = &preferred
+				}
+			}
+			s.RouteCells = append(s.RouteCells, cell)
+		}
+	}
 	if e.paused {
 		s.Mode = ModePaused
 	}
@@ -191,19 +221,16 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 			s.Baseline, s.Footer, s.FooterSynced = th.native, th.footer, len(th.pending) == 0
 			s.ApproxTokens = th.approx
 			model = th.model
-			if th.hasSent {
+			if th.manual || th.nativePicked {
+				model = th.native.Model
+			} else if th.hasSent {
 				model = th.sent.Model
 			}
 		}
 	}
-	if th != nil && th.native.Model != "" {
-		original := th.native
-		if th.last != nil {
-			original = th.last.Original
-		}
-		st := &step{cfg: cfg, cat: cat, original: original, req: &responses.Request{Effort: original.Effort}, tokens: th.approx, policy: s.Policy}
+	if routeStep != nil {
 		for _, tier := range config.Tiers {
-			s.Routes[tier] = e.planRoute(st, previewMode, tier, "").route
+			s.Routes[tier] = e.planRoute(routeStep, previewMode, tier, "").route
 		}
 	}
 	s.Window, _ = cat.Window(model)
@@ -241,6 +268,27 @@ func (e *Engine) snapshot(th *thread, now time.Time) Snapshot {
 	slices.Sort(s.Blocked)
 	slices.Sort(s.CompatibilityUnknown)
 	return s
+}
+
+func routeSource(cfg config.Config, mode config.RoutingMode, tier config.Tier, activity config.Activity) string {
+	if _, source, ok := cfg.ModeTarget(mode, tier, activity); ok {
+		return source
+	}
+	if activity != "" {
+		if _, explicit := cfg.Activities[activity][tier]; explicit {
+			return "explicit-activity"
+		}
+	}
+	if _, ok := cfg.Preferred(mode, tier, activity); ok {
+		return "built-in"
+	}
+	if activity != "" {
+		return "inherited"
+	}
+	if mode == config.ModeBalanced {
+		return "balanced"
+	}
+	return "mode-transform"
 }
 
 func (t *tally) copy() Stats {

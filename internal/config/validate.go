@@ -83,8 +83,45 @@ func (c Config) validateModes() error {
 		}
 	}
 	for _, m := range RoutingModes {
+		mode := c.Modes[m]
+		if err := c.validateModeRoutes(m, mode); err != nil {
+			return err
+		}
 		if err := c.Effective(m).validate(); err != nil {
 			return fmt.Errorf("modes.%s: %w", m, err)
+		}
+	}
+	return nil
+}
+
+func (c Config) validateModeRoutes(mode RoutingMode, m ModeConfig) error {
+	if mode == ModeBalanced && (len(m.Routes) > 0 || len(m.Activities) > 0) {
+		return errors.New("modes.balanced: route targets are supported only for cost and quality")
+	}
+	for _, tier := range sortedKeys(m.Routes) {
+		if !slices.Contains(Tiers, tier) {
+			return fmt.Errorf("modes.%s.routes.%s: unknown tier", mode, tier)
+		}
+		if target := m.Routes[tier]; target != nil {
+			if err := validRoute(fmt.Sprintf("modes.%s.routes.%s", mode, tier), *target, false); err != nil {
+				return err
+			}
+		}
+	}
+	for _, activity := range sortedKeys(m.Activities) {
+		if !slices.Contains(Activities, activity) {
+			return fmt.Errorf("modes.%s.activities.%s: unknown activity", mode, activity)
+		}
+		for _, tier := range sortedKeys(m.Activities[activity]) {
+			if !slices.Contains(Tiers, tier) {
+				return fmt.Errorf("modes.%s.activities.%s.%s: unknown tier", mode, activity, tier)
+			}
+			if target := m.Activities[activity][tier]; target != nil {
+				path := fmt.Sprintf("modes.%s.activities.%s.%s", mode, activity, tier)
+				if err := validRoute(path, *target, false); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	return nil

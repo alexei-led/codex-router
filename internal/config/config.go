@@ -94,7 +94,9 @@ var RoutingModes = []RoutingMode{ModeCost, ModeBalanced, ModeQuality}
 
 // ModeConfig is one mode's settings.
 type ModeConfig struct {
-	Policy PolicyPatch `json:"policy"`
+	Policy     PolicyPatch                  `json:"policy"`
+	Routes     map[Tier]*Route              `json:"routes,omitempty"`
+	Activities map[Activity]map[Tier]*Route `json:"activities,omitempty"`
 }
 
 // PolicyPatch holds the Policy fields a mode replaces; a nil field keeps the

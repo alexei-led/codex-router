@@ -106,6 +106,214 @@ func TestQualityModeTakesTheEffortLeverOnTheNextTurn(t *testing.T) {
 	}
 }
 
+func TestExplicitQualityTargetRoutesThroughEngineAndPinsStayBalanced(t *testing.T) {
+	cfg := testConfig()
+	cfg.Mode = config.ModeQuality
+	target := high
+	mode := cfg.Modes[config.ModeQuality]
+	mode.Routes = map[config.Tier]*config.Route{config.TierMedium: &target}
+	cfg.Modes[config.ModeQuality] = mode
+
+	t.Run("quality target", func(t *testing.T) {
+		h := newHarness(t, cfg)
+		h.asker.script(answer(tier(config.TierMedium, 1)))
+		rw, ok := h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+		wantRoute(t, rw, ok, high)
+		if d := h.last(); d.RoutingMode != config.ModeQuality || d.Reason != ReasonMode {
+			t.Fatalf("decision = %+v, want explicit quality target", d)
+		}
+	})
+
+	t.Run("one-turn pin", func(t *testing.T) {
+		h := newHarness(t, cfg)
+		h.apply(Command{Op: OpPin, Session: "th", Tier: config.TierMedium})
+		rw, ok := h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+		wantUnchanged(t, rw, ok)
+		if d := h.last(); d.Route != medium {
+			t.Fatalf("pinned route = %+v, want balanced route %+v", d.Route, medium)
+		}
+		if d := h.last(); d.Reason != policy.ReasonPinned || d.RoutingMode != config.ModeQuality {
+			t.Fatalf("pinned decision = %+v", d)
+		}
+	})
+}
+
+func TestExplicitCostTargetDoesNotRequirePriceEvidence(t *testing.T) {
+	cfg := testConfig()
+	cfg.Mode = config.ModeCost
+	selected := low
+	mode := cfg.Modes[config.ModeCost]
+	mode.Routes = map[config.Tier]*config.Route{config.TierMedium: &selected}
+	cfg.Modes[config.ModeCost] = mode
+	h := newHarness(t, cfg)
+	h.asker.script(answer(tier(config.TierMedium, 1)))
+	rw, ok := h.decide(req(medium, userMsg(secretPrompt)), meta("th", "t1"))
+	wantRoute(t, rw, ok, selected)
+	if d := h.last(); d.Reason != ReasonMode {
+		t.Fatalf("decision = %+v, want configured cost target", d)
+	}
+}
+
+func TestSnapshotUsesLatestMeasuredContextForModeTargetFit(t *testing.T) {
+	cfg := testConfig()
+	cfg.Mode = config.ModeQuality
+	target := config.Route{Model: "gpt-6-luna", Effort: config.EffortHigh}
+	mode := cfg.Modes[config.ModeQuality]
+	mode.Routes = map[config.Tier]*config.Route{config.TierMedium: &target}
+	cfg.Modes[config.ModeQuality] = mode
+	h := newHarness(t, cfg)
+	h.asker.script(answer(tier(config.TierHigh, 1)), answer(tier(config.TierHigh, 1)))
+	m := meta("th", "t1")
+	m.RequestID = "request-1"
+	h.decide(req(high, userMsg(secretPrompt)), m)
+	h.reply(m, high.Model, 230_000, 0)
+
+	snapshot := h.engine.SnapshotFor("th")
+	found := false
+	for _, cell := range snapshot.RouteCells {
+		if cell.Tier == config.TierMedium && cell.Activity == "" {
+			found = true
+			if !cell.EligibilityKnown || cell.Eligible {
+				t.Fatalf("measured target fit = %+v, want known and over the context limit", cell)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatal("snapshot omitted the generic medium route cell")
+	}
+	next := meta("th", "t2")
+	next.RequestID = "request-2"
+	h.decide(req(high, userMsg(secretPrompt), userMsg("continue with the measured context")), next)
+	found = false
+	for _, cell := range h.engine.SnapshotFor("th").RouteCells {
+		if cell.Tier == config.TierMedium && cell.Activity == "" {
+			found = true
+			if cell.EligibilityKnown {
+				t.Fatalf("in-flight route preview claims measured fit: %+v", cell)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("in-flight snapshot omitted the generic medium route cell")
+	}
+	h.engine.Observe(next, high.Model, responses.Usage{}, 503)
+	for _, cell := range h.engine.SnapshotFor("th").RouteCells {
+		if cell.Tier == config.TierMedium && cell.Activity == "" && cell.EligibilityKnown {
+			t.Fatalf("unmeasured response marked route fit known: %+v", cell)
+		}
+	}
+}
+
+func TestManualModelPickRefreshesRouteCellCompatibilityContext(t *testing.T) {
+	h := newHarness(t, testConfig())
+	h.asker.script(answer(tier(config.TierHigh, 1)))
+	m := meta("th", "t1")
+	m.RequestID = "request-1"
+	h.decide(req(high, userMsg(secretPrompt)), m)
+	h.reply(m, high.Model, 50_000, 0)
+	h.engine.SettingsUpdated("th", config.Route{Model: "gpt-5.5", Effort: config.EffortHigh})
+
+	snapshot := h.engine.SnapshotFor("th")
+	if snapshot.Mode != ModeManual || !snapshot.CurrentModelKnown || snapshot.Group.CompHash != "2911" {
+		t.Fatalf("manual snapshot model group = mode:%s known:%v group:%+v", snapshot.Mode, snapshot.CurrentModelKnown, snapshot.Group)
+	}
+	for _, cell := range snapshot.RouteCells {
+		if cell.Tier == config.TierMedium && cell.Activity == "" {
+			if !cell.EligibilityKnown || cell.Eligible {
+				t.Fatalf("manual pick route cell = %+v, want measured context and incompatible route", cell)
+			}
+			break
+		}
+	}
+	h.apply(Command{Op: OpResume, Session: "th"})
+	snapshot = h.engine.SnapshotFor("th")
+	if snapshot.Mode != ModeOn || !snapshot.CurrentModelKnown || snapshot.Group.CompHash != "2911" {
+		t.Fatalf("resumed snapshot reverted to the old group: mode:%s known:%v group:%+v", snapshot.Mode, snapshot.CurrentModelKnown, snapshot.Group)
+	}
+	for _, cell := range snapshot.RouteCells {
+		if cell.Tier == config.TierMedium && cell.Activity == "" {
+			if !cell.EligibilityKnown || cell.Eligible {
+				t.Fatalf("resumed route cell = %+v, want measured context and incompatible route", cell)
+			}
+			return
+		}
+	}
+	t.Fatal("snapshot omitted generic medium route cell")
+}
+
+func TestExplicitModeEscalationDoesNotMoveToAWeakerHigherTier(t *testing.T) {
+	cfg := testConfig()
+	cfg.Mode = config.ModeCost
+	mediumTarget, highTarget := high, low
+	mode := cfg.Modes[config.ModeCost]
+	mode.Routes = map[config.Tier]*config.Route{
+		config.TierMedium: &mediumTarget,
+		config.TierHigh:   &highTarget,
+	}
+	cfg.Modes[config.ModeCost] = mode
+	h := newHarness(t, cfg)
+	h.asker.script(answer(tier(config.TierMedium, 1)))
+	m := meta("th", "t1")
+	items := []responses.Item{userMsg(secretPrompt)}
+	h.decide(req(high, items...), m)
+	if d := h.last(); d.Route != mediumTarget || d.Tier != config.TierMedium {
+		t.Fatalf("initial route = %+v, want explicit medium target %+v", d, mediumTarget)
+	}
+	failing := func(id string) []responses.Item {
+		return []responses.Item{call(id, "go test ./pkg/queue"), result(id, 1, "--- FAIL: TestRetry\nretry_test.go:48: attempts = 2, want 3")}
+	}
+	items = append(items, userMsg("continue despite the test failure"))
+	items = append(items, failing("c1")...)
+	h.decide(req(mediumTarget, items...), m)
+	items = append(items, editGo("c2"), edited("c2"))
+	items = append(items, failing("c3")...)
+	rw, ok := h.decide(req(mediumTarget, items...), m)
+	wantUnchanged(t, rw, ok)
+	if d := h.last(); d.Reason == policy.ReasonEscalation || d.Route != mediumTarget {
+		t.Fatalf("weaker high target escalated the failed route: %+v", d)
+	}
+}
+
+func TestEscalationUsesIncumbentModeAfterSwitchToBalanced(t *testing.T) {
+	cfg := testConfig()
+	cfg.Mode = config.ModeCost
+	cfg.Policy.DowngradeVotes = 3
+	incumbent := config.Route{Model: high.Model, Effort: config.EffortXHigh}
+	mode := cfg.Modes[config.ModeCost]
+	mode.Routes = map[config.Tier]*config.Route{config.TierMedium: &incumbent}
+	cfg.Modes[config.ModeCost] = mode
+	h := newHarness(t, cfg)
+	answerMedium := func() func() (classifier.Advice, error) {
+		return answer(continuing(tier(config.TierMedium, 1), 0.99))
+	}
+	h.asker.script(answer(tier(config.TierMedium, 1)), answerMedium(), answerMedium())
+	first := meta("th", "t1")
+	h.decide(req(incumbent, userMsg(secretPrompt)), first)
+	if d := h.last(); d.Tier != config.TierMedium || d.Route != incumbent || d.RoutingMode != config.ModeCost {
+		t.Fatalf("cost incumbent = %+v, want the mode-only medium route %+v", d, incumbent)
+	}
+	h.reply(first, incumbent.Model, 10_000, 0)
+	h.apply(Command{Op: OpMode, Session: "th", Mode: config.ModeBalanced})
+	items := []responses.Item{userMsg(secretPrompt), userMsg("continue")}
+	second := meta("th", "t2")
+	h.decide(req(incumbent, items...), second)
+	if d := h.last(); d.Route != incumbent || d.Reason != ReasonModePending {
+		t.Fatalf("balanced downgrade did not wait: %+v", d)
+	}
+	h.reply(second, incumbent.Model, 10_000, 0)
+	failing := func(id string) []responses.Item {
+		return []responses.Item{call(id, "go test ./pkg/queue"), result(id, 1, "--- FAIL: TestRetry\nretry_test.go:48: attempts = 2, want 3")}
+	}
+	items = append(items, failing("c1")...)
+	items = append(items, editGo("c2"), edited("c2"))
+	items = append(items, failing("c3")...)
+	rw, ok := h.decide(req(incumbent, items...), meta("th", "t3"))
+	if d := h.last(); d.Route != incumbent || d.Reason == policy.ReasonEscalation {
+		t.Fatalf("mode switch made escalation weaken the incumbent: rewrite=%+v ok=%v decision=%+v", rw, ok, d)
+	}
+}
+
 func TestAModeChangeDoesNotMoveAStayingRoute(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

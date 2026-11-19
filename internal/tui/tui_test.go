@@ -348,6 +348,30 @@ func TestPolicyReportsCompatibilityUnknownSeparately(t *testing.T) {
 	}
 }
 
+func TestPolicyActivityRoutesExpandOnRequest(t *testing.T) {
+	s := fixture()
+	s.RoutingMode = config.ModeQuality
+	preferred := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+	s.RouteCells = []route.RouteCell{
+		{Tier: config.TierLow, Route: config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}, Source: "mode-tier"},
+		{Tier: config.TierLow, Activity: config.ActivityCode, Route: config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}, Preferred: &preferred, Source: "mode-activity", EligibilityKnown: true, Eligible: true},
+		{Tier: config.TierMedium, Activity: config.ActivityCode, Route: config.Route{Model: "gpt-6.1-terra", Effort: config.EffortMedium}, Source: "explicit-activity", EligibilityKnown: true, Eligible: true},
+	}
+	collapsed := renderPlain(s, TabPolicy, 100)
+	if !strings.Contains(collapsed, "press r to inspect activity × tier routes") || strings.Contains(collapsed, "mode activity") {
+		t.Fatalf("collapsed Policy view should advertise, not render, route details:\n%s", collapsed)
+	}
+	expanded := render(view{snap: s, tab: TabPolicy, width: 100, routeDetails: true})
+	for _, want := range []string{"effective routes · quality", "candidate fit is unverified without a measured context window", "generic", "mode tier", "code", "mode activity", "activity override", "preferred gpt-6.1-sol · high unavailable"} {
+		if !strings.Contains(expanded, want) {
+			t.Errorf("expanded Policy view lacks %q:\n%s", want, expanded)
+		}
+	}
+	if got := render(view{snap: s, tab: TabPolicy, width: 100, routeDetails: true, popover: popMode}); !strings.Contains(got, "mode activity") {
+		t.Errorf("route details disappeared with mode popover:\n%s", got)
+	}
+}
+
 func TestPlainHasNoEscapesAndStyledDoes(t *testing.T) {
 	s := fixture()
 	if strings.Contains(renderPlain(s, TabSessions, 100), "\x1b") {
