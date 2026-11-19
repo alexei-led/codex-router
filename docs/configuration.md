@@ -44,7 +44,7 @@ Because objects merge, `"policy": {"minDwellRequests": 6}` changes one field. Be
 | `prices`      | map model to price                | `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-luna`                 | USD list prices for the per-reply estimate. Optional.                                           |
 | `policy`      | object                            | see below                                                    | Switching thresholds.                                                                           |
 | `mode`        | `cost`, `balanced`, `quality`     | not set (`balanced`)                                         | The profile's routing mode. See [mode and modes](#mode-and-modes).                              |
-| `modes`       | map mode to `{"policy": {...}}`   | `cost`, `quality`                                            | Policy fields each mode replaces. See [mode and modes](#mode-and-modes).                        |
+| `modes`       | map mode to policy and route overrides | `cost`, `quality`                                         | Policy fields and optional model/effort targets each mode replaces. See [mode and modes](#mode-and-modes). |
 | `classifier`  | string                            | `jev`                                                        | Key of the active entry in `classifiers`, or `off`.                                             |
 | `classifiers` | map name to classifier            | `jev`, `clef`, `clef-flash`, `clef-omni`, `openai`, `ollama` | Classifier endpoints.                                                                           |
 | `context`     | object                            | `recentTurns 6`, `maxTextChars 1200`                         | What the classifier sees.                                                                       |
@@ -142,9 +142,37 @@ A preferred pair is checked against the current Codex catalog's model, effort, c
 
 For custom declarations, `balanced` keeps the configured pair; `cost` takes the next lower tier's cheaper model (never below low), else one effort step down; `quality` takes one effort step up, else the next higher tier, never an ordered-weaker pair. Micro, pins, manual selections and paused sessions bypass mode transforms. Pins use the raw generic declaration, not the activity preferences.
 
-The cost lever, including default preferences that change models, needs `prices` for both models. Without them, `cost` lowers effort only. An effort step uses only the efforts the Codex catalog lists for the model. A route without an `effort` gets no effort step: it runs the effort Codex sends, which is the one the router last wrote, so a step would repeat every turn. `cost` then keeps that route unless the cost lever applies, and `quality` takes the next higher tier's route unless that route is weaker.
+The cost lever, including default preferences that change models, needs `prices` for both models. Without them, `cost` lowers effort only. An explicit `modes.cost` target is an operator-selected pair and does not require a price comparison. An effort step uses only the efforts the Codex catalog lists for the model. A route without an `effort` gets no effort step: it runs the effort Codex sends, which is the one the router last wrote, so a step would repeat every turn. `cost` then keeps that route unless the cost lever applies, and `quality` takes the next higher tier's route unless that route is weaker.
 
-Each mode also replaces some `policy` fields. The effective policy is `policy` with `modes.<mode>.policy` on top: a field the mode names wins over `policy`. A `modes` entry in your file changes only the fields it names over the built-in entry; set a field to `null` to drop a built-in one. Built-in values:
+#### Explicit mode targets
+
+Set a partial model/effort overlay under `modes.cost.routes`, `modes.quality.routes`, or their `activities` maps. A tier target applies to that tier across activities unless an activity target overrides it. An activity target applies only to its named activity and tier. The balanced configured route is the base. A generic mode target overlays that base, then an activity target overlays the generic target, so each omitted field inherits from the preceding pair. Omitted mode cells keep the existing shipped preference or custom transform. A `null` activity cell suppresses that activity's generic mode target and uses the existing mode behavior for the cell.
+
+```json
+{
+  "modes": {
+    "cost": {
+      "routes": {
+        "medium": { "model": "gpt-6-luna", "effort": "high" }
+      },
+      "activities": {
+        "code": {
+          "medium": { "effort": "xhigh" }
+        }
+      }
+    },
+    "quality": {
+      "routes": {
+        "high": { "effort": "xhigh" }
+      }
+    }
+  }
+}
+```
+
+The code target inherits the model from the generic cost target for `medium` and changes its effort to `xhigh`. The quality target inherits the configured high-tier model and changes only effort. `modes` entries merge over their built-in policy fields. Route maps change only named tiers or activities, and each named overlay changes only its named fields. Pins use balanced routes. Explicit targets still need to pass the model compatibility, supported-effort and context-window checks. Changes still pass the normal vote, dwell and escalation gates. An unavailable target falls back to the existing generic transform for that cell, then its balanced route. Switching order uses the models' rank in the generic `routes` ladder. A model declared only by a mode target is unordered, so existing conservative mode gates apply.
+
+Each mode also replaces some `policy` fields. The effective policy is `policy` with `modes.<mode>.policy` on top: a field the mode names wins over `policy`. A `modes` entry in your file changes only the fields it names over the built-in entry; set a field to `null` to drop a built-in one. The same partial-entry rule applies to `routes` and `activities` under a mode. Built-in values:
 
 | Field                 | cost | balanced (`policy` as written) | quality |
 | --------------------- | ---- | ------------------------------ | ------- |

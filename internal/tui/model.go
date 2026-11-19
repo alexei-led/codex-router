@@ -60,14 +60,15 @@ type model struct {
 	focus  time.Time
 	now    func() time.Time
 
-	light    bool // the terminal background is light; dark until it says so
-	zoom     bool // stacked: the selected session's detail without the list
-	pane     pane // side by side: which half has the focus
-	help     bool
-	popover  popover
-	toast    string
-	toastSeq int
-	scroll   int // top row of the focused pane's viewport
+	light        bool // the terminal background is light; dark until it says so
+	zoom         bool // stacked: the selected session's detail without the list
+	routeDetails bool // Policy's activity-by-tier route preview is expanded
+	pane         pane // side by side: which half has the focus
+	help         bool
+	popover      popover
+	toast        string
+	toastSeq     int
+	scroll       int // top row of the focused pane's viewport
 }
 
 func newModel(f *fleet) *model {
@@ -304,6 +305,11 @@ func (m *model) run(b key.Binding) tea.Cmd {
 		if m.tab == TabPolicy && m.st.focus != "" {
 			m.scroll, m.popover = 0, popMode
 		}
+	case is(b, keys.Routes):
+		if m.tab == TabPolicy {
+			m.routeDetails = !m.routeDetails
+			m.scroll = 0
+		}
 	case is(b, keys.Toggle):
 		cmd := toggleCommand(m.st.focus, m.snap().Mode)
 		return m.command(cmd, map[route.Op]string{route.OpPause: "session paused", route.OpResume: "session resumed"}[cmd.Op])
@@ -473,6 +479,6 @@ func (m *model) view() view {
 		snap: m.snap(), tab: m.tab, width: m.width, height: m.height, disconnected: m.st.disconnected,
 		notice: m.notice, styled: true, light: m.light, fleet: &m.st, locked: m.f.locked != "",
 		loading: m.st.snap == nil && m.st.focus != "" && !m.st.disconnected,
-		zoom:    m.zoom, pane: m.pane, help: m.help, popover: m.popover, toast: m.toast, scroll: m.scroll,
+		zoom:    m.zoom, routeDetails: m.routeDetails, pane: m.pane, help: m.help, popover: m.popover, toast: m.toast, scroll: m.scroll,
 	}
 }

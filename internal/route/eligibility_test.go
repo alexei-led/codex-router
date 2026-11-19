@@ -111,6 +111,42 @@ func TestPreferredTargetEligibilityFallback(t *testing.T) {
 	}
 }
 
+func TestExplicitModeTargetFallsBackWhenItIsIneligible(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*catalog.Catalog)
+	}{
+		{"unknown model", func(c *catalog.Catalog) { delete(c.Models, sol) }},
+		{"incompatible model", func(c *catalog.Catalog) { m := c.Models[sol]; m.CompHash = "other"; c.Models[sol] = m }},
+		{"unsupported effort", func(c *catalog.Catalog) {
+			m := c.Models[sol]
+			m.ReasoningLevels = []catalog.ReasoningLevel{{Effort: config.EffortLow}}
+			c.Models[sol] = m
+		}},
+		{"context window", func(c *catalog.Catalog) { m := c.Models[sol]; m.ContextWindow = 10; c.Models[sol] = m }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := testConfig()
+			cfg.Mode = config.ModeQuality
+			explicit := high
+			mode := cfg.Modes[config.ModeQuality]
+			mode.Routes = map[config.Tier]*config.Route{config.TierMedium: &explicit}
+			cfg.Modes[config.ModeQuality] = mode
+			h := newHarness(t, cfg)
+			cat := h.cat.Current()
+			tc.mutate(&cat)
+			h.cat.Set(cat)
+			h.asker.script(answer(tier(config.TierMedium, 1)))
+			rw, ok := h.decide(req(medium, userMsg(secretPrompt)), meta("th", "turn"))
+			want := config.Route{Model: medium.Model, Effort: config.EffortHigh}
+			wantRoute(t, rw, ok, want)
+			if d := h.last(); d.Preferred == nil || *d.Preferred != explicit || d.Reason != ReasonUnavailable {
+				t.Fatalf("ineligible mode target = %+v, want preferred %+v and fallback", d, explicit)
+			}
+		})
+	}
+}
+
 func TestPinPreviewBypassesCostMode(t *testing.T) {
 	cfg := config.Default()
 	cfg.Mode = config.ModeCost

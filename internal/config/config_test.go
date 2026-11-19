@@ -252,6 +252,15 @@ func TestLoadModesMergeWithBuiltIn(t *testing.T) {
 	}
 }
 
+func TestBalancedModeRejectsExplicitRouteTargets(t *testing.T) {
+	c := Default()
+	route := Route{Model: modelSol, Effort: EffortHigh}
+	c.Modes[ModeBalanced] = ModeConfig{Routes: map[Tier]*Route{TierMedium: &route}}
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "modes.balanced: route targets") {
+		t.Fatalf("Validate() error = %v, want balanced target rejection", err)
+	}
+}
+
 func TestLegacyDowngradeHorizonIsAccepted(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "config.json")
 	if err := os.WriteFile(p, []byte(`{"policy":{"downgradeHorizonTurns":5}}`), 0o600); err != nil {

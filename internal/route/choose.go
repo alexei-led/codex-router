@@ -85,6 +85,7 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 		floor := advice.Activity.Choice
 		candidate := routeIn(st.routeMode, inc.tier, floor)
 		_, explicit := cfg.Activities[floor][inc.tier]
+		explicit = explicit || cfg.ModeActivityDeclared(st.routeMode, inc.tier, floor)
 		_, ordered := compareRoutes(cfg, candidate, inc.route)
 		switch {
 		case candidate == inc.route:
@@ -122,6 +123,35 @@ func (e *Engine) choose(st *step, inc running, advice *classifier.Advice, midTur
 				}
 			}
 			return "", false
+		}
+	}
+	if act == "" {
+		explicit := false
+		start := slices.Index(config.Tiers, inc.tier)
+		if start < 0 {
+			start = 0
+		}
+		for _, mode := range []config.RoutingMode{st.routeMode, inc.mode} {
+			for _, tier := range config.Tiers[start:] {
+				if _, _, ok := cfg.ModeTarget(mode, tier, ""); ok {
+					explicit = true
+					break
+				}
+			}
+			if explicit {
+				break
+			}
+		}
+		if explicit {
+			escalate = func(t config.Tier) (config.Tier, bool) {
+				for _, up := range config.Tiers[slices.Index(config.Tiers, t)+1:] {
+					r := routeFor(up)
+					if o, ordered := compareRoutes(cfg, r, inc.route); (ordered && o > 0) || (!ordered && r != inc.route) {
+						return up, true
+					}
+				}
+				return "", false
+			}
 		}
 	}
 	// Logical high cannot tier-escalate. Escape cost's physical target to

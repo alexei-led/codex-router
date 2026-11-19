@@ -206,6 +206,7 @@ type Snapshot struct {
 	ClassifierModel      string                       `json:"ClassifierModel"`
 	ClassifierMedian     time.Duration                `json:"ClassifierMedian"`
 	Routes               map[config.Tier]config.Route `json:"Routes"`
+	RouteCells           []RouteCell                  `json:"RouteCells,omitempty"`
 	Group                catalog.Group                `json:"Group"`
 	CurrentModelKnown    bool                         `json:"CurrentModelKnown"`
 	CatalogAvailable     bool                         `json:"CatalogAvailable"`
@@ -224,6 +225,19 @@ type Snapshot struct {
 	RoutingModeSource ModeSource         `json:"RoutingModeSource,omitempty"`
 	// ProjectError says why the thread's project file was ignored.
 	ProjectError string `json:"ProjectError,omitempty"`
+}
+
+// RouteCell is one effective route in the mode's activity-by-tier preview.
+// EligibilityKnown is false before the session has supplied a native route
+// and context window, when the candidate can be shown but not fully checked.
+type RouteCell struct {
+	Tier             config.Tier     `json:"Tier"`
+	Activity         config.Activity `json:"Activity,omitempty"`
+	Route            config.Route    `json:"Route"`
+	Preferred        *config.Route   `json:"Preferred,omitempty"`
+	Source           string          `json:"Source"`
+	Eligible         bool            `json:"Eligible"`
+	EligibilityKnown bool            `json:"EligibilityKnown"`
 }
 
 // Sink receives decisions and snapshots; the launcher fans them out to the

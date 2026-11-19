@@ -285,6 +285,36 @@ func TestDecide(t *testing.T) {
 	}
 }
 
+func TestDecideRetainsConfiguredVoteStreak(t *testing.T) {
+	tests := []struct {
+		name      string
+		incumbent config.Tier
+		choice    *classifier.Advice
+		want      config.Tier
+		wantMove  Reason
+	}{
+		{"upgrade", config.TierLow, advice("medium", probs{"medium": 0.9, "low": 0.1}), config.TierMedium, ReasonUpgrade},
+		{"downgrade", config.TierHigh, advice("low", probs{"low": 0.95, "high": 0.05}), config.TierLow, ReasonDowngrade},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			in := input(test.incumbent)
+			in.Policy.UpgradeVotes = 4
+			in.Policy.DowngradeVotes = 4
+			for vote := 1; vote <= 4; vote++ {
+				result := Decide(Input{Policy: in.Policy, Baseline: in.Baseline, Incumbent: test.incumbent, State: in.State, Advice: test.choice})
+				in.State = result.State
+				if vote < 4 && result.Tier != test.incumbent {
+					t.Fatalf("vote %d moved to %s before four votes", vote, result.Tier)
+				}
+				if vote == 4 && (result.Tier != test.want || result.Reason != test.wantMove) {
+					t.Fatalf("vote %d = %s/%s, want %s/%s", vote, result.Tier, result.Reason, test.want, test.wantMove)
+				}
+			}
+		})
+	}
+}
+
 func TestDecideEscalationState(t *testing.T) {
 	in := Input{
 		Policy: testPolicy, Baseline: "low", Incumbent: "low", FailureSignature: "sig",

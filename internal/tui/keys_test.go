@@ -222,6 +222,24 @@ func TestHelpListsEveryBindingOnce(t *testing.T) {
 	}
 }
 
+func TestPolicyRouteDetailsToggle(t *testing.T) {
+	m, _ := connected(t, fixture())
+	m.tab = TabPolicy
+	press(m, "r")
+	if !m.routeDetails {
+		t.Fatal("r did not expand Policy activity routes")
+	}
+	press(m, "r")
+	if m.routeDetails {
+		t.Fatal("r did not collapse Policy activity routes")
+	}
+	m.tab = TabSessions
+	press(m, "r")
+	if m.routeDetails {
+		t.Fatal("r changed route details outside Policy")
+	}
+}
+
 func TestPopoverShowsAndEscCloses(t *testing.T) {
 	m, _ := connected(t, fixture())
 	press(m, "p")

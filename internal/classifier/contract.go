@@ -223,13 +223,35 @@ func encode(v any, indent string) ([]byte, error) {
 	return bytes.TrimSuffix(b.Bytes(), []byte("\n")), nil
 }
 
-// clamp reads a JSON number as a probability; anything else is 0.
-func clamp(v any) float64 {
-	f, ok := v.(float64)
-	if !ok {
-		return 0
+// routeAdvice validates a sparse tier distribution. Missing options have zero
+// support, while malformed values and contradictory total mass invalidate the
+// required route answer.
+func routeAdvice(choice string, weights map[string]any) (Advice, bool) {
+	if !slices.Contains(routeOptions.values(), choice) {
+		return Advice{}, false
 	}
-	return min(1, max(0, f))
+	probs := make(map[Choice]float64, len(routeOptions))
+	total := 0.0
+	for key, raw := range weights {
+		if !slices.Contains(routeOptions.values(), key) {
+			return Advice{}, false
+		}
+		p, ok := probability(raw)
+		if !ok {
+			return Advice{}, false
+		}
+		probs[Choice(key)] = p
+		total += p
+	}
+	if total > 1.000001 || probs[Choice(choice)] <= 0 {
+		return Advice{}, false
+	}
+	for _, option := range routeOptions.values() {
+		if _, ok := probs[Choice(option)]; !ok {
+			probs[Choice(option)] = 0
+		}
+	}
+	return Advice{Choice: Choice(choice), Probabilities: probs}, true
 }
 
 // activityAdvice is nil unless choice is a known activity with a positive

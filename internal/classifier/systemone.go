@@ -86,15 +86,12 @@ func (systemOne) Parse(body []byte) (Advice, error) {
 		return Advice{}, ErrMalformed
 	}
 	weights, ok := record(route.Probabilities)
-	if !ok || !slices.Contains(routeOptions.values(), route.Choice) {
+	if !ok {
 		return Advice{}, ErrMalformed
 	}
-	advice := Advice{
-		Choice:        Choice(route.Choice),
-		Probabilities: make(map[Choice]float64, len(routeOptions)),
-	}
-	for _, v := range routeOptions.values() {
-		advice.Probabilities[Choice(v)] = clamp(weights[v])
+	advice, ok := routeAdvice(route.Choice, weights)
+	if !ok {
+		return Advice{}, ErrMalformed
 	}
 
 	var continuation struct {

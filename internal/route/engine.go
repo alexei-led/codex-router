@@ -90,13 +90,14 @@ type thread struct {
 	id   string
 	step sync.Mutex
 
-	native      config.Route // Codex's own route: what it sent first, or the user's /model pick
-	model       string       // the last request's model
-	tier        config.Tier
-	activity    config.Activity   // the activity whose route runs, "" for the base route
-	floor       config.Activity   // accepted ops reasoning/code intent, in memory only
-	goalAnchor  string            // bounded user text, in memory only
-	goalContext responses.Context // input prefix, independent of usage measurements
+	native       config.Route // Codex's own route: what it sent first, or the user's /model pick
+	nativePicked bool         // a /model pick remains the routing baseline until a routed step replaces it
+	model        string       // the last request's model
+	tier         config.Tier
+	activity     config.Activity   // the activity whose route runs, "" for the base route
+	floor        config.Activity   // accepted ops reasoning/code intent, in memory only
+	goalAnchor   string            // bounded user text, in memory only
+	goalContext  responses.Context // input prefix, independent of usage measurements
 	// routeMode is the routing mode the running route was chosen under. The
 	// actual pair is kept in sent after eligibility resolution. It changes
 	// only when a gate passes, not when the thread's mode does.
@@ -117,20 +118,21 @@ type thread struct {
 	retries    []retry
 	review     *review
 
-	requests       int // decided steps
-	switchedAt     mark
-	reviewedAt     int
-	observedFrom   int
-	sent           config.Route
-	hasSent        bool
-	awaiting       *Decision // the decision whose reply is next
-	lastItems      int
-	lastTotal      int
-	approx         int
-	context        responses.Context
-	contextTotal   int
-	requestID      string
-	pendingContext responses.Context
+	requests          int // decided steps
+	switchedAt        mark
+	reviewedAt        int
+	observedFrom      int
+	sent              config.Route
+	hasSent           bool
+	awaiting          *Decision // the decision whose reply is next
+	lastItems         int
+	lastTotal         int
+	approx            int
+	context           responses.Context
+	contextTotal      int
+	requestID         string
+	observedRequestID string
+	pendingContext    responses.Context
 
 	manual      bool
 	wrote       bool
@@ -274,6 +276,7 @@ func (e *Engine) resumed(threadID string, r config.Route) (s Snapshot, resync, m
 func (e *Engine) pick(th *thread, r config.Route) {
 	e.fence(th)
 	th.manual, th.pending, th.lastWritten, th.native = true, nil, r, r
+	th.nativePicked = true
 	e.log.Info("route manual", "thread", th.id, "model", r.Model, "effort", r.Effort)
 }
 
@@ -338,7 +341,7 @@ func (s *step) phaseActivity(mode config.RoutingMode, t config.Tier, a config.Ac
 	if !opsFloor || (a != config.ActivityDebug && a != config.ActivityCode) {
 		return a
 	}
-	if _, explicit := s.cfg.Activities[a][t]; explicit {
+	if _, explicit := s.cfg.Activities[a][t]; explicit || s.cfg.ModeActivityDeclared(mode, t, a) {
 		return a
 	}
 	floor, ops := s.routeIn(mode, t, a), s.routeIn(mode, t, config.ActivityOps)
@@ -977,6 +980,7 @@ func (e *Engine) finish(st *step, c cell) Decision {
 	}
 	th.goalContext = st.req.Context()
 	th.sent, th.hasSent = d.Route, true
+	th.nativePicked = false
 	th.approx = st.tokens
 	th.stepIndex++
 	d.Why = whyText(d, cfg, st.tokens)
@@ -1255,6 +1259,9 @@ func (e *Engine) observe(key string, m responses.Meta, served string, u response
 			model = d.Route.Model
 		}
 		if u.InputTokens > 0 {
+			if m.RequestID != "" {
+				th.observedRequestID = m.RequestID
+			}
 			if th.held && th.turn != m.TurnID {
 				// The hold ends on a turn this engine never saw start (a
 				// brain restarted mid-turn): that turn's later steps stay
