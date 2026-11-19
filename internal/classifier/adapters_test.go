@@ -157,16 +157,32 @@ func TestSystemOneParseRejects(t *testing.T) {
 	}
 }
 
-func TestSystemOneParseDegradesMissingNumbers(t *testing.T) {
-	a, err := SystemOne().Parse([]byte(`{"answers":{"route":{"type":"choice","choice":"low","confidence":2,"probabilities":{"low":1,"high":"0.9"}}}}`))
-	if err != nil {
-		t.Fatal(err)
+func TestRouteAnswersRejectContradictoryDistributions(t *testing.T) {
+	tests := []struct {
+		name    string
+		adapter Adapter
+		body    string
+	}{
+		{"system-one overfull", SystemOne(), `{"answers":{"route":{"type":"choice","choice":"medium","probabilities":{"medium":0.8,"high":0.8}}}}`},
+		{"openai overfull", OpenAIDecisions(), `{"answers":[{"type":"choice","name":"route","choice":"medium","probabilities":[{"value":"medium","probability":0.8},{"value":"high","probability":0.8}]}]}`},
+		{"system-one unknown option", SystemOne(), `{"answers":{"route":{"type":"choice","choice":"medium","probabilities":{"medium":0.8,"unexpected":0.2}}}}`},
+		{"openai unknown option", OpenAIDecisions(), `{"answers":[{"type":"choice","name":"route","choice":"medium","probabilities":[{"value":"medium","probability":0.8},{"value":"unexpected","probability":0.2}]}]}`},
+		{"system-one invalid number", SystemOne(), `{"answers":{"route":{"type":"choice","choice":"medium","probabilities":{"medium":1.1}}}}`},
+		{"openai invalid number", OpenAIDecisions(), `{"answers":[{"type":"choice","name":"route","choice":"medium","probabilities":[{"value":"medium","probability":-0.1}]}]}`},
 	}
-	if a.Probabilities["low"] != 1 || a.Probabilities["high"] != 0 || len(a.Probabilities) != 5 {
-		t.Errorf("advice = %+v", a)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := tt.adapter.Parse([]byte(tt.body)); !errors.Is(err, ErrMalformed) {
+				t.Fatalf("Parse() error = %v, want %v", err, ErrMalformed)
+			}
+		})
 	}
-	if a.Continuation != nil {
-		t.Errorf("continuation = %v, want nil", *a.Continuation)
+}
+
+func TestSystemOneParseRejectsMalformedRouteProbabilities(t *testing.T) {
+	_, err := SystemOne().Parse([]byte(`{"answers":{"route":{"type":"choice","choice":"low","confidence":2,"probabilities":{"low":1,"high":"0.9"}}}}`))
+	if !errors.Is(err, ErrMalformed) {
+		t.Fatalf("Parse() error = %v, want %v", err, ErrMalformed)
 	}
 }
 
@@ -482,17 +498,11 @@ func TestOpenAIDecisionsParseRejects(t *testing.T) {
 	}
 }
 
-func TestOpenAIDecisionsParseDegradesMissingNumbers(t *testing.T) {
-	a, err := OpenAIDecisions().Parse([]byte(`{"answers":[{"type":"choice","name":"route","choice":"low","confidence":2,` +
-		`"probabilities":[{"value":"low","probability":7},{"value":"high","probability":"0.9"},{"value":"micro","probability":-1}]}]}`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if a.Probabilities["low"] != 1 || a.Probabilities["high"] != 0 || a.Probabilities["micro"] != 0 || a.Probabilities["medium"] != 0 || len(a.Probabilities) != 5 {
-		t.Errorf("probabilities = %v", a.Probabilities)
-	}
-	if a.Continuation != nil {
-		t.Errorf("continuation = %v, want nil without the predicate", *a.Continuation)
+func TestOpenAIDecisionsParseRejectsMalformedRouteProbabilities(t *testing.T) {
+	body := `{"answers":[{"type":"choice","name":"route","choice":"low","confidence":2,` +
+		`"probabilities":[{"value":"low","probability":7},{"value":"high","probability":"0.9"},{"value":"micro","probability":-1}]}]}`
+	if _, err := OpenAIDecisions().Parse([]byte(body)); !errors.Is(err, ErrMalformed) {
+		t.Fatalf("Parse() error = %v, want %v", err, ErrMalformed)
 	}
 }
 

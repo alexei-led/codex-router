@@ -131,8 +131,9 @@ func Decide(in Input) Result {
 	}
 
 	next.Votes = append(next.Votes, Vote{Tier: choice})
-	if len(next.Votes) > VotesKept {
-		next.Votes = next.Votes[len(next.Votes)-VotesKept:]
+	keep := max(VotesKept, p.UpgradeVotes, p.DowngradeVotes)
+	if len(next.Votes) > keep {
+		next.Votes = next.Votes[len(next.Votes)-keep:]
 	}
 	if rank(choice) == rank(incumbent) {
 		return stay(ReasonSameTier, nil)

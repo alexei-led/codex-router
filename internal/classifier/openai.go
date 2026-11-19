@@ -1,9 +1,6 @@
 package classifier
 
-import (
-	"encoding/json"
-	"slices"
-)
+import "encoding/json"
 
 // OpenAIDecisions is the OpenAI Decisions protocol (POST /v1/decisions): the
 // state travels as JSON text in `input`, and the questions come back as named
@@ -101,15 +98,12 @@ func (openAIDecisions) Parse(body []byte) (Advice, error) {
 
 	route := byName["route"]
 	weights, ok := route.weights()
-	if route.Type != "choice" || !ok || !slices.Contains(routeOptions.values(), route.Choice) {
+	if route.Type != "choice" || !ok {
 		return Advice{}, ErrMalformed
 	}
-	advice := Advice{
-		Choice:        Choice(route.Choice),
-		Probabilities: make(map[Choice]float64, len(routeOptions)),
-	}
-	for _, v := range routeOptions.values() {
-		advice.Probabilities[Choice(v)] = clamp(weights[v])
+	advice, ok := routeAdvice(route.Choice, weights)
+	if !ok {
+		return Advice{}, ErrMalformed
 	}
 
 	if c := byName["continuation"]; c.Type == "predicate" {
