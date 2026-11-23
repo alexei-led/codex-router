@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 656 446" width="656" height="446" role="img" aria-labelledby="title desc">
   <title id="title">Why codex-router moved up a tier</title>
-  <desc id="desc">Sample data. codex-router tui --session, locked to one session. There is no list: the header shows the views and the detail of default · codex-router · main fills the screen. The turn moved up to gpt-6.1-sol high after the same tool failure repeated.</desc>
+  <desc id="desc">Sample data. codex-router tui --session, locked to one session. There is no list: the header shows the views and the detail of default · codex-router · main fills the screen. The turn moved up to gpt-6.2-sol high after the same tool failure repeated.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
   <rect width="656" height="446" rx="8" fill="#14171f"/>
   <rect x="0.5" y="0.5" width="655" height="445" rx="8" fill="none" stroke="#2e3340"/>
@@ -19,7 +19,7 @@
   <text x="16.0" y="123.0" fill="#14171f" font-weight="700" xml:space="preserve"> ▂▄▆█ </text>
   <text x="70.6" y="123.0" fill="#d787d7" xml:space="preserve">debug</text>
   <text x="109.6" y="123.0" fill="#d0d0d0" xml:space="preserve"> → </text>
-  <text x="133.0" y="123.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="133.0" y="123.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.2-sol · high</text>
   <text x="273.4" y="123.0" fill="#d0d0d0" xml:space="preserve">               ↑ repeated failure, edit between</text>
   <text x="16.0" y="142.0" fill="#d0d0d0" xml:space="preserve">       Jev ▂▄▆█ 18%</text>
   <text x="164.2" y="142.0" fill="#878787" xml:space="preserve"> · </text>
@@ -77,7 +77,7 @@
   <text x="374.8" y="199.0" fill="#878787" xml:space="preserve">  4 replies per cell</text>
   <text x="16.0" y="218.0" fill="#d0d0d0" xml:space="preserve"> Context  █░░░░░░░░░ 10%  </text>
   <text x="218.8" y="218.0" fill="#878787" xml:space="preserve">91K / 828K</text>
-  <text x="296.8" y="218.0" fill="#878787" xml:space="preserve"> gpt-6.1-sol</text>
+  <text x="296.8" y="218.0" fill="#878787" xml:space="preserve"> gpt-6.2-sol</text>
   <text x="16.0" y="237.0" fill="#d0d0d0" xml:space="preserve"> Cache    97% last reply</text>
   <text x="203.2" y="237.0" fill="#878787" xml:space="preserve"> · 64% session</text>
   <text x="16.0" y="256.0" fill="#d0d0d0" xml:space="preserve"> Notes    cache reuse 64% after 19 switches; switches wrote 612K uncached tokens</text>
@@ -86,23 +86,23 @@
   <text x="16.0" y="313.0" fill="#d0d0d0" xml:space="preserve"> Recent   </text>
   <text x="94.0" y="313.0" fill="#878787" xml:space="preserve">18:42  </text>
   <text x="148.6" y="313.0" fill="#d75f87" xml:space="preserve">▂▄▆█   </text>
-  <text x="203.2" y="313.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="203.2" y="313.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · high</text>
   <text x="343.6" y="313.0" fill="#878787" xml:space="preserve"> · ↑ repeated failure, edit between</text>
   <text x="94.0" y="332.0" fill="#878787" xml:space="preserve">18:41  </text>
   <text x="148.6" y="332.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="332.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="332.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="332.0" fill="#878787" xml:space="preserve"> · = classifier agrees</text>
   <text x="94.0" y="351.0" fill="#878787" xml:space="preserve">18:40  </text>
   <text x="148.6" y="351.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="351.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="351.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="351.0" fill="#878787" xml:space="preserve"> · = classifier agrees</text>
   <text x="94.0" y="370.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="148.6" y="370.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="370.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="370.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="370.0" fill="#878787" xml:space="preserve"> · = classifier agrees</text>
   <text x="94.0" y="389.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="148.6" y="389.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="389.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="389.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="389.0" fill="#878787" xml:space="preserve"> · ↑ stronger tier</text>
   <text x="16.0" y="427.0" fill="#87afff" font-weight="700" xml:space="preserve">↑↓</text>
   <text x="31.6" y="427.0" fill="#878787" xml:space="preserve"> scroll</text>

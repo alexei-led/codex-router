@@ -16,7 +16,7 @@ The tests apply the actual Responses JSON rewrite and assert model and reasoning
 
 ## GPT-6.2 Sol availability check
 
-On 2026-11-19, Codex 0.170.0 completed one read-only prompt at medium effort on each of GPT-6.1 Sol and GPT-6.2 Sol. Both answers correctly described a four-vote upgrade and a streak-reset case. The local catalog listed both models in the same compatibility group with the same usable context window. This confirms access for those requests, but a single prompt does not establish quality or cost parity across tasks. The default remains GPT-6.1 Sol.
+On 2026-11-19, Codex 0.170.0 completed one read-only prompt at medium effort on each of GPT-6.1 Sol and GPT-6.2 Sol. Both answers correctly described a four-vote upgrade and a streak-reset case. The local catalog listed both models in the same compatibility group with the same usable context window. This confirms access for those requests, but a single prompt does not establish quality or cost parity across tasks. GPT-6.2 Sol has the same list price as GPT-6.1 Sol and is now the default.
 
 ## Terra defaults
 
@@ -113,22 +113,22 @@ The test writes the table below. It fails when the table is out of date. Reasons
 | default | low | ops | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
 | default | low | docs | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
 | default | low | uncertain | 6-luna/medium (downgrade) | 6-luna/high (downgrade) | 6.1-terra/medium (downgrade) |
-| default | medium | code | 6-luna/high (mode) | 6.1-terra/xhigh (activity-up) | 6.1-sol/high (mode) |
-| default | medium | debug | 6-luna/high (mode) | 6.1-terra/xhigh (activity-up) | 6.1-sol/high (mode) |
-| default | medium | explore | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/medium (mode) |
-| default | medium | plan | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/high (mode) |
-| default | medium | review | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/high (mode) |
-| default | medium | ops | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/medium (mode) |
-| default | medium | docs | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/medium (mode) |
-| default | medium | uncertain | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.1-sol/medium (mode) |
-| default | high | code | 6.1-terra/xhigh (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | debug | 6.1-terra/xhigh (upgrade) | 6.1-sol/xhigh (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | explore | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | plan | 6.1-terra/medium (upgrade) | 6.1-sol/xhigh (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | review | 6.1-terra/medium (upgrade) | 6.1-sol/xhigh (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | ops | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | docs | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| default | high | uncertain | 6.1-terra/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
+| default | medium | code | 6-luna/high (mode) | 6.1-terra/xhigh (activity-up) | 6.2-sol/high (mode) |
+| default | medium | debug | 6-luna/high (mode) | 6.1-terra/xhigh (activity-up) | 6.2-sol/high (mode) |
+| default | medium | explore | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.2-sol/medium (mode) |
+| default | medium | plan | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.2-sol/high (mode) |
+| default | medium | review | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.2-sol/high (mode) |
+| default | medium | ops | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.2-sol/medium (mode) |
+| default | medium | docs | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.2-sol/medium (mode) |
+| default | medium | uncertain | 6-luna/high (mode) | 6.1-terra/medium (same-tier) | 6.2-sol/medium (mode) |
+| default | high | code | 6.1-terra/xhigh (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
+| default | high | debug | 6.1-terra/xhigh (upgrade) | 6.2-sol/xhigh (upgrade) | 6.2-sol/xhigh (upgrade) |
+| default | high | explore | 6.1-terra/medium (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
+| default | high | plan | 6.1-terra/medium (upgrade) | 6.2-sol/xhigh (upgrade) | 6.2-sol/xhigh (upgrade) |
+| default | high | review | 6.1-terra/medium (upgrade) | 6.2-sol/xhigh (upgrade) | 6.2-sol/xhigh (upgrade) |
+| default | high | ops | 6.1-terra/medium (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
+| default | high | docs | 6.1-terra/medium (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
+| default | high | uncertain | 6.1-terra/medium (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
 | default | uncertain | code | 6.1-terra/medium (uncertain) | 6.1-terra/xhigh (activity-up) | 6.1-terra/xhigh (activity-up) |
 | default | uncertain | debug | 6.1-terra/medium (uncertain) | 6.1-terra/xhigh (activity-up) | 6.1-terra/xhigh (activity-up) |
 | default | uncertain | explore | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) | 6.1-terra/medium (uncertain) |
@@ -157,23 +157,23 @@ The test writes the table below. It fails when the table is out of date. Reasons
 | profile | medium | debug | 6-luna/high (mode) | 6-sol/high (activity-up) | 6-sol/xhigh (mode) |
 | profile | medium | explore | 6-luna/high (mode) | 6-sol/medium (same-tier) | 6-sol/high (mode) |
 | profile | medium | plan | 6-luna/high (mode) | 6-sol/medium (same-tier) | 6-sol/high (mode) |
-| profile | medium | review | 6-luna/high (mode) | 6.1-sol/medium (activity-up) | 6.1-sol/high (mode) |
+| profile | medium | review | 6-luna/high (mode) | 6.2-sol/medium (activity-up) | 6.2-sol/high (mode) |
 | profile | medium | ops | 6-luna/high (mode) | 6-sol/medium (same-tier) | 6-sol/high (mode) |
 | profile | medium | docs | 6-luna/high (mode) | 6-sol/medium (same-tier) | 6-sol/high (mode) |
 | profile | medium | uncertain | 6-luna/high (mode) | 6-sol/medium (same-tier) | 6-sol/high (mode) |
-| profile | high | code | 6-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| profile | high | debug | 6-sol/high (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| profile | high | explore | 6-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| profile | high | plan | 6-sol/medium (upgrade) | 6.1-sol/xhigh (upgrade) | 6.1-sol/xhigh (upgrade) |
-| profile | high | review | 6.1-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
-| profile | high | ops | 6-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
+| profile | high | code | 6-sol/medium (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
+| profile | high | debug | 6-sol/high (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
+| profile | high | explore | 6-sol/medium (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
+| profile | high | plan | 6-sol/medium (upgrade) | 6.2-sol/xhigh (upgrade) | 6.2-sol/xhigh (upgrade) |
+| profile | high | review | 6.2-sol/medium (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
+| profile | high | ops | 6-sol/medium (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
 | profile | high | docs | 6-sol/medium (upgrade) | 6-sol/high (upgrade) | 6-sol/xhigh (upgrade) |
-| profile | high | uncertain | 6-sol/medium (upgrade) | 6.1-sol/high (upgrade) | 6.1-sol/xhigh (upgrade) |
+| profile | high | uncertain | 6-sol/medium (upgrade) | 6.2-sol/high (upgrade) | 6.2-sol/xhigh (upgrade) |
 | profile | uncertain | code | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) |
 | profile | uncertain | debug | 6-sol/medium (uncertain) | 6-sol/high (activity-up) | 6-sol/high (activity-up) |
 | profile | uncertain | explore | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) |
 | profile | uncertain | plan | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) |
-| profile | uncertain | review | 6-sol/medium (uncertain) | 6.1-sol/medium (activity-up) | 6.1-sol/medium (activity-up) |
+| profile | uncertain | review | 6-sol/medium (uncertain) | 6.2-sol/medium (activity-up) | 6.2-sol/medium (activity-up) |
 | profile | uncertain | ops | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) |
 | profile | uncertain | docs | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) |
 | profile | uncertain | uncertain | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) | 6-sol/medium (uncertain) |

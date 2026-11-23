@@ -43,7 +43,7 @@ func TestSettingsWriterDedupesAndRewritesAfterManualPick(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		sol := config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
 		luna := config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}
-		manual := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+		manual := config.Route{Model: "gpt-6.2-sol", Effort: config.EffortHigh}
 		api := &fakeAPI{written: make(chan struct{}, 8)}
 		w := NewSettingsWriter(slog.New(slog.DiscardHandler), true)
 		ctx, cancel := context.WithCancel(context.Background())

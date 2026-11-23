@@ -3,7 +3,7 @@
   "etag": "W/\"launcher-fixture\"",
   "models": [
     {
-      "slug": "gpt-6.1-sol",
+      "slug": "gpt-6.2-sol",
       "visibility": "list",
       "context_window": 500000,
       "max_context_window": 872000,

@@ -55,7 +55,7 @@ func TestDefaultPreferenceOwnershipIsIndependentPerCell(t *testing.T) {
 
 func TestModeTargetsInheritSparseFieldsAndNullMasksTierTarget(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.json")
-	body := `{"modes":{"cost":{"routes":{"medium":{"model":"gpt-6.1-sol"},"high":{"model":"gpt-6.1-sol"}},"activities":{"code":{"medium":{"effort":"xhigh"},"high":null}}}}}`
+	body := `{"modes":{"cost":{"routes":{"medium":{"model":"gpt-6.2-sol"},"high":{"model":"gpt-6.2-sol"}},"activities":{"code":{"medium":{"effort":"xhigh"},"high":null}}}}}`
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -65,13 +65,13 @@ func TestModeTargetsInheritSparseFieldsAndNullMasksTierTarget(t *testing.T) {
 	}
 
 	got, source, ok := c.ModeTarget(ModeCost, TierMedium, ActivityCode)
-	want := Route{Model: "gpt-6.1-sol", Effort: EffortXHigh}
+	want := Route{Model: "gpt-6.2-sol", Effort: EffortXHigh}
 	if !ok || source != "mode-activity" || got != want {
 		t.Fatalf("code/medium target = %v, %q, %v; want %v, mode-activity, true", got, source, ok, want)
 	}
 
 	got, source, ok = c.ModeTarget(ModeCost, TierMedium, ActivityDocs)
-	want = Route{Model: "gpt-6.1-sol", Effort: EffortMedium}
+	want = Route{Model: "gpt-6.2-sol", Effort: EffortMedium}
 	if !ok || source != "mode-tier" || got != want {
 		t.Fatalf("docs/medium target = %v, %q, %v; want %v, mode-tier, true", got, source, ok, want)
 	}

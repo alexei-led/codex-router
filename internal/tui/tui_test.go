@@ -32,7 +32,7 @@ var update = flag.Bool("update", false, "rewrite golden files")
 func at(h, m int) time.Time { return time.Date(2026, 10, 13, h, m, 0, 0, time.UTC) }
 
 func fixture() route.Snapshot {
-	sol61 := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+	sol61 := config.Route{Model: "gpt-6.2-sol", Effort: config.EffortHigh}
 	sol := config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
 	luna := config.Route{Model: "gpt-6-luna", Effort: config.EffortMedium}
 	micro := config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}
@@ -81,7 +81,7 @@ func fixture() route.Snapshot {
 		ApproxTokens: 44_600, Window: 272_000,
 		Worth: []route.Finding{
 			{Kind: route.FindingContext, Text: "context guard kept 2 steps on a larger window"},
-			{Kind: route.FindingBlocked, Text: "gpt-5.5 blocked: outside gpt-6.1-sol's group"},
+			{Kind: route.FindingBlocked, Text: "gpt-5.5 blocked: outside gpt-6.2-sol's group"},
 		},
 	}
 }
@@ -115,7 +115,7 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		}, TabSessions, []string{"✕ Jev unreachable · resumes in 42s"}, []string{"Jev ready"}},
 		{"header, unnamed classifier", func(s *route.Snapshot) { s.ClassifierLabel = "" }, TabSessions, []string{"classifier ready"}, nil},
 		{"band of a decision", func(*route.Snapshot) {}, TabSessions,
-			[]string{" ▂▄▆█  debug → gpt-6.1-sol · high", "↑ repeated failure, edit between", "       Jev ▂▄▆█ 18% · no classifier needed"}, nil},
+			[]string{" ▂▄▆█  debug → gpt-6.2-sol · high", "↑ repeated failure, edit between", "       Jev ▂▄▆█ 18% · no classifier needed"}, nil},
 		{"evidence names the tier's share without a bar", func(s *route.Snapshot) {
 			s.Last.Reason, s.Last.Reading.Tiers[config.TierHigh] = policy.ReasonDowngradePending, 0.38
 		}, TabSessions, []string{"Jev ▂▄▆█ 38%"}, []string{"Jev ▂▄▆█ 38% <", "Jev ▂▄▆█ 38% ≥"}},
@@ -124,7 +124,7 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		{"state lost", func(s *route.Snapshot) { s.Mode, s.StateLost = route.ModePaused, true }, TabSessions, []string{"STATE LOST", "P resumes the home"}, []string{"PAUSED"}},
 		{"pinned", func(s *route.Snapshot) { s.Pin = &low }, TabSessions, []string{" ▂▄ ", "pinned → gpt-6-luna · medium", "next turn only"}, []string{"▶"}},
 		{"classifier off", func(s *route.Snapshot) { s.ClassifierOff, s.ClassifierOffReason = true, "TYPESAFE_API_KEY is not set" }, TabSessions,
-			[]string{"PINS ONLY", "requests keep gpt-6.1-sol · high", "○ Jev off · TYPESAFE_API_KEY is not set · pin a tier with p"}, []string{"debug →", "▶"}},
+			[]string{"PINS ONLY", "requests keep gpt-6.2-sol · high", "○ Jev off · TYPESAFE_API_KEY is not set · pin a tier with p"}, []string{"debug →", "▶"}},
 		{"classifier off, no decision", func(s *route.Snapshot) { s.ClassifierOff, s.Last = true, nil }, TabSessions, []string{"PINS ONLY", "○ Jev off · pin a tier with p"}, []string{"WAITING"}},
 		{"running tier is marked", func(*route.Snapshot) {}, TabSessions, []string{"▂ micro   ▂▄ low   ▂▄▆ medium  ▶▂▄▆█ high"}, nil},
 		{"unknown reason code", func(s *route.Snapshot) { s.Last.Why, s.Last.Reason = "", "mystery" }, TabSessions,
@@ -133,15 +133,15 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 			[]string{"… down waits"}, []string{"downgrade-held"}},
 		{"kept decision", func(s *route.Snapshot) {
 			s.Last = &route.Decision{Tier: config.TierMicro, Route: s.Baseline, Original: s.Baseline, Reason: policy.ReasonNoClassifier, At: at(18, 40)}
-		}, TabSessions, []string{" KEPT ", "gpt-6.1-sol · high · ○ classifier off · keeps Codex's model"}, []string{" ▂  ", "▶"}},
+		}, TabSessions, []string{" KEPT ", "gpt-6.2-sol · high · ○ classifier off · keeps Codex's model"}, []string{" ▂  ", "▶"}},
 		{"no decision yet", func(s *route.Snapshot) { s.Stats = route.Stats{}; s.Last = nil }, TabSessions,
-			[]string{"WAITING", "no routed request yet · baseline gpt-6.1-sol · high", "no routed replies yet"}, []string{"Cache", "debug →"}},
+			[]string{"WAITING", "no routed request yet · baseline gpt-6.2-sol · high", "no routed replies yet"}, []string{"Cache", "debug →"}},
 		{"session summary", func(*route.Snapshot) {}, TabSessions,
 			[]string{"48 replies · 9 switches · −$0.84 (−31%) vs no routing · ≈ list price", "per cell"}, nil},
 		{"strip glyphs tell the tiers apart", func(*route.Snapshot) {}, TabSessions, []string{"▄▄▄▄▄▆▆▆▆▆▄▄▄▆▆▆▆▆▆▆▆████▆▆▆▄▄▄▄▄▆▆▆▆▆▆▄▄▄████"}, nil},
 		{"costs more", func(s *route.Snapshot) { s.Stats.RoutedUSD = 3 }, TabSessions, []string{"+$0.29 (+11%) vs no routing"}, []string{"−$"}},
 		{"prices missing", func(s *route.Snapshot) { s.Stats.PricedReplies = 0 }, TabSessions, []string{"48 of 48 replies not priced · no total"}, nil},
-		{"context and cache", func(*route.Snapshot) {}, TabSessions, []string{"Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol", "Cache  98% last reply · 97% session"}, nil},
+		{"context and cache", func(*route.Snapshot) {}, TabSessions, []string{"Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.2-sol", "Cache  98% last reply · 97% session"}, nil},
 		{"no last reply reading", func(s *route.Snapshot) { s.Stats.LastInputTokens = 0 }, TabSessions, []string{"Cache  97% this session"}, []string{"last reply"}},
 		{"window unknown", func(s *route.Snapshot) { s.Window = 0 }, TabSessions, []string{"window unknown"}, nil},
 		{"every finding on a line of its own", func(*route.Snapshot) {}, TabSessions,
@@ -169,9 +169,9 @@ func TestRenderReflectsTheSnapshot(t *testing.T) {
 		{"classifier off without a reason", func(s *route.Snapshot) { s.ClassifierOff = true }, TabPolicy, []string{"○ off · requests keep Codex's model"}, nil},
 		{"last latency when nothing is timed", func(s *route.Snapshot) { s.ClassifierMedian = 0 }, TabPolicy, []string{"412 ms last"}, []string{"median"}},
 		{"routes in two columns", func(*route.Snapshot) {}, TabPolicy,
-			[]string{"Routes     ▂      gpt-6-luna · low", "▂▄     gpt-6-luna · medium", "▂▄▆    gpt-6-sol · medium", "▂▄▆█   gpt-6.1-sol · high", "group of gpt-6.1-sol"},
+			[]string{"Routes     ▂      gpt-6-luna · low", "▂▄     gpt-6-luna · medium", "▂▄▆    gpt-6-sol · medium", "▂▄▆█   gpt-6.2-sol · high", "group of gpt-6.2-sol"},
 			[]string{"comp_hash", "3000"}},
-		{"blocked models", func(*route.Snapshot) {}, TabPolicy, []string{"Blocked    gpt-5.5 · outside gpt-6.1-sol's group"}, nil},
+		{"blocked models", func(*route.Snapshot) {}, TabPolicy, []string{"Blocked    gpt-5.5 · outside gpt-6.2-sol's group"}, nil},
 		{"group unknown", func(s *route.Snapshot) {
 			s.Group, s.CurrentModelKnown, s.CompatibilityUnknown = catalog.Group{}, false, []string{s.Baseline.Model}
 		}, TabPolicy, []string{"Compatibility unknown · missing catalog entries"}, nil},
@@ -351,7 +351,7 @@ func TestPolicyReportsCompatibilityUnknownSeparately(t *testing.T) {
 func TestPolicyActivityRoutesExpandOnRequest(t *testing.T) {
 	s := fixture()
 	s.RoutingMode = config.ModeQuality
-	preferred := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+	preferred := config.Route{Model: "gpt-6.2-sol", Effort: config.EffortHigh}
 	s.RouteCells = []route.RouteCell{
 		{Tier: config.TierLow, Route: config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}, Source: "mode-tier"},
 		{Tier: config.TierLow, Activity: config.ActivityCode, Route: config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}, Preferred: &preferred, Source: "mode-activity", EligibilityKnown: true, Eligible: true},
@@ -362,7 +362,7 @@ func TestPolicyActivityRoutesExpandOnRequest(t *testing.T) {
 		t.Fatalf("collapsed Policy view should advertise, not render, route details:\n%s", collapsed)
 	}
 	expanded := render(view{snap: s, tab: TabPolicy, width: 100, routeDetails: true})
-	for _, want := range []string{"effective routes · quality", "candidate fit is unverified without a measured context window", "generic", "mode tier", "code", "mode activity", "activity override", "preferred gpt-6.1-sol · high unavailable"} {
+	for _, want := range []string{"effective routes · quality", "candidate fit is unverified without a measured context window", "generic", "mode tier", "code", "mode activity", "activity override", "preferred gpt-6.2-sol · high unavailable"} {
 		if !strings.Contains(expanded, want) {
 			t.Errorf("expanded Policy view lacks %q:\n%s", want, expanded)
 		}
@@ -612,7 +612,7 @@ func fleetFixture() fleetState {
 					info(homeDefault, "t1", "codex-router · main", func(s *route.SessionInfo) {
 						s.Replies, s.Switches, s.Strip, s.LastSwitch = 48, 9, strip("lllllmmmmmlllmmmmmmmmhhh"), sw
 						s.Tier, s.Attention, s.SavedUSD, s.SpentUSD = config.TierHigh, route.AttentionEscalation, usd(0.84), usd(1.87)
-						s.Route = config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+						s.Route = config.Route{Model: "gpt-6.2-sol", Effort: config.EffortHigh}
 					}),
 					info(homeDefault, "t2", "codex-router · fix/hook", func(s *route.SessionInfo) {
 						s.Replies, s.Switches, s.Strip, s.LastSwitch = 31, 4, strip("lllmmmlllllmmmuuu"), down
@@ -634,7 +634,7 @@ func fleetFixture() fleetState {
 					}),
 					info(homeWork, "t5", "api · fix/retry", func(s *route.SessionInfo) {
 						s.Replies, s.Switches, s.Strip, s.LastSwitch, s.Attention, s.Tier = 7, 1, strip("mmmmhhh"), sw, route.AttentionEscalation, config.TierHigh
-						s.Route = config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+						s.Route = config.Route{Model: "gpt-6.2-sol", Effort: config.EffortHigh}
 					}),
 					info(homeWork, "t6", "infra · main", nil),
 				},
@@ -965,7 +965,7 @@ func TestListRowCells(t *testing.T) {
 	st := fleetFixture()
 	got := render(view{tab: TabSessions, width: 97, fleet: &st})
 	for _, want := range []string{
-		"▸ codex-router · main      ↑ ▂▄▆█    gpt-6.1-sol · high   ▆▆▆▆▆▆▆███  18:41 ↑",
+		"▸ codex-router · main      ↑ ▂▄▆█    gpt-6.2-sol · high   ▆▆▆▆▆▆▆███  18:41 ↑",
 		"codex-router · fix/hook  ● on      gpt-6-luna · medium  ▄▄▄▄▆▆▆▂▂▂  18:29 ↓",
 		"notes                    ‖ paused  gpt-6-luna · medium  ▄▄▄\n",
 		"SESSION                  STATE     MODEL                LAST TURNS  SWITCH",

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 789 617" width="789" height="617" role="img" aria-labelledby="title desc">
   <title id="title">codex-router panel, Sessions view</title>
-  <desc id="desc">Sample data. codex-router tui in a 97 column pane. The header counts 5 sessions in 2 homes, says Jev is ready, and lists the views Sessions, Policy and Usage. The list groups the sessions by Codex home: the default home has three codex-router runs, the work home has a brain that has run for 2 hours and a router whose Codex has not had a first prompt yet. Each row has the session's state, model and effort, a strip of the last turns by tier and the last switch. Below, the selected session: the high tier meter, the debug activity and the route gpt-6.1-sol high, why the router moved up, the classifier's evidence, the pin buttons, the session summary with its strip, context and cache, and one note.</desc>
+  <desc id="desc">Sample data. codex-router tui in a 97 column pane. The header counts 5 sessions in 2 homes, says Jev is ready, and lists the views Sessions, Policy and Usage. The list groups the sessions by Codex home: the default home has three codex-router runs, the work home has a brain that has run for 2 hours and a router whose Codex has not had a first prompt yet. Each row has the session's state, model and effort, a strip of the last turns by tier and the last switch. Below, the selected session: the high tier meter, the debug activity and the route gpt-6.2-sol high, why the router moved up, the classifier's evidence, the pin buttons, the session summary with its strip, context and cache, and one note.</desc>
   <style>text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; }</style>
   <rect width="789" height="617" rx="8" fill="#14171f"/>
   <rect x="0.5" y="0.5" width="788" height="616" rx="8" fill="none" stroke="#2e3340"/>
@@ -32,7 +32,7 @@
   <text x="226.6" y="142.0" fill="#d75f87" xml:space="preserve">↑ ▂▄▆█  </text>
   <rect x="289.0" y="128.0" width="15.6" height="19" fill="#00005f"/>
   <rect x="304.6" y="128.0" width="156.0" height="19" fill="#00005f"/>
-  <text x="304.6" y="142.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · high  </text>
+  <text x="304.6" y="142.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · high  </text>
   <rect x="460.6" y="128.0" width="15.6" height="19" fill="#00005f"/>
   <rect x="476.2" y="128.0" width="7.8" height="19" fill="#00005f"/>
   <text x="476.2" y="142.0" fill="#d7af5f" xml:space="preserve">▆</text>
@@ -90,7 +90,7 @@
   <text x="86.2" y="218.0" fill="#5fd7af" xml:space="preserve">brain up 2h</text>
   <text x="16.0" y="237.0" fill="#d0d0d0" xml:space="preserve">  api · feat/auth          </text>
   <text x="226.6" y="237.0" fill="#ffaf00" xml:space="preserve">◐ manual</text>
-  <text x="289.0" y="237.0" fill="#d0d0d0" xml:space="preserve">  gpt-6.1-sol · medium  </text>
+  <text x="289.0" y="237.0" fill="#d0d0d0" xml:space="preserve">  gpt-6.2-sol · medium  </text>
   <text x="476.2" y="237.0" fill="#d7af5f" xml:space="preserve">▆</text>
   <text x="484.0" y="237.0" fill="#5fafd7" xml:space="preserve">▄</text>
   <text x="491.8" y="237.0" fill="#5fafd7" xml:space="preserve">▄</text>
@@ -105,7 +105,7 @@
   <text x="616.6" y="237.0" fill="#d7af5f" xml:space="preserve">↑</text>
   <text x="16.0" y="256.0" fill="#d0d0d0" xml:space="preserve">  infra · main             </text>
   <text x="226.6" y="256.0" fill="#5fd7af" xml:space="preserve">● on    </text>
-  <text x="289.0" y="256.0" fill="#d0d0d0" xml:space="preserve">  gpt-6.1-sol · medium  </text>
+  <text x="289.0" y="256.0" fill="#d0d0d0" xml:space="preserve">  gpt-6.2-sol · medium  </text>
   <text x="476.2" y="256.0" fill="#5fafd7" xml:space="preserve">▄</text>
   <text x="484.0" y="256.0" fill="#5fafd7" xml:space="preserve">▄</text>
   <text x="491.8" y="256.0" fill="#5fafd7" xml:space="preserve">▄</text>
@@ -127,7 +127,7 @@
   <text x="16.0" y="332.0" fill="#14171f" font-weight="700" xml:space="preserve"> ▂▄▆█ </text>
   <text x="70.6" y="332.0" fill="#d787d7" xml:space="preserve">debug</text>
   <text x="109.6" y="332.0" fill="#d0d0d0" xml:space="preserve"> → </text>
-  <text x="133.0" y="332.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="133.0" y="332.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">gpt-6.2-sol · high</text>
   <text x="273.4" y="332.0" fill="#d0d0d0" xml:space="preserve">                                ↑ repeated failure, edit between</text>
   <text x="16.0" y="351.0" fill="#d0d0d0" xml:space="preserve">       Jev ▂▄▆█ 18%</text>
   <text x="164.2" y="351.0" fill="#878787" xml:space="preserve"> · </text>
@@ -185,7 +185,7 @@
   <text x="374.8" y="408.0" fill="#878787" xml:space="preserve">  4 replies per cell</text>
   <text x="16.0" y="427.0" fill="#d0d0d0" xml:space="preserve"> Context  █░░░░░░░░░ 10%  </text>
   <text x="218.8" y="427.0" fill="#878787" xml:space="preserve">91K / 828K</text>
-  <text x="296.8" y="427.0" fill="#878787" xml:space="preserve"> gpt-6.1-sol</text>
+  <text x="296.8" y="427.0" fill="#878787" xml:space="preserve"> gpt-6.2-sol</text>
   <text x="437.2" y="427.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">Cache</text>
   <text x="476.2" y="427.0" fill="#d0d0d0" xml:space="preserve">  97% last reply</text>
   <text x="601.0" y="427.0" fill="#878787" xml:space="preserve"> · 64% session</text>
@@ -194,23 +194,23 @@
   <text x="16.0" y="484.0" fill="#d0d0d0" xml:space="preserve"> Recent   </text>
   <text x="94.0" y="484.0" fill="#878787" xml:space="preserve">18:42  </text>
   <text x="148.6" y="484.0" fill="#d75f87" xml:space="preserve">▂▄▆█   </text>
-  <text x="203.2" y="484.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="203.2" y="484.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · high</text>
   <text x="343.6" y="484.0" fill="#878787" xml:space="preserve"> · ↑ repeated failure, edit between</text>
   <text x="94.0" y="503.0" fill="#878787" xml:space="preserve">18:41  </text>
   <text x="148.6" y="503.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="503.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="503.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="503.0" fill="#878787" xml:space="preserve"> · = classifier agrees</text>
   <text x="94.0" y="522.0" fill="#878787" xml:space="preserve">18:40  </text>
   <text x="148.6" y="522.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="522.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="522.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="522.0" fill="#878787" xml:space="preserve"> · = classifier agrees</text>
   <text x="94.0" y="541.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="148.6" y="541.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="541.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="541.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="541.0" fill="#878787" xml:space="preserve"> · = classifier agrees</text>
   <text x="94.0" y="560.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="148.6" y="560.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="560.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="560.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="560.0" fill="#878787" xml:space="preserve"> · ↑ stronger tier</text>
   <text x="16.0" y="598.0" fill="#87afff" font-weight="700" xml:space="preserve">↑↓</text>
   <text x="31.6" y="598.0" fill="#878787" xml:space="preserve"> select</text>

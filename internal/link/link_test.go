@@ -40,7 +40,7 @@ const (
 var (
 	stepMeta  = responses.Meta{SessionID: "s-1", ThreadID: "th-1", TurnID: "tu-1", RequestKind: responses.RequestKindTurn}
 	toLow     = responses.Rewrite{Model: "gpt-6-luna", Effort: config.EffortLow}
-	smallBody = []byte(`{"model":"gpt-6.1-sol","input":[]}`)
+	smallBody = []byte(`{"model":"gpt-6.2-sol","input":[]}`)
 )
 
 type decideCall struct {

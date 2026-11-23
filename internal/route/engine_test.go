@@ -21,7 +21,7 @@ import (
 const testCatalog = `{"models":[
  {"slug":"gpt-6.1-terra","context_window":500000,"effective_context_window_percent":95,"comp_hash":"3000","use_responses_lite":true,"tool_mode":"code_mode_only","default_reasoning_level":"low",
   "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"},{"effort":"xhigh"}]},
- {"slug":"gpt-6.1-sol","context_window":500000,"effective_context_window_percent":95,"comp_hash":"3000","use_responses_lite":true,"tool_mode":"code_mode_only","default_reasoning_level":"low",
+ {"slug":"gpt-6.2-sol","context_window":500000,"effective_context_window_percent":95,"comp_hash":"3000","use_responses_lite":true,"tool_mode":"code_mode_only","default_reasoning_level":"low",
   "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"},{"effort":"xhigh"}]},
  {"slug":"gpt-6-sol","context_window":272000,"effective_context_window_percent":95,"comp_hash":"3000","use_responses_lite":true,"tool_mode":"code_mode_only","default_reasoning_level":"medium",
   "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"},{"effort":"xhigh"}]},
@@ -32,7 +32,7 @@ const testCatalog = `{"models":[
 ]}`
 
 var (
-	high   = config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+	high   = config.Route{Model: "gpt-6.2-sol", Effort: config.EffortHigh}
 	medium = config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
 	low    = config.Route{Model: "gpt-6-luna", Effort: config.EffortMedium}
 	debug  = config.Route{Model: "gpt-6-sol", Effort: config.EffortHigh}
@@ -893,7 +893,7 @@ func TestActivityOverrideRoutesInsideTheTier(t *testing.T) {
 }
 
 func TestLateralMovesInsideATier(t *testing.T) {
-	pricey := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+	pricey := config.Route{Model: "gpt-6.2-sol", Effort: config.EffortHigh}
 	crossModel := testConfig()
 	crossModel.Activities[config.ActivityDebug] = map[config.Tier]config.Route{config.TierMedium: pricey}
 	tests := []struct {

@@ -85,7 +85,7 @@
   <text x="764.8" y="389.0" fill="#87afff" xml:space="preserve">│</text>
   <text x="16.0" y="408.0" fill="#87afff" xml:space="preserve">╰───────────────────────────────────────────────────────────────────────────────────────────────╯</text>
   <text x="16.0" y="427.0" fill="#d0d0d0" xml:space="preserve"> Context  █░░░░░░░░░ 10%  </text>
-  <text x="218.8" y="427.0" fill="#878787" xml:space="preserve">91K / 828K gpt-6.1-sol</text>
+  <text x="218.8" y="427.0" fill="#878787" xml:space="preserve">91K / 828K gpt-6.2-sol</text>
   <text x="437.2" y="427.0" fill="#d0d0d0" font-weight="700" xml:space="preserve">Cache</text>
   <text x="476.2" y="427.0" fill="#d0d0d0" xml:space="preserve">  97% last reply</text>
   <text x="601.0" y="427.0" fill="#878787" xml:space="preserve"> · 64% session</text>
@@ -94,23 +94,23 @@
   <text x="16.0" y="484.0" fill="#d0d0d0" xml:space="preserve"> Recent   </text>
   <text x="94.0" y="484.0" fill="#878787" xml:space="preserve">18:42  </text>
   <text x="148.6" y="484.0" fill="#d75f87" xml:space="preserve">▂▄▆█   </text>
-  <text x="203.2" y="484.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · high</text>
+  <text x="203.2" y="484.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · high</text>
   <text x="343.6" y="484.0" fill="#878787" xml:space="preserve"> · ↑ repeated failure, edit between</text>
   <text x="94.0" y="503.0" fill="#878787" xml:space="preserve">18:41  </text>
   <text x="148.6" y="503.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="503.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="503.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="503.0" fill="#878787" xml:space="preserve"> · = classifier agrees</text>
   <text x="94.0" y="522.0" fill="#878787" xml:space="preserve">18:40  </text>
   <text x="148.6" y="522.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="522.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="522.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="522.0" fill="#878787" xml:space="preserve"> · = classifier agrees</text>
   <text x="94.0" y="541.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="148.6" y="541.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="541.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="541.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="541.0" fill="#878787" xml:space="preserve"> · = classifier agrees</text>
   <text x="94.0" y="560.0" fill="#878787" xml:space="preserve">18:38  </text>
   <text x="148.6" y="560.0" fill="#d7af5f" xml:space="preserve">▂▄▆    </text>
-  <text x="203.2" y="560.0" fill="#d0d0d0" xml:space="preserve">gpt-6.1-sol · medium</text>
+  <text x="203.2" y="560.0" fill="#d0d0d0" xml:space="preserve">gpt-6.2-sol · medium</text>
   <text x="359.2" y="560.0" fill="#878787" xml:space="preserve"> · ↑ stronger tier</text>
   <text x="16.0" y="598.0" fill="#87afff" font-weight="700" xml:space="preserve">esc</text>
   <text x="39.4" y="598.0" fill="#878787" xml:space="preserve"> close</text>

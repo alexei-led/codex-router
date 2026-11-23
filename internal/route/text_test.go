@@ -51,7 +51,7 @@ func TestWhyTextAddsTheDecisionsDetail(t *testing.T) {
 	}{
 		{"hold names the turns", Decision{Reason: policy.ReasonHold, RoutingMode: config.ModeBalanced}, "⏵ hold 2 turns after escalation"},
 		{"fit names the context", Decision{Reason: policy.ReasonFit}, "↑ ~90K tokens need a larger window"},
-		{"out of group names the model", Decision{Reason: policy.ReasonOutOfGroup, Original: config.Route{Model: "gpt-6.1-sol"}}, "! route outside gpt-6.1-sol's group · request kept"},
+		{"out of group names the model", Decision{Reason: policy.ReasonOutOfGroup, Original: config.Route{Model: "gpt-6.2-sol"}}, "! route outside gpt-6.2-sol's group · request kept"},
 		{"activity up names the activity", Decision{Reason: ReasonActivityUp, Activity: config.ActivityDebug}, "↑ debug route stronger"},
 		{"activity down names the activity", Decision{Reason: ReasonActivityDown, Activity: config.ActivityDocs}, "↓ docs route cheaper"},
 		{"observed names the activity", Decision{Reason: ReasonObserved, Activity: config.ActivityOps}, "= tool calls show ops"},

@@ -1,5 +1,5 @@
 {
-  "model": "gpt-6.1-sol",
+  "model": "gpt-6.2-sol",
   "instructions": "",
   "input": [
     {"type":"message","role":"developer","content":[{"type":"input_text","text":"You are Codex, a coding agent.\nQuote: \"be precise\" — café <tags> & {braces} [brackets]\\path"}]},

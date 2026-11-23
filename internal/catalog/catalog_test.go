@@ -31,9 +31,9 @@ func TestParseFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, ok := c.Models["gpt-6.1-sol"]
+	m, ok := c.Models["gpt-6.2-sol"]
 	if !ok {
-		t.Fatal("gpt-6.1-sol missing")
+		t.Fatal("gpt-6.2-sol missing")
 	}
 	if m.Visibility != "list" || m.ContextWindow != 500000 || m.MaxContextWindow != 872000 ||
 		m.EffectivePercent != 95 || m.CompHash != "3000" || !m.ResponsesLite || m.ToolMode != "code_mode_only" {
@@ -66,11 +66,11 @@ func TestCompatible(t *testing.T) {
 		a, b string
 		want bool
 	}{
-		{"gpt-6.1-sol", "gpt-6-luna", true},
-		{"gpt-6-luna", "gpt-6.1-sol", true},
-		{"gpt-6.1-sol", "gpt-5.5", false},
+		{"gpt-6.2-sol", "gpt-6-luna", true},
+		{"gpt-6-luna", "gpt-6.2-sol", true},
+		{"gpt-6.2-sol", "gpt-5.5", false},
 		{"gpt-5.5", "gpt-5.5", true},
-		{"gpt-6.1-sol", "unknown", false},
+		{"gpt-6.2-sol", "unknown", false},
 		{"unknown", "unknown", false},
 	}
 	for _, tt := range tests {
@@ -99,7 +99,7 @@ func TestWindow(t *testing.T) {
 		want int
 		ok   bool
 	}{
-		{"gpt-6.1-sol", 475000, true},
+		{"gpt-6.2-sol", 475000, true},
 		{"gpt-6-luna", 258400, true},
 		{"unknown", 0, false},
 	}
@@ -141,7 +141,7 @@ func TestLoadCacheMissingFile(t *testing.T) {
 	if len(c.Models) != 0 {
 		t.Errorf("models = %d, want 0", len(c.Models))
 	}
-	if _, ok := c.Window("gpt-6.1-sol"); ok {
+	if _, ok := c.Window("gpt-6.2-sol"); ok {
 		t.Error("empty catalog knows a model")
 	}
 }
@@ -174,12 +174,12 @@ func TestStoreConcurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range 200 {
-				_ = s.Current().Compatible("gpt-6.1-sol", "gpt-6-luna")
+				_ = s.Current().Compatible("gpt-6.2-sol", "gpt-6-luna")
 			}
 		}()
 	}
 	wg.Wait()
-	if !s.Current().Compatible("gpt-6.1-sol", "gpt-6-luna") {
+	if !s.Current().Compatible("gpt-6.2-sol", "gpt-6-luna") {
 		t.Error("catalog lost after concurrent Set")
 	}
 }

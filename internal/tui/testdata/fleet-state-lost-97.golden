@@ -2,13 +2,13 @@ codex-router  6 sessions · 2 homes · Jev ready                   Sessions  Pol
 
   SESSION                  STATE         MODEL                LAST TURNS  SWITCH
 ● default
-  codex-router · main      ↑ ▂▄▆█        gpt-6.1-sol · high   ▆▆▆▆▆▆▆███  18:41 ↑
+  codex-router · main      ↑ ▂▄▆█        gpt-6.2-sol · high   ▆▆▆▆▆▆▆███  18:41 ↑
   codex-router · fix/hook  ● on          gpt-6-luna · medium  ▄▄▄▄▆▆▆▂▂▂  18:29 ↓
   notes                    ‖ paused      gpt-6-luna · medium  ▄▄▄
 
 ● work · brain up 2h
 ▸ api · feat/auth          ! state lost  gpt-6-sol · medium   ▆▆▄▄▄▄▆▆▆▆
-  api · fix/retry          ! state lost  gpt-6.1-sol · high   ▆▆▆▆███     18:41 ↑
+  api · fix/retry          ! state lost  gpt-6.2-sol · high   ▆▆▆▆███     18:41 ↑
   infra · main             ! state lost  gpt-6-sol · medium
 
 api · feat/auth                                              balanced (default) · work · aaaaaaaa
@@ -16,12 +16,12 @@ api · feat/auth                                              balanced (default)
  Pin      ▂ micro   ▂▄ low   ▂▄▆ medium   ▂▄▆█ high                                next turn only
  Session  48 replies · 9 switches · −$0.84 (−31%) vs no routing · ≈ list price
           ▄▄▄▄▄▆▆▆▆▆▄▄▄▆▆▆▆▆▆▆▆████▆▆▆▄▄▄▄▄▆▆▆▆▆▆▄▄▄████  1 reply per cell
- Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol      Cache  98% last reply · 97% session
+ Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.2-sol      Cache  98% last reply · 97% session
  Notes    state lost: saved pauses and pins unreadable; routing paused until resume · P resumes
           the home
           context guard kept 2 steps on a larger window · see Policy
-          gpt-5.5 blocked: outside gpt-6.1-sol's group · see Policy
- Recent   18:41  ▂▄▆█   gpt-6.1-sol · high · ↑ repeated failure, edit between
+          gpt-5.5 blocked: outside gpt-6.2-sol's group · see Policy
+ Recent   18:41  ▂▄▆█   gpt-6.2-sol · high · ↑ repeated failure, edit between
           18:38  ▂▄▆    gpt-6-sol · medium · ↑ stronger tier
 
 ↑↓ select · p pin · space resume · P resume home · tab views · q quit · ? help

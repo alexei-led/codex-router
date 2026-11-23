@@ -433,7 +433,7 @@ func TestOpenAIDecisionsBuildAsksRouteContinuationAndActivity(t *testing.T) {
 	if d := body.Questions[0].Choices[3].Description; !strings.Contains(d, "Use when: frontier reasoning materially reduces rework.") {
 		t.Errorf("high description = %q", d)
 	}
-	if strings.Contains(string(got), "gpt-6.1-sol") || strings.Contains(string(got), `"route":{`) {
+	if strings.Contains(string(got), "gpt-6.2-sol") || strings.Contains(string(got), `"route":{`) {
 		t.Errorf("body carries route models: %s", got)
 	}
 }

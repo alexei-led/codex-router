@@ -2,29 +2,29 @@ codex-router  6 sessions · ✕ disconnected       Sessions  Policy  Usage   ? h
 
   SESSION               STATE           MODEL                LAST TURNS  SWITCH
 ● default
-  codex-router · main   ↑ ▂▄▆█          gpt-6.1-sol · high   ▆▆▆▆▆▆▆███  18:41 ↑
+  codex-router · main   ↑ ▂▄▆█          gpt-6.2-sol · high   ▆▆▆▆▆▆▆███  18:41 ↑
   codex-router · fix/…  ● on            gpt-6-luna · medium  ▄▄▄▄▆▆▆▂▂▂  18:29 ↓
   notes                 ‖ paused        gpt-6-luna · medium  ▄▄▄
 
 ● work · brain up 2h · 1 lost
 ▸ api · feat/auth       ✕ disconnected  gpt-6-sol · medium   ▆▆▄▄▄▄▆▆▆▆
-  api · fix/retry       ✕ disconnected  gpt-6.1-sol · high   ▆▆▆▆███     18:41 ↑
+  api · fix/retry       ✕ disconnected  gpt-6.2-sol · high   ▆▆▆▆███     18:41 ↑
   infra · main          ● on            gpt-6-sol · medium
   reflex · main         ○ waiting for the first prompt
 
 api · feat/auth                             balanced (default) · work · aaaaaaaa
  ✕ disconnected · retrying · last snapshot 18:42:00
- ▂▄▆█  debug → gpt-6.1-sol · high               ↑ repeated failure, edit between
+ ▂▄▆█  debug → gpt-6.2-sol · high               ↑ repeated failure, edit between
        Jev ▂▄▆█ 18% · no classifier needed · switch ≈ 41K uncached tokens
        hold 2 turns
  Pin      ▂ micro   ▂▄ low   ▂▄▆ medium  ▶▂▄▆█ high               next turn only
  Session  48 replies · 9 switches · −$0.84 (−31%) vs no routing · ≈ list price
           ▄▄▄▄▄▆▆▆▆▆▄▄▄▆▆▆▆▆▆▆▆████▆▆▆▄▄▄▄▄▆▆▆▆▆▆▄▄▄████  1 reply per cell
- Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol
+ Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.2-sol
  Cache    98% last reply · 97% session
  Notes    context guard kept 2 steps on a larger window · see Policy
-          gpt-5.5 blocked: outside gpt-6.1-sol's group · see Policy
- Recent   18:41  ▂▄▆█   gpt-6.1-sol · high · ↑ repeated failure, edit between
+          gpt-5.5 blocked: outside gpt-6.2-sol's group · see Policy
+ Recent   18:41  ▂▄▆█   gpt-6.2-sol · high · ↑ repeated failure, edit between
           18:38  ▂▄▆    gpt-6-sol · medium · ↑ stronger tier
 
 ↑↓ select · tab views · q quit · ? help
