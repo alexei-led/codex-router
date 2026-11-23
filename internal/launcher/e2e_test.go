@@ -36,7 +36,7 @@ const (
 )
 
 var (
-	nativeRoute = config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+	nativeRoute = config.Route{Model: "gpt-6.2-sol", Effort: config.EffortHigh}
 	routedRoute = config.Default().Routes[config.Tier(e2eRoutedTo)]
 	manualRoute = config.Route{Model: "gpt-6-sol", Effort: config.EffortMedium}
 )

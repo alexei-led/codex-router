@@ -70,7 +70,7 @@ func terraRequest(turn string, failures, continuation bool) request {
 	if continuation {
 		items = append(items, `{"type":"function_call","name":"exec_command","call_id":"read","arguments":"{\"cmd\":\"ls\"}"}`, `{"type":"function_call_output","call_id":"read","output":"Process exited with code 0\nOutput:\nretry.go"}`)
 	}
-	return request{turn: turn, kind: "turn", raw: []byte(`{"model":"gpt-6.1-sol","reasoning":{"effort":"high"},"stream":true,"input":[` + strings.Join(items, ",") + `]}`)}
+	return request{turn: turn, kind: "turn", raw: []byte(`{"model":"gpt-6.2-sol","reasoning":{"effort":"high"},"stream":true,"input":[` + strings.Join(items, ",") + `]}`)}
 }
 
 func TestE2ETerraRecoveryReachesUpstreamAndFooter(t *testing.T) {
@@ -83,7 +83,7 @@ func TestE2ETerraRecoveryReachesUpstreamAndFooter(t *testing.T) {
 	e.mustPost(t, recovery)
 	e.mustPost(t, later)
 	terra := config.Route{Model: "gpt-6.1-terra", Effort: config.EffortXHigh}
-	sol := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortXHigh}
+	sol := config.Route{Model: "gpt-6.2-sol", Effort: config.EffortXHigh}
 	e.wantRoutes(t, terra, sol, sol, sol)
 	snap := e.eventually(t, "recovery footer synced", func(s route.Snapshot) bool {
 		return s.FooterSynced && s.Footer == sol && s.Last != nil && s.Last.Route == sol
@@ -115,7 +115,7 @@ func TestE2ETerraModeChangeReachesUpstreamAndFooter(t *testing.T) {
 	e.command(t, route.Command{Op: route.OpMode, Session: control.SessionID(e.ctl.Hello().Home.ID, fakeThread), Mode: config.ModeQuality})
 	e.mustPost(t, terraRequest("turn-2", false, false))
 	e.mustPost(t, terraRequest("turn-2", false, true))
-	sol := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+	sol := config.Route{Model: "gpt-6.2-sol", Effort: config.EffortHigh}
 	e.wantRoutes(t, terra, sol, sol)
 	snap := e.eventually(t, "quality footer synced", func(s route.Snapshot) bool { return s.FooterSynced && s.Footer == sol })
 	if snap.Last == nil || snap.Last.Route != sol || snap.RoutingMode != config.ModeQuality {

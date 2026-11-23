@@ -700,7 +700,7 @@ func TestDecisionLogCarriesTheMode(t *testing.T) {
 	h.asker.script(answer(mediumTier))
 	h.firstStep("th", "t1")
 
-	for _, want := range []string{"mode=quality", "modeSource=session", "classified=medium", "model=gpt-6.1-sol", "effort=high"} {
+	for _, want := range []string{"mode=quality", "modeSource=session", "classified=medium", "model=gpt-6.2-sol", "effort=high"} {
 		if !strings.Contains(h.logs.String(), want) {
 			t.Errorf("route decision log lacks %q:\n%s", want, h.logs.String())
 		}

@@ -3,7 +3,7 @@
   "etag": "W/\"fixture-etag\"",
   "models": [
     {
-      "slug": "gpt-6.1-sol",
+      "slug": "gpt-6.2-sol",
       "visibility": "list",
       "default_reasoning_level": "low",
       "context_window": 500000,

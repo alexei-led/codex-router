@@ -1,18 +1,18 @@
 codex-router  6 sessions · 2 homes · Jev ready                                                    Sessions  Policy  Usage   ? help
 
    SESSION                  STATE     MODEL                 ▎codex-router · main           balanced (default) · default · bbbbbbbb
- ● default                                                  ▎ ▂▄▆█  debug → gpt-6.1-sol · high    ↑ repeated failure, edit between
- ▸ codex-router · main      ↑ ▂▄▆█    gpt-6.1-sol · high    ▎       Jev ▂▄▆█ 18% · no classifier needed
+ ● default                                                  ▎ ▂▄▆█  debug → gpt-6.2-sol · high    ↑ repeated failure, edit between
+ ▸ codex-router · main      ↑ ▂▄▆█    gpt-6.2-sol · high    ▎       Jev ▂▄▆█ 18% · no classifier needed
    codex-router · fix/hook  ● on      gpt-6-luna · medium   ▎       switch ≈ 41K uncached tokens · hold 2 turns
    notes                    ‖ paused  gpt-6-luna · medium   ▎ Pin      ▂ micro   ▂▄ low   ▂▄▆ medium  ▶▂▄▆█ high    next turn only
                                                             ▎ Session  48 replies · 9 switches · −$0.84 (−31%) vs no routing
  ● work · brain up 2h                                       ▎          ≈ list price
    api · feat/auth          ◐ manual  gpt-6-sol · medium    ▎          ▆▄▄▄▆▆▆▆▆▆▆▆████▆▆▆▄▄▄▄▄▆▆▆▆▆▆▄▄▄████  1 reply per cell
-   api · fix/retry          ↑ ▂▄▆█    gpt-6.1-sol · high    ▎ Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.1-sol
+   api · fix/retry          ↑ ▂▄▆█    gpt-6.2-sol · high    ▎ Context  █░░░░░░░░░ 16%  44.6K / 272K gpt-6.2-sol
    infra · main             ● on      gpt-6-sol · medium    ▎ Cache    98% last reply · 97% session
    reflex · main            ○ waiting for the first prompt  ▎ Notes    context guard kept 2 steps on a larger window · see Policy
-                                                            ▎          gpt-5.5 blocked: outside gpt-6.1-sol's group · see Policy
-                                                            ▎ Recent   18:41  ▂▄▆█   gpt-6.1-sol · high · ↑ repeated failure, edi…
+                                                            ▎          gpt-5.5 blocked: outside gpt-6.2-sol's group · see Policy
+                                                            ▎ Recent   18:41  ▂▄▆█   gpt-6.2-sol · high · ↑ repeated failure, edi…
                                                             ▎          18:38  ▂▄▆    gpt-6-sol · medium · ↑ stronger tier
 
 ↑↓ scroll · p pin · space pause · P pause home · tab views · q quit · ? help

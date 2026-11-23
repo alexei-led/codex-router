@@ -35,7 +35,7 @@ func TestParseFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Model != "gpt-6.1-sol" || r.Effort != config.EffortHigh || r.Bytes != len(body) {
+	if r.Model != "gpt-6.2-sol" || r.Effort != config.EffortHigh || r.Bytes != len(body) {
 		t.Fatalf("got model=%q effort=%q bytes=%d", r.Model, r.Effort, r.Bytes)
 	}
 	if !bytes.Equal(r.Body(), body) {
@@ -151,7 +151,7 @@ func TestParseRejects(t *testing.T) {
 
 func TestApplyFixtureChangesOnlyModelAndEffort(t *testing.T) {
 	body := readFixture(t, "request.json")
-	oldModel, newModel := []byte(`"model": "gpt-6.1-sol"`), []byte(`"model": "gpt-6-luna"`)
+	oldModel, newModel := []byte(`"model": "gpt-6.2-sol"`), []byte(`"model": "gpt-6-luna"`)
 	oldEffort, newEffort := []byte(`"effort" : "high"`), []byte(`"effort" : "low"`)
 	for _, s := range [][]byte{oldModel, oldEffort} {
 		if n := bytes.Count(body, s); n != 1 {
@@ -176,7 +176,7 @@ func TestApplyFixtureChangesOnlyModelAndEffort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	restored, err := back.Apply(responses.Rewrite{Model: "gpt-6.1-sol", Effort: config.EffortHigh})
+	restored, err := back.Apply(responses.Rewrite{Model: "gpt-6.2-sol", Effort: config.EffortHigh})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +196,7 @@ func TestApplyLargeBodyMatchesGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Model != "gpt-6.1-sol" || r.Effort != config.EffortHigh || len(r.Input) != 80 {
+	if r.Model != "gpt-6.2-sol" || r.Effort != config.EffortHigh || len(r.Input) != 80 {
 		t.Fatalf("got model=%q effort=%q items=%d", r.Model, r.Effort, len(r.Input))
 	}
 	got, err := r.Apply(responses.Rewrite{Model: "gpt-6-luna", Effort: config.EffortLow})
@@ -211,7 +211,7 @@ func TestApplyLargeBodyMatchesGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	restored, err := back.Apply(responses.Rewrite{Model: "gpt-6.1-sol", Effort: config.EffortHigh})
+	restored, err := back.Apply(responses.Rewrite{Model: "gpt-6.2-sol", Effort: config.EffortHigh})
 	if err != nil {
 		t.Fatal(err)
 	}

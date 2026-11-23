@@ -32,7 +32,7 @@ import (
 const waitTime = 5 * time.Second
 
 var (
-	native = config.Route{Model: "gpt-6.1-sol"}
+	native = config.Route{Model: "gpt-6.2-sol"}
 	luna   = config.Route{Model: "gpt-6-luna", Effort: config.EffortLow}
 )
 
@@ -348,7 +348,7 @@ func newRig(t *testing.T, state string) *rig {
 }
 
 const testCatalog = `{"models":[
- {"slug":"gpt-6.1-sol","context_window":500000,"effective_context_window_percent":95,"comp_hash":"3000",
+ {"slug":"gpt-6.2-sol","context_window":500000,"effective_context_window_percent":95,"comp_hash":"3000",
   "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"}]},
  {"slug":"gpt-6-sol","context_window":272000,"effective_context_window_percent":95,"comp_hash":"3000",
   "supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"}]},
@@ -767,7 +767,7 @@ func TestBrainReloadsTheModelsCacheCodexRewrites(t *testing.T) {
 	r.models = catalog.NewCacheWatch(cache, store, r.clock.Now)
 	r.start(t)
 	h := linkHandler{r.b}
-	sent := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortHigh}
+	sent := config.Route{Model: "gpt-6.2-sol", Effort: config.EffortHigh}
 
 	if rw, ok := h.Decide(t.Context(), step(sent), turn("t1", "tu-1")); ok {
 		t.Fatalf("rewrite %+v without a catalog", rw)

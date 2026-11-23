@@ -18,7 +18,7 @@ var updateDefault = flag.Bool("update-default", false, "regenerate testdata/defa
 func TestDefaultRoutesMatchPlan(t *testing.T) {
 	c := Default()
 	want := map[Tier]Route{
-		TierHigh:   {Model: "gpt-6.1-sol", Effort: EffortHigh},
+		TierHigh:   {Model: "gpt-6.2-sol", Effort: EffortHigh},
 		TierMedium: {Model: "gpt-6.1-terra", Effort: EffortMedium},
 		TierLow:    {Model: "gpt-6-luna", Effort: EffortHigh},
 		TierMicro:  {Model: "gpt-6-luna", Effort: EffortMedium},
@@ -444,7 +444,7 @@ func TestRouteFor(t *testing.T) {
 		{TierLow, ActivityCode, Route{Model: "gpt-6-sol", Effort: EffortHigh}},
 		{TierLow, ActivityReview, Route{Model: "gpt-6-luna", Effort: EffortLow}},
 		{TierMedium, ActivityOps, Route{Model: "gpt-6-luna", Effort: EffortLow}},
-		{TierHigh, ActivityCode, Route{Model: "gpt-6.1-sol", Effort: EffortHigh}},
+		{TierHigh, ActivityCode, Route{Model: "gpt-6.2-sol", Effort: EffortHigh}},
 		{TierLow, ActivityUncertain, Route{Model: "gpt-6-luna", Effort: EffortHigh}},
 	}
 	for _, tc := range cases {

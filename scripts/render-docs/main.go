@@ -49,7 +49,7 @@ type picture struct {
 
 var pictures = []picture{
 	{"router-tui-sessions", "codex-router panel, Sessions view",
-		"codex-router tui in a 97 column pane. The header counts 5 sessions in 2 homes, says Jev is ready, and lists the views Sessions, Policy and Usage. The list groups the sessions by Codex home: the default home has three codex-router runs, the work home has a brain that has run for 2 hours and a router whose Codex has not had a first prompt yet. Each row has the session's state, model and effort, a strip of the last turns by tier and the last switch. Below, the selected session: the high tier meter, the debug activity and the route gpt-6.1-sol high, why the router moved up, the classifier's evidence, the pin buttons, the session summary with its strip, context and cache, and one note.",
+		"codex-router tui in a 97 column pane. The header counts 5 sessions in 2 homes, says Jev is ready, and lists the views Sessions, Policy and Usage. The list groups the sessions by Codex home: the default home has three codex-router runs, the work home has a brain that has run for 2 hours and a router whose Codex has not had a first prompt yet. Each row has the session's state, model and effort, a strip of the last turns by tier and the last switch. Below, the selected session: the high tier meter, the debug activity and the route gpt-6.2-sol high, why the router moved up, the classifier's evidence, the pin buttons, the session summary with its strip, context and cache, and one note.",
 		func(*tui.FleetView) {}},
 	{"router-tui-sessions-wide", "codex-router panel, Sessions view, side by side",
 		"The Sessions view in a terminal of 130 columns. The list of sessions is on the left and the selected session's detail on the right, with an accent gutter on the focused side.",
@@ -98,7 +98,7 @@ func render(out, footerPath, sessionPath string) error {
 	}
 	fleet.Locked = true
 	locked := tui.RenderFleetView(fleet)
-	const lockedDesc = "codex-router tui --session, locked to one session. There is no list: the header shows the views and the detail of default · codex-router · main fills the screen. The turn moved up to gpt-6.1-sol high after the same tool failure repeated."
+	const lockedDesc = "codex-router tui --session, locked to one session. There is no list: the header shows the views and the detail of default · codex-router · main fills the screen. The turn moved up to gpt-6.2-sol high after the same tool failure repeated."
 	if err := write(out, "router-tui-locked", sampleSVG(parseANSI(locked), "codex-router panel locked to one session", lockedDesc)); err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func render(out, footerPath, sessionPath string) error {
 		return err
 	}
 	lines := parseANSI(strings.TrimRight(string(text), "\n ") + "\n")
-	const footerDesc = "The Codex terminal UI while a turn runs. The footer line shows the model the router chose for the turn, GPT-6.1-Sol with medium effort, next to the branch, the context window and the remaining context."
+	const footerDesc = "The Codex terminal UI while a turn runs. The footer line shows the model the router chose for the turn, GPT-6.2-Sol with medium effort, next to the branch, the context window and the remaining context."
 	if err := write(out, "codex-footer", sampleSVG(lines, "Codex footer showing the routed model", footerDesc)); err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func renderSplit(out, sessionPath, panel string) error {
 	}
 	left := parseANSI(strings.TrimRight(string(text), "\n ") + "\n")
 	right := parseANSI(panel)
-	const desc = "A terminal split. Left: Codex runs a Go test that fails twice with an edit in between, and its footer shows GPT-6.1-Sol high. Right: the codex-router panel says this turn moved from gpt-6.1-sol medium to gpt-6.1-sol high because the same tool failure repeated, shows the classifier's tier and activity reading, the session's routed replies by tier, the estimated saving, and that the footer is synced."
+	const desc = "A terminal split. Left: Codex runs a Go test that fails twice with an edit in between, and its footer shows GPT-6.2-Sol high. Right: the codex-router panel says this turn moved from gpt-6.2-sol medium to gpt-6.2-sol high because the same tool failure repeated, shows the classifier's tier and activity reading, the session's routed replies by tier, the estimated saving, and that the footer is synced."
 	return write(out, "codex-router-split", sampleSVG(sideBySide(left, right), "Codex and the codex-router panel side by side", desc))
 }
 
@@ -195,7 +195,7 @@ func sampleFleet(snap route.Snapshot) ([]home.Home, []route.SessionInfo) {
 	session := func(h home.Home, thread, label string, mod func(*route.SessionInfo)) route.SessionInfo {
 		s := route.SessionInfo{
 			ID: control.SessionID(h.ID, thread), Home: h.ID, ThreadID: thread, Label: h.Name + " · " + label,
-			Mode: route.ModeOn, Tier: config.TierMedium, Route: config.Route{Model: "gpt-6.1-sol", Effort: config.EffortMedium},
+			Mode: route.ModeOn, Tier: config.TierMedium, Route: config.Route{Model: "gpt-6.2-sol", Effort: config.EffortMedium},
 			FooterSynced: true,
 		}
 		mod(&s)
@@ -237,7 +237,7 @@ func sampleFleet(snap route.Snapshot) ([]home.Home, []route.SessionInfo) {
 func sampleSnapshot() route.Snapshot {
 	cfg := config.Default()
 	now := at(18, 43)
-	solMed := config.Route{Model: "gpt-6.1-sol", Effort: config.EffortMedium}
+	solMed := config.Route{Model: "gpt-6.2-sol", Effort: config.EffortMedium}
 	luna := cfg.Routes[config.TierLow]
 	solHigh := cfg.Routes[config.TierHigh]
 

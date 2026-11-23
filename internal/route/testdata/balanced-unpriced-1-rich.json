@@ -51,7 +51,7 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -76,11 +76,11 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -96,11 +96,11 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -116,11 +116,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -136,11 +136,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -261,11 +261,11 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -281,11 +281,11 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -301,11 +301,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -326,11 +326,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -346,11 +346,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -366,11 +366,11 @@
   "Tier": "high",
   "Activity": "debug",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -420,7 +420,7 @@
    "effort": "medium"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,
@@ -631,7 +631,7 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -781,11 +781,11 @@
   "Tier": "high",
   "Activity": "explore",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -801,11 +801,11 @@
   "Tier": "high",
   "Activity": "explore",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -821,11 +821,11 @@
   "Tier": "high",
   "Activity": "explore",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -841,11 +841,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -866,11 +866,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -890,7 +890,7 @@
    "effort": "medium"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,
@@ -1081,11 +1081,11 @@
   "Tier": "high",
   "Activity": "debug",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1106,11 +1106,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1126,11 +1126,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1146,11 +1146,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1166,11 +1166,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1191,11 +1191,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1216,11 +1216,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1236,11 +1236,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1365,7 +1365,7 @@
    "effort": "medium"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,
@@ -1751,7 +1751,7 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -1771,11 +1771,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1851,11 +1851,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1871,11 +1871,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1891,11 +1891,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -1911,11 +1911,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2351,7 +2351,7 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -2376,11 +2376,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2396,11 +2396,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2416,11 +2416,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2441,11 +2441,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2461,11 +2461,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2486,11 +2486,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2506,11 +2506,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2526,11 +2526,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2551,11 +2551,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2571,11 +2571,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2591,11 +2591,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2611,11 +2611,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2631,11 +2631,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -2655,7 +2655,7 @@
    "effort": "medium"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,
@@ -2991,11 +2991,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3011,11 +3011,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3031,11 +3031,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3051,11 +3051,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3071,11 +3071,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3091,11 +3091,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3451,11 +3451,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3476,11 +3476,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3496,11 +3496,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3516,11 +3516,11 @@
   "Tier": "high",
   "Activity": "review",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3561,7 +3561,7 @@
   "Tier": "high",
   "Activity": "docs",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -3581,11 +3581,11 @@
   "Tier": "high",
   "Activity": "docs",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3726,11 +3726,11 @@
   "Tier": "high",
   "Activity": "debug",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3746,11 +3746,11 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3766,11 +3766,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3791,11 +3791,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3811,11 +3811,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3831,11 +3831,11 @@
   "Tier": "high",
   "Activity": "docs",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3855,7 +3855,7 @@
    "effort": "low"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,
@@ -3916,11 +3916,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3941,11 +3941,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3961,11 +3961,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -3981,11 +3981,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4006,11 +4006,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4030,7 +4030,7 @@
    "effort": "medium"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,
@@ -4071,7 +4071,7 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -4091,11 +4091,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4111,11 +4111,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4216,7 +4216,7 @@
   "Tier": "high",
   "Activity": "explore",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -4241,11 +4241,11 @@
   "Tier": "high",
   "Activity": "explore",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4261,11 +4261,11 @@
   "Tier": "high",
   "Activity": "explore",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4281,11 +4281,11 @@
   "Tier": "high",
   "Activity": "explore",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4306,11 +4306,11 @@
   "Tier": "high",
   "Activity": "docs",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4331,11 +4331,11 @@
   "Tier": "high",
   "Activity": "docs",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4351,7 +4351,7 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -4376,11 +4376,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4396,11 +4396,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4421,11 +4421,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4441,11 +4441,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4461,11 +4461,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4485,7 +4485,7 @@
    "effort": "low"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,
@@ -4545,7 +4545,7 @@
    "effort": "medium"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,
@@ -4791,11 +4791,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4816,11 +4816,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4836,11 +4836,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -4860,7 +4860,7 @@
    "effort": "medium"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,
@@ -5436,11 +5436,11 @@
   "Tier": "high",
   "Activity": "explore",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -5461,11 +5461,11 @@
   "Tier": "high",
   "Activity": "explore",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -5481,11 +5481,11 @@
   "Tier": "high",
   "Activity": "explore",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -5561,11 +5561,11 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -5586,11 +5586,11 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -5606,11 +5606,11 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -5630,7 +5630,7 @@
    "effort": "medium"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,
@@ -5881,7 +5881,7 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -6056,7 +6056,7 @@
   "Tier": "high",
   "Activity": "debug",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -6081,11 +6081,11 @@
   "Tier": "high",
   "Activity": "debug",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -6101,11 +6101,11 @@
   "Tier": "high",
   "Activity": "debug",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -6121,11 +6121,11 @@
   "Tier": "high",
   "Activity": "debug",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -6141,11 +6141,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -6166,11 +6166,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -6186,11 +6186,11 @@
   "Tier": "high",
   "Activity": "code",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -6206,11 +6206,11 @@
   "Tier": "high",
   "Activity": "",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -6276,7 +6276,7 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
@@ -6296,11 +6296,11 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -6316,11 +6316,11 @@
   "Tier": "high",
   "Activity": "plan",
   "Route": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": false,
@@ -6565,7 +6565,7 @@
    "effort": "high"
   },
   "Original": {
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high"
   },
   "Rewritten": true,

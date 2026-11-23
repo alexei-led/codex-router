@@ -6,7 +6,7 @@ import (
 )
 
 func TestContextRequiresExactPrefixAndEnvelope(t *testing.T) {
-	base := `{"model":"gpt-6.1-sol","reasoning":{"effort":"high","summary":"auto"},"tools":[{"name":"read"}],"input":[{"type":"reasoning","encrypted_content":"opaque"},{"type":"message","role":"user","content":"hi"}]}`
+	base := `{"model":"gpt-6.2-sol","reasoning":{"effort":"high","summary":"auto"},"tools":[{"name":"read"}],"input":[{"type":"reasoning","encrypted_content":"opaque"},{"type":"message","role":"user","content":"hi"}]}`
 	parse := func(body string) *Request {
 		t.Helper()
 		r, err := Parse([]byte(body))
@@ -23,12 +23,12 @@ func TestContextRequiresExactPrefixAndEnvelope(t *testing.T) {
 	}{
 		{"identical", base, true},
 		{"appended", appendItem, true},
-		{"model and effort", strings.ReplaceAll(strings.ReplaceAll(appendItem, "gpt-6.1-sol", "gpt-6-luna"), `"high"`, `"low"`), true},
+		{"model and effort", strings.ReplaceAll(strings.ReplaceAll(appendItem, "gpt-6.2-sol", "gpt-6-luna"), `"high"`, `"low"`), true},
 		{"tools", strings.ReplaceAll(appendItem, `"read"`, `"edit"`), false},
 		{"reasoning setting", strings.ReplaceAll(appendItem, `"auto"`, `"none"`), false},
 		{"opaque prefix changed", strings.ReplaceAll(appendItem, `"opaque"`, `"edited"`), false},
 		{"same count edit", strings.ReplaceAll(base, `"hi"`, `"no"`), false},
-		{"compaction", `{"model":"gpt-6.1-sol","input":[{"type":"compaction","encrypted_content":"summary"}]}`, false},
+		{"compaction", `{"model":"gpt-6.2-sol","input":[{"type":"compaction","encrypted_content":"summary"}]}`, false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			r := parse(tt.body)

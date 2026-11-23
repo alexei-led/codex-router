@@ -148,7 +148,7 @@ func assertNoForeignCredential(t *testing.T, body string) {
 var smallInput = Input{
 	Prompt:   "One small edit.",
 	Dialogue: []Message{{Role: "user", Text: "rename the helper"}},
-	Routes:   map[config.Tier]config.Route{config.TierHigh: {Model: "gpt-6.1-sol", Effort: config.EffortHigh}},
+	Routes:   map[config.Tier]config.Route{config.TierHigh: {Model: "gpt-6.2-sol", Effort: config.EffortHigh}},
 }
 
 func TestSystemOneSendsOnlyItsBearerAndTheInputFields(t *testing.T) {
